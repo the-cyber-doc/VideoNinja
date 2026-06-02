@@ -5,7 +5,7 @@ from fastapi.responses import FileResponse
 import os
 from pathlib import Path
 
-app = FastAPI(title="VideoNinja")
+app = FastAPI(title="VideoNinja", root_path=os.getenv("ROOT_PATH", ""))
 
 # CORS middleware
 app.add_middleware(

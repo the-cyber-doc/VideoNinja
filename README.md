@@ -23,7 +23,7 @@ A Python FastAPI application for uploading and processing videos with automated 
 
 ```bash
 # Clone the repository
-git clone <your-repo-url>
+git clone https://github.com/the-cyber-doc/VideoNinja.git
 cd videoninja
 
 # Create virtual environment
@@ -54,6 +54,53 @@ docker-compose down
 ```
 
 The API will be available at `http://localhost:8000`
+
+## Running Behind a Reverse Proxy (Subfolder)
+
+By default the app serves from the domain root. To mount it under a subpath
+(e.g. `https://example.com/videoninja/`), set the `ROOT_PATH` environment
+variable so FastAPI generates correct OpenAPI/docs URLs.
+
+### 1. Set ROOT_PATH
+
+`ROOT_PATH` is read in `main.py` and wired through `docker-compose.yml`. Pass it
+at startup, or add it to a `.env` file next to `docker-compose.yml`:
+
+```bash
+# One-off
+ROOT_PATH=/videoninja docker-compose up -d
+
+# Or in .env
+echo "ROOT_PATH=/videoninja" >> .env
+docker-compose up -d
+```
+
+Leave it unset (or empty) to serve from the root — the default behavior is
+unchanged.
+
+### 2. Configure nginx
+
+The proxy must **strip** the subfolder prefix before forwarding (note the
+trailing slash on `proxy_pass`), since the app's routes live at `/health`,
+`/upload`, etc.:
+
+```nginx
+location /videoninja/ {
+    proxy_pass http://127.0.0.1:8000/;   # trailing slash strips /videoninja
+    proxy_set_header Host              $host;
+    proxy_set_header X-Real-IP         $remote_addr;
+    proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_set_header X-Forwarded-Prefix /videoninja;
+
+    # Allow large video uploads (tune to your needs)
+    client_max_body_size 100g;
+}
+```
+
+The `ROOT_PATH` value and the `location` prefix must match. After this, the API
+is reachable at `https://example.com/videoninja/` and the docs at
+`https://example.com/videoninja/docs`.
 
 ## API Endpoints
 
@@ -93,14 +140,27 @@ Once pushed to DockerHub:
 
 ```bash
 # Pull the latest image
-docker pull YOUR-USERNAME/videoninja:main
+docker pull thecyberdoc/videoninja:main
 
 # Run it
-docker run -p 8000:8000 YOUR-USERNAME/videoninja:main
+docker run -p 8000:8000 thecyberdoc/videoninja:main
 
 # Test it
 curl http://localhost:8000/health
 ```
+
+### On a Raspberry Pi (arm64)
+
+The image is published as a multi-arch manifest, so the same commands work on a
+64-bit Raspberry Pi OS — Docker pulls the `linux/arm64` variant automatically:
+
+```bash
+docker pull thecyberdoc/videoninja:main
+docker run -p 8000:8000 thecyberdoc/videoninja:main
+```
+
+> Requires a **64-bit** OS on the Pi (`uname -m` should report `aarch64`). The
+> 32-bit `armv7l` variant is not built.
 
 ## Continuous Deployment Notes
 
@@ -108,6 +168,9 @@ curl http://localhost:8000/health
 - **develop branch**: Only runs tests (no push)
 - **Pull requests**: Only runs tests
 - **Image tags**: Auto-generated from git tags and branch names
+- **Platforms**: Multi-arch image built for `linux/amd64` and `linux/arm64`
+  (arm64 for Raspberry Pi). `docker pull` automatically selects the right
+  architecture for the host.
 
 Example tags:
 - `main` - latest from main branch
@@ -155,5 +218,5 @@ Example tags:
 ```bash
 # May need to login
 docker login
-docker pull YOUR-USERNAME/videoninja:main
+docker pull thecyberdoc/videoninja:main
 ```
