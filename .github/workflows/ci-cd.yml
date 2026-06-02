@@ -14,6 +14,8 @@ jobs:
   test:
     runs-on: ubuntu-latest
     name: Test
+    permissions:
+      contents: reads
 
     steps:
     - uses: actions/checkout@v5
@@ -41,6 +43,9 @@ jobs:
   build:
     needs: test
     name: Build (${{ matrix.platform }})
+    permissions:
+      contents: reads
+
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ${{ matrix.runner }}
     strategy:
@@ -101,6 +106,9 @@ jobs:
   merge-and-push:
     needs: build
     name: Merge manifest & push to DockerHub
+    permissions:
+      contents: reads
+
     runs-on: ubuntu-latest
 
     steps:
