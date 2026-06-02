@@ -16,6 +16,9 @@ COPY main.py .
 # Create uploads directory
 RUN mkdir -p uploads
 
+# Create output directory
+RUN mkdir -p output
+
 # Expose port
 EXPOSE 8000
 
