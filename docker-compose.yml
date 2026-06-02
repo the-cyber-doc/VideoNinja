@@ -9,6 +9,9 @@ services:
       - videoninja_output:/app/output
     environment:
       - PYTHONUNBUFFERED=1
+      # Subpath where the app is mounted behind a reverse proxy, e.g. /videoninja
+      # Leave empty when serving from the domain root.
+      - ROOT_PATH=${ROOT_PATH:-}
     restart: unless-stopped
 
 volumes:
