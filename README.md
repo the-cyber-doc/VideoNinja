@@ -1,13 +1,28 @@
 # VideoNinja
 
-A Python FastAPI application for uploading and processing videos with automated CI/CD pipeline.
+An internal video library for uploading and processing videos, organized as a
+monorepo with a shared backend and multiple client front-ends.
+
+## Components
+
+| Path             | Component        | Stack                                   |
+|------------------|------------------|-----------------------------------------|
+| `server/`        | Backend API      | FastAPI + Uvicorn (Python), Docker      |
+| `frontend/`      | Web UI           | Vue 3 + Vite + TypeScript (user + admin)|
+| `clients/android/` | Android client | Kotlin + Jetpack Compose (Gradle)       |
+| `clients/ios/`   | iOS client       | SwiftUI + SwiftPM (`VideoNinjaKit`)     |
+
+Each component has its own README with build/run instructions. The web frontend
+serves both the **user** UI (`/app`) and the **admin** UI (`/admin`) from a
+single app with shared components and API client.
 
 ## Tech Stack
 
-- **Framework**: FastAPI (modern, fast, async-ready)
-- **Web Server**: Uvicorn
-- **Testing**: pytest
-- **Containerization**: Docker
+- **Backend**: FastAPI (modern, fast, async-ready) on Uvicorn
+- **Web frontend**: Vue 3, Vite, TypeScript, Pinia, Vue Router
+- **Mobile**: Kotlin/Compose (Android), SwiftUI (iOS)
+- **Testing**: pytest (server), vue-tsc (frontend), XCTest (iOS kit)
+- **Containerization**: Docker + Docker Compose
 - **CI/CD**: GitHub Actions
 - **Registry**: DockerHub
 
@@ -15,16 +30,16 @@ A Python FastAPI application for uploading and processing videos with automated 
 
 ### Prerequisites
 
-- Python 3.11+
+- Python 3.11+ (server)
+- Node.js 24+ (frontend)
 - Docker & Docker Compose
 - Git
+- For mobile: Android Studio (Android), macOS + Xcode (iOS)
 
-### Setup Local Environment
+### Server (`server/`)
 
 ```bash
-# Clone the repository
-git clone https://github.com/the-cyber-doc/VideoNinja.git
-cd videoninja
+cd server
 
 # Create virtual environment
 python -m venv venv
@@ -40,20 +55,33 @@ pytest -v
 uvicorn main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-### Using Docker Compose
+### Web frontend (`frontend/`)
 
 ```bash
-# Build and run
+cd frontend
+npm install
+npm run dev   # http://localhost:5173, proxies API calls to the server on :8000
+```
+
+See `frontend/README.md`, `clients/android/README.md`, and
+`clients/ios/README.md` for per-component details.
+
+### Using Docker Compose (server + frontend)
+
+```bash
+# Build and run both services from the repo root
 docker-compose up -d
 
 # View logs
-docker-compose logs -f app
+docker-compose logs -f server
+docker-compose logs -f frontend
 
 # Stop
 docker-compose down
 ```
 
-The API will be available at `http://localhost:8000`
+The API is served at `http://localhost:8000` and the web UI at
+`http://localhost:8080`.
 
 ## Running Behind a Reverse Proxy (Subfolder)
 
@@ -179,28 +207,40 @@ Example tags:
 
 ## Next Steps
 
-1. **Add frontend**: Create `frontend/` directory with React/Vue
+1. **Server listing/stats endpoints**: Back the frontend Library, admin
+   Dashboard, and Videos views with real data (`GET /videos`, stats)
 2. **Add processing logic**: Implement video processing in background tasks
 3. **Add database**: Store processing history and results
-4. **Add authentication**: Secure the upload endpoint
-5. **Environment variables**: Use `.env` for configuration
+4. **Add authentication**: Secure the upload endpoint and the admin area
+   (frontend auth is currently stubbed in `frontend/src/stores/session.ts`)
+5. **Wire mobile upload UIs**: `uploadVideo` exists in both mobile clients but
+   isn't yet connected to a file picker
 
 ## File Structure
 
 ```
 .
-├── main.py                    # FastAPI application
-├── test_main.py              # Pytest tests
-├── requirements.txt          # Python dependencies
-├── Dockerfile                # Container image definition
-├── docker-compose.yml        # Local development setup
+├── server/                    # FastAPI backend
+│   ├── main.py                # FastAPI application
+│   ├── test_main.py           # Pytest tests
+│   ├── requirements.txt       # Python dependencies
+│   ├── Dockerfile             # Container image definition
+│   ├── .dockerignore          # Docker ignore rules
+│   └── uploads/               # Video uploads directory
+├── frontend/                  # Vue 3 + Vite + TS web UI (user + admin)
+│   ├── src/                   # views/{user,admin}, layouts, api, router, stores
+│   ├── Dockerfile             # multi-stage build → nginx
+│   └── README.md
+├── clients/
+│   ├── android/               # Kotlin + Jetpack Compose (Gradle)
+│   └── ios/                   # SwiftUI app + VideoNinjaKit (SwiftPM)
+├── docker-compose.yml         # Orchestrates server + frontend
 ├── .github/
 │   └── workflows/
-│       └── ci-cd.yml         # GitHub Actions workflow
-├── .gitignore                # Git ignore rules
-├── .dockerignore             # Docker ignore rules
-├── uploads/                  # Video uploads directory
-└── output/                   # Video output directory
+│       └── ci-cd.yml          # GitHub Actions workflow
+├── .gitignore                 # Git ignore rules
+├── CLAUDE.md                  # Codebase documentation
+└── LICENSE
 ```
 
 ## Troubleshooting
@@ -220,3 +260,6 @@ Example tags:
 docker login
 docker pull thecyberdoc/videoninja:main
 ```
+
+## Framwork to get ideas
+- 

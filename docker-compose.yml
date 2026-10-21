@@ -1,7 +1,7 @@
 services:
-  app:
-    build: .
-    container_name: videoninja
+  server:
+    build: ./server
+    container_name: videoninja-server
     ports:
       - "8000:8000"
     volumes:
@@ -12,6 +12,19 @@ services:
       # Subpath where the app is mounted behind a reverse proxy, e.g. /videoninja
       # Leave empty when serving from the domain root.
       - ROOT_PATH=${ROOT_PATH:-}
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        # Base URL the SPA uses to reach the server API.
+        - VITE_API_BASE_URL=${VITE_API_BASE_URL:-http://localhost:8000}
+    container_name: videoninja-frontend
+    ports:
+      - "8080:80"
+    depends_on:
+      - server
     restart: unless-stopped
 
 volumes:
