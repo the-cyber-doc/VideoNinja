@@ -102,3 +102,13 @@ def test_purge_expired(client, admin_secret):
         con.execute("UPDATE session SET expires_s = 0")
     login(client, admin_secret)  # login purges expired rows
     assert con.execute("SELECT count(*) FROM session").fetchone()[0] == 1
+
+
+def test_user_without_totp_cannot_log_in(client, admin_secret):
+    # TOTP is mandatory: a missing secret must never mean "no code needed".
+    con = sqlite3.connect(db.db_path())
+    with con:
+        con.execute("UPDATE user SET totp = NULL")
+    r = client.post("/api/auth/login", json={"username": "admin", "password": PASSWORD})
+    assert r.status_code == 401
+    assert login(client, admin_secret).status_code == 401

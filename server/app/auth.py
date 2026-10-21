@@ -38,10 +38,9 @@ def current_user(
 
 
 def _totp_ok(user: sqlite3.Row | None, code: str) -> bool:
-    if user is None:
+    # TOTP is mandatory: a user without a secret cannot log in (an admin must set one).
+    if user is None or not user["totp"]:
         return False
-    if not user["totp"]:
-        return True
     try:
         secret = crypto.decrypt(user["totp"], crypto.totp_aad(user["id"]))
     except (InvalidTag, ValueError):

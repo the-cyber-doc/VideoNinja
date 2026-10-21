@@ -4,6 +4,7 @@ import sqlite3
 import time
 
 import pyotp
+import segno
 from argon2 import PasswordHasher
 from argon2.exceptions import InvalidHashError, VerificationError
 
@@ -36,6 +37,13 @@ def new_totp_secret() -> str:
 
 def totp_uri(secret: str, username: str) -> str:
     return pyotp.TOTP(secret).provisioning_uri(name=username, issuer_name="Video Ninja")
+
+
+def totp_enrollment(username: str) -> dict[str, str]:
+    """A fresh TOTP secret with its URI and QR code (SVG data URI). Nothing is stored."""
+    secret = new_totp_secret()
+    uri = totp_uri(secret, username)
+    return {"secret": secret, "uri": uri, "qr": segno.make(uri).svg_data_uri(scale=5, border=2)}
 
 
 def verify_totp(secret: str, code: str) -> bool:
@@ -90,3 +98,11 @@ def session_user(con: sqlite3.Connection, token: str) -> sqlite3.Row | None:
 def delete_session(con: sqlite3.Connection, token: str) -> None:
     with con:
         con.execute('DELETE FROM "session" WHERE "id" = ?', (_session_id(token),))
+
+
+def delete_other_sessions(con: sqlite3.Connection, user_id: int, token: str) -> None:
+    """Log the user out everywhere else, e.g. after a credential change."""
+    with con:
+        con.execute(
+            'DELETE FROM "session" WHERE "user" = ? AND "id" != ?', (user_id, _session_id(token))
+        )

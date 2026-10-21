@@ -1,8 +1,9 @@
 // Input rules shared with the backend (server/app/validation.json), bundled at build time.
 // The backend always validates again; these only give instant feedback in forms.
-import rules from '../../../server/app/validation.json';
+import shared from '../../../server/app/validation.json';
 
-export { rules };
+const { _comment, ...rest } = shared;
+export const rules = rest;
 
 /** Keep the digits only (codes are often shown or copied as "123 456"), at most the code length. */
 export function totpDigits(value: string): string {

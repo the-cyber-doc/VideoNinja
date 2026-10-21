@@ -6,10 +6,9 @@ import secrets
 import threading
 from collections.abc import Iterator
 
-import segno
 from fastapi import APIRouter, HTTPException, Request, status
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 from . import db, security
 from .validation import field
@@ -36,7 +35,7 @@ class CompleteIn(TokenIn):
     username: str = field("username")
     name: str = field("display_name", default="")
     password: str = field("password")
-    totp_secret: str = Field(pattern=r"^[A-Z2-7]{32}$")  # server-generated, not typed
+    totp_secret: str = field("totp_secret")  # server-generated, sent back with the code
     totp_code: str = field("totp_code")
 
 
@@ -62,9 +61,7 @@ def verify_token(body: TokenIn, request: Request) -> None:
 def new_totp(body: TotpIn, request: Request) -> dict[str, str]:
     """A fresh TOTP secret and its QR code. Nothing is stored until /complete."""
     _check_token(request, body.token)
-    secret = security.new_totp_secret()
-    uri = security.totp_uri(secret, body.username)
-    return {"secret": secret, "uri": uri, "qr": segno.make(uri).svg_data_uri(scale=5, border=2)}
+    return security.totp_enrollment(body.username)
 
 
 @router.post("/complete")

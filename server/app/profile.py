@@ -1,0 +1,97 @@
+"""Own profile, for every logged-in user: display name, password, TOTP.
+
+Users may only change their own account here. Changing a credential needs the
+current password, and logs the user out of every other session.
+"""
+
+import logging
+import sqlite3
+
+from fastapi import APIRouter, Cookie, Depends, HTTPException, status
+from pydantic import BaseModel
+
+from . import crypto, db, security
+from .auth import UserOut, current_user
+from .security import SESSION_COOKIE
+from .validation import field
+
+log = logging.getLogger("uvicorn.error")
+router = APIRouter(prefix="/api/profile", tags=["profile"])
+
+
+class NameIn(BaseModel):
+    name: str = field("display_name")
+
+
+class PasswordIn(BaseModel):
+    current_password: str = field("password", max_only=True)
+    new_password: str = field("password")
+
+
+class TotpConfirmIn(BaseModel):
+    current_password: str = field("password", max_only=True)
+    totp_secret: str = field("totp_secret")
+    totp_code: str = field("totp_code")
+
+
+def _check_password(con: sqlite3.Connection, user: sqlite3.Row, password: str) -> None:
+    pw_hash = con.execute('SELECT "pw_hash" FROM "user" WHERE "id" = ?', (user["id"],)).fetchone()[0]
+    if not security.verify_password(pw_hash, password):
+        log.warning("Profile: wrong current password for user id %s", user["id"])
+        # 403, not 401: the session is still valid.
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Wrong current password")
+
+
+@router.post("/name")
+def set_name(
+    body: NameIn,
+    user: sqlite3.Row = Depends(current_user),
+    con: sqlite3.Connection = Depends(db.get_db),
+) -> UserOut:
+    name = body.name.strip() or None
+    with con:
+        con.execute('UPDATE "user" SET "name" = ? WHERE "id" = ?', (name, user["id"]))
+    return UserOut(username=user["username"], name=name, role=user["role"])
+
+
+@router.post("/password", status_code=status.HTTP_204_NO_CONTENT)
+def set_password(
+    body: PasswordIn,
+    user: sqlite3.Row = Depends(current_user),
+    con: sqlite3.Connection = Depends(db.get_db),
+    token: str = Cookie(alias=SESSION_COOKIE),
+) -> None:
+    _check_password(con, user, body.current_password)
+    with con:
+        con.execute(
+            'UPDATE "user" SET "pw_hash" = ? WHERE "id" = ?',
+            (security.hash_password(body.new_password), user["id"]),
+        )
+    security.delete_other_sessions(con, user["id"], token)
+    log.warning("Profile: password changed for user id %s", user["id"])
+
+
+@router.post("/totp")
+def new_totp(user: sqlite3.Row = Depends(current_user)) -> dict[str, str]:
+    """A fresh TOTP secret and its QR code. Nothing is stored until /totp/confirm."""
+    return security.totp_enrollment(user["username"])
+
+
+@router.post("/totp/confirm", status_code=status.HTTP_204_NO_CONTENT)
+def confirm_totp(
+    body: TotpConfirmIn,
+    user: sqlite3.Row = Depends(current_user),
+    con: sqlite3.Connection = Depends(db.get_db),
+    token: str = Cookie(alias=SESSION_COOKIE),
+) -> None:
+    """Replace the TOTP secret, once a code from the new one proves the app is set up."""
+    _check_password(con, user, body.current_password)
+    if not security.verify_totp(body.totp_secret, body.totp_code):
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid code for the new authenticator")
+    with con:
+        con.execute(
+            'UPDATE "user" SET "totp" = ? WHERE "id" = ?',
+            (crypto.encrypt(body.totp_secret, crypto.totp_aad(user["id"])), user["id"]),
+        )
+    security.delete_other_sessions(con, user["id"], token)
+    log.warning("Profile: authenticator replaced for user id %s", user["id"])

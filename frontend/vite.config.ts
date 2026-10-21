@@ -1,7 +1,7 @@
 import adapter from '@sveltejs/adapter-static';
 import basicSsl from '@vitejs/plugin-basic-ssl';
 import { sveltekit } from '@sveltejs/kit/vite';
-import { defineConfig } from 'vite';
+import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
 	plugins: [
@@ -21,8 +21,13 @@ export default defineConfig({
 	],
 	server: {
 		// Dev only: the FastAPI server (uvicorn on :8000) answers /api.
-		proxy: { '/api': 'http://localhost:8000' },
+		// API_URL: another backend, e.g. the one started by the browser tests.
+		proxy: { '/api': process.env.API_URL ?? 'http://localhost:8000' },
 		// Rules shared with the backend, outside frontend/ (see src/lib/validation.ts).
 		fs: { allow: ['../server/app/validation.json'] }
+	},
+	test: {
+		// Unit tests next to the code; browser tests (tests/) run with Playwright.
+		include: ['src/**/*.test.ts']
 	}
 });

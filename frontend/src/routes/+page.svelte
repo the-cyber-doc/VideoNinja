@@ -27,8 +27,23 @@
 	<main class="card">
 		<h1>Video Ninja</h1>
 		<p>Logged in as <strong>{user.name ?? user.username}</strong> ({user.role}).</p>
-		<button class="secondary" onclick={logout}>Log out</button>
+		<div class="actions">
+			<a href="/profile">Profile</a>
+			<button class="secondary" onclick={logout}>Log out</button>
+		</div>
 	</main>
 {:else if error}
 	<main class="card"><p class="error">{error}</p></main>
 {/if}
+
+<style>
+	.actions {
+		display: flex;
+		gap: 1rem;
+		align-items: center;
+		justify-content: space-between;
+	}
+	a {
+		color: var(--accent);
+	}
+</style>
