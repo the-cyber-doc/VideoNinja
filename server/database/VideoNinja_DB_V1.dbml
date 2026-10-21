@@ -1,0 +1,152 @@
+Table config [headercolor: #175e7a] {
+	name varchar(255) [ pk, not null, unique ]
+	type varchar(255) [ not null ]
+	value varchar(255) [ not null ]
+}
+
+Table ryu [headercolor: #175e7a] {
+	id varchar(255) [ pk, not null, unique ]
+	kanji varchar(255) [ not null ]
+	romaji varchar(255) [ not null ]
+	description text(65535)
+}
+
+Table level [headercolor: #175e7a] {
+	id varchar(255) [ pk, not null, unique ]
+	kanji varchar(255) [ not null ]
+	romaji varchar(255) [ not null ]
+	description text(65535)
+}
+
+Table technique [headercolor: #175e7a] {
+	id varchar(255) [ pk, not null, unique ]
+	kanji varchar(255) [ not null ]
+	romaji varchar(255) [ not null ]
+	ryu varchar(255) [ not null ]
+	level varchar(255) [ not null ]
+}
+
+Table video [headercolor: #175e7a] {
+	id integer [ pk, increment, not null, unique ]
+	sha256sum text(64) [ not null, unique ]
+	filename varchar(255) [ not null ]
+	directory varchar(1024) [ not null ]
+}
+
+Table sequence [headercolor: #175e7a] {
+	id integer [ pk, increment, not null, unique ]
+	video integer [ not null ]
+	technique varchar(255) [ not null ]
+	begin integer [ not null ]
+	end integer [ not null ]
+	performer varchar(255) [ not null ]
+}
+
+Table comment [headercolor: #175e7a] {
+	id integer [ pk, increment, not null, unique ]
+	technique varchar(255) [ not null ]
+	user integer [ not null ]
+}
+
+Table tag [headercolor: #175e7a] {
+	id varchar(255) [ pk, not null, unique ]
+	fixed_values boolean [ not null ]
+	list_of_values varchar(2048)
+}
+
+Table video_has_tags [headercolor: #175e7a] {
+	video integer [ pk, increment, not null ]
+	tag varchar(255) [ pk, not null ]
+	value varchar(255)
+}
+
+Table sequence_has_tags [headercolor: #175e7a] {
+	sequence integer [ pk, increment, not null ]
+	tag varchar(255) [ pk, not null ]
+	value varchar(255)
+}
+
+Table user [headercolor: #175e7a] {
+	id integer [ pk, increment, not null, unique ]
+	username varchar(255) [ not null, unique ]
+	name varchar(255)
+	pw_hash text(65535) [ not null ]
+	totp varchar(255) [ not null ]
+	role varchar(255) [ not null ]
+}
+
+Table role [headercolor: #175e7a] {
+	id varchar(255) [ pk, not null, unique ]
+	name varchar(255) [ not null ]
+}
+
+Table access [headercolor: #175e7a] {
+	id varchar(255) [ pk, not null, unique ]
+	name varchar(255) [ not null ]
+}
+
+Table role_has_access [headercolor: #175e7a] {
+	role varchar(255) [ pk, not null ]
+	access varchar(255) [ pk, not null ]
+}
+
+Table performer [headercolor: #175e7a] {
+	id varchar(255) [ pk, not null ]
+	name varchar(255) [ not null ]
+}
+
+Ref fk_comment_technique {
+	comment.technique > technique.id [ delete: no action, update: no action ]
+}
+
+Ref fk_comment_user {
+	comment.user > user.id [ delete: no action, update: no action ]
+}
+
+Ref fk_technique_level {
+	technique.level > level.id [ delete: no action, update: no action ]
+}
+
+Ref fk_technique_ryu {
+	technique.ryu > ryu.id [ delete: no action, update: no action ]
+}
+
+Ref fk_role_has_access_role {
+	role_has_access.role > role.id [ delete: no action, update: no action ]
+}
+
+Ref fk_role_has_access_access {
+	role_has_access.access > access.id [ delete: no action, update: no action ]
+}
+
+Ref fk_user_role {
+	user.role > role.id [ delete: no action, update: no action ]
+}
+
+Ref fk_video_has_tags_video {
+	video_has_tags.video > video.id [ delete: no action, update: no action ]
+}
+
+Ref fk_video_has_tags_tag {
+	video_has_tags.tag > tag.id [ delete: no action, update: no action ]
+}
+
+Ref fk_sequence_video {
+	sequence.video > video.id [ delete: no action, update: no action ]
+}
+
+Ref fk_sequence_technique {
+	sequence.technique > technique.id [ delete: no action, update: no action ]
+}
+
+Ref fk_sequence_performer {
+	sequence.performer > performer.id [ delete: no action, update: no action ]
+}
+
+Ref fk_sequence_has_tags_sequence {
+	sequence_has_tags.sequence > sequence.id [ delete: no action, update: no action ]
+}
+
+Ref fk_sequence_has_tags_tag {
+	sequence_has_tags.tag > tag.id [ delete: no action, update: no action ]
+}

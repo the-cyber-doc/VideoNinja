@@ -21,3 +21,6 @@ build/
 *.swo
 .env
 .env.local
+tests/
+requirements-dev.txt
+pytest.ini
