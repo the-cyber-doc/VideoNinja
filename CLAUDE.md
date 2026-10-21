@@ -9,7 +9,7 @@ a few hundred techniques, a few thousand segments.
 - Pi-friendly: the Pi never transcodes; reads are static files where possible.
 - Zero trust: nginx enforces, the app decides, on EVERY request (incl. range requests).
 - One front-end toolchain only: Svelte. No Hugo, no second build system.
-- Simple over clever: plain JSON, plain integer IDs.
+- Simple over clever: plain JSON, plain readable IDs (no encoding).
 
 ## Stack
 | Piece | Choice |
@@ -30,20 +30,40 @@ or ID encoding (Base62/Sqids).
 - All logged-in users can read everything. Only admins can write.
 - Every read: session check in the app → `X-Accel-Redirect` to an nginx
   `internal` location. Never serve media or catalogue files from a public location.
-- Session cookie: `HttpOnly; Secure; SameSite=Strict`.
+- Session cookie `__Host-session`: `HttpOnly; Secure; SameSite=Strict`. The `session`
+  table stores only the SHA-256 of the token. Sliding 30-day idle expiry, 1-year
+  absolute cap; expired rows purged at startup and on login.
+- TOTP secrets are encrypted at rest (AES-256-GCM, `v1:` prefix for key rotation,
+  user ID as associated data). Key: `VIDEONINJA_KEY_FILE` (Docker secret
+  `/run/secrets/videoninja_key`), never in the DB volume or its backups. No key → no start.
+- First start (no database file): one-time setup token in the server logs →
+  wizard creates the admin (password + TOTP) and builds the DB from the latest
+  `db_vN.sql` + `init_db_vN.sql`. `/api/setup/*` returns 404 afterwards.
 - Admin API under `/api/admin/…`: role check, restricted to LAN/VPN at nginx,
-  passkeys (WebAuthn) or TOTP, audit log of every write (who, what, when, before/after).
+  passkeys (WebAuthn) or TOTP.
 - No `$args` in nginx access logs; `Referrer-Policy: no-referrer`.
 
 ## Data model
-- `schools → levels → techniques → segments`, `source_videos`, tags, users, audit_log.
-- IDs: `INTEGER PRIMARY KEY AUTOINCREMENT` (no ID reuse — PWA caches rely on it).
-  The same plain integer is used in DB, JSON, URLs and cache keys.
-- Japanese names are canonical, language-neutral columns (kanji + romaji).
-  Translated text lives in `<entity>_translations(entity_id, locale, …)`.
-  Fallback: requested locale → default locale → romaji.
-- Segment = `source_video_id + start_ms + end_ms`. Annotations store timestamps
-  relative to the SOURCE video and are converted for display.
+Schema: `server/database/db_v1.sql` (designed in drawdb, which does not export
+`AUTOINCREMENT`: re-add it on the INTEGER IDs after every export).
+- Tables: `ryu` (school), `level`, `technique` (→ `ryu` + `level`), `video`
+  (source video), `segment` (→ `video`, `technique`, `performer`), `comment`,
+  `tag` + `video_has_tags` / `segment_has_tags`, `user`, `role`, `access`,
+  `role_has_access`, `performer`, `translation`, `config`, `session`.
+- IDs (on purpose, two kinds):
+  - Small reference tables (`ryu`, `level`, `technique`, `tag`, `role`, `access`,
+    `performer`, `translation`, `config`) use readable TEXT IDs: few rows, much
+    easier debugging.
+  - Growing tables (`video`, `segment`, `user`, `comment`) use
+    `INTEGER PRIMARY KEY AUTOINCREMENT`: IDs are never reused (PWA caches rely on it).
+  - The same ID is used in DB, JSON, URLs and cache keys. No ID encoding.
+- Japanese names are canonical, language-neutral columns (`kanji` + `romaji`).
+- Translations: ONE `translation` table for all translated text, one column per
+  language (`en` required, `fr`, …). Entities point to it by translation ID
+  (e.g. `ryu.description`). Fallback: requested language → `en` → romaji.
+- Segment = `video` + `begin_s` + `end_s` (whole seconds; no ms precision needed).
+  Annotations store timestamps relative to the SOURCE video and are converted
+  for display.
 
 ## Read path (static snapshots)
 - On any admin write, regenerate (debounced) `catalog.<lang>.<hash>.json`
