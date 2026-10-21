@@ -1,0 +1,50 @@
+import base64
+import os
+
+import pyotp
+import pytest
+from fastapi.testclient import TestClient
+
+from app.main import app
+
+PASSWORD = "correct horse battery"
+
+
+@pytest.fixture(autouse=True)
+def key_file(tmp_path, monkeypatch):
+    path = tmp_path / "videoninja_key"
+    path.write_text(base64.b64encode(os.urandom(32)).decode())
+    monkeypatch.setenv("VIDEONINJA_KEY_FILE", str(path))
+    return path
+
+
+@pytest.fixture
+def client(tmp_path, monkeypatch):
+    monkeypatch.setenv("VIDEONINJA_DB", str(tmp_path / "videoninja.db"))
+    # https: the session cookie is Secure, so it is only sent back over https.
+    with TestClient(app, base_url="https://testserver") as c:
+        yield c
+
+
+def run_setup(client) -> str:
+    """Complete the wizard; return the admin's TOTP secret."""
+    token = client.app.state.setup_token
+    secret = client.post("/api/setup/totp", json={"token": token, "username": "admin"}).json()["secret"]
+    r = client.post(
+        "/api/setup/complete",
+        json={
+            "token": token,
+            "username": "admin",
+            "name": "Admin",
+            "password": PASSWORD,
+            "totp_secret": secret,
+            "totp_code": pyotp.TOTP(secret).now(),
+        },
+    )
+    assert r.status_code == 200, r.text
+    return secret
+
+
+@pytest.fixture
+def admin_secret(client) -> str:
+    return run_setup(client)

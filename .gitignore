@@ -18,6 +18,9 @@ frontend/build/
 *.db-wal
 *.db-shm
 
+# Encryption keys (dev key: server/dev.key)
+*.key
+
 # IDE
 .vscode/
 .idea/

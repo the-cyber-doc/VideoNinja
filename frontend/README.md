@@ -8,7 +8,7 @@ Requires Node ≥ 22.17 (CI uses Node 24).
 
 ```bash
 npm ci
-npm run dev      # dev server
+npm run dev      # https://localhost:5173 (self-signed), /api proxied to :8000
 npm run check    # svelte-check (types)
 npm run build    # static output in build/
 ```

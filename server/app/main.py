@@ -1,6 +1,28 @@
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 
-app = FastAPI(title="Video Ninja")
+from . import auth, crypto, db, security, setup
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    crypto.load_key()  # refuse to start without the encryption key
+    if db.is_initialized():
+        app.state.setup_token = None
+        con = db.connect()
+        try:
+            security.purge_expired_sessions(con)
+        finally:
+            con.close()
+    else:
+        app.state.setup_token = setup.new_setup_token()
+    yield
+
+
+app = FastAPI(title="Video Ninja", lifespan=lifespan)
+app.include_router(setup.router)
+app.include_router(auth.router)
 
 
 @app.get("/health")

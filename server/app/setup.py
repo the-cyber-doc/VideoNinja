@@ -1,0 +1,100 @@
+"""First-start setup wizard API. Disabled (404) once the database exists."""
+
+import json
+import logging
+import secrets
+import threading
+from collections.abc import Iterator
+
+import segno
+from fastapi import APIRouter, HTTPException, Request, status
+from fastapi.responses import StreamingResponse
+from pydantic import BaseModel, Field
+
+from . import db, security
+
+log = logging.getLogger("uvicorn.error")
+router = APIRouter(prefix="/api/setup", tags=["setup"])
+_setup_lock = threading.Lock()
+
+USERNAME = Field(pattern=r"^[a-z0-9._-]{3,32}$")
+
+
+def new_setup_token() -> str:
+    token = secrets.token_urlsafe(24)
+    log.warning("Video Ninja is not set up yet. Setup token: %s", token)
+    return token
+
+
+class TokenIn(BaseModel):
+    token: str = Field(max_length=128)
+
+
+class TotpIn(TokenIn):
+    username: str = USERNAME
+
+
+class CompleteIn(TokenIn):
+    username: str = USERNAME
+    name: str = Field(default="", max_length=64)
+    password: str = Field(min_length=12, max_length=256)
+    totp_secret: str = Field(pattern=r"^[A-Z2-7]{32}$")
+    totp_code: str = Field(pattern=r"^\d{6}$")
+
+
+def _check_token(request: Request, token: str) -> None:
+    if db.is_initialized():
+        raise HTTPException(status.HTTP_404_NOT_FOUND)
+    expected = request.app.state.setup_token
+    if not expected or not secrets.compare_digest(token.encode(), expected.encode()):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Invalid setup token")
+
+
+@router.get("/status")
+def setup_status() -> dict[str, bool]:
+    return {"initialized": db.is_initialized()}
+
+
+@router.post("/verify", status_code=status.HTTP_204_NO_CONTENT)
+def verify_token(body: TokenIn, request: Request) -> None:
+    _check_token(request, body.token)
+
+
+@router.post("/totp")
+def new_totp(body: TotpIn, request: Request) -> dict[str, str]:
+    """A fresh TOTP secret and its QR code. Nothing is stored until /complete."""
+    _check_token(request, body.token)
+    secret = security.new_totp_secret()
+    uri = security.totp_uri(secret, body.username)
+    return {"secret": secret, "uri": uri, "qr": segno.make(uri).svg_data_uri(scale=5, border=2)}
+
+
+@router.post("/complete")
+def complete(body: CompleteIn, request: Request) -> StreamingResponse:
+    """Create the database and the admin user. Streams one JSON line per completed step."""
+    _check_token(request, body.token)
+    if not security.verify_totp(body.totp_secret, body.totp_code):
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid TOTP code")
+    pw_hash = security.hash_password(body.password)
+
+    def progress() -> Iterator[str]:
+        if not _setup_lock.acquire(blocking=False):
+            yield json.dumps({"error": "Setup already running"}) + "\n"
+            return
+        try:
+            if db.is_initialized():
+                yield json.dumps({"error": "Already initialized"}) + "\n"
+                return
+            for step in db.create_database(
+                body.username, body.name or body.username, pw_hash, body.totp_secret
+            ):
+                yield json.dumps({"step": step}) + "\n"
+            request.app.state.setup_token = None
+            log.warning("Setup complete: admin user %r created.", body.username)
+        except Exception:
+            log.exception("Setup failed")
+            yield json.dumps({"error": "Setup failed, see server logs"}) + "\n"
+        finally:
+            _setup_lock.release()
+
+    return StreamingResponse(progress(), media_type="application/x-ndjson")
