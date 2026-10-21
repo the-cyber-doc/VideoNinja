@@ -15,11 +15,14 @@ export default defineConfig({
 			},
 
 			// Static SPA shell (no data in it); nginx serves it, the app serves data.
-			adapter: adapter({ fallback: 'index.html' })
+			// precompress: .br + .gz next to each file, for gzip_static/brotli_static.
+			adapter: adapter({ fallback: 'index.html', precompress: true })
 		})
 	],
 	server: {
 		// Dev only: the FastAPI server (uvicorn on :8000) answers /api.
-		proxy: { '/api': 'http://localhost:8000' }
+		proxy: { '/api': 'http://localhost:8000' },
+		// Rules shared with the backend, outside frontend/ (see src/lib/validation.ts).
+		fs: { allow: ['../server/app/validation.json'] }
 	}
 });

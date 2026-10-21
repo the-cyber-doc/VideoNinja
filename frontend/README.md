@@ -1,4 +1,4 @@
-# Video Ninja — Front-end
+# Video Ninja — Frontend
 
 SvelteKit (Svelte 5, TypeScript) built with `adapter-static` as an SPA shell
 (`fallback: index.html`, `ssr = false`). The shell is public and contains no

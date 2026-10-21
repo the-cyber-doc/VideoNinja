@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { api, isInitialized, ndjson } from '#lib/api.js';
+	import { onTotpInput, rules } from '#lib/validation.js';
 
 	const STEPS = ['Setup token', 'Admin account', 'Authenticator', 'Initialization'];
 	const INIT_TASKS = [
@@ -23,6 +24,7 @@
 	let totpCode = $state('');
 	let completed = $state<string[]>([]);
 	let finished = $derived(completed.includes('done'));
+	const usernameHint = `${rules.username.min_length} to ${rules.username.max_length} characters: lowercase letters, digits, . _ -`;
 
 	$effect(() => {
 		isInitialized().then((ok) => {
@@ -117,7 +119,13 @@
 			</p>
 			<label>
 				Setup token
-				<input bind:value={token} autocomplete="off" autocapitalize="none" required />
+				<input
+					bind:value={token}
+					autocomplete="off"
+					autocapitalize="none"
+					maxlength={rules.setup_token.max_length}
+					required
+				/>
 			</label>
 			{#if error}<p class="error" role="alert">{error}</p>{/if}
 			<button disabled={busy}>Continue</button>
@@ -130,29 +138,37 @@
 					bind:value={username}
 					autocomplete="username"
 					autocapitalize="none"
-					pattern={'[a-z0-9._\\-]{3,32}'}
-					title="3 to 32 characters: lowercase letters, digits, . _ -"
+					minlength={rules.username.min_length}
+					maxlength={rules.username.max_length}
+					pattern={rules.username.pattern}
+					title={usernameHint}
 					required
 				/>
 			</label>
 			<label>
 				Display name (optional)
-				<input bind:value={name} autocomplete="name" maxlength="64" />
+				<input bind:value={name} autocomplete="name" maxlength={rules.display_name.max_length} />
 			</label>
 			<label>
-				Password (at least 12 characters)
+				Password (at least {rules.password.min_length} characters)
 				<input
 					type="password"
 					bind:value={password}
 					autocomplete="new-password"
-					minlength="12"
-					maxlength="256"
+					minlength={rules.password.min_length}
+					maxlength={rules.password.max_length}
 					required
 				/>
 			</label>
 			<label>
 				Confirm password
-				<input type="password" bind:value={password2} autocomplete="new-password" required />
+				<input
+					type="password"
+					bind:value={password2}
+					autocomplete="new-password"
+					maxlength={rules.password.max_length}
+					required
+				/>
 			</label>
 			{#if error}<p class="error" role="alert">{error}</p>{/if}
 			<button disabled={busy}>Continue</button>
@@ -168,11 +184,12 @@
 			<label>
 				Authenticator code
 				<input
-					bind:value={totpCode}
+					value={totpCode}
+					oninput={(e) => (totpCode = onTotpInput(e))}
 					inputmode="numeric"
 					autocomplete="one-time-code"
-					pattern={'\\d{6}'}
-					maxlength="6"
+					minlength={rules.totp_code.min_length}
+					pattern={rules.totp_code.pattern}
 					placeholder="123456"
 					required
 				/>

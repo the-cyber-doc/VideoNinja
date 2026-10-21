@@ -4,8 +4,6 @@ Installable web app (PWA) for Ninjutsu technique videos, organised by
 school (ryu) → level → technique → video segments, with annotations.
 Self-hosted on a Raspberry Pi 5 with Docker behind nginx.
 
-Architecture, conventions and security rules: see [CLAUDE.md](CLAUDE.md).
-
 - [Layout](#layout)
 - [Development](#development)
 - [Releasing](#releasing)
@@ -16,7 +14,7 @@ Architecture, conventions and security rules: see [CLAUDE.md](CLAUDE.md).
 
 | Path | Content |
 |---|---|
-| `server/app/` | Backend: Python 3.12 + FastAPI |
+| `server/app/` | Backend: Python 3.15 + FastAPI |
 | `server/tests/` | Backend tests (pytest) |
 | `server/database/` | `db_vN.sql` (schema) + `init_db_vN.sql` (initial data) |
 | `frontend/` | SvelteKit PWA (`adapter-static`, Svelte 5, TypeScript) |
@@ -30,8 +28,8 @@ Architecture, conventions and security rules: see [CLAUDE.md](CLAUDE.md).
 | Tool | Version | Notes |
 |---|---|---|
 | Git | any recent | |
-| Python | 3.12 | Same as the Docker image and CI |
-| Node.js | ≥ 22.17 (24 LTS recommended) | Required by SvelteKit 3; CI uses 24 |
+| Python | 3.15 | Same as the Docker image and CI. Easiest via [uv](https://docs.astral.sh/uv/) |
+| Node.js | ≥ 22.17 (24 LTS recommended) | Required by SvelteKit 3; CI uses 24. Easiest via [fnm](https://github.com/Schniz/fnm), see [Frontend](#3-frontend-terminal-2) |
 | ffmpeg | recent, with the `nnedi` filter | Only for `tools/encode-videos/` |
 | Docker | optional | Only to build/run the image locally |
 
@@ -45,7 +43,7 @@ cd VideoNinja
 Everything happens on `main`, for development and releases. Commit to `main`
 directly, or use a short-lived feature branch and a pull request to `main`.
 
-Every push, on any branch, runs CI: backend tests, front-end type-check and
+Every push, on any branch, runs CI: backend tests, frontend type-check and
 build, and the Docker image build for amd64 and arm64. Nothing is published.
 Keep `main` green. Users only get what is released with a tag (see
 [Releasing](#releasing)).
@@ -54,7 +52,9 @@ Keep `main` green. Users only get what is released with a tag (see
 
 ```bash
 cd server
-python3.12 -m venv .venv
+# uv downloads Python 3.15 if needed; --seed puts pip in the venv.
+# (With a system Python 3.15: python3.15 -m venv .venv)
+uv venv --python 3.15 --seed .venv
 . .venv/bin/activate
 pip install -r requirements-dev.txt
 
@@ -72,7 +72,22 @@ by git.
 | `VIDEONINJA_DB` | `/data/videoninja.db` | SQLite database file. If missing, the app starts in setup mode. |
 | `VIDEONINJA_KEY_FILE` | `/run/secrets/videoninja_key` | Key that encrypts the TOTP secrets in the database. The app does not start without it. |
 
-### 3. Front-end (terminal 2)
+### 3. Frontend (terminal 2)
+
+SvelteKit needs Node.js ≥ 22.17; distribution packages are often older
+(`npm ci` then fails with `EBADENGINE`). Install Node.js 24 LTS in your home
+directory with [fnm](https://github.com/Schniz/fnm), no sudo needed:
+
+```bash
+curl -fsSL https://fnm.vercel.app/install | bash
+exec $SHELL                 # reload the shell so fnm is on PATH
+fnm install 24
+fnm default 24
+node --version              # v24.x
+```
+
+[nvm](https://github.com/nvm-sh/nvm) works too (`nvm install 24 && nvm alias default 24`).
+A system Node.js can stay installed: fnm's comes first on `PATH`.
 
 ```bash
 cd frontend
@@ -105,7 +120,7 @@ To start over, stop the backend and delete `server/dev.db` (and
 pytest
 pip install flake8 && flake8 app tests --count --select=E9,F63,F7,F82 --show-source --statistics
 
-# Front-end, in frontend/
+# Frontend, in frontend/
 npm run check
 npm run build
 ```
@@ -115,7 +130,7 @@ npm run build
 The schema is designed in [drawdb](https://drawdb.app) and exported to
 `server/database/db_v1.sql`. drawdb does not export `AUTOINCREMENT`: after each
 export, re-add `"id" INTEGER PRIMARY KEY AUTOINCREMENT` on `video`, `segment`,
-`user` and `comment` (see CLAUDE.md). On first start the app uses the highest
+`user` and `comment`. On first start the app uses the highest
 `N` for which both `db_vN.sql` and `init_db_vN.sql` exist.
 
 ### Releasing
@@ -131,18 +146,13 @@ The tag runs the same CI, then publishes the multi-arch image to Docker Hub as
 `vMAJOR.MINOR.PATCH`. The Docker Hub credentials are the repository secrets
 `DOCKERHUB_USERNAME` and `DOCKERHUB_TOKEN`.
 
-### Working with Claude Code
-
-`CLAUDE.md` holds the project's architecture and rules (security model, stack
-choices, what not to use). Read it before larger changes; keep it up to date
-when a decision changes.
-
 ## Production
 
-> **Status:** only the backend image is published so far. The nginx + front-end
+> **Status:** only the backend image is published so far. The nginx + frontend
 > image (static PWA, TLS, `X-Accel-Redirect` for media) is not built yet, so
 > this is not yet a complete deployment. The steps below set up the backend,
 > its data and its key; they will stay the same once the nginx image exists.
+> The intended nginx configuration is in [6. nginx](#6-nginx).
 
 Target: Raspberry Pi 5 (arm64) or any amd64 host, with Docker Engine and the
 Compose plugin, Docker data on a local SSD (SQLite must not be on NFS).
@@ -235,6 +245,317 @@ sudo docker compose exec server rm /data/backup.db
 
 To restore: stop the service, copy the file back to `/data/videoninja.db` in
 the `data` volume (with the same key in `secrets/`), start the service.
+
+### 6. nginx
+
+Reference configuration for the coming nginx + frontend image. It shows the
+directives that matter; adapt paths, certificates and networks to the host.
+
+#### Required modules
+
+```bash
+nginx -V 2>&1 | tr ' ' '\n' | grep -E 'mp4|gzip_static|brotli'
+```
+
+`--with-http_mp4_module` and `--with-http_gzip_static_module` must be listed.
+`brotli_static` comes from the third-party `ngx_brotli` module. It is not in
+nginx.org's packages: use a distribution's dynamic module package, or build it
+from Google's source (`load_module modules/ngx_http_brotli_static_module.so;`).
+Without it, remove the `brotli_static` lines; browsers then get the `.gz` file.
+
+#### Compression: precompressed only
+
+nginx never compresses at request time (`gzip off`). Every compressible file is
+compressed once, when it is written, and nginx picks the variant that matches
+the browser's `Accept-Encoding` (`brotli_static` / `gzip_static`, with
+`Vary: Accept-Encoding`):
+
+| File | Written by | Variants |
+|---|---|---|
+| `catalog.<lang>.<hash>.json`, `annotations/<id>.<hash>.json` | the app, on each snapshot | `.br` (`brotli -q 11`), `.gz` (Zopfli) |
+| `/_app/immutable/*`, `index.html`, `sw.js` | `npm run build` (`precompress: true` in adapter-static) | `.br`, `.gz` |
+| Videos, thumbnails, filmstrips | — | none: already compressed |
+
+Brotli at maximum level is slow but runs only when the catalogue changes, and
+is typically 15–25 % smaller than gzip on JSON. Zopfli writes standard gzip
+files about 5 % smaller than `gzip -9`, as the fallback. Zstandard and
+Compression Dictionary Transport are not used: no reliable Safari support, and
+ETag + `304` already makes updates cheap.
+
+Check, through nginx with a valid session cookie:
+
+```bash
+curl -sI -H 'Accept-Encoding: br' -b '__Host-session=…' https://videoninja.example/api/catalog \
+  | grep -iE 'content-encoding|vary|etag'
+# Content-Encoding: br, Vary: Accept-Encoding, ETag: "…"
+```
+
+#### Catalogue updates
+
+- `/api/catalog` (session check, then `X-Accel-Redirect` to
+  `/protected-catalog/catalog.<lang>.<hash>.json`) has a stable URL and is
+  served `private, no-cache` with an ETag. It must not be `no-store`: the
+  browser keeps it and revalidates with `If-None-Match`.
+- The service worker uses stale-while-revalidate: it shows the cached
+  catalogue at once and revalidates in the background, usually getting a
+  `304` of a few bytes.
+- A few thousand segments is a few hundred KB of JSON, typically under 100 KB
+  compressed. Past roughly 1–2 MB compressed, split it by school
+  (`catalog.<ryu>.<lang>.<hash>.json` plus a small index file), still as
+  pre-generated static files.
+
+#### How media access works
+
+Media and catalogue files are served with **`X-Accel-Redirect`**:
+
+1. The browser requests `/media/segment/42` (with its session cookie;
+   browsers send cookies on `<video>` requests).
+2. nginx proxies it to the app. The app checks the session, looks up the
+   segment and computes start/end itself.
+3. The app answers with an empty body and
+   `X-Accel-Redirect: /protected/ab/<sha256>/video.mp4?start=12&end=27`, or
+   `401`/`403`/`404`.
+4. nginx serves the file from an `internal` location. With `start`/`end`, the
+   `mp4` module returns a valid standalone MP4 for just that range: it rebuilds
+   the index (`moov` atom) and streams the relevant bytes, with no transcoding.
+
+The `Range` header survives the internal redirect, so every seek is a
+`206 Partial Content` from nginx, and every seek goes through the app check
+again. The mp4 output is deterministic (same file, same start/end, same
+bytes), so successive range requests fit together.
+
+Alternatives considered:
+- `auth_request`: also one app call per request, but the app cannot choose
+  the file or the range; the client would have to send them.
+- `secure_link`: nginx checks an HMAC itself, with no app call per seek, which
+  is the lightest option for a Pi. If used, the signed string must include the
+  range (`$secure_link_expires$uri$arg_start$arg_end secret`) so nobody can
+  widen it. **Not used for now:** a signed link stays valid after logout,
+  session expiry or account removal until it expires, which breaks the rule
+  that the app decides on every request. The per-seek cost of
+  `X-Accel-Redirect` is one SQLite lookup, small at this scale.
+
+#### `nginx.conf` (excerpt)
+
+```nginx
+# --- http {} context -------------------------------------------------------
+server_tokens off;
+
+# Never compress at request time: only precompressed files are served
+# (gzip_static / brotli_static per location). Videos and images are never
+# compressed.
+gzip      off;
+gzip_vary on;     # Vary: Accept-Encoding on the precompressed responses
+
+# Files (videos included) go from disk to the socket in the kernel.
+sendfile   on;
+tcp_nopush on;
+
+# MIME types missing from (or wrong in) older mime.types. Declared after
+# `include mime.types;`; a duplicate extension only logs a warning and the
+# later entry wins.
+types {
+    application/manifest+json  webmanifest;
+    text/vtt                   vtt;
+}
+
+# Access log without query strings ($args): no tokens or ranges in logs.
+# $request would include them, so log the path only.
+map $request_uri $request_path {
+    ~^(?<p>[^?]*)  $p;
+}
+log_format videoninja '$remote_addr [$time_iso8601] '
+                      '"$request_method $request_path $server_protocol" '
+                      '$status $body_bytes_sent rt=$request_time '
+                      'ua="$http_user_agent"';
+access_log /var/log/nginx/access.log videoninja;
+# The error log still quotes the full request line: keep it at warn/error.
+error_log  /var/log/nginx/error.log warn;
+
+upstream videoninja_app {
+    # Today: the app port published on 127.0.0.1 (see compose.yaml).
+    # Target: a Unix socket on a volume shared by the two containers
+    # (server unix:/run/videoninja/app.sock;), or mTLS, so that only
+    # nginx can reach the app.
+    server 127.0.0.1:8000;
+}
+
+server {
+    listen 80;
+    server_name videoninja.example;
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl;
+    http2 on;
+    server_name videoninja.example;
+
+    ssl_certificate     /etc/nginx/tls/fullchain.pem;
+    ssl_certificate_key /etc/nginx/tls/privkey.pem;
+    ssl_protocols       TLSv1.2 TLSv1.3;
+
+    root /srv/www;              # SvelteKit build (static shell, no data)
+    client_max_body_size 1m;    # API requests only; uploads go to tusd
+
+    # Security headers: see snippets/security-headers.conf below. add_header
+    # is NOT inherited by a location that has its own add_header, so every
+    # such location includes the snippet again.
+    include snippets/security-headers.conf;
+
+    # --- Static shell (public) ----------------------------------------------
+    location / {
+        try_files $uri $uri/index.html /index.html;   # SPA fallback
+        gzip_static   on;
+        brotli_static on;
+        add_header Cache-Control "no-cache" always;
+        include snippets/security-headers.conf;
+    }
+
+    # Hashed build assets: cache forever. Missing file = 404, never index.html
+    # (the service worker must not cache HTML as a script).
+    location ^~ /_app/immutable/ {
+        try_files $uri =404;
+        gzip_static   on;
+        brotli_static on;
+        add_header Cache-Control "public, max-age=31536000, immutable" always;
+        include snippets/security-headers.conf;
+    }
+
+    # Service worker and manifest: always revalidate, or users get stuck on
+    # an old version.
+    location = /sw.js {
+        gzip_static   on;
+        brotli_static on;
+        add_header Cache-Control "no-cache" always;
+        include snippets/security-headers.conf;
+    }
+    location = /manifest.webmanifest {
+        add_header Cache-Control "no-cache" always;
+        include snippets/security-headers.conf;
+    }
+
+    # Editor route: only if the multithreaded ffmpeg.wasm fallback is used
+    # (SharedArrayBuffer needs cross-origin isolation). Scoped to the editor
+    # because COEP breaks cross-origin embeds elsewhere. Only applies on a
+    # full page load of /editor: links to it need data-sveltekit-reload.
+    # location ^~ /editor {
+    #     try_files $uri $uri/index.html /index.html;
+    #     add_header Cache-Control "no-cache" always;
+    #     add_header Cross-Origin-Opener-Policy   "same-origin"  always;
+    #     add_header Cross-Origin-Embedder-Policy "require-corp" always;
+    #     include snippets/security-headers.conf;
+    # }
+
+    # --- App (session check on every request) -------------------------------
+    location /api/ {
+        include snippets/proxy-app.conf;
+    }
+
+    # Admin API: LAN/VPN only. The app still checks role + passkey/TOTP.
+    location ^~ /api/admin/ {
+        allow 192.168.1.0/24;   # LAN   (adapt)
+        allow 10.8.0.0/24;      # VPN   (adapt)
+        deny  all;
+        include snippets/proxy-app.conf;
+    }
+
+    # Logout: wipe the browser's HTTP cache and storage (Cache API,
+    # IndexedDB, service worker) for this origin.
+    location = /api/auth/logout {
+        add_header Clear-Site-Data '"cache", "storage"' always;
+        include snippets/security-headers.conf;
+        include snippets/proxy-app.conf;
+    }
+
+    # /media/segment/<id>: the app answers with X-Accel-Redirect.
+    location /media/ {
+        include snippets/proxy-app.conf;
+    }
+
+    # --- Internal locations (reachable only through X-Accel-Redirect) -------
+    # Derived media, mounted read-only into the nginx container.
+    location ^~ /protected/ {
+        internal;
+        alias /srv/media/derived/;
+
+        # The clip URL (/media/segment/<id>) has no content hash and a
+        # segment's bounds can be edited, so the browser must not reuse it.
+        # The service worker stores downloaded clips explicitly.
+        # (To make clips long-lived: put a version in the clip URL, e.g.
+        # ?v=<hash of video sha256 + begin + end>, then use
+        # "private, max-age=31536000, immutable".)
+        add_header Cache-Control "private, no-store" always;
+        include snippets/security-headers.conf;
+
+        location ~ \.mp4$ {
+            mp4;
+            mp4_start_key_frame on;     # start on the IDR keyframe (every 1 s)
+            mp4_buffer_size     1m;
+            mp4_max_buffer_size 20m;    # the moov atom of long sources must fit
+            add_header Cache-Control "private, no-store" always;
+            include snippets/security-headers.conf;
+        }
+    }
+
+    # Catalogue and annotation snapshots. `current` is a symlink swapped
+    # atomically by the app (leave open_file_cache off for this path).
+    # Stable API URLs, so revalidate with ETag (304 when unchanged).
+    # The app writes .br and .gz next to each JSON file.
+    location ^~ /protected-catalog/ {
+        internal;
+        alias /srv/catalog/current/;
+        gzip_static   on;
+        brotli_static on;
+        add_header Cache-Control "private, no-cache" always;
+        include snippets/security-headers.conf;
+    }
+}
+```
+
+`snippets/proxy-app.conf`:
+
+```nginx
+proxy_pass http://videoninja_app;
+proxy_set_header Host              $host;
+proxy_set_header X-Forwarded-For   $remote_addr;   # overwrite, never append
+proxy_set_header X-Forwarded-Proto $scheme;
+# Buffer app responses by default; the app turns it off per response with
+# X-Accel-Buffering: no when it streams progress (e.g. the setup wizard).
+# Never add X-Accel-Buffering to proxy_ignore_headers.
+# Media is not proxied: after X-Accel-Redirect nginx streams the file itself.
+proxy_buffering on;
+# The app sends no Cache-Control on X-Accel-Redirect answers: the internal
+# location sets it.
+```
+
+`snippets/security-headers.conf`:
+
+```nginx
+add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+add_header Referrer-Policy           "no-referrer"   always;
+add_header X-Content-Type-Options    "nosniff"       always;
+add_header Cross-Origin-Resource-Policy "same-origin" always;
+add_header Permissions-Policy        "camera=(), microphone=(), geolocation=()" always;
+# blob: for media (local files in the editor, clips from the cache) and
+# workers; 'wasm-unsafe-eval' only while the ffmpeg.wasm fallback is kept.
+# 'unsafe-inline' for styles only (Svelte transitions, wavesurfer.js, Konva).
+add_header Content-Security-Policy "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; worker-src 'self' blob:; media-src 'self' blob:; img-src 'self' blob: data:; style-src 'self' 'unsafe-inline'; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'" always;
+```
+
+#### Frontend side of the contract
+
+- **Range requests from the cache:** a clip played from the Cache API needs
+  proper `206 Partial Content` answers, or seeking and even playback break
+  (Safari in particular). The service worker uses Workbox's range-requests
+  plugin. Download clips for offline use **without** a `Range` header, so
+  that the full `200` response is stored; the plugin slices it.
+- **Cookie:** `__Host-session`, `HttpOnly; Secure; SameSite=Strict`. Works with
+  `<video>`, since browsers send cookies on same-origin media requests.
+- **Least privilege:** media is mounted read-only into nginx; the app has no
+  access to video files.
+- **Audit trail:** nginx logs the final status of every request (`401`/`403` =
+  denied); the app logs each allow/deny decision with user and segment ID.
 
 ## License
 

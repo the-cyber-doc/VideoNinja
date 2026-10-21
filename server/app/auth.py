@@ -3,19 +3,21 @@ import sqlite3
 
 from cryptography.exceptions import InvalidTag
 from fastapi import APIRouter, Cookie, Depends, HTTPException, Response, status
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 from . import crypto, db, security
 from .security import SESSION_COOKIE
+from .validation import field
 
 log = logging.getLogger("uvicorn.error")
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
 
 class LoginIn(BaseModel):
-    username: str = Field(max_length=64)
-    password: str = Field(max_length=256)
-    totp_code: str = Field(default="", max_length=6)
+    # Maximum lengths only: login checks existing data, not the creation rules.
+    username: str = field("username", max_only=True)
+    password: str = field("password", max_only=True)
+    totp_code: str = field("totp_code", max_only=True, default="")
 
 
 class UserOut(BaseModel):

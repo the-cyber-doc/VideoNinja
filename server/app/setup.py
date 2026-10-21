@@ -12,13 +12,11 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
 from . import db, security
+from .validation import field
 
 log = logging.getLogger("uvicorn.error")
 router = APIRouter(prefix="/api/setup", tags=["setup"])
 _setup_lock = threading.Lock()
-
-USERNAME = Field(pattern=r"^[a-z0-9._-]{3,32}$")
-
 
 def new_setup_token() -> str:
     token = secrets.token_urlsafe(24)
@@ -27,19 +25,19 @@ def new_setup_token() -> str:
 
 
 class TokenIn(BaseModel):
-    token: str = Field(max_length=128)
+    token: str = field("setup_token")
 
 
 class TotpIn(TokenIn):
-    username: str = USERNAME
+    username: str = field("username")
 
 
 class CompleteIn(TokenIn):
-    username: str = USERNAME
-    name: str = Field(default="", max_length=64)
-    password: str = Field(min_length=12, max_length=256)
-    totp_secret: str = Field(pattern=r"^[A-Z2-7]{32}$")
-    totp_code: str = Field(pattern=r"^\d{6}$")
+    username: str = field("username")
+    name: str = field("display_name", default="")
+    password: str = field("password")
+    totp_secret: str = Field(pattern=r"^[A-Z2-7]{32}$")  # server-generated, not typed
+    totp_code: str = field("totp_code")
 
 
 def _check_token(request: Request, token: str) -> None:
@@ -97,4 +95,7 @@ def complete(body: CompleteIn, request: Request) -> StreamingResponse:
         finally:
             _setup_lock.release()
 
-    return StreamingResponse(progress(), media_type="application/x-ndjson")
+    # Tell nginx not to buffer, so each step reaches the browser as it happens.
+    return StreamingResponse(
+        progress(), media_type="application/x-ndjson", headers={"X-Accel-Buffering": "no"}
+    )

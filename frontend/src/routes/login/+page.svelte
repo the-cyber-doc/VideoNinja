@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { api, isInitialized } from '#lib/api.js';
+	import { onTotpInput, rules } from '#lib/validation.js';
 
 	let username = $state('');
 	let password = $state('');
@@ -35,20 +36,33 @@
 	<form onsubmit={submit}>
 		<label>
 			Username
-			<input bind:value={username} autocomplete="username" autocapitalize="none" required />
+			<input
+				bind:value={username}
+				autocomplete="username"
+				autocapitalize="none"
+				maxlength={rules.username.max_length}
+				required
+			/>
 		</label>
 		<label>
 			Password
-			<input type="password" bind:value={password} autocomplete="current-password" required />
+			<input
+				type="password"
+				bind:value={password}
+				autocomplete="current-password"
+				maxlength={rules.password.max_length}
+				required
+			/>
 		</label>
 		<label>
 			Authenticator code
 			<input
-				bind:value={totpCode}
+				value={totpCode}
+				oninput={(e) => (totpCode = onTotpInput(e))}
 				inputmode="numeric"
 				autocomplete="one-time-code"
-				pattern={'\\d{6}'}
-				maxlength="6"
+				minlength={rules.totp_code.min_length}
+				pattern={rules.totp_code.pattern}
 				placeholder="123456"
 			/>
 		</label>

@@ -1,5 +1,7 @@
-fastapi==0.136.3
-uvicorn[standard]==0.48.0
+fastapi==0.157.0
+uvicorn==0.54.0
+uvloop==0.23.0
+httptools==0.9.0
 argon2-cffi==25.1.0
 cryptography==50.0.2
 pyotp==2.10.0

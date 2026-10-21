@@ -1,0 +1,8 @@
+{
+	"_comment": "Input rules shared by the backend (app/validation.py) and the frontend (src/lib/validation.ts, imported at build time). Keys: min_length, max_length, pattern. Patterns must work in Python, pydantic and an HTML pattern attribute (JavaScript 'v' flag: escape '-' inside [...]); the backend matches with ^...$ anchors.",
+	"setup_token": { "max_length": 128 },
+	"username": { "min_length": 3, "max_length": 32, "pattern": "^[a-z0-9._\\-]+$" },
+	"display_name": { "max_length": 64 },
+	"password": { "min_length": 12, "max_length": 256 },
+	"totp_code": { "min_length": 6, "max_length": 6, "pattern": "^[0-9]+$" }
+}

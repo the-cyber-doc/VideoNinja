@@ -1,6 +1,6 @@
 name: CI/CD Pipeline
 
-# Every push (any branch) and every PR: tests, front-end build, Docker image
+# Every push (any branch) and every PR: tests, frontend build, Docker image
 # build for both architectures (not published).
 # Only a version tag (v1.2.3) publishes the images to Docker Hub for users.
 on:
@@ -33,7 +33,7 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@v6
       with:
-        python-version: '3.12'
+        python-version: '3.15'
         cache: pip
         cache-dependency-path: server/requirements*.txt
 
@@ -83,7 +83,7 @@ jobs:
       working-directory: ./frontend
       run: npm run build
 
-    - name: Upload front-end build
+    - name: Upload frontend build
       uses: actions/upload-artifact@v4
       with:
         name: frontend-build

@@ -61,6 +61,7 @@ def test_complete_streams_steps_and_creates_db(client):
         json={"token": token, "username": "admin", "name": "Admin", "password": PASSWORD,
               "totp_secret": secret, "totp_code": pyotp.TOTP(secret).now()},
     )
+    assert r.headers["x-accel-buffering"] == "no"
     steps = [json.loads(line) for line in r.text.splitlines()]
     assert steps == [{"step": "schema"}, {"step": "data"}, {"step": "admin"}, {"step": "done"}]
 
