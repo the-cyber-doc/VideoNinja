@@ -104,8 +104,12 @@ Schema: `server/database/db_v1.sql` (designed in drawdb, which does not export
 - `sw.js` served `no-cache`; hashed assets `immutable`.
 
 ## CI/CD (`.github/workflows/ci-cd.yml`)
-- Push/PR on `main` and `dev`: tests. Push on `main`: per-arch builds on native
-  runners (`ubuntu-latest`, `ubuntu-24.04-arm`), push by digest, merged manifest.
+- Single branch: `main` (development and releases; feature branches optional).
+- Every push (any branch) and PR to `main`: tests, front-end build (workflow
+  artifact), per-arch image builds on native runners (`ubuntu-latest`,
+  `ubuntu-24.04-arm`), not published.
+- Tag `vX.Y.Z`: same builds, pushed by digest, merged manifest published as
+  `X.Y.Z`, `X.Y`, `X`, `latest`. Only tags publish what users run.
 - Registry: Docker Hub (`DOCKERHUB_USERNAME` / `DOCKERHUB_TOKEN` secrets).
 - Keep this structure when adding the second image (nginx + static front-end).
 

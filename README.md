@@ -8,6 +8,7 @@ Architecture, conventions and security rules: see [CLAUDE.md](CLAUDE.md).
 
 - [Layout](#layout)
 - [Development](#development)
+- [Releasing](#releasing)
 - [Production](#production)
 - [License](#license)
 
@@ -20,7 +21,7 @@ Architecture, conventions and security rules: see [CLAUDE.md](CLAUDE.md).
 | `server/database/` | `db_vN.sql` (schema) + `init_db_vN.sql` (initial data) |
 | `frontend/` | SvelteKit PWA (`adapter-static`, Svelte 5, TypeScript) |
 | `tools/encode-videos/` | `encode-videos.sh` (ffmpeg H.265 encoding) + NNEDI3 weights |
-| `.github/workflows/ci-cd.yml` | CI: tests on every push/PR; images published from `main` |
+| `.github/workflows/ci-cd.yml` | CI: tests + builds on every push; images published only for `v*` tags |
 
 ## Development
 
@@ -39,13 +40,15 @@ Architecture, conventions and security rules: see [CLAUDE.md](CLAUDE.md).
 ```bash
 git clone git@github.com:the-cyber-doc/VideoNinja.git
 cd VideoNinja
-git switch dev
-git switch -c my-feature
 ```
 
-Branches: work on a feature branch from `dev` and open a pull request to `dev`.
-`main` is the release branch: every push to it publishes the Docker images.
-CI (tests + type-check + build) must be green before merging.
+Everything happens on `main`, for development and releases. Commit to `main`
+directly, or use a short-lived feature branch and a pull request to `main`.
+
+Every push, on any branch, runs CI: backend tests, front-end type-check and
+build, and the Docker image build for amd64 and arm64. Nothing is published.
+Keep `main` green. Users only get what is released with a tag (see
+[Releasing](#releasing)).
 
 ### 2. Backend (terminal 1)
 
@@ -115,6 +118,19 @@ export, re-add `"id" INTEGER PRIMARY KEY AUTOINCREMENT` on `video`, `segment`,
 `user` and `comment` (see CLAUDE.md). On first start the app uses the highest
 `N` for which both `db_vN.sql` and `init_db_vN.sql` exist.
 
+### Releasing
+
+```bash
+git switch main && git pull
+git tag -a v0.1.0 -m "Video Ninja 0.1.0"
+git push origin v0.1.0
+```
+
+The tag runs the same CI, then publishes the multi-arch image to Docker Hub as
+`0.1.0`, `0.1`, `0` and `latest`. Use [semantic versioning](https://semver.org):
+`vMAJOR.MINOR.PATCH`. The Docker Hub credentials are the repository secrets
+`DOCKERHUB_USERNAME` and `DOCKERHUB_TOKEN`.
+
 ### Working with Claude Code
 
 `CLAUDE.md` holds the project's architecture and rules (security model, stack
@@ -157,7 +173,7 @@ Replace `<dockerhub-user>` with the Docker Hub account CI publishes to.
 ```yaml
 services:
   server:
-    image: <dockerhub-user>/videoninja:main
+    image: <dockerhub-user>/videoninja:0.1   # or a full version / latest
     container_name: videoninja
     restart: unless-stopped
     read_only: true
@@ -183,8 +199,9 @@ volumes:
   data:   # holds /data/videoninja.db
 ```
 
-Published tags: `main` (latest build of `main`) and `main-<short-sha>` (one
-exact build, to pin or roll back).
+Published tags, for a release `v1.2.3`: `1.2.3` (exact), `1.2` (receives patch
+releases), `1` and `latest`. Pin `1.2` for safe updates, or `1.2.3` to stay put.
+Only tagged releases are published.
 
 ### 3. First start
 
