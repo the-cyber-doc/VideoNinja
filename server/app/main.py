@@ -2,7 +2,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
-from . import auth, crypto, db, profile, security, setup
+from . import auth, crypto, db, profile, register, security, setup, users
 
 
 @asynccontextmanager
@@ -24,6 +24,8 @@ app = FastAPI(title="Video Ninja", lifespan=lifespan)
 app.include_router(setup.router)
 app.include_router(auth.router)
 app.include_router(profile.router)
+app.include_router(register.router)
+app.include_router(users.router)
 
 
 @app.get("/health")

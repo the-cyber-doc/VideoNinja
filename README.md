@@ -16,8 +16,11 @@ Self-hosted on a Raspberry Pi 5 with Docker behind nginx.
 |---|---|
 | `server/app/` | Backend: Python 3.15 + FastAPI |
 | `server/tests/` | Backend tests (pytest) |
-| `server/database/` | `db_vN.sql` (schema) + `init_db_vN.sql` (initial data) |
+| `server/database/` | `db_vN.sql` (schema) + `db_vN_init.sql` (initial data) |
 | `frontend/` | SvelteKit PWA (`adapter-static`, Svelte 5, TypeScript) |
+| `frontend/src/**/*.test.ts` | Frontend unit tests (Vitest) |
+| `frontend/tests/` | Browser tests (Playwright): `mocked/` (fake API), `e2e/` (real backend) |
+| `server/app/validation.json` | Input rules (lengths, patterns) shared by backend and frontend |
 | `tools/encode-videos/` | `encode-videos.sh` (ffmpeg H.265 encoding) + NNEDI3 weights |
 | `.github/workflows/ci-cd.yml` | CI: tests + builds on every push; images published only for `v*` tags |
 
@@ -122,8 +125,69 @@ pip install flake8 && flake8 app tests --count --select=E9,F63,F7,F82 --show-sou
 
 # Frontend, in frontend/
 npm run check
+npm run test:unit
 npm run build
+npm run test:browser      # see Frontend tests below
 ```
+
+### 6. Frontend tests
+
+Two levels, both run by CI on every push:
+
+| Command | Tool | What | Speed |
+|---|---|---|---|
+| `npm run test:unit` | [Vitest](https://vitest.dev) | Plain functions, files `src/**/*.test.ts` next to the code | milliseconds |
+| `npm run test:browser` | [Playwright](https://playwright.dev) | Pages in real browsers, files in `tests/` | seconds |
+
+`npm test` runs both.
+
+Browser tests come in two kinds:
+
+- **`tests/mocked/`**: the API is faked with `page.route`, no backend needed.
+  For page behaviour and error cases that are hard to produce for real. Run
+  in Chromium and WebKit (Safari's engine).
+- **`tests/e2e/`**: full flows against the real backend (setup → login →
+  logout → profile: name, password, authenticator). Playwright starts a fresh backend on port 8001
+  (`tests/e2e/backend.sh`: new database and key in `frontend/.e2e/`, setup
+  token read from `.e2e/server.log`), so a dev backend on 8000 is not
+  affected. Chromium only; the tests run in order.
+
+Playwright also builds the app and serves it with `vite preview` on
+`https://localhost:4173`. The e2e backend needs the backend's virtual
+environment (`server/.venv`, see [Backend](#2-backend-terminal-1)), or another
+Python with the dependencies in `PYTHON`.
+
+First run, in `frontend/`:
+
+```bash
+npx playwright install chromium webkit   # browsers, in ~/.cache/ms-playwright
+npm run test:browser
+```
+
+Useful options:
+
+```bash
+npx playwright test --project chromium --project e2e   # skip WebKit
+npx playwright test --ui              # interactive: step through, see each action
+npx playwright test --headed          # watch the browser
+npx playwright codegen https://localhost:4173   # record clicks as test code
+```
+
+WebKit needs system libraries (`sudo npx playwright install-deps webkit`).
+Playwright officially supports Ubuntu 22.04 and 24.04 LTS; on other
+distributions WebKit may not start, so run Chromium locally and let CI
+(`ubuntu-latest`) run WebKit. On failure, CI uploads the HTML report (with a
+trace of each step) and the backend log as the `playwright-report` artifact;
+open it with `npx playwright show-report <folder>`.
+
+Writing tests:
+
+- Find elements as a user does: `getByLabel('Username')`,
+  `getByRole('button', { name: 'Log in' })`, not CSS classes.
+- Wait with `await expect(…)` (it retries), never with fixed sleeps.
+- One behaviour per test. Mocked tests for most cases; keep e2e flows few.
+- TOTP codes in e2e tests are computed from the secret shown by the setup
+  wizard (`otpauth`).
 
 ### Database schema
 
@@ -131,7 +195,7 @@ The schema is designed in [drawdb](https://drawdb.app) and exported to
 `server/database/db_v1.sql`. drawdb does not export `AUTOINCREMENT`: after each
 export, re-add `"id" INTEGER PRIMARY KEY AUTOINCREMENT` on `video`, `segment`,
 `user` and `comment`. On first start the app uses the highest
-`N` for which both `db_vN.sql` and `init_db_vN.sql` exist.
+`N` for which both `db_vN.sql` and `db_vN_init.sql` exist.
 
 ### Releasing
 
@@ -223,6 +287,28 @@ sudo docker compose logs server | grep "Setup token"
 Open the app over HTTPS, enter the setup token, create the admin account
 (password + authenticator app), and log in. The setup wizard is then disabled.
 The app must be served over HTTPS: the session cookie is `Secure`.
+
+### Users
+
+Users are added by invitation, from **User Management** in the user menu
+(top right; only for roles with the `user_mgmt` access, i.e. admins):
+
+1. Enter a username, choose a role, click **Create**. The app shows an
+   invitation link (`https://<host>/register#<token>`), valid for **one week**,
+   and copies it to the clipboard. Send it to the user.
+2. The user opens the link and chooses a display name (optional), a password
+   and an authenticator app. The link then stops working.
+
+In the user list, the first column shows the state: a green check
+(registered), nothing (invitation pending: the copy button gives the link
+again) or a red cross (invitation expired). The reset button issues a new
+link. For a registered user, reset also removes the password and
+authenticator and logs the user out: that is how a lost password or
+authenticator is recovered. Every user must use an authenticator app; there
+is no way to log in without one. Admins cannot reset their own account.
+
+The invitation token is in the URL fragment (`#…`), which browsers never send
+to the server: it does not appear in nginx logs or `Referer` headers.
 
 ### 4. Updates
 
@@ -448,15 +534,9 @@ server {
     # }
 
     # --- App (session check on every request) -------------------------------
+    # No network restriction on any endpoint: every feature, admin included,
+    # works from anywhere. The app checks session, access and TOTP itself.
     location /api/ {
-        include snippets/proxy-app.conf;
-    }
-
-    # Admin API: LAN/VPN only. The app still checks role + passkey/TOTP.
-    location ^~ /api/admin/ {
-        allow 192.168.1.0/24;   # LAN   (adapt)
-        allow 10.8.0.0/24;      # VPN   (adapt)
-        deny  all;
         include snippets/proxy-app.conf;
     }
 

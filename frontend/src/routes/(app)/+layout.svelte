@@ -1,0 +1,166 @@
+<script lang="ts">
+	// Shell of the logged-in application: full-size layout, header with the user menu.
+	// Login, setup and registration pages are outside this group and have no shell.
+	import { goto } from '$app/navigation';
+	import { page } from '$app/state';
+	import { api, currentUser, isInitialized } from '#lib/api.js';
+	import Icon from '#lib/Icon.svelte';
+	import { hasAccess, session } from '#lib/session.svelte.js';
+	import type { LayoutProps } from './$types';
+
+	let { children }: LayoutProps = $props();
+	let error = $state('');
+	let menuOpen = $state(false);
+	let menu = $state<HTMLElement>();
+
+	$effect(() => {
+		(async () => {
+			try {
+				if (!(await isInitialized())) return goto('/setup', { replaceState: true });
+				session.user = await currentUser();
+				if (!session.user) return goto('/login', { replaceState: true });
+			} catch (e) {
+				error = (e as Error).message;
+			}
+		})();
+	});
+
+	// Close the menu on navigation.
+	$effect(() => {
+		void page.url.pathname;
+		menuOpen = false;
+	});
+
+	function onWindowClick(e: MouseEvent) {
+		if (menuOpen && menu && !menu.contains(e.target as Node)) menuOpen = false;
+	}
+
+	async function logout() {
+		await api('/api/auth/logout', {});
+		session.user = null;
+		goto('/login', { replaceState: true });
+	}
+</script>
+
+<svelte:window onclick={onWindowClick} onkeydown={(e) => e.key === 'Escape' && (menuOpen = false)} />
+
+{#if session.user}
+	<div class="app">
+		<header>
+			<a class="brand" href="/">Video Ninja</a>
+			<div class="user-menu" bind:this={menu}>
+				<button
+					class="icon"
+					aria-label="User menu"
+					title={session.user.name ?? session.user.username}
+					aria-haspopup="menu"
+					aria-expanded={menuOpen}
+					onclick={() => (menuOpen = !menuOpen)}
+				>
+					<Icon name="user" size={22} />
+				</button>
+				{#if menuOpen}
+					<!-- Entries: Profile first, Log out always last. -->
+					<div class="menu" role="menu">
+						<p class="who">{session.user.name ?? session.user.username}</p>
+						<a role="menuitem" href="/profile">Profile</a>
+						{#if hasAccess('user_mgmt')}
+							<a role="menuitem" href="/admin/users">User Management</a>
+						{/if}
+						<button role="menuitem" class="logout" onclick={logout}>Log out</button>
+					</div>
+				{/if}
+			</div>
+		</header>
+		<div class="content">
+			{@render children()}
+		</div>
+	</div>
+{:else if error}
+	<main class="card"><p class="error">{error}</p></main>
+{/if}
+
+<style>
+	.app {
+		min-height: 100dvh;
+		display: grid;
+		grid-template-rows: auto 1fr;
+	}
+	header {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 1rem;
+		padding: 0.5rem 1rem;
+		background: var(--surface);
+		border-bottom: 1px solid var(--border);
+	}
+	.brand {
+		font-weight: 700;
+		color: var(--text);
+		text-decoration: none;
+	}
+	.content {
+		min-width: 0;
+		padding: 1rem;
+	}
+	.user-menu {
+		position: relative;
+	}
+	button.icon {
+		display: grid;
+		place-items: center;
+		width: 2.4rem;
+		height: 2.4rem;
+		padding: 0;
+		border-radius: 50%;
+		color: var(--text);
+		background: var(--bg);
+		border: 1px solid var(--border);
+	}
+	.menu {
+		position: absolute;
+		right: 0;
+		top: calc(100% + 0.4rem);
+		z-index: 10;
+		min-width: 12rem;
+		display: grid;
+		padding: 0.3rem;
+		background: var(--surface);
+		border: 1px solid var(--border);
+		border-radius: var(--radius);
+		box-shadow: 0 6px 24px rgb(0 0 0 / 0.15);
+	}
+	.who {
+		margin: 0;
+		padding: 0.4rem 0.7rem;
+		font-size: 0.85rem;
+		color: var(--muted);
+		border-bottom: 1px solid var(--border);
+		margin-bottom: 0.3rem;
+	}
+	.menu a,
+	.menu button {
+		display: block;
+		width: 100%;
+		padding: 0.5rem 0.7rem;
+		font: inherit;
+		font-weight: normal;
+		text-align: left;
+		color: var(--text);
+		background: none;
+		border: 0;
+		border-radius: 6px;
+		text-decoration: none;
+		cursor: pointer;
+	}
+	.menu a:hover,
+	.menu button:hover {
+		background: var(--bg);
+	}
+	.menu .logout {
+		border-top: 1px solid var(--border);
+		border-radius: 0 0 6px 6px;
+		margin-top: 0.3rem;
+	}
+</style>

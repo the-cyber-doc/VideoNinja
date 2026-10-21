@@ -1,17 +1,10 @@
 <script lang="ts">
-	import { goto } from '$app/navigation';
-	import { api, currentUser, type User } from '#lib/api.js';
+	import { api, type User } from '#lib/api.js';
+	import { session } from '#lib/session.svelte.js';
 	import { onTotpInput, rules } from '#lib/validation.js';
 
-	let user = $state<User | null>(null);
-
-	$effect(() => {
-		currentUser().then((u) => {
-			if (!u) return goto('/login', { replaceState: true });
-			user = u;
-			name = u.name ?? '';
-		});
-	});
+	// The (app) layout only renders this page once the user is loaded.
+	const user = $derived(session.user!);
 
 	/** busy / error / success message of one section. */
 	function status() {
@@ -31,14 +24,14 @@
 	}
 
 	// Display name
-	let name = $state('');
+	let name = $state(session.user?.name ?? '');
 	const nameStatus = $state(status());
 
 	const saveName = (e: SubmitEvent) => {
 		e.preventDefault();
 		run(nameStatus, async () => {
-			user = await api<User>('/api/profile/name', { name });
-			name = user.name ?? '';
+			session.user = await api<User>('/api/profile/name', { name });
+			name = session.user.name ?? '';
 			return 'Name saved.';
 		});
 	};
@@ -100,7 +93,6 @@
 
 {#if user}
 	<main class="card">
-		<nav><a href="/">← Back</a></nav>
 		<h1>Profile</h1>
 		<p class="hint">Username: <strong>{user.username}</strong> ({user.role})</p>
 
@@ -215,13 +207,6 @@
 {/if}
 
 <style>
-	nav {
-		margin-bottom: 0.5rem;
-		font-size: 0.9rem;
-	}
-	a {
-		color: var(--accent);
-	}
 	section {
 		display: grid;
 		gap: 0.75rem;

@@ -28,9 +28,6 @@ frontend/build/
 *.swo
 *~
 
-# Claude Code (local, per-user)
-.claude/settings.local.json
-
 # Environment
 .env
 .env.*

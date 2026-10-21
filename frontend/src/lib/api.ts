@@ -11,6 +11,8 @@ export interface User {
 	username: string;
 	name: string | null;
 	role: string;
+	/** What the role allows, e.g. 'user_mgmt'. Only hides menus: the API enforces it. */
+	access: string[];
 }
 
 async function errorMessage(res: Response): Promise<string> {

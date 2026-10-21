@@ -33,7 +33,7 @@ def test_needs_session(client, admin_secret, path):
 
 def test_set_name(client, logged_in):
     r = client.post("/api/profile/name", json={"name": "  Sensei  "})
-    assert r.json() == {"username": "admin", "name": "Sensei", "role": "admin"}
+    assert r.json()["name"] == "Sensei" and r.json()["username"] == "admin"
     assert client.get("/api/auth/me").json()["name"] == "Sensei"
 
     assert client.post("/api/profile/name", json={"name": ""}).json()["name"] is None

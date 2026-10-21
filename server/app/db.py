@@ -43,17 +43,17 @@ def get_db() -> Iterator[sqlite3.Connection]:
 
 
 def latest_scripts() -> tuple[int, Path, Path]:
-    """Highest N for which both db_vN.sql (schema) and init_db_vN.sql (data) exist."""
+    """Highest N for which both db_vN.sql (schema) and db_vN_init.sql (data) exist."""
     versions = {
         int(m.group(1))
         for f in SQL_DIR.glob("db_v*.sql")
         if (m := re.fullmatch(r"db_v(\d+)\.sql", f.name))
     }
     for version in sorted(versions, reverse=True):
-        seed = SQL_DIR / f"init_db_v{version}.sql"
+        seed = SQL_DIR / f"db_v{version}_init.sql"
         if seed.exists():
             return version, SQL_DIR / f"db_v{version}.sql", seed
-    raise RuntimeError(f"no db_vN.sql + init_db_vN.sql pair in {SQL_DIR}")
+    raise RuntimeError(f"no db_vN.sql + db_vN_init.sql pair in {SQL_DIR}")
 
 
 def create_database(username: str, name: str, pw_hash: str, totp_secret: str) -> Iterator[str]:

@@ -1,7 +1,11 @@
 import { expect, test } from '@playwright/test';
 
 // The API is faked: these tests check the page only, in Chromium and WebKit.
-const ME = { username: 'kenji', name: 'Kenji', role: 'user' };
+const ME = { username: 'kenji', name: 'Kenji', role: 'user', access: ['segment'] };
+
+test.beforeEach(async ({ page }) => {
+	await page.route('/api/setup/status', (r) => r.fulfill({ json: { initialized: true } }));
+});
 
 test('not logged in: redirects to login', async ({ page }) => {
 	await page.route('/api/auth/me', (r) => r.fulfill({ status: 401, json: { detail: 'Not logged in' } }));

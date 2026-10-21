@@ -24,6 +24,7 @@ class UserOut(BaseModel):
     username: str
     name: str | None
     role: str
+    access: list[str]  # what the role allows, e.g. "user_mgmt": the UI shows matching menus
 
 
 def current_user(
@@ -35,6 +36,21 @@ def current_user(
     if user is None:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Not logged in")
     return user
+
+
+def require_access(access: str):
+    """Dependency factory: 403 unless the logged-in user's role grants `access`."""
+
+    def check(
+        user: sqlite3.Row = Depends(current_user),
+        con: sqlite3.Connection = Depends(db.get_db),
+    ) -> sqlite3.Row:
+        if access not in security.role_access(con, user["role"]):
+            log.warning("Denied: user id %s lacks access %r", user["id"], access)
+            raise HTTPException(status.HTTP_403_FORBIDDEN, "Access denied")
+        return user
+
+    return check
 
 
 def _totp_ok(user: sqlite3.Row | None, code: str) -> bool:
@@ -50,8 +66,13 @@ def _totp_ok(user: sqlite3.Row | None, code: str) -> bool:
     return security.verify_totp(secret, code)
 
 
-def _user_out(row: sqlite3.Row) -> UserOut:
-    return UserOut(username=row["username"], name=row["name"], role=row["role"])
+def user_out(con: sqlite3.Connection, row: sqlite3.Row) -> UserOut:
+    return UserOut(
+        username=row["username"],
+        name=row["name"],
+        role=row["role"],
+        access=security.role_access(con, row["role"]),
+    )
 
 
 @router.post("/login")
@@ -77,7 +98,7 @@ def login(body: LoginIn, response: Response, con: sqlite3.Connection = Depends(d
         httponly=True,
         samesite="strict",
     )
-    return _user_out(user)
+    return user_out(con, user)
 
 
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
@@ -92,5 +113,7 @@ def logout(
 
 
 @router.get("/me")
-def me(user: sqlite3.Row = Depends(current_user)) -> UserOut:
-    return _user_out(user)
+def me(
+    user: sqlite3.Row = Depends(current_user), con: sqlite3.Connection = Depends(db.get_db)
+) -> UserOut:
+    return user_out(con, user)

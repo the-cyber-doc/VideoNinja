@@ -106,3 +106,10 @@ def delete_other_sessions(con: sqlite3.Connection, user_id: int, token: str) -> 
         con.execute(
             'DELETE FROM "session" WHERE "user" = ? AND "id" != ?', (user_id, _session_id(token))
         )
+
+
+def role_access(con: sqlite3.Connection, role: str) -> list[str]:
+    rows = con.execute(
+        'SELECT "access" FROM "role_has_access" WHERE "role" = ? ORDER BY "access"', (role,)
+    )
+    return [r[0] for r in rows]

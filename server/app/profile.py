@@ -11,7 +11,7 @@ from fastapi import APIRouter, Cookie, Depends, HTTPException, status
 from pydantic import BaseModel
 
 from . import crypto, db, security
-from .auth import UserOut, current_user
+from .auth import UserOut, current_user, user_out
 from .security import SESSION_COOKIE
 from .validation import field
 
@@ -51,7 +51,7 @@ def set_name(
     name = body.name.strip() or None
     with con:
         con.execute('UPDATE "user" SET "name" = ? WHERE "id" = ?', (name, user["id"]))
-    return UserOut(username=user["username"], name=name, role=user["role"])
+    return user_out(con, {**user, "name": name})
 
 
 @router.post("/password", status_code=status.HTTP_204_NO_CONTENT)

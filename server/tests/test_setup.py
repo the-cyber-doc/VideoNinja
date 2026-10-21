@@ -87,8 +87,8 @@ def test_setup_closed_after_completion(client, admin_secret):
 
 
 def test_latest_scripts_picks_highest_complete_pair(tmp_path, monkeypatch):
-    for name in ("db_v1.sql", "init_db_v1.sql", "db_v2.sql", "init_db_v2.sql", "db_v3.sql"):
+    for name in ("db_v1.sql", "db_v1_init.sql", "db_v2.sql", "db_v2_init.sql", "db_v3.sql"):
         (tmp_path / name).write_text("")
     monkeypatch.setattr(db, "SQL_DIR", tmp_path)
     version, schema, seed = db.latest_scripts()
-    assert (version, schema.name, seed.name) == (2, "db_v2.sql", "init_db_v2.sql")
+    assert (version, schema.name, seed.name) == (2, "db_v2.sql", "db_v2_init.sql")
