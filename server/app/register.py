@@ -6,7 +6,7 @@ import sqlite3
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 
-from . import crypto, db, invites, security
+from . import crypto, db, invites, queries, security
 from .validation import field
 
 log = logging.getLogger("uvicorn.error")
@@ -51,15 +51,13 @@ def complete(body: CompleteIn, con: sqlite3.Connection = Depends(db.get_db)) -> 
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid TOTP code")
     with con:
         # Deleting the invitation first makes the link single-use, even under concurrent requests.
-        if con.execute('DELETE FROM "invite" WHERE "user" = ?', (user["id"],)).rowcount != 1:
+        if not queries.delete_invite(con, user["id"]):
             raise HTTPException(status.HTTP_404_NOT_FOUND, "Invalid or expired invitation")
-        con.execute(
-            'UPDATE "user" SET "name" = ?, "pw_hash" = ?, "totp" = ? WHERE "id" = ?',
-            (
-                body.name.strip() or None,
-                security.hash_password(body.password),
-                crypto.encrypt(body.totp_secret, crypto.totp_aad(user["id"])),
-                user["id"],
-            ),
+        queries.set_user_registration(
+            con,
+            user["id"],
+            body.name.strip() or None,
+            security.hash_password(body.password),
+            crypto.encrypt(body.totp_secret, crypto.totp_aad(user["id"])),
         )
     log.warning("Registered: user id %s (%r)", user["id"], user["username"])

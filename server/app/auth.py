@@ -5,7 +5,7 @@ from cryptography.exceptions import InvalidTag
 from fastapi import APIRouter, Cookie, Depends, HTTPException, Response, status
 from pydantic import BaseModel
 
-from . import crypto, db, security
+from . import crypto, db, queries, security
 from .security import SESSION_COOKIE
 from .validation import field
 
@@ -45,7 +45,7 @@ def require_access(access: str):
         user: sqlite3.Row = Depends(current_user),
         con: sqlite3.Connection = Depends(db.get_db),
     ) -> sqlite3.Row:
-        if access not in security.role_access(con, user["role"]):
+        if access not in queries.role_access(con, user["role"]):
             log.warning("Denied: user id %s lacks access %r", user["id"], access)
             raise HTTPException(status.HTTP_403_FORBIDDEN, "Access denied")
         return user
@@ -71,16 +71,13 @@ def user_out(con: sqlite3.Connection, row: sqlite3.Row) -> UserOut:
         username=row["username"],
         name=row["name"],
         role=row["role"],
-        access=security.role_access(con, row["role"]),
+        access=queries.role_access(con, row["role"]),
     )
 
 
 @router.post("/login")
 def login(body: LoginIn, response: Response, con: sqlite3.Connection = Depends(db.get_db)) -> UserOut:
-    user = con.execute(
-        'SELECT "id", "username", "name", "pw_hash", "totp", "role" FROM "user" WHERE "username" = ?',
-        (body.username,),
-    ).fetchone()
+    user = queries.user_for_login(con, body.username)
     password_ok = security.verify_password(user["pw_hash"] if user else None, body.password)
     totp_ok = _totp_ok(user, body.totp_code)
     # One error for every failure: don't reveal which part was wrong.

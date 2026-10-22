@@ -10,7 +10,7 @@ import sqlite3
 from fastapi import APIRouter, Cookie, Depends, HTTPException, status
 from pydantic import BaseModel
 
-from . import crypto, db, security
+from . import crypto, db, queries, security
 from .auth import UserOut, current_user, user_out
 from .security import SESSION_COOKIE
 from .validation import field
@@ -35,8 +35,7 @@ class TotpConfirmIn(BaseModel):
 
 
 def _check_password(con: sqlite3.Connection, user: sqlite3.Row, password: str) -> None:
-    pw_hash = con.execute('SELECT "pw_hash" FROM "user" WHERE "id" = ?', (user["id"],)).fetchone()[0]
-    if not security.verify_password(pw_hash, password):
+    if not security.verify_password(queries.user_pw_hash(con, user["id"]), password):
         log.warning("Profile: wrong current password for user id %s", user["id"])
         # 403, not 401: the session is still valid.
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Wrong current password")
@@ -50,7 +49,7 @@ def set_name(
 ) -> UserOut:
     name = body.name.strip() or None
     with con:
-        con.execute('UPDATE "user" SET "name" = ? WHERE "id" = ?', (name, user["id"]))
+        queries.set_user_name(con, user["id"], name)
     return user_out(con, {**user, "name": name})
 
 
@@ -63,10 +62,7 @@ def set_password(
 ) -> None:
     _check_password(con, user, body.current_password)
     with con:
-        con.execute(
-            'UPDATE "user" SET "pw_hash" = ? WHERE "id" = ?',
-            (security.hash_password(body.new_password), user["id"]),
-        )
+        queries.set_user_pw_hash(con, user["id"], security.hash_password(body.new_password))
     security.delete_other_sessions(con, user["id"], token)
     log.warning("Profile: password changed for user id %s", user["id"])
 
@@ -89,9 +85,6 @@ def confirm_totp(
     if not security.verify_totp(body.totp_secret, body.totp_code):
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid code for the new authenticator")
     with con:
-        con.execute(
-            'UPDATE "user" SET "totp" = ? WHERE "id" = ?',
-            (crypto.encrypt(body.totp_secret, crypto.totp_aad(user["id"])), user["id"]),
-        )
+        queries.set_user_totp(con, user["id"], crypto.encrypt(body.totp_secret, crypto.totp_aad(user["id"])))
     security.delete_other_sessions(con, user["id"], token)
     log.warning("Profile: authenticator replaced for user id %s", user["id"])

@@ -6,7 +6,7 @@ from pathlib import Path
 
 from fastapi import HTTPException, status
 
-from . import crypto
+from . import crypto, queries
 
 SQL_DIR = Path(__file__).resolve().parent.parent / "database"
 DEFAULT_DB = "/data/videoninja.db"
@@ -73,15 +73,9 @@ def create_database(username: str, name: str, pw_hash: str, totp_secret: str) ->
             con.executescript(seed.read_text(encoding="utf-8"))
             yield "data"
             with con:
-                user_id = con.execute(
-                    'INSERT INTO "user" ("username", "name", "pw_hash", "role") VALUES (?, ?, ?, ?)',
-                    (username, name, pw_hash, "admin"),
-                ).lastrowid
+                user_id = queries.insert_user(con, username, "admin", name, pw_hash)
                 # Encrypted with the row's ID as associated data, so the ID must exist first.
-                con.execute(
-                    'UPDATE "user" SET "totp" = ? WHERE "id" = ?',
-                    (crypto.encrypt(totp_secret, crypto.totp_aad(user_id)), user_id),
-                )
+                queries.set_user_totp(con, user_id, crypto.encrypt(totp_secret, crypto.totp_aad(user_id)))
             yield "admin"
             con.execute("PRAGMA journal_mode = WAL")
         finally:

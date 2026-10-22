@@ -8,7 +8,7 @@ from typing import Literal
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 
-from . import db, invites
+from . import db, invites, queries
 from .auth import require_access
 from .validation import field
 
@@ -43,18 +43,12 @@ class InviteOut(BaseModel):
 
 @router.get("/roles")
 def roles(_: sqlite3.Row = Depends(admin), con: sqlite3.Connection = Depends(db.get_db)) -> list[RoleOut]:
-    return [RoleOut(id=r["id"], name=r["name"]) for r in con.execute('SELECT "id", "name" FROM "role" ORDER BY "name"')]
+    return [RoleOut(id=r["id"], name=r["name"]) for r in queries.roles(con)]
 
 
 @router.get("/users")
 def list_users(_: sqlite3.Row = Depends(admin), con: sqlite3.Connection = Depends(db.get_db)) -> list[UserRow]:
-    rows = con.execute(
-        'SELECT u."id", u."username", u."name", u."role",'
-        ' u."pw_hash" IS NOT NULL AND u."totp" IS NOT NULL AS "registered",'
-        ' COALESCE(i."expires_s" > ?, 0) AS "invited"'
-        ' FROM "user" u LEFT JOIN "invite" i ON i."user" = u."id" ORDER BY u."username"',
-        (int(time.time()),),
-    )
+    rows = queries.list_users(con, int(time.time()))
     return [
         UserRow(
             id=r["id"],
@@ -68,8 +62,7 @@ def list_users(_: sqlite3.Row = Depends(admin), con: sqlite3.Connection = Depend
 
 
 def _invite_out(con: sqlite3.Connection, user_id: int, token: str) -> InviteOut:
-    expires = con.execute('SELECT "expires_s" FROM "invite" WHERE "user" = ?', (user_id,)).fetchone()[0]
-    return InviteOut(token=token, expires_s=expires)
+    return InviteOut(token=token, expires_s=queries.invite_expiry(con, user_id))
 
 
 @router.post("/users", status_code=status.HTTP_201_CREATED)
@@ -77,14 +70,12 @@ def create_user(
     body: CreateIn, me: sqlite3.Row = Depends(admin), con: sqlite3.Connection = Depends(db.get_db)
 ) -> InviteOut:
     """Create a user without credentials, and its invitation."""
-    if not con.execute('SELECT 1 FROM "role" WHERE "id" = ?', (body.role,)).fetchone():
+    if not queries.role_exists(con, body.role):
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "Unknown role")
-    if con.execute('SELECT 1 FROM "user" WHERE "username" = ?', (body.username,)).fetchone():
+    if queries.username_exists(con, body.username):
         raise HTTPException(status.HTTP_409_CONFLICT, "This username already exists")
     with con:
-        user_id = con.execute(
-            'INSERT INTO "user" ("username", "role") VALUES (?, ?)', (body.username, body.role)
-        ).lastrowid
+        user_id = queries.insert_user(con, body.username, body.role)
         token = invites.create(con, user_id)
     log.warning("User management: user id %s created %r (%s)", me["id"], body.username, body.role)
     return _invite_out(con, user_id, token)
@@ -112,11 +103,11 @@ def reset_user(
     """
     if user_id == me["id"]:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "You cannot reset your own account")
-    if not con.execute('SELECT 1 FROM "user" WHERE "id" = ?', (user_id,)).fetchone():
+    if not queries.user_exists(con, user_id):
         raise HTTPException(status.HTTP_404_NOT_FOUND, "No such user")
     with con:
         token = invites.create(con, user_id)
-        con.execute('UPDATE "user" SET "pw_hash" = NULL, "totp" = NULL WHERE "id" = ?', (user_id,))
-        con.execute('DELETE FROM "session" WHERE "user" = ?', (user_id,))
+        queries.clear_user_credentials(con, user_id)
+        queries.delete_user_sessions(con, user_id)
     log.warning("User management: user id %s reset user id %s", me["id"], user_id)
     return _invite_out(con, user_id, token)

@@ -11,7 +11,7 @@ import secrets
 import sqlite3
 import time
 
-from . import crypto
+from . import crypto, queries
 
 INVITE_TTL_S = 7 * 24 * 3600
 
@@ -27,25 +27,18 @@ def _aad(user_id: int) -> str:
 def create(con: sqlite3.Connection, user_id: int) -> str:
     """Replace the user's invitation with a new one; return its token. Call inside a transaction."""
     token = secrets.token_urlsafe(32)
-    con.execute(
-        'INSERT OR REPLACE INTO "invite" ("user", "token_hash", "token", "expires_s") VALUES (?, ?, ?, ?)',
-        (user_id, _hash(token), crypto.encrypt(token, _aad(user_id)), int(time.time()) + INVITE_TTL_S),
+    queries.replace_invite(
+        con, user_id, _hash(token), crypto.encrypt(token, _aad(user_id)), int(time.time()) + INVITE_TTL_S
     )
     return token
 
 
 def user_for(con: sqlite3.Connection, token: str) -> sqlite3.Row | None:
     """The invited user if the token is valid and not expired, else None."""
-    return con.execute(
-        'SELECT u."id", u."username", u."name", u."role" FROM "invite" i JOIN "user" u ON u."id" = i."user"'
-        ' WHERE i."token_hash" = ? AND i."expires_s" > ?',
-        (_hash(token), int(time.time())),
-    ).fetchone()
+    return queries.invited_user(con, _hash(token), int(time.time()))
 
 
 def token_of(con: sqlite3.Connection, user_id: int) -> str | None:
     """The user's current, unexpired invitation token (to copy the link again), or None."""
-    row = con.execute(
-        'SELECT "token" FROM "invite" WHERE "user" = ? AND "expires_s" > ?', (user_id, int(time.time()))
-    ).fetchone()
-    return crypto.decrypt(row[0], _aad(user_id)) if row else None
+    token = queries.invite_token(con, user_id, int(time.time()))
+    return crypto.decrypt(token, _aad(user_id)) if token else None
