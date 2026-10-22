@@ -5,7 +5,7 @@ from cryptography.exceptions import InvalidTag
 from fastapi import APIRouter, Cookie, Depends, HTTPException, Response, status
 from pydantic import BaseModel
 
-from . import crypto, db, queries, security
+from . import crypto, db, i18n, queries, security
 from .security import SESSION_COOKIE
 from .validation import field
 
@@ -24,6 +24,7 @@ class UserOut(BaseModel):
     username: str
     name: str | None
     role: str
+    role_name: str  # in the request's language
     access: list[str]  # what the role allows, e.g. "user_mgmt": the UI shows matching menus
 
 
@@ -66,17 +67,23 @@ def _totp_ok(user: sqlite3.Row | None, code: str) -> bool:
     return security.verify_totp(secret, code)
 
 
-def user_out(con: sqlite3.Connection, row: sqlite3.Row) -> UserOut:
+def user_out(con: sqlite3.Connection, row: sqlite3.Row, lang: str) -> UserOut:
     return UserOut(
         username=row["username"],
         name=row["name"],
         role=row["role"],
+        role_name=i18n.pick(queries.role_name(con, row["role"]), "name", lang, row["role"]),
         access=queries.role_access(con, row["role"]),
     )
 
 
 @router.post("/login")
-def login(body: LoginIn, response: Response, con: sqlite3.Connection = Depends(db.get_db)) -> UserOut:
+def login(
+    body: LoginIn,
+    response: Response,
+    con: sqlite3.Connection = Depends(db.get_db),
+    lang: str = Depends(i18n.language),
+) -> UserOut:
     user = queries.user_for_login(con, body.username)
     password_ok = security.verify_password(user["pw_hash"] if user else None, body.password)
     totp_ok = _totp_ok(user, body.totp_code)
@@ -95,7 +102,7 @@ def login(body: LoginIn, response: Response, con: sqlite3.Connection = Depends(d
         httponly=True,
         samesite="strict",
     )
-    return user_out(con, user)
+    return user_out(con, user, lang)
 
 
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
@@ -111,6 +118,8 @@ def logout(
 
 @router.get("/me")
 def me(
-    user: sqlite3.Row = Depends(current_user), con: sqlite3.Connection = Depends(db.get_db)
+    user: sqlite3.Row = Depends(current_user),
+    con: sqlite3.Connection = Depends(db.get_db),
+    lang: str = Depends(i18n.language),
 ) -> UserOut:
-    return user_out(con, user)
+    return user_out(con, user, lang)

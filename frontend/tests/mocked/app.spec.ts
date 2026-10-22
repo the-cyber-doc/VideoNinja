@@ -1,8 +1,14 @@
 import { expect, test, type Page } from '@playwright/test';
 
 // The API is faked: these tests check the pages only, in Chromium and WebKit.
-const ADMIN = { username: 'admin', name: 'Sensei', role: 'admin', access: ['segment', 'user_mgmt'] };
-const USER = { username: 'kenji', name: null, role: 'user', access: ['segment'] };
+const ADMIN = {
+	username: 'admin',
+	name: 'Sensei',
+	role: 'admin',
+	role_name: 'Admin',
+	access: ['segment', 'user_mgmt']
+};
+const USER = { username: 'kenji', name: null, role: 'user', role_name: 'User', access: ['segment'] };
 
 async function loggedInAs(page: Page, user: object) {
 	await page.route('/api/setup/status', (r) => r.fulfill({ json: { initialized: true } }));

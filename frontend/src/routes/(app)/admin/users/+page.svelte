@@ -3,6 +3,7 @@
 	// and the API refuses every call (403) whatever the page does.
 	import { goto } from '$app/navigation';
 	import { api } from '#lib/api.js';
+	import { i18n, t } from '#lib/i18n.svelte.js';
 	import Icon from '#lib/Icon.svelte';
 	import { hasAccess, session } from '#lib/session.svelte.js';
 	import { rules } from '#lib/validation.js';
@@ -29,7 +30,7 @@
 	let busy = $state(false);
 
 	/** Last invitation link handed out, shown so it can be copied by hand too. */
-	let link = $state<{ username: string; url: string; expires: string; copied: boolean } | null>(
+	let link = $state<{ username: string; url: string; expires_s: number; copied: boolean } | null>(
 		null
 	);
 
@@ -38,6 +39,7 @@
 			goto('/', { replaceState: true });
 			return;
 		}
+		void i18n.lang; // reload on language change: role names are translated by the server
 		load();
 	});
 
@@ -67,7 +69,6 @@
 	/** Show the invitation link and try to copy it to the clipboard. */
 	async function showLink(user: string, invite: Invite) {
 		const url = `${location.origin}/register#${invite.token}`;
-		const expires = new Date(invite.expires_s * 1000).toLocaleString();
 		let copied = false;
 		try {
 			await navigator.clipboard.writeText(url);
@@ -75,7 +76,7 @@
 		} catch {
 			// No clipboard access: the link stays visible to copy by hand.
 		}
-		link = { username: user, url, expires, copied };
+		link = { username: user, url, expires_s: invite.expires_s, copied };
 	}
 
 	const create = (e: SubmitEvent) => {
@@ -92,13 +93,7 @@
 		action(async () => showLink(user.username, await api<Invite>(`/api/admin/users/${user.id}/invite`)));
 
 	const reset = (user: UserRow) => {
-		if (
-			user.status === 'registered' &&
-			!confirm(
-				`Reset the account of ${user.username}? Their password and authenticator are removed, ` +
-					'they are logged out, and they need a new invitation link to log in again.'
-			)
-		)
+		if (user.status === 'registered' && !confirm(t('users.reset_confirm', { username: user.username })))
 			return;
 		action(async () => {
 			await showLink(user.username, await api<Invite>(`/api/admin/users/${user.id}/reset`, {}));
@@ -107,21 +102,21 @@
 	};
 
 	const STATUS = {
-		registered: { icon: 'check', label: 'Registered', class: 'ok' },
-		invited: { icon: null, label: 'Invitation pending', class: '' },
-		expired: { icon: 'cross', label: 'Invitation expired', class: 'bad' }
+		registered: { icon: 'check', label: 'users.status.registered', class: 'ok' },
+		invited: { icon: null, label: 'users.status.invited', class: '' },
+		expired: { icon: 'cross', label: 'users.status.expired', class: 'bad' }
 	} as const;
 </script>
 
 {#if allowed}
 	<main class="page">
-		<h1>User Management</h1>
+		<h1>{t('menu.user_mgmt')}</h1>
 
 		<section aria-labelledby="h-new">
-			<h2 id="h-new">New user</h2>
+			<h2 id="h-new">{t('users.new_user')}</h2>
 			<form class="inline" onsubmit={create}>
 				<label>
-					Username
+					{t('common.username')}
 					<input
 						bind:value={username}
 						autocomplete="off"
@@ -129,29 +124,33 @@
 						minlength={rules.username.min_length}
 						maxlength={rules.username.max_length}
 						pattern={rules.username.pattern}
-						title="{rules.username.min_length} to {rules.username
-							.max_length} characters: lowercase letters, digits, . _ -"
+						title={t('common.username_hint', {
+							min: rules.username.min_length,
+							max: rules.username.max_length
+						})}
 						required
 					/>
 				</label>
 				<label>
-					Role
+					{t('users.role')}
 					<select bind:value={role} required>
 						{#each roles as r (r.id)}
 							<option value={r.id}>{r.name}</option>
 						{/each}
 					</select>
 				</label>
-				<button disabled={busy}>Create</button>
+				<button disabled={busy}>{t('common.create')}</button>
 			</form>
 			{#if link}
 				<div class="link" role="status">
 					<p>
-						Invitation link for <strong>{link.username}</strong>, valid until {link.expires}.
-						{link.copied ? 'Copied to the clipboard.' : 'Copy it and send it to the user.'}
+						{t('users.invite_link_for')} <strong>{link.username}</strong>{t('users.valid_until', {
+							expires: new Date(link.expires_s * 1000).toLocaleString(i18n.lang)
+						})}
+						{link.copied ? t('users.copied') : t('users.copy_it')}
 					</p>
 					<input
-						aria-label="Invitation link"
+						aria-label={t('users.invite_link')}
 						value={link.url}
 						readonly
 						onfocus={(e) => e.currentTarget.select()}
@@ -162,24 +161,24 @@
 		</section>
 
 		<section aria-labelledby="h-users">
-			<h2 id="h-users">Users</h2>
+			<h2 id="h-users">{t('users.users')}</h2>
 			<table>
 				<thead>
 					<tr>
-						<th><span class="visually-hidden">Status</span></th>
-						<th>Username</th>
-						<th>Name</th>
-						<th>Role</th>
-						<th><span class="visually-hidden">Actions</span></th>
+						<th><span class="visually-hidden">{t('users.status')}</span></th>
+						<th>{t('common.username')}</th>
+						<th>{t('users.name')}</th>
+						<th>{t('users.role')}</th>
+						<th><span class="visually-hidden">{t('users.actions')}</span></th>
 					</tr>
 				</thead>
 				<tbody>
 					{#each users as user (user.id)}
 						{@const status = STATUS[user.status]}
 						<tr>
-							<td class="status {status.class}" title={status.label}>
+							<td class="status {status.class}" title={t(status.label)}>
 								{#if status.icon}<Icon name={status.icon} />{/if}
-								<span class="visually-hidden">{status.label}</span>
+								<span class="visually-hidden">{t(status.label)}</span>
 							</td>
 							<td>{user.username}</td>
 							<td>{user.name ?? ''}</td>
@@ -188,8 +187,8 @@
 								{#if user.status === 'invited'}
 									<button
 										class="icon"
-										title="Copy invite link"
-										aria-label="Copy invite link"
+										title={t('users.copy_invite')}
+										aria-label={t('users.copy_invite')}
 										onclick={() => copyInvite(user)}
 										disabled={busy}
 									>
@@ -198,8 +197,8 @@
 								{:else if user.username !== session.user?.username}
 									<button
 										class="icon"
-										title="Reset account"
-										aria-label="Reset account"
+										title={t('users.reset')}
+										aria-label={t('users.reset')}
 										onclick={() => reset(user)}
 										disabled={busy}
 									>

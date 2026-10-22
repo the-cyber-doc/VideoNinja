@@ -82,7 +82,20 @@ def clear_user_credentials(con: sqlite3.Connection, user_id: int) -> None:
 
 
 def roles(con: sqlite3.Connection) -> list[sqlite3.Row]:
-    return con.execute('SELECT "id", "name" FROM "role" ORDER BY "name"').fetchall()
+    """Every role, with its name in each language ("name_en", "name_fr")."""
+    return con.execute(
+        'SELECT r."id", t."en" AS "name_en", t."fr" AS "name_fr"'
+        ' FROM "role" r JOIN "translation" t ON t."id" = r."name"'
+    ).fetchall()
+
+
+def role_name(con: sqlite3.Connection, role_id: str) -> sqlite3.Row:
+    """The role's name in each language ("name_en", "name_fr")."""
+    return con.execute(
+        'SELECT t."en" AS "name_en", t."fr" AS "name_fr"'
+        ' FROM "role" r JOIN "translation" t ON t."id" = r."name" WHERE r."id" = ?',
+        (role_id,),
+    ).fetchone()
 
 
 def role_exists(con: sqlite3.Connection, role_id: str) -> bool:

@@ -92,7 +92,8 @@ def test_registration(admin):
     secret = register(token)
     assert statuses(admin)["kenji"] == "registered"
     me = user_login("kenji", USER_PASSWORD, pyotp.TOTP(secret).now()).get("/api/auth/me").json()
-    assert me == {"username": "kenji", "name": "Kenji", "role": "user", "access": ["segment"]}
+    assert me == {"username": "kenji", "name": "Kenji", "role": "user", "role_name": "User",
+                  "access": ["segment"]}
 
     # Single use.
     assert anon.post("/api/register/verify", json={"token": token}).status_code == 404

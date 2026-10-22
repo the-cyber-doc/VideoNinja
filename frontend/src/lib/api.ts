@@ -1,3 +1,5 @@
+import { i18n } from './i18n.svelte';
+
 export class ApiError extends Error {
 	constructor(
 		public status: number,
@@ -11,6 +13,8 @@ export interface User {
 	username: string;
 	name: string | null;
 	role: string;
+	/** The role's name in the current language. */
+	role_name: string;
 	/** What the role allows, e.g. 'user_mgmt'. Only hides menus: the API enforces it. */
 	access: string[];
 }
@@ -30,7 +34,11 @@ async function errorMessage(res: Response): Promise<string> {
 async function request(path: string, body?: unknown): Promise<Response> {
 	const res = await fetch(path, {
 		method: body === undefined ? 'GET' : 'POST',
-		headers: body === undefined ? {} : { 'Content-Type': 'application/json' },
+		headers: {
+			// Translated content (role names, descriptions…) comes back in this language.
+			'Accept-Language': i18n.lang,
+			...(body === undefined ? {} : { 'Content-Type': 'application/json' })
+		},
 		body: body === undefined ? undefined : JSON.stringify(body),
 		credentials: 'same-origin'
 	});

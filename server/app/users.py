@@ -8,7 +8,7 @@ from typing import Literal
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 
-from . import db, invites, queries
+from . import db, i18n, invites, queries
 from .auth import require_access
 from .validation import field
 
@@ -42,8 +42,14 @@ class InviteOut(BaseModel):
 
 
 @router.get("/roles")
-def roles(_: sqlite3.Row = Depends(admin), con: sqlite3.Connection = Depends(db.get_db)) -> list[RoleOut]:
-    return [RoleOut(id=r["id"], name=r["name"]) for r in queries.roles(con)]
+def roles(
+    _: sqlite3.Row = Depends(admin),
+    con: sqlite3.Connection = Depends(db.get_db),
+    lang: str = Depends(i18n.language),
+) -> list[RoleOut]:
+    """Every role, named in the request's language and sorted by that name."""
+    out = [RoleOut(id=r["id"], name=i18n.pick(r, "name", lang, r["id"])) for r in queries.roles(con)]
+    return sorted(out, key=lambda r: r.name.casefold())
 
 
 @router.get("/users")

@@ -13,6 +13,7 @@ export default defineConfig({
 	use: {
 		baseURL: 'https://localhost:4173',
 		ignoreHTTPSErrors: true, // self-signed certificate of the preview server
+		locale: 'en-US', // the UI follows the browser language: pin it (tests/mocked/i18n.spec.ts changes it)
 		trace: 'retain-on-failure'
 	},
 	projects: [

@@ -1,10 +1,13 @@
 <script lang="ts">
 	// Shell of the logged-in application: full-size layout, header with the user menu.
 	// Login, setup and registration pages are outside this group and have no shell.
+	import { untrack } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import { api, currentUser, isInitialized } from '#lib/api.js';
+	import { i18n, t } from '#lib/i18n.svelte.js';
 	import Icon from '#lib/Icon.svelte';
+	import LanguageMenu from '#lib/LanguageMenu.svelte';
 	import { hasAccess, session } from '#lib/session.svelte.js';
 	import type { LayoutProps } from './$types';
 
@@ -23,6 +26,15 @@
 				error = (e as Error).message;
 			}
 		})();
+	});
+
+	// Language changed: reload the user, whose role name is translated by the server.
+	$effect(() => {
+		void i18n.lang;
+		if (!untrack(() => session.user)) return;
+		currentUser()
+			.then((user) => user && (session.user = user))
+			.catch(() => {}); // keep the current name: only the role label is stale
 	});
 
 	// Close the menu on navigation.
@@ -48,28 +60,31 @@
 	<div class="app">
 		<header>
 			<a class="brand" href="/">Video Ninja</a>
-			<div class="user-menu" bind:this={menu}>
-				<button
-					class="icon"
-					aria-label="User menu"
-					title={session.user.name ?? session.user.username}
-					aria-haspopup="menu"
-					aria-expanded={menuOpen}
-					onclick={() => (menuOpen = !menuOpen)}
-				>
-					<Icon name="user" size={22} />
-				</button>
-				{#if menuOpen}
-					<!-- Entries: Profile first, Log out always last. -->
-					<div class="menu" role="menu">
-						<p class="who">{session.user.name ?? session.user.username}</p>
-						<a role="menuitem" href="/profile">Profile</a>
-						{#if hasAccess('user_mgmt')}
-							<a role="menuitem" href="/admin/users">User Management</a>
-						{/if}
-						<button role="menuitem" class="logout" onclick={logout}>Log out</button>
-					</div>
-				{/if}
+			<div class="tools">
+				<LanguageMenu />
+				<div class="user-menu" bind:this={menu}>
+					<button
+						class="icon"
+						aria-label={t('menu.user')}
+						title={session.user.name ?? session.user.username}
+						aria-haspopup="menu"
+						aria-expanded={menuOpen}
+						onclick={() => (menuOpen = !menuOpen)}
+					>
+						<Icon name="user" size={22} />
+					</button>
+					{#if menuOpen}
+						<!-- Entries: Profile first, Log out always last. -->
+						<div class="menu" role="menu">
+							<p class="who">{session.user.name ?? session.user.username}</p>
+							<a role="menuitem" href="/profile">{t('menu.profile')}</a>
+							{#if hasAccess('user_mgmt')}
+								<a role="menuitem" href="/admin/users">{t('menu.user_mgmt')}</a>
+							{/if}
+							<button role="menuitem" class="logout" onclick={logout}>{t('menu.logout')}</button>
+						</div>
+					{/if}
+				</div>
 			</div>
 		</header>
 		<div class="content">
@@ -103,6 +118,11 @@
 	.content {
 		min-width: 0;
 		padding: 1rem;
+	}
+	.tools {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
 	}
 	.user-menu {
 		position: relative;

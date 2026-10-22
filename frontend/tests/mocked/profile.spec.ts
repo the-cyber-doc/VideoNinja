@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 
 // The API is faked: these tests check the page only, in Chromium and WebKit.
-const ME = { username: 'kenji', name: 'Kenji', role: 'user', access: ['segment'] };
+const ME = { username: 'kenji', name: 'Kenji', role: 'user', role_name: 'User', access: ['segment'] };
 
 test.beforeEach(async ({ page }) => {
 	await page.route('/api/setup/status', (r) => r.fulfill({ json: { initialized: true } }));

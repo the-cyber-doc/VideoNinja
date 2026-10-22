@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { api, type User } from '#lib/api.js';
+	import { t } from '#lib/i18n.svelte.js';
 	import { session } from '#lib/session.svelte.js';
 	import { onTotpInput, rules } from '#lib/validation.js';
 
@@ -32,7 +33,7 @@
 		run(nameStatus, async () => {
 			session.user = await api<User>('/api/profile/name', { name });
 			name = session.user.name ?? '';
-			return 'Name saved.';
+			return t('profile.name_saved');
 		});
 	};
 
@@ -46,7 +47,7 @@
 		e.preventDefault();
 		if (newPassword !== newPassword2) {
 			passwordStatus.done = '';
-			passwordStatus.error = 'The new passwords do not match.';
+			passwordStatus.error = t('profile.new_passwords_mismatch');
 			return;
 		}
 		run(passwordStatus, async () => {
@@ -55,7 +56,7 @@
 				new_password: newPassword
 			});
 			currentPassword = newPassword = newPassword2 = '';
-			return 'Password changed. Your other sessions were logged out.';
+			return t('profile.password_changed');
 		});
 	};
 
@@ -86,36 +87,38 @@
 				totp_code: totpCode
 			});
 			cancelTotp();
-			return 'Authenticator replaced. Your other sessions were logged out.';
+			return t('profile.totp_replaced');
 		});
 	};
 </script>
 
 {#if user}
 	<main class="card">
-		<h1>Profile</h1>
-		<p class="hint">Username: <strong>{user.username}</strong> ({user.role})</p>
+		<h1>{t('profile.title')}</h1>
+		<p class="hint">
+			{t('common.username_label')} <strong>{user.username}</strong> ({user.role_name})
+		</p>
 
 		<section aria-labelledby="h-name">
-			<h2 id="h-name">Display name</h2>
+			<h2 id="h-name">{t('profile.name_section')}</h2>
 			<form onsubmit={saveName}>
 				<label>
-					Name (optional)
+					{t('profile.name_optional')}
 					<input bind:value={name} autocomplete="name" maxlength={rules.display_name.max_length} />
 				</label>
 				{#if nameStatus.error}<p class="error" role="alert">{nameStatus.error}</p>{/if}
 				{#if nameStatus.done}<p class="ok" role="status">{nameStatus.done}</p>{/if}
-				<button disabled={nameStatus.busy}>Save name</button>
+				<button disabled={nameStatus.busy}>{t('profile.save_name')}</button>
 			</form>
 		</section>
 
 		<section aria-labelledby="h-password">
-			<h2 id="h-password">Password</h2>
+			<h2 id="h-password">{t('profile.password_section')}</h2>
 			<form onsubmit={savePassword}>
 				<!-- Lets password managers attach the new password to the right account. -->
 				<input type="text" value={user.username} autocomplete="username" hidden readonly />
 				<label>
-					Current password
+					{t('common.current_password')}
 					<input
 						type="password"
 						bind:value={currentPassword}
@@ -125,7 +128,7 @@
 					/>
 				</label>
 				<label>
-					New password (at least {rules.password.min_length} characters)
+					{t('profile.new_password_min', { min: rules.password.min_length })}
 					<input
 						type="password"
 						bind:value={newPassword}
@@ -136,7 +139,7 @@
 					/>
 				</label>
 				<label>
-					Confirm new password
+					{t('profile.confirm_new_password')}
 					<input
 						type="password"
 						bind:value={newPassword2}
@@ -147,31 +150,26 @@
 				</label>
 				{#if passwordStatus.error}<p class="error" role="alert">{passwordStatus.error}</p>{/if}
 				{#if passwordStatus.done}<p class="ok" role="status">{passwordStatus.done}</p>{/if}
-				<button disabled={passwordStatus.busy}>Change password</button>
+				<button disabled={passwordStatus.busy}>{t('profile.change_password')}</button>
 			</form>
 		</section>
 
 		<section aria-labelledby="h-totp">
-			<h2 id="h-totp">Authenticator</h2>
+			<h2 id="h-totp">{t('profile.totp_section')}</h2>
 			{#if !totp}
-				<p class="hint">
-					Replace the authenticator app (new phone, lost device). The current one keeps working
-					until the new one is confirmed.
-				</p>
+				<p class="hint">{t('profile.totp_hint')}</p>
 				{#if totpStatus.error}<p class="error" role="alert">{totpStatus.error}</p>{/if}
 				{#if totpStatus.done}<p class="ok" role="status">{totpStatus.done}</p>{/if}
 				<button class="secondary" onclick={startTotp} disabled={totpStatus.busy}>
-					Set up a new authenticator
+					{t('profile.totp_start')}
 				</button>
 			{:else}
 				<form onsubmit={confirmTotp}>
-					<p class="hint">
-						Scan this QR code with the new authenticator app, then enter the 6-digit code it shows.
-					</p>
-					<img class="qr" src={totp.qr} alt="TOTP QR code" width="200" height="200" />
-					<p class="hint">Or enter this key manually: <code class="secret">{totp.secret}</code></p>
+					<p class="hint">{t('profile.totp_scan')}</p>
+					<img class="qr" src={totp.qr} alt={t('common.qr_alt')} width="200" height="200" />
+					<p class="hint">{t('common.manual_key')} <code class="secret">{totp.secret}</code></p>
 					<label>
-						Code from the new app
+						{t('profile.totp_new_code')}
 						<input
 							value={totpCode}
 							oninput={(e) => (totpCode = onTotpInput(e))}
@@ -184,7 +182,7 @@
 						/>
 					</label>
 					<label>
-						Current password
+						{t('common.current_password')}
 						<input
 							type="password"
 							bind:value={totpPassword}
@@ -196,9 +194,9 @@
 					{#if totpStatus.error}<p class="error" role="alert">{totpStatus.error}</p>{/if}
 					<div class="row">
 						<button type="button" class="secondary" onclick={cancelTotp} disabled={totpStatus.busy}>
-							Cancel
+							{t('common.cancel')}
 						</button>
-						<button disabled={totpStatus.busy}>Confirm</button>
+						<button disabled={totpStatus.busy}>{t('common.confirm')}</button>
 					</div>
 				</form>
 			{/if}

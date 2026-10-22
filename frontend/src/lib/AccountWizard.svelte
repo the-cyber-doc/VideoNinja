@@ -6,6 +6,7 @@
 	//   chosen by the admin.
 	import { goto } from '$app/navigation';
 	import { api, isInitialized, ndjson } from '#lib/api.js';
+	import { t, type MessageKey } from '#lib/i18n.svelte.js';
 	import { onTotpInput, rules } from '#lib/validation.js';
 
 	/** Invitation token: registration mode. Without it: first-start setup. */
@@ -14,15 +15,11 @@
 	// svelte-ignore state_referenced_locally
 	const setup = invite === undefined;
 
-	const STEPS = setup
-		? ['Setup token', 'Admin account', 'Authenticator', 'Initialization']
-		: ['Invitation', 'Account', 'Authenticator', 'Done'];
-	const INIT_TASKS = [
-		{ id: 'schema', label: 'Create the database structure' },
-		{ id: 'data', label: 'Load the initial data' },
-		{ id: 'admin', label: 'Create the admin user' },
-		{ id: 'done', label: 'Finish' }
-	];
+	const STEPS: MessageKey[] = setup
+		? ['wizard.step.setup_token', 'wizard.step.admin', 'wizard.step.authenticator', 'wizard.step.init']
+		: ['wizard.step.invitation', 'wizard.step.account', 'wizard.step.authenticator', 'wizard.step.done'];
+	// The setup steps reported by the server, in order.
+	const INIT_TASKS = ['schema', 'data', 'admin', 'done'] as const;
 
 	let step = $state(0);
 	let error = $state('');
@@ -38,7 +35,9 @@
 	let completed = $state<string[]>([]);
 	let registered = $state(false);
 	let finished = $derived(setup ? completed.includes('done') : registered);
-	const usernameHint = `${rules.username.min_length} to ${rules.username.max_length} characters: lowercase letters, digits, . _ -`;
+	const usernameHint = $derived(
+		t('common.username_hint', { min: rules.username.min_length, max: rules.username.max_length })
+	);
 
 	$effect(() => {
 		if (setup) {
@@ -78,7 +77,7 @@
 	const submitAccount = (e: SubmitEvent) => {
 		e.preventDefault();
 		if (password !== password2) {
-			error = 'The passwords do not match.';
+			error = t('common.passwords_mismatch');
 			return;
 		}
 		run(async () => {
@@ -113,19 +112,19 @@
 				if (r.value.step) completed = [...completed, r.value.step];
 			}
 			password = password2 = '';
-			if (!finished) throw new Error('Setup ended unexpectedly, see the server logs.');
+			if (!finished) throw new Error(t('wizard.setup_unexpected_end'));
 		});
 	};
 </script>
 
 <main class="card">
-	<h1>{setup ? 'Set up Video Ninja' : 'Create your account'}</h1>
+	<h1>{setup ? t('wizard.setup_title') : t('wizard.register_title')}</h1>
 
-	<ol class="stepper" aria-label="Progress">
+	<ol class="stepper" aria-label={t('wizard.progress')}>
 		{#each STEPS as label, i (label)}
 			<li class:active={i === step} class:done={i < step || finished}>
 				<span class="dot">{i < step || finished ? '✓' : i + 1}</span>
-				<span class="label">{label}</span>
+				<span class="label">{t(label)}</span>
 			</li>
 		{/each}
 	</ol>
@@ -142,11 +141,11 @@
 	{#if step === 0 && setup}
 		<form onsubmit={submitToken}>
 			<p class="hint">
-				For security, setup needs the one-time token printed in the server logs, e.g.
+				{t('wizard.token_hint')}
 				<code>docker logs videoninja</code>.
 			</p>
 			<label>
-				Setup token
+				{t('wizard.step.setup_token')}
 				<input
 					bind:value={token}
 					autocomplete="off"
@@ -156,20 +155,20 @@
 				/>
 			</label>
 			{#if error}<p class="error" role="alert">{error}</p>{/if}
-			<button disabled={busy}>Continue</button>
+			<button disabled={busy}>{t('common.continue')}</button>
 		</form>
 	{:else if step === 0}
 		{#if error}
 			<p class="error" role="alert">{error}</p>
-			<p class="hint">Ask an administrator for a new invitation link.</p>
+			<p class="hint">{t('wizard.ask_new_invite')}</p>
 		{:else}
-			<p class="hint">Checking the invitation…</p>
+			<p class="hint">{t('wizard.checking_invite')}</p>
 		{/if}
 	{:else if step === 1}
 		<form onsubmit={submitAccount}>
 			{#if setup}
 				<label>
-					Username
+					{t('common.username')}
 					<input
 						bind:value={username}
 						autocomplete="username"
@@ -182,16 +181,16 @@
 					/>
 				</label>
 			{:else}
-				<p>Username: <strong>{username}</strong></p>
+				<p>{t('common.username_label')} <strong>{username}</strong></p>
 				<!-- Lets password managers store the password under the right username. -->
 				<input type="text" value={username} autocomplete="username" hidden readonly />
 			{/if}
 			<label>
-				Display name (optional)
+				{t('common.display_name_optional')}
 				<input bind:value={name} autocomplete="name" maxlength={rules.display_name.max_length} />
 			</label>
 			<label>
-				Password (at least {rules.password.min_length} characters)
+				{t('common.password_min', { min: rules.password.min_length })}
 				<input
 					type="password"
 					bind:value={password}
@@ -202,7 +201,7 @@
 				/>
 			</label>
 			<label>
-				Confirm password
+				{t('common.confirm_password')}
 				<input
 					type="password"
 					bind:value={password2}
@@ -212,18 +211,15 @@
 				/>
 			</label>
 			{#if error}<p class="error" role="alert">{error}</p>{/if}
-			<button disabled={busy}>Continue</button>
+			<button disabled={busy}>{t('common.continue')}</button>
 		</form>
 	{:else if step === 2 && totp}
 		<form onsubmit={submitTotp}>
-			<p class="hint">
-				Scan this QR code with an authenticator app (Aegis, Google Authenticator, 1Password…),
-				then enter the 6-digit code it shows.
-			</p>
-			<img class="qr" src={totp.qr} alt="TOTP QR code" width="200" height="200" />
-			<p class="hint">Or enter this key manually: <code class="secret">{totp.secret}</code></p>
+			<p class="hint">{t('wizard.scan_hint')}</p>
+			<img class="qr" src={totp.qr} alt={t('common.qr_alt')} width="200" height="200" />
+			<p class="hint">{t('common.manual_key')} <code class="secret">{totp.secret}</code></p>
 			<label>
-				Authenticator code
+				{t('common.totp_code')}
 				<input
 					value={totpCode}
 					oninput={(e) => (totpCode = onTotpInput(e))}
@@ -237,18 +233,20 @@
 			</label>
 			{#if error}<p class="error" role="alert">{error}</p>{/if}
 			<div class="row">
-				<button type="button" class="secondary" onclick={() => (step = 1)} disabled={busy}>Back</button>
-				<button disabled={busy}>Create</button>
+				<button type="button" class="secondary" onclick={() => (step = 1)} disabled={busy}>
+					{t('common.back')}
+				</button>
+				<button disabled={busy}>{t('common.create')}</button>
 			</div>
 		</form>
 	{:else if step === 3}
 		{#if setup}
 			<ul class="tasks">
-				{#each INIT_TASKS as task (task.id)}
-					{@const done = completed.includes(task.id)}
-					{@const current = !done && busy && INIT_TASKS.findIndex((t) => !completed.includes(t.id)) === INIT_TASKS.indexOf(task)}
+				{#each INIT_TASKS as task (task)}
+					{@const done = completed.includes(task)}
+					{@const current = !done && busy && INIT_TASKS.find((id) => !completed.includes(id)) === task}
 					<li class:done class:current>
-						<span class="mark">{done ? '✓' : current ? '…' : '·'}</span>{task.label}
+						<span class="mark">{done ? '✓' : current ? '…' : '·'}</span>{t(`wizard.task.${task}`)}
 					</li>
 				{/each}
 			</ul>
@@ -256,11 +254,11 @@
 		{#if error}<p class="error" role="alert">{error}</p>{/if}
 		{#if finished}
 			<p>
-				{setup
-					? 'Video Ninja is ready. Log in with your new admin account.'
-					: 'Your account is ready. Log in with your password and authenticator code.'}
+				{setup ? t('wizard.setup_ready') : t('wizard.register_ready')}
 			</p>
-			<button onclick={() => goto('/login', { replaceState: true })}>Go to login</button>
+			<button onclick={() => goto('/login', { replaceState: true })}>
+				{t('wizard.go_to_login')}
+			</button>
 		{/if}
 	{/if}
 </main>

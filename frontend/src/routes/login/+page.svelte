@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { api, isInitialized } from '#lib/api.js';
+	import { t } from '#lib/i18n.svelte.js';
 	import { onTotpInput, rules } from '#lib/validation.js';
 
 	let username = $state('');
@@ -32,10 +33,10 @@
 </script>
 
 <main class="card">
-	<h1>Log in</h1>
+	<h1>{t('login.title')}</h1>
 	<form onsubmit={submit}>
 		<label>
-			Username
+			{t('common.username')}
 			<input
 				bind:value={username}
 				autocomplete="username"
@@ -45,7 +46,7 @@
 			/>
 		</label>
 		<label>
-			Password
+			{t('common.password')}
 			<input
 				type="password"
 				bind:value={password}
@@ -55,7 +56,7 @@
 			/>
 		</label>
 		<label>
-			Authenticator code
+			{t('common.totp_code')}
 			<input
 				value={totpCode}
 				oninput={(e) => (totpCode = onTotpInput(e))}
@@ -67,6 +68,6 @@
 			/>
 		</label>
 		{#if error}<p class="error" role="alert">{error}</p>{/if}
-		<button disabled={busy}>{busy ? 'Logging in…' : 'Log in'}</button>
+		<button disabled={busy}>{busy ? t('login.busy') : t('login.submit')}</button>
 	</form>
 </main>

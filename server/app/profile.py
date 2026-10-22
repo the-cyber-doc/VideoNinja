@@ -10,7 +10,7 @@ import sqlite3
 from fastapi import APIRouter, Cookie, Depends, HTTPException, status
 from pydantic import BaseModel
 
-from . import crypto, db, queries, security
+from . import crypto, db, i18n, queries, security
 from .auth import UserOut, current_user, user_out
 from .security import SESSION_COOKIE
 from .validation import field
@@ -46,11 +46,12 @@ def set_name(
     body: NameIn,
     user: sqlite3.Row = Depends(current_user),
     con: sqlite3.Connection = Depends(db.get_db),
+    lang: str = Depends(i18n.language),
 ) -> UserOut:
     name = body.name.strip() or None
     with con:
         queries.set_user_name(con, user["id"], name)
-    return user_out(con, {**user, "name": name})
+    return user_out(con, {**user, "name": name}, lang)
 
 
 @router.post("/password", status_code=status.HTTP_204_NO_CONTENT)

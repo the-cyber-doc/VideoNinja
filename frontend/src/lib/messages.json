@@ -1,0 +1,142 @@
+{
+	"common.username": { "en": "Username", "fr": "Nom d'utilisateur" },
+	"common.username_label": { "en": "Username:", "fr": "Nom d'utilisateur :" },
+	"common.username_hint": {
+		"en": "{min} to {max} characters: lowercase letters, digits, . _ -",
+		"fr": "{min} à {max} caractères : lettres minuscules, chiffres, . _ -"
+	},
+	"common.password": { "en": "Password", "fr": "Mot de passe" },
+	"common.password_min": {
+		"en": "Password (at least {min} characters)",
+		"fr": "Mot de passe (au moins {min} caractères)"
+	},
+	"common.confirm_password": { "en": "Confirm password", "fr": "Confirmer le mot de passe" },
+	"common.current_password": { "en": "Current password", "fr": "Mot de passe actuel" },
+	"common.passwords_mismatch": {
+		"en": "The passwords do not match.",
+		"fr": "Les mots de passe ne correspondent pas."
+	},
+	"common.display_name_optional": { "en": "Display name (optional)", "fr": "Nom affiché (facultatif)" },
+	"common.totp_code": { "en": "Authenticator code", "fr": "Code de l'authentificateur" },
+	"common.qr_alt": { "en": "TOTP QR code", "fr": "QR code TOTP" },
+	"common.manual_key": { "en": "Or enter this key manually:", "fr": "Ou saisissez cette clé manuellement :" },
+	"common.continue": { "en": "Continue", "fr": "Continuer" },
+	"common.back": { "en": "Back", "fr": "Retour" },
+	"common.create": { "en": "Create", "fr": "Créer" },
+	"common.cancel": { "en": "Cancel", "fr": "Annuler" },
+	"common.confirm": { "en": "Confirm", "fr": "Confirmer" },
+
+	"language.current": { "en": "Language: {name}", "fr": "Langue : {name}" },
+
+	"menu.user": { "en": "User menu", "fr": "Menu utilisateur" },
+	"menu.profile": { "en": "Profile", "fr": "Profil" },
+	"menu.user_mgmt": { "en": "User Management", "fr": "Gestion des utilisateurs" },
+	"menu.logout": { "en": "Log out", "fr": "Se déconnecter" },
+
+	"home.logged_in_as": { "en": "Logged in as", "fr": "Connecté en tant que" },
+
+	"login.title": { "en": "Log in", "fr": "Connexion" },
+	"login.submit": { "en": "Log in", "fr": "Se connecter" },
+	"login.busy": { "en": "Logging in…", "fr": "Connexion…" },
+
+	"wizard.setup_title": { "en": "Set up Video Ninja", "fr": "Configurer Video Ninja" },
+	"wizard.register_title": { "en": "Create your account", "fr": "Créez votre compte" },
+	"wizard.progress": { "en": "Progress", "fr": "Progression" },
+	"wizard.step.setup_token": { "en": "Setup token", "fr": "Jeton d'installation" },
+	"wizard.step.admin": { "en": "Admin account", "fr": "Compte administrateur" },
+	"wizard.step.authenticator": { "en": "Authenticator", "fr": "Authentificateur" },
+	"wizard.step.init": { "en": "Initialization", "fr": "Initialisation" },
+	"wizard.step.invitation": { "en": "Invitation", "fr": "Invitation" },
+	"wizard.step.account": { "en": "Account", "fr": "Compte" },
+	"wizard.step.done": { "en": "Done", "fr": "Terminé" },
+	"wizard.task.schema": {
+		"en": "Create the database structure",
+		"fr": "Créer la structure de la base de données"
+	},
+	"wizard.task.data": { "en": "Load the initial data", "fr": "Charger les données initiales" },
+	"wizard.task.admin": { "en": "Create the admin user", "fr": "Créer l'utilisateur administrateur" },
+	"wizard.task.done": { "en": "Finish", "fr": "Terminer" },
+	"wizard.token_hint": {
+		"en": "For security, setup needs the one-time token printed in the server logs, e.g.",
+		"fr": "Par sécurité, l'installation demande le jeton à usage unique affiché dans les journaux du serveur, par exemple"
+	},
+	"wizard.checking_invite": { "en": "Checking the invitation…", "fr": "Vérification de l'invitation…" },
+	"wizard.ask_new_invite": {
+		"en": "Ask an administrator for a new invitation link.",
+		"fr": "Demandez un nouveau lien d'invitation à un administrateur."
+	},
+	"wizard.scan_hint": {
+		"en": "Scan this QR code with an authenticator app (Aegis, Google Authenticator, 1Password…), then enter the 6-digit code it shows.",
+		"fr": "Scannez ce QR code avec une application d'authentification (Aegis, Google Authenticator, 1Password…), puis saisissez le code à 6 chiffres qu'elle affiche."
+	},
+	"wizard.setup_unexpected_end": {
+		"en": "Setup ended unexpectedly, see the server logs.",
+		"fr": "L'installation s'est arrêtée de façon inattendue, consultez les journaux du serveur."
+	},
+	"wizard.setup_ready": {
+		"en": "Video Ninja is ready. Log in with your new admin account.",
+		"fr": "Video Ninja est prêt. Connectez-vous avec votre nouveau compte administrateur."
+	},
+	"wizard.register_ready": {
+		"en": "Your account is ready. Log in with your password and authenticator code.",
+		"fr": "Votre compte est prêt. Connectez-vous avec votre mot de passe et le code de votre authentificateur."
+	},
+	"wizard.go_to_login": { "en": "Go to login", "fr": "Aller à la connexion" },
+
+	"profile.title": { "en": "Profile", "fr": "Profil" },
+	"profile.name_section": { "en": "Display name", "fr": "Nom affiché" },
+	"profile.name_optional": { "en": "Name (optional)", "fr": "Nom (facultatif)" },
+	"profile.save_name": { "en": "Save name", "fr": "Enregistrer le nom" },
+	"profile.name_saved": { "en": "Name saved.", "fr": "Nom enregistré." },
+	"profile.password_section": { "en": "Password", "fr": "Mot de passe" },
+	"profile.new_password_min": {
+		"en": "New password (at least {min} characters)",
+		"fr": "Nouveau mot de passe (au moins {min} caractères)"
+	},
+	"profile.confirm_new_password": { "en": "Confirm new password", "fr": "Confirmer le nouveau mot de passe" },
+	"profile.new_passwords_mismatch": {
+		"en": "The new passwords do not match.",
+		"fr": "Les nouveaux mots de passe ne correspondent pas."
+	},
+	"profile.change_password": { "en": "Change password", "fr": "Changer le mot de passe" },
+	"profile.password_changed": {
+		"en": "Password changed. Your other sessions were logged out.",
+		"fr": "Mot de passe changé. Vos autres sessions ont été déconnectées."
+	},
+	"profile.totp_section": { "en": "Authenticator", "fr": "Authentificateur" },
+	"profile.totp_hint": {
+		"en": "Replace the authenticator app (new phone, lost device). The current one keeps working until the new one is confirmed.",
+		"fr": "Remplacez l'application d'authentification (nouveau téléphone, appareil perdu). L'actuelle continue de fonctionner jusqu'à la confirmation de la nouvelle."
+	},
+	"profile.totp_start": { "en": "Set up a new authenticator", "fr": "Configurer un nouvel authentificateur" },
+	"profile.totp_scan": {
+		"en": "Scan this QR code with the new authenticator app, then enter the 6-digit code it shows.",
+		"fr": "Scannez ce QR code avec la nouvelle application d'authentification, puis saisissez le code à 6 chiffres qu'elle affiche."
+	},
+	"profile.totp_new_code": { "en": "Code from the new app", "fr": "Code de la nouvelle application" },
+	"profile.totp_replaced": {
+		"en": "Authenticator replaced. Your other sessions were logged out.",
+		"fr": "Authentificateur remplacé. Vos autres sessions ont été déconnectées."
+	},
+
+	"users.new_user": { "en": "New user", "fr": "Nouvel utilisateur" },
+	"users.role": { "en": "Role", "fr": "Rôle" },
+	"users.invite_link_for": { "en": "Invitation link for", "fr": "Lien d'invitation pour" },
+	"users.valid_until": { "en": ", valid until {expires}.", "fr": ", valable jusqu'au {expires}." },
+	"users.copied": { "en": "Copied to the clipboard.", "fr": "Copié dans le presse-papiers." },
+	"users.copy_it": { "en": "Copy it and send it to the user.", "fr": "Copiez-le et envoyez-le à l'utilisateur." },
+	"users.invite_link": { "en": "Invitation link", "fr": "Lien d'invitation" },
+	"users.users": { "en": "Users", "fr": "Utilisateurs" },
+	"users.status": { "en": "Status", "fr": "Statut" },
+	"users.name": { "en": "Name", "fr": "Nom" },
+	"users.actions": { "en": "Actions", "fr": "Actions" },
+	"users.copy_invite": { "en": "Copy invite link", "fr": "Copier le lien d'invitation" },
+	"users.reset": { "en": "Reset account", "fr": "Réinitialiser le compte" },
+	"users.reset_confirm": {
+		"en": "Reset the account of {username}? Their password and authenticator are removed, they are logged out, and they need a new invitation link to log in again.",
+		"fr": "Réinitialiser le compte de {username} ? Son mot de passe et son authentificateur sont supprimés, ses sessions sont fermées, et un nouveau lien d'invitation sera nécessaire pour se reconnecter."
+	},
+	"users.status.registered": { "en": "Registered", "fr": "Inscrit" },
+	"users.status.invited": { "en": "Invitation pending", "fr": "Invitation en attente" },
+	"users.status.expired": { "en": "Invitation expired", "fr": "Invitation expirée" }
+}

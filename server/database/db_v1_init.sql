@@ -7,22 +7,12 @@ BEGIN;
 INSERT INTO "config" ("name", "type", "value") VALUES
 	('db_version', 'int', '1');
 
-INSERT INTO "access" ("id", "name") VALUES
-	('user_mgmt', 'User Management'),
-	('segment', 'Segment');
-
-INSERT INTO "role" ("id", "name") VALUES
-	('admin', 'Admin'),
-	('user', 'User');
-
-INSERT INTO "role_has_access" ("role", "access") VALUES
-	('admin', 'user_mgmt'),
-	('admin', 'segment'),
-	('user', 'segment');
-
--- The admin user is created by the first-start setup wizard.
-
+-- Before the tables that point to it (foreign keys are checked immediately).
 INSERT INTO "translation" ("id", "en", "fr") VALUES
+	('access.user_mgmt.name', 'User Management', 'Gestion des utilisateurs'),
+	('access.segment.name', 'Segment', 'Segment'),
+	('role.admin.name', 'Admin', 'Administrateur'),
+	('role.user.name', 'User', 'Utilisateur'),
 	('ryu.togakure.description', 'School of the Hidden Door', 'École de la porte cachée'),
 	('ryu.gyokko.description', 'The Jeweled Tiger School', 'L''école du tigre de jade'),
 	('ryu.kukishinden.description', 'The Nine Demon Gods School', 'L''école des neuf dieux démons'),
@@ -35,6 +25,21 @@ INSERT INTO "translation" ("id", "en", "fr") VALUES
 	('level.shoden.description', 'The initial transmission', 'La transmission initiale'),
 	('level.chuden.description', 'The intermediate transmission', 'La transmission intermédiaire'),
 	('level.okuden.description', 'The deep transmission', 'La transmission profonde');
+
+INSERT INTO "access" ("id", "name") VALUES
+	('user_mgmt', 'access.user_mgmt.name'),
+	('segment', 'access.segment.name');
+
+INSERT INTO "role" ("id", "name") VALUES
+	('admin', 'role.admin.name'),
+	('user', 'role.user.name');
+
+INSERT INTO "role_has_access" ("role", "access") VALUES
+	('admin', 'user_mgmt'),
+	('admin', 'segment'),
+	('user', 'segment');
+
+-- The admin user is created by the first-start setup wizard.
 
 INSERT INTO "ryu" ("id", "kanji", "romaji", "description") VALUES
 	('togakure', '戸隠流', 'Togakure Ryu', 'ryu.togakure.description'),
