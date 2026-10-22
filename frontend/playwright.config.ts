@@ -1,8 +1,10 @@
 import { defineConfig, devices } from '@playwright/test';
 
 // Browser tests. tests/mocked: the API is faked with page.route, run in Chromium and
-// WebKit (Safari's engine). tests/e2e: real backend, fresh database, Chromium only
-// (the flows change the database, so they run once, in order).
+// WebKit (Safari's engine), service worker blocked (page.route does not see its
+// requests). tests/pwa: the service worker itself (install, offline, caches), API
+// faked with context.route, Chromium. tests/e2e: real backend, fresh database,
+// Chromium only (the flows change the database, so they run once, in order).
 const API_PORT = 8001; // not 8000, so a running dev backend does not interfere
 
 export default defineConfig({
@@ -17,8 +19,26 @@ export default defineConfig({
 		trace: 'retain-on-failure'
 	},
 	projects: [
-		{ name: 'chromium', testDir: 'tests/mocked', use: devices['Desktop Chrome'] },
-		{ name: 'webkit', testDir: 'tests/mocked', use: devices['Desktop Safari'] },
+		{
+			name: 'chromium',
+			testDir: 'tests/mocked',
+			use: { ...devices['Desktop Chrome'], serviceWorkers: 'block' }
+		},
+		{
+			name: 'webkit',
+			testDir: 'tests/mocked',
+			use: { ...devices['Desktop Safari'], serviceWorkers: 'block' }
+		},
+		{
+			name: 'pwa',
+			testDir: 'tests/pwa',
+			use: {
+				...devices['Desktop Chrome'],
+				// ignoreHTTPSErrors is not enough: Chrome refuses to register a service
+				// worker served with a self-signed certificate without this flag.
+				launchOptions: { args: ['--ignore-certificate-errors'] }
+			}
+		},
 		{ name: 'e2e', testDir: 'tests/e2e', use: devices['Desktop Chrome'], fullyParallel: false }
 	],
 	webServer: [

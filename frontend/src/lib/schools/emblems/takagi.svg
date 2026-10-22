@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" fill="none" stroke="#b3261e" stroke-opacity="0.4" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">
+	<!-- Takagi Yoshin: the high tree (tall pine) -->
+	<path d="M100 18l-26 30h14l-34 34h18l-38 38h132l-38-38h18l-34-34h14z" fill="#b3261e" fill-opacity="0.1"/>
+	<path d="M100 120v56M88 176h24"/>
+	<path d="M100 132l-16-10M100 146l18-12"/>
+	<path d="M24 176h152"/>
+</svg>

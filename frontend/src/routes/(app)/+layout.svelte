@@ -8,6 +8,8 @@
 	import { i18n, t } from '#lib/i18n.svelte.js';
 	import Icon from '#lib/Icon.svelte';
 	import LanguageMenu from '#lib/LanguageMenu.svelte';
+	import MainNav from '#lib/MainNav.svelte';
+	import { clearUserData, persistStorage } from '#lib/pwa.js';
 	import { hasAccess, session } from '#lib/session.svelte.js';
 	import type { LayoutProps } from './$types';
 
@@ -19,9 +21,10 @@
 	$effect(() => {
 		(async () => {
 			try {
-				if (!(await isInitialized())) return goto('/setup', { replaceState: true });
+				if (!(await isInitialized())) return goto('/setup', { replace: true });
 				session.user = await currentUser();
-				if (!session.user) return goto('/login', { replaceState: true });
+				if (!session.user) return goto('/login', { replace: true });
+				persistStorage();
 			} catch (e) {
 				error = (e as Error).message;
 			}
@@ -49,8 +52,9 @@
 
 	async function logout() {
 		await api('/api/auth/logout', {});
+		await clearUserData();
 		session.user = null;
-		goto('/login', { replaceState: true });
+		goto('/login', { replace: true });
 	}
 </script>
 
@@ -60,6 +64,7 @@
 	<div class="app">
 		<header>
 			<a class="brand" href="/">Video Ninja</a>
+			<MainNav />
 			<div class="tools">
 				<LanguageMenu />
 				<div class="user-menu" bind:this={menu}>
@@ -102,9 +107,10 @@
 		grid-template-rows: auto 1fr;
 	}
 	header {
-		display: flex;
+		/* brand | main navigation (centred whatever the side widths) | tools */
+		display: grid;
+		grid-template-columns: 1fr auto 1fr;
 		align-items: center;
-		justify-content: space-between;
 		gap: 1rem;
 		padding: 0.5rem 1rem;
 		background: var(--surface);
@@ -114,12 +120,14 @@
 		font-weight: 700;
 		color: var(--text);
 		text-decoration: none;
+		white-space: nowrap;
 	}
 	.content {
 		min-width: 0;
 		padding: 1rem;
 	}
 	.tools {
+		justify-self: end;
 		display: flex;
 		align-items: center;
 		gap: 0.5rem;

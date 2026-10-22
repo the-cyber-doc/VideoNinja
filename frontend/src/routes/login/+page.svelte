@@ -2,6 +2,7 @@
 	import { goto } from '$app/navigation';
 	import { api, isInitialized } from '#lib/api.js';
 	import { t } from '#lib/i18n.svelte.js';
+	import { clearUserData } from '#lib/pwa.js';
 	import { onTotpInput, rules } from '#lib/validation.js';
 
 	let username = $state('');
@@ -12,7 +13,7 @@
 
 	$effect(() => {
 		isInitialized().then((ok) => {
-			if (!ok) goto('/setup', { replaceState: true });
+			if (!ok) goto('/setup', { replace: true });
 		});
 	});
 
@@ -22,7 +23,8 @@
 		error = '';
 		try {
 			await api('/api/auth/login', { username, password, totp_code: totpCode });
-			goto('/', { replaceState: true });
+			await clearUserData(); // nothing cached from a previous user
+			goto('/', { replace: true });
 		} catch (e) {
 			error = (e as Error).message;
 			totpCode = '';

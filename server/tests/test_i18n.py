@@ -35,9 +35,12 @@ def test_translation_columns_match_languages(admin):  # noqa: F811
 
 def test_roles_are_translated(admin):  # noqa: F811
     assert admin.get("/api/admin/roles").json() == [
-        {"id": "admin", "name": "Admin"}, {"id": "user", "name": "User"}]
+        {"id": "admin", "name": "Admin"}, {"id": "editor", "name": "Editor"},
+        {"id": "uploader", "name": "Uploader"}, {"id": "user", "name": "User"}]
     fr = admin.get("/api/admin/roles", headers={"Accept-Language": "fr"}).json()
-    assert fr == [{"id": "admin", "name": "Administrateur"}, {"id": "user", "name": "Utilisateur"}]
+    # Sorted ignoring accents: "Éditeur" with the E's.
+    assert fr == [{"id": "admin", "name": "Administrateur"}, {"id": "editor", "name": "Éditeur"},
+                  {"id": "uploader", "name": "Téléverseur"}, {"id": "user", "name": "Utilisateur"}]
 
 
 def test_me_role_name_is_translated(admin):  # noqa: F811

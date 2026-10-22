@@ -25,8 +25,14 @@
 	"common.create": { "en": "Create", "fr": "Créer" },
 	"common.cancel": { "en": "Cancel", "fr": "Annuler" },
 	"common.confirm": { "en": "Confirm", "fr": "Confirmer" },
+	"common.loading": { "en": "Loading…", "fr": "Chargement…" },
 
 	"language.current": { "en": "Language: {name}", "fr": "Langue : {name}" },
+
+	"nav.main": { "en": "Main navigation", "fr": "Navigation principale" },
+	"nav.schools": { "en": "Schools", "fr": "Écoles" },
+
+	"schools.title": { "en": "Schools", "fr": "Écoles" },
 
 	"menu.user": { "en": "User menu", "fr": "Menu utilisateur" },
 	"menu.profile": { "en": "Profile", "fr": "Profil" },

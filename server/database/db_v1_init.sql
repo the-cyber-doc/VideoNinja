@@ -11,8 +11,12 @@ INSERT INTO "config" ("name", "type", "value") VALUES
 INSERT INTO "translation" ("id", "en", "fr") VALUES
 	('access.user_mgmt.name', 'User Management', 'Gestion des utilisateurs'),
 	('access.segment.name', 'Segment', 'Segment'),
+	('access.upload.name', 'Upload', 'Téléversement'),
+	('access.annotate.name', 'Annotate', 'Annotation'),
 	('role.admin.name', 'Admin', 'Administrateur'),
 	('role.user.name', 'User', 'Utilisateur'),
+	('role.editor.name', 'Editor', 'Éditeur'),
+	('role.uploader.name', 'Uploader', 'Téléverseur'),
 	('ryu.togakure.description', 'School of the Hidden Door', 'École de la porte cachée'),
 	('ryu.gyokko.description', 'The Jeweled Tiger School', 'L''école du tigre de jade'),
 	('ryu.kukishinden.description', 'The Nine Demon Gods School', 'L''école des neuf dieux démons'),
@@ -28,16 +32,27 @@ INSERT INTO "translation" ("id", "en", "fr") VALUES
 
 INSERT INTO "access" ("id", "name") VALUES
 	('user_mgmt', 'access.user_mgmt.name'),
-	('segment', 'access.segment.name');
+	('segment', 'access.segment.name'),
+	('upload', 'access.upload.name'),
+	('annotate', 'access.annotate.name');
 
 INSERT INTO "role" ("id", "name") VALUES
 	('admin', 'role.admin.name'),
-	('user', 'role.user.name');
+	('user', 'role.user.name'),
+	('editor', 'role.editor.name'),
+	('uploader', 'role.uploader.name');
 
 INSERT INTO "role_has_access" ("role", "access") VALUES
 	('admin', 'user_mgmt'),
 	('admin', 'segment'),
-	('user', 'segment');
+	('admin', 'upload'),
+	('admin', 'annotate'),
+	('user', 'segment'),
+	('editor', 'segment'),
+	('editor', 'annotate'),
+	('uploader', 'segment'),
+	('uploader', 'annotate'),
+	('uploader', 'upload');
 
 -- The admin user is created by the first-start setup wizard.
 

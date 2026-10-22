@@ -58,7 +58,7 @@ def test_create_and_list(admin):
     assert users["kenji"] == {"id": users["kenji"]["id"], "username": "kenji", "name": None,
                               "role": "user", "status": "invited"}
     roles = admin.get("/api/admin/roles").json()
-    assert {r["id"] for r in roles} == {"admin", "user"}
+    assert {r["id"] for r in roles} == {"admin", "editor", "uploader", "user"}
 
 
 def test_create_checks(admin):

@@ -17,6 +17,8 @@ frontend/build/
 *.db
 *.db-wal
 *.db-shm
+# Catalogue snapshots written next to a local dev database
+server/catalog/
 
 # Encryption keys (dev key: server/dev.key)
 *.key

@@ -16,7 +16,10 @@ export default defineConfig({
 
 			// Static SPA shell (no data in it); nginx serves it, the app serves data.
 			// precompress: .br + .gz next to each file, for gzip_static/brotli_static.
-			adapter: adapter({ fallback: 'index.html', precompress: true })
+			adapter: adapter({ fallback: 'index.html', precompress: true }),
+
+			// Registered by the app, in production builds only ($lib/pwa.ts).
+			serviceWorker: { register: false }
 		})
 	],
 	server: {

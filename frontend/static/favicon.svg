@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+	<title>Video Ninja</title>
+	<!-- Film strip, with its sprocket holes. -->
+	<rect x="1" y="12" width="62" height="40" rx="5" fill="#b3261e"/>
+	<g fill="#ffffff">
+		<rect x="4" y="15" width="5" height="4" rx="1"/>
+		<rect x="13" y="15" width="5" height="4" rx="1"/>
+		<rect x="46" y="15" width="5" height="4" rx="1"/>
+		<rect x="55" y="15" width="5" height="4" rx="1"/>
+		<rect x="4" y="45" width="5" height="4" rx="1"/>
+		<rect x="13" y="45" width="5" height="4" rx="1"/>
+		<rect x="46" y="45" width="5" height="4" rx="1"/>
+		<rect x="55" y="45" width="5" height="4" rx="1"/>
+	</g>
+	<!-- Ninja head: hood, headband tails, eye opening, eyes. -->
+	<path d="M45 21l12-8M46 25l13-2" stroke="#1d1d1f" stroke-width="3.5" stroke-linecap="round"/>
+	<circle cx="32" cy="33" r="18" fill="#1d1d1f"/>
+	<path d="M17 30c9-4 21-4 30 0v6c-9-3-21-3-30 0z" fill="#f1d3b3"/>
+	<path d="M22 31.5l6 2M42 31.5l-6 2" stroke="#1d1d1f" stroke-width="2.6" stroke-linecap="round"/>
+</svg>

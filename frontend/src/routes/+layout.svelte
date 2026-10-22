@@ -1,13 +1,14 @@
 <script lang="ts">
 	import '../app.css';
-	import favicon from '#lib/assets/favicon.svg';
+	import { registerServiceWorker } from '#lib/pwa.js';
 	import type { LayoutProps } from './$types';
 
 	let { children }: LayoutProps = $props();
+
+	$effect(registerServiceWorker);
 </script>
 
 <svelte:head>
-	<link rel="icon" href={favicon} />
 	<title>Video Ninja</title>
 </svelte:head>
 

@@ -36,7 +36,7 @@
 
 	$effect(() => {
 		if (!allowed) {
-			goto('/', { replaceState: true });
+			goto('/', { replace: true });
 			return;
 		}
 		void i18n.lang; // reload on language change: role names are translated by the server

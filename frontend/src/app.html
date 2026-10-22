@@ -4,6 +4,13 @@
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
 		<meta name="text-scale" content="scale" />
+		<!-- In the HTML, not added by JavaScript: otherwise browsers first ask for /favicon.ico. -->
+		<link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+		<!-- PWA: install metadata; colours of the header (--surface) in each theme. -->
+		<link rel="manifest" href="/manifest.webmanifest" />
+		<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+		<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+		<meta name="theme-color" content="#1e1e21" media="(prefers-color-scheme: dark)" />
 		%sveltekit.head%
 	</head>
 	<body data-sveltekit-preload-data="hover">

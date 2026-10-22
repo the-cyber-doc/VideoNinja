@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" fill="none" stroke="#b3261e" stroke-opacity="0.4" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">
+	<!-- Gyokko: the jewelled tiger (tiger head under a jewel) -->
+	<path d="M100 18l14 18-14 18-14-18z" fill="#b3261e" fill-opacity="0.15"/>
+	<path d="M56 78l-8-18 22 8M144 78l8-18-22 8"/>
+	<path d="M100 66c-34 0-54 24-54 54 0 32 24 58 54 58s54-26 54-58c0-30-20-54-54-54z"/>
+	<path d="M86 76l4 14M100 72v16M114 76l-4 14"/>
+	<path d="M74 112l14 4M126 112l-14 4"/>
+	<path d="M92 138h16l-8 9z" fill="#b3261e" fill-opacity="0.2"/>
+	<path d="M100 147v8M86 160c6 5 22 5 28 0"/>
+	<path d="M52 128l14 2M52 142l14-2M148 128l-14 2M148 142l-14-2"/>
+</svg>

@@ -42,7 +42,7 @@
 	$effect(() => {
 		if (setup) {
 			isInitialized().then((ok) => {
-				if (ok) goto('/login', { replaceState: true });
+				if (ok) goto('/login', { replace: true });
 			});
 		} else {
 			// The invitation is checked at once: the user sees who it is for, or why it fails.
@@ -256,7 +256,7 @@
 			<p>
 				{setup ? t('wizard.setup_ready') : t('wizard.register_ready')}
 			</p>
-			<button onclick={() => goto('/login', { replaceState: true })}>
+			<button onclick={() => goto('/login', { replace: true })}>
 				{t('wizard.go_to_login')}
 			</button>
 		{/if}

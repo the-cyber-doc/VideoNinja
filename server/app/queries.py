@@ -190,3 +190,29 @@ def invite_expiry(con: sqlite3.Connection, user_id: int) -> int:
 def delete_invite(con: sqlite3.Connection, user_id: int) -> bool:
     """True if an invitation was deleted."""
     return con.execute('DELETE FROM "invite" WHERE "user" = ?', (user_id,)).rowcount == 1
+
+
+# --- catalogue ---
+# rowid order = insertion order (the seed lists schools and levels in their traditional order).
+
+
+def schools(con: sqlite3.Connection) -> list[sqlite3.Row]:
+    """Every school, with its description in each language ("description_en", "description_fr")."""
+    return con.execute(
+        'SELECT r."id", r."kanji", r."romaji", t."en" AS "description_en", t."fr" AS "description_fr"'
+        ' FROM "ryu" r LEFT JOIN "translation" t ON t."id" = r."description" ORDER BY r.rowid'
+    ).fetchall()
+
+
+def levels(con: sqlite3.Connection) -> list[sqlite3.Row]:
+    """Every level, with its description in each language ("description_en", "description_fr")."""
+    return con.execute(
+        'SELECT l."id", l."kanji", l."romaji", t."en" AS "description_en", t."fr" AS "description_fr"'
+        ' FROM "level" l LEFT JOIN "translation" t ON t."id" = l."description" ORDER BY l.rowid'
+    ).fetchall()
+
+
+def techniques(con: sqlite3.Connection) -> list[sqlite3.Row]:
+    return con.execute(
+        'SELECT "id", "kanji", "romaji", "ryu", "level" FROM "technique" ORDER BY rowid'
+    ).fetchall()

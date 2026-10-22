@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" fill="none" stroke="#b3261e" stroke-opacity="0.4" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">
+	<!-- Togakure: the hidden door (sliding shoji, half open, darkness behind) -->
+	<path d="M30 175h140M40 175V30h120v145"/>
+	<rect x="62" y="40" width="84" height="135" fill="#b3261e" fill-opacity="0.1"/>
+	<rect x="48" y="40" width="56" height="135"/>
+	<path d="M48 73h56M48 107h56M48 141h56M76 40v135"/>
+	<path d="M96 104v8"/>
+</svg>
