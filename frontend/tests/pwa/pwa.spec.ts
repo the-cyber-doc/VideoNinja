@@ -4,7 +4,15 @@ import { expect, test, type BrowserContext, type Page } from '@playwright/test';
 // which (unlike page.route) also sees the service worker's requests.
 const USER = { username: 'kenji', name: null, role: 'user', role_name: 'User', access: ['segment'] };
 const school = (id: string) => ({ id, kanji: `${id}流`, romaji: `${id} Ryu` });
-const catalog = (ids: string[]) => ({ schools: ids.map(school), levels: [], techniques: [] });
+const COMMENTS = [{ id: 1, user: 'Hana', created_s: 1_800_000_000, lang: 'fr', text: 'Très bien' }];
+const LEVEL = { id: 'shoden', kanji: '初伝', romaji: 'Shoden' };
+const technique = { id: 'togakure.t', kanji: '技', romaji: 'Waza', ryu: 'togakure', level: 'shoden' };
+const catalog = (ids: string[]) => ({
+	schools: ids.map(school),
+	levels: [LEVEL],
+	techniques: [technique],
+	segments: []
+});
 
 async function fakeApi(context: BrowserContext, schools = ['togakure', 'gyokko']) {
 	await context.route('**/api/setup/status', (r) => r.fulfill({ json: { initialized: true } }));
@@ -13,6 +21,7 @@ async function fakeApi(context: BrowserContext, schools = ['togakure', 'gyokko']
 	await context.route('**/api/catalog', (r) =>
 		r.fulfill({ json: catalog(schools), headers: { ETag: `"${schools.length}"` } })
 	);
+	await context.route('**/api/techniques/*/comments', (r) => r.fulfill({ json: COMMENTS }));
 }
 
 /** Open the page, wait for the service worker, reload so that it serves the page. */
@@ -23,7 +32,7 @@ async function controlled(page: Page, path: string) {
 	await expect.poll(() => page.evaluate(() => !!navigator.serviceWorker.controller)).toBe(true);
 }
 
-const cards = (page: Page) => page.locator('.school-card');
+const cards = (page: Page) => page.locator('.catalog-card');
 
 test('installable: manifest and icons', async ({ page, request }) => {
 	await page.goto('/login');
@@ -48,6 +57,17 @@ test('works offline with the last catalogue seen', async ({ page, context }) => 
 	await page.reload();
 	await expect(page.getByRole('link', { name: 'Schools' })).toBeVisible(); // shell + user, cached
 	await expect(cards(page)).toHaveText(['togakure流 togakure Ryu', 'gyokko流 gyokko Ryu']);
+});
+
+test('comments seen online are shown offline', async ({ page, context }) => {
+	await fakeApi(context);
+	await controlled(page, '/schools/togakure/shoden/togakure.t');
+	await expect(page.locator('.comment')).toHaveText([/Hana.*Très bien/]);
+
+	await context.unrouteAll({ behavior: 'ignoreErrors' });
+	await context.setOffline(true);
+	await page.reload();
+	await expect(page.locator('.comment')).toHaveText([/Hana.*Très bien/]);
 });
 
 test('a newer catalogue replaces the cached one on the open page', async ({ page, context }) => {

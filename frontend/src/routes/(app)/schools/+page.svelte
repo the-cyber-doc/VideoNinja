@@ -1,8 +1,9 @@
 <script lang="ts">
 	import CardPage from '#lib/CardPage.svelte';
-	import { loadCatalog } from '#lib/catalog.svelte.js';
+	import CatalogCard from '#lib/cards/CatalogCard.svelte';
+	import { loadCatalog, schoolHref } from '#lib/catalog.svelte.js';
 	import { t } from '#lib/i18n.svelte.js';
-	import SchoolCard from '#lib/schools/SchoolCard.svelte';
+	import { schoolEmblems } from '#lib/schools/emblems.js';
 
 	// Reloaded when the language changes (descriptions are translated by the server).
 	const schools = $derived(loadCatalog().then((catalog) => catalog.schools)); // reads i18n.lang
@@ -10,6 +11,6 @@
 
 <CardPage title={t('schools.title')} items={schools}>
 	{#snippet card(school)}
-		<SchoolCard {school} />
+		<CatalogCard item={school} image={schoolEmblems.url(school.id)} href={schoolHref(school.id)} />
 	{/snippet}
 </CardPage>

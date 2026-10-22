@@ -21,7 +21,7 @@ async function loggedIn(page: Page, schools = SCHOOLS) {
 		})
 	);
 	await page.route('/api/catalog', (r) =>
-		r.fulfill({ json: { schools, levels: [], techniques: [] } })
+		r.fulfill({ json: { schools, levels: [], techniques: [], segments: [] } })
 	);
 }
 
@@ -42,7 +42,7 @@ test('Schools entry centred in the header, opens the schools page', async ({ pag
 	await expect(link).toHaveAttribute('aria-current', 'page');
 	await expect(page.getByRole('heading', { name: 'Schools' })).toBeVisible();
 
-	const cards = page.locator('.school-card');
+	const cards = page.locator('.catalog-card');
 	await expect(cards).toHaveCount(9);
 	await expect(cards.first().locator('span')).toHaveText(['戸隠流', 'Togakure Ryu']);
 	await expect(cards.last().locator('span')).toHaveText(['雲隠流', 'Kumogakure Ryu']);
@@ -52,7 +52,7 @@ test('cards centred on the screen, as many per row as fit', async ({ page }) => 
 	await page.setViewportSize({ width: 1920, height: 1080 });
 	await loggedIn(page);
 	await page.goto('/schools');
-	const cards = page.locator('.school-card');
+	const cards = page.locator('.catalog-card');
 	await expect(cards).toHaveCount(9);
 	const boxes = await cards.evaluateAll((els) => els.map((e) => e.getBoundingClientRect()));
 	expect(new Set(boxes.map((b) => b.top)).size).toBe(1); // one row on a large screen
@@ -65,7 +65,7 @@ test('phone: two cards per row, the last one centred', async ({ page }) => {
 	await page.setViewportSize({ width: 390, height: 900 });
 	await loggedIn(page);
 	await page.goto('/schools');
-	const cards = page.locator('.school-card');
+	const cards = page.locator('.catalog-card');
 	await expect(cards).toHaveCount(9);
 	const boxes = await cards.evaluateAll((els) => els.map((e) => e.getBoundingClientRect()));
 	expect(boxes[0].top).toBe(boxes[1].top);
@@ -78,10 +78,10 @@ test('a school without its own emblem gets the generic one', async ({ page }) =>
 	const unknown = (id: string) => ({ id, kanji: '新流', romaji: id });
 	await loggedIn(page, [SCHOOLS[0], SCHOOLS[1], unknown('new_a'), unknown('new_b')]);
 	await page.goto('/schools');
-	await expect(page.locator('.school-card')).toHaveCount(4);
+	await expect(page.locator('.catalog-card')).toHaveCount(4);
 	// Small emblems are inlined (data: URLs): compare the images, not their file names.
 	const image = (id: string) =>
-		page.locator(`[data-school="${id}"]`).evaluate((e) => getComputedStyle(e).backgroundImage);
+		page.locator(`[data-id="${id}"]`).evaluate((e) => getComputedStyle(e).backgroundImage);
 	const [togakure, gyokko, newA, newB] = await Promise.all(
 		['togakure', 'gyokko', 'new_a', 'new_b'].map(image)
 	);

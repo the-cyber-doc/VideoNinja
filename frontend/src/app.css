@@ -118,3 +118,7 @@ button.secondary {
 	color: var(--error);
 	margin: 0;
 }
+
+.centered {
+	text-align: center;
+}

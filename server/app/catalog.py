@@ -1,4 +1,4 @@
-"""The catalogue's content: schools, levels and techniques, in one language.
+"""The catalogue's content: schools, levels, techniques and segments, in one language.
 
 Written to static files by `snapshot`, which also serves it. Same IDs as the
 database, nulls omitted, names stored once and referenced by ID.
@@ -22,5 +22,8 @@ def build(con: sqlite3.Connection, lang: str) -> dict[str, Any]:
     return {
         "schools": [_named(r, lang) for r in queries.schools(con)],
         "levels": [_named(r, lang) for r in queries.levels(con)],
-        "techniques": [dict(r) for r in queries.techniques(con)],
+        "techniques": [
+            {**_named(r, lang), "ryu": r["ryu"], "level": r["level"]} for r in queries.techniques(con)
+        ],
+        "segments": [dict(r) for r in queries.segments(con)],
     }

@@ -80,6 +80,7 @@ catalogue snapshots in `catalog/` are ignored by git.
 | `VIDEONINJA_KEY_FILE` | `/run/secrets/videoninja_key` | Key that encrypts the TOTP secrets in the database. The app does not start without it. |
 | `VIDEONINJA_CATALOG_DIR` | `catalog/` next to the database (image: `/srv/catalog`) | Catalogue snapshots (static JSON files, see [Catalogue updates](#catalogue-updates)). |
 | `VIDEONINJA_X_ACCEL` | unset (image: `1`) | `1`: behind nginx, `/api/catalog` answers with `X-Accel-Redirect` and nginx sends the file. Unset: the app sends the file itself (development, no nginx). |
+| `VIDEONINJA_MEDIA_DIR` | unset | Development without nginx only: folder with `derived/<h2>/<sha256>/…`, from which the app serves segment thumbnails itself. Behind nginx (`VIDEONINJA_X_ACCEL=1`) the app never reads media. |
 
 ### 3. Frontend (terminal 2)
 
@@ -205,6 +206,10 @@ The app is installable and opens offline. Pieces:
 
 What the service worker does:
 
+- **The file list is generated, never written by hand**: SvelteKit's build
+  puts every output file in `$app/manifest` (`immutable`: compiled code and
+  styles, content-hashed names; `assets`: `static/`). Adding a route or a
+  component needs no change to the service worker.
 - **App shell** (build output, static files, `/`): cached at install, one
   cache per version (`shell-<version>`); older versions are deleted when the
   new service worker takes over.
@@ -213,8 +218,10 @@ What the service worker does:
   gets the cached copy at once; the service worker revalidates in the
   background (the ETag makes it a `304` when unchanged) and, when the
   catalogue changed, tells the open pages, which show the new one.
-- **`/api/setup/status`, `/api/auth/me`**: network first, the cached copy only
-  offline, so the app opens without a network.
+- **`/api/setup/status`, `/api/auth/me`, `/api/techniques/<id>/comments`**:
+  network first (always the latest when online), the cached copy only
+  offline, so the app opens without a network and shows the comments last
+  seen.
 - **Everything else** (other API calls, media): network only, never cached.
 
 User data (cache `data`) is deleted on logout and after each login. In

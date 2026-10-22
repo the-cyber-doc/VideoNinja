@@ -2,7 +2,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
-from . import auth, crypto, db, profile, register, security, setup, snapshot, users
+from . import auth, comments, crypto, db, media, profile, register, security, setup, snapshot, users
 
 
 @asynccontextmanager
@@ -29,6 +29,8 @@ app.include_router(profile.router)
 app.include_router(register.router)
 app.include_router(users.router)
 app.include_router(snapshot.router)
+app.include_router(comments.router)
+app.include_router(media.router)
 
 
 @app.get("/health")

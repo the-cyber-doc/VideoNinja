@@ -1,26 +1,28 @@
 <script lang="ts">
-	// A school: kanji, then romaji, centred over the school's emblem.
-	// With `href` the whole card is a link (opening the school, later).
-	import type { School } from '../catalog.svelte';
-	import { emblemUrl } from './emblems';
-
-	let { school, href }: { school: School; href?: string } = $props();
-	// Quoted: small emblems are inlined as data: URLs, with quotes and parentheses.
+	// A school, level or technique: kanji, then romaji, centred, over an optional
+	// background image (emblem). With `href` the whole card is a link.
+	let {
+		item,
+		image,
+		href
+	}: { item: { id: string; kanji: string; romaji: string }; image?: string; href?: string } =
+		$props();
 </script>
 
 <svelte:element
 	this={href ? 'a' : 'div'}
 	{href}
-	class="school-card"
-	data-school={school.id}
-	style:background-image={`url("${emblemUrl(school.id)}")`}
+	class="catalog-card"
+	data-id={item.id}
+	style:background-image={image ? `url("${image}")` : undefined}
 >
-	<span class="kanji" lang="ja">{school.kanji}</span>
-	<span class="romaji">{school.romaji}</span>
+	<!-- Quoted url(): small emblems are inlined as data: URLs, with quotes and parentheses. -->
+	<span class="kanji" lang="ja">{item.kanji}</span>
+	<span class="romaji">{item.romaji}</span>
 </svelte:element>
 
 <style>
-	.school-card {
+	.catalog-card {
 		aspect-ratio: 1;
 		display: flex;
 		flex-direction: column;
@@ -38,8 +40,8 @@
 		border: 1px solid var(--border);
 		border-radius: var(--radius);
 	}
-	a.school-card:hover,
-	a.school-card:focus-visible {
+	a.catalog-card:hover,
+	a.catalog-card:focus-visible {
 		border-color: var(--accent);
 		outline: none;
 	}

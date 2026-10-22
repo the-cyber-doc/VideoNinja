@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" fill="none" stroke="#b3261e" stroke-opacity="0.4" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">
+	<!-- Okuden, the deep transmission: an old tree and its deep roots -->
+	<path d="M16 112h168"/>
+	<path d="M92 112V70l-20-16M108 112V64l26-18M100 70V40"/>
+	<path d="M100 18c-40 0-64 14-64 34 0 14 16 22 32 22h64c16 0 32-8 32-22 0-20-24-34-64-34z" fill="#b3261e" fill-opacity="0.1"/>
+	<path d="M92 112c-6 18-22 26-40 30M108 112c6 18 22 26 40 30M100 112v60M100 150l-16 22M100 150l16 22M60 142l-14 16M140 142l14 16"/>
+</svg>

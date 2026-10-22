@@ -26,13 +26,30 @@
 	"common.cancel": { "en": "Cancel", "fr": "Annuler" },
 	"common.confirm": { "en": "Confirm", "fr": "Confirmer" },
 	"common.loading": { "en": "Loading…", "fr": "Chargement…" },
+	"common.not_found": { "en": "Not found.", "fr": "Introuvable." },
+	"common.offline": {
+		"en": "Not available offline: open it once with a connection.",
+		"fr": "Indisponible hors ligne : ouvrez-le une fois avec une connexion."
+	},
 
 	"language.current": { "en": "Language: {name}", "fr": "Langue : {name}" },
 
 	"nav.main": { "en": "Main navigation", "fr": "Navigation principale" },
 	"nav.schools": { "en": "Schools", "fr": "Écoles" },
+	"nav.breadcrumbs": { "en": "Breadcrumb", "fr": "Fil d'Ariane" },
 
 	"schools.title": { "en": "Schools", "fr": "Écoles" },
+	"levels.title": { "en": "Levels", "fr": "Niveaux" },
+	"techniques.title": { "en": "Techniques", "fr": "Techniques" },
+	"techniques.none": {
+		"en": "No techniques for this level yet.",
+		"fr": "Pas encore de technique pour ce niveau."
+	},
+	"technique.videos": { "en": "Videos", "fr": "Vidéos" },
+	"technique.no_videos": { "en": "No videos yet.", "fr": "Pas encore de vidéo." },
+	"technique.segment": { "en": "Segment {begin}–{end}", "fr": "Segment {begin}–{end}" },
+	"technique.comments": { "en": "Comments", "fr": "Commentaires" },
+	"technique.no_comments": { "en": "No comments yet.", "fr": "Pas encore de commentaire." },
 
 	"menu.user": { "en": "User menu", "fr": "Menu utilisateur" },
 	"menu.profile": { "en": "Profile", "fr": "Profil" },

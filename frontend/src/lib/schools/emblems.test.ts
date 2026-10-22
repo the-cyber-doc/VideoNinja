@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { emblemUrl, GENERIC, hasEmblem } from './emblems';
+import { GENERIC } from '../cards/emblems';
+import { schoolEmblems } from './emblems';
 
 // The schools of db_v1_init.sql.
 const SCHOOLS = [
@@ -14,15 +15,15 @@ const SCHOOLS = [
 	'kumogakure'
 ];
 
-describe('emblems', () => {
+describe('school emblems', () => {
 	it.each(SCHOOLS)('%s has its own emblem', (id) => {
-		expect(hasEmblem(id)).toBe(true);
-		expect(emblemUrl(id)).not.toBe(emblemUrl(GENERIC));
+		expect(schoolEmblems.has(id)).toBe(true);
+		expect(schoolEmblems.url(id)).not.toBe(schoolEmblems.url(GENERIC));
 	});
 
 	it('falls back to the generic emblem', () => {
-		expect(hasEmblem('new_school')).toBe(false);
-		expect(emblemUrl('new_school')).toBe(emblemUrl(GENERIC));
-		expect(emblemUrl(GENERIC)).toBeTruthy();
+		expect(schoolEmblems.has('new_school')).toBe(false);
+		expect(schoolEmblems.url('new_school')).toBe(schoolEmblems.url(GENERIC));
+		expect(schoolEmblems.url(GENERIC)).toBeTruthy();
 	});
 });

@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" fill="none" stroke="#b3261e" stroke-opacity="0.4" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">
+	<!-- Chuden, the intermediate transmission: a young tree, growing -->
+	<path d="M24 168h152"/>
+	<path d="M100 168v-90M100 128l-24-18M100 108l22-16"/>
+	<circle cx="100" cy="62" r="34" fill="#b3261e" fill-opacity="0.1"/>
+	<circle cx="66" cy="100" r="18" fill="#b3261e" fill-opacity="0.1"/>
+	<circle cx="134" cy="84" r="20" fill="#b3261e" fill-opacity="0.1"/>
+</svg>

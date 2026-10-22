@@ -4,7 +4,8 @@
 // - /api/catalog: stale-while-revalidate, one entry per language. The browser's
 //   HTTP cache revalidates with the ETag, so an unchanged catalogue costs a 304.
 //   When it changed, the open pages are told: {type: 'catalog-updated', lang}.
-// - /api/setup/status, /api/auth/me: network first, the cached copy only offline.
+// - /api/setup/status, /api/auth/me, /api/techniques/<id>/comments: network first
+//   (always the latest when online), the cached copy only offline.
 // - Anything else (other API calls, media): network only, never cached.
 // DATA holds user data: deleted on logout and login (clearUserData in $lib/pwa.ts).
 // Type-checked with its own tsconfig.json (WebWorker types, no DOM).
@@ -18,7 +19,8 @@ const SHELL = `shell-${version}`;
 const ASSETS = new Set(
 	[...immutable, ...assets].map((file) => new URL(file.path, sw.location.href).pathname)
 );
-const OFFLINE_API = new Set(['/api/setup/status', '/api/auth/me']);
+// API reads also kept for offline use (network first).
+const OFFLINE_API = [/^\/api\/setup\/status$/, /^\/api\/auth\/me$/, /^\/api\/techniques\/[^/]+\/comments$/];
 
 sw.addEventListener('install', (event) => {
 	event.waitUntil(
@@ -48,7 +50,7 @@ sw.addEventListener('fetch', (event) => {
 	if (ASSETS.has(url.pathname)) event.respondWith(cacheFirst(request));
 	else if (request.mode === 'navigate') event.respondWith(page(request));
 	else if (url.pathname === '/api/catalog') event.respondWith(catalog(event));
-	else if (OFFLINE_API.has(url.pathname)) event.respondWith(networkFirst(request));
+	else if (OFFLINE_API.some((path) => path.test(url.pathname))) event.respondWith(networkFirst(request));
 });
 
 // ignoreVary: the server's Vary (Origin, Accept-Encoding) would make a module

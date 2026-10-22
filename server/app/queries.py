@@ -213,6 +213,41 @@ def levels(con: sqlite3.Connection) -> list[sqlite3.Row]:
 
 
 def techniques(con: sqlite3.Connection) -> list[sqlite3.Row]:
+    """Every technique, with its description in each language ("description_en", "description_fr")."""
     return con.execute(
-        'SELECT "id", "kanji", "romaji", "ryu", "level" FROM "technique" ORDER BY rowid'
+        'SELECT te."id", te."kanji", te."romaji", te."ryu", te."level",'
+        ' t."en" AS "description_en", t."fr" AS "description_fr"'
+        ' FROM "technique" te LEFT JOIN "translation" t ON t."id" = te."description" ORDER BY te.rowid'
+    ).fetchall()
+
+
+def technique_exists(con: sqlite3.Connection, technique_id: str) -> bool:
+    return con.execute('SELECT 1 FROM "technique" WHERE "id" = ?', (technique_id,)).fetchone() is not None
+
+
+def segments(con: sqlite3.Connection) -> list[sqlite3.Row]:
+    return con.execute(
+        'SELECT "id", "video", "technique", "begin_s", "end_s", "performer" FROM "segment" ORDER BY "id"'
+    ).fetchall()
+
+
+def segment_thumbnail(con: sqlite3.Connection, segment_id: int) -> sqlite3.Row | None:
+    """The video's SHA-256 and the thumbnail file name: the segment's own, else its video's."""
+    return con.execute(
+        'SELECT v."sha256sum", COALESCE(s."thumbnail", v."thumbnail") AS "thumbnail"'
+        ' FROM "segment" s JOIN "video" v ON v."id" = s."video" WHERE s."id" = ?',
+        (segment_id,),
+    ).fetchone()
+
+
+# --- comment ---
+
+
+def technique_comments(con: sqlite3.Connection, technique_id: str) -> list[sqlite3.Row]:
+    """Newest first, with the author's display name (else username)."""
+    return con.execute(
+        'SELECT c."id", COALESCE(u."name", u."username") AS "user", c."created_s", c."lang", c."text"'
+        ' FROM "comment" c JOIN "user" u ON u."id" = c."user"'
+        ' WHERE c."technique" = ? ORDER BY c."created_s" DESC, c."id" DESC',
+        (technique_id,),
     ).fetchall()

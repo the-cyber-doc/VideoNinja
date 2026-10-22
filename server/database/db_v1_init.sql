@@ -28,7 +28,10 @@ INSERT INTO "translation" ("id", "en", "fr") VALUES
 	('ryu.kumogakure.description', 'The Hidden Cloud School', 'L''école du nuage caché'),
 	('level.shoden.description', 'The initial transmission', 'La transmission initiale'),
 	('level.chuden.description', 'The intermediate transmission', 'La transmission intermédiaire'),
-	('level.okuden.description', 'The deep transmission', 'La transmission profonde');
+	('level.okuden.description', 'The deep transmission', 'La transmission profonde'),
+	('technique.gyokko.koku.description', 'Description will be added later.', 'La description sera ajoutée plus tard.'),
+	('technique.gyokko.keto.description', 'Description will be added later.', 'La description sera ajoutée plus tard.'),
+	('technique.gyokko.hanebi.description', 'Description will be added later.', 'La description sera ajoutée plus tard.');
 
 INSERT INTO "access" ("id", "name") VALUES
 	('user_mgmt', 'access.user_mgmt.name'),
@@ -73,9 +76,9 @@ INSERT INTO "level" ("id", "kanji", "romaji", "description") VALUES
 	('okuden', '奥伝', 'Okuden', 'level.okuden.description');
 
 -- Gyokko ryu, Jo Ryaku no Maki (first level) -> shoden
-INSERT INTO "technique" ("id", "kanji", "romaji", "ryu", "level") VALUES
-	('gyokko.koku', '虚空', 'Koku', 'gyokko', 'shoden'),
-	('gyokko.keto', '闕倒', 'Keto', 'gyokko', 'shoden'),
-	('gyokko.hanebi', '跳火', 'Hanebi', 'gyokko', 'shoden');
+INSERT INTO "technique" ("id", "kanji", "romaji", "ryu", "level", "description") VALUES
+	('gyokko.koku', '虚空', 'Koku', 'gyokko', 'shoden', 'technique.gyokko.koku.description'),
+	('gyokko.keto', '闕倒', 'Keto', 'gyokko', 'shoden', 'technique.gyokko.keto.description'),
+	('gyokko.hanebi', '跳火', 'Hanebi', 'gyokko', 'shoden', 'technique.gyokko.hanebi.description');
 
 COMMIT;

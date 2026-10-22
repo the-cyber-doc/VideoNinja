@@ -31,10 +31,13 @@ CREATE TABLE IF NOT EXISTS "technique" (
 	"romaji" VARCHAR NOT NULL,
 	"ryu" VARCHAR NOT NULL,
 	"level" VARCHAR NOT NULL,
+	"description" VARCHAR,
 	PRIMARY KEY("id"),
 	FOREIGN KEY ("level") REFERENCES "level"("id")
 	ON UPDATE NO ACTION ON DELETE NO ACTION,
 	FOREIGN KEY ("ryu") REFERENCES "ryu"("id")
+	ON UPDATE NO ACTION ON DELETE NO ACTION,
+	FOREIGN KEY ("description") REFERENCES "translation"("id")
 	ON UPDATE NO ACTION ON DELETE NO ACTION
 );
 
@@ -42,7 +45,8 @@ CREATE TABLE IF NOT EXISTS "video" (
 	"id" INTEGER PRIMARY KEY AUTOINCREMENT,
 	"sha256sum" TEXT NOT NULL UNIQUE,
 	"filename" VARCHAR NOT NULL,
-	"directory" VARCHAR NOT NULL
+	"directory" VARCHAR NOT NULL,
+	"thumbnail" VARCHAR
 );
 
 CREATE TABLE IF NOT EXISTS "segment" (
@@ -52,6 +56,7 @@ CREATE TABLE IF NOT EXISTS "segment" (
 	"begin_s" INTEGER NOT NULL,
 	"end_s" INTEGER NOT NULL,
 	"performer" VARCHAR NOT NULL,
+	"thumbnail" VARCHAR,
 	FOREIGN KEY ("video") REFERENCES "video"("id")
 	ON UPDATE NO ACTION ON DELETE NO ACTION,
 	FOREIGN KEY ("technique") REFERENCES "technique"("id")
@@ -66,6 +71,7 @@ CREATE TABLE IF NOT EXISTS "comment" (
 	"user" INTEGER NOT NULL,
 	"lang" TEXT NOT NULL,
 	"text" TEXT NOT NULL,
+	"created_s" INTEGER NOT NULL,
 	FOREIGN KEY ("technique") REFERENCES "technique"("id")
 	ON UPDATE NO ACTION ON DELETE NO ACTION,
 	FOREIGN KEY ("user") REFERENCES "user"("id")

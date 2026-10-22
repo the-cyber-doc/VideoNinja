@@ -19,7 +19,11 @@ export default defineConfig({
 			adapter: adapter({ fallback: 'index.html', precompress: true }),
 
 			// Registered by the app, in production builds only ($lib/pwa.ts).
-			serviceWorker: { register: false }
+			serviceWorker: { register: false },
+
+			// Absolute asset paths (/_app/…) in every page: the service worker serves the
+			// cached "/" for any URL offline, where relative paths (../_app/…) would break.
+			paths: { relative: false }
 		})
 	],
 	server: {

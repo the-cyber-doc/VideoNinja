@@ -12,7 +12,7 @@ export type MessageKey = keyof typeof messages;
 const DEFAULT: Lang = 'en';
 const STORAGE_KEY = 'lang';
 
-const isLang = (value: unknown): value is Lang =>
+export const isLang = (value: unknown): value is Lang =>
 	typeof value === 'string' && Object.hasOwn(LANGUAGES, value);
 
 /** The language chosen in the menu, else the browser's (system's) first supported one, else English. */
