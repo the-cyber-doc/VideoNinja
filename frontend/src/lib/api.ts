@@ -43,7 +43,7 @@ export function apiHeaders(): Record<string, string> {
 	};
 }
 
-type Method = 'GET' | 'POST' | 'PATCH' | 'DELETE';
+type Method = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
 
 async function request(path: string, body?: unknown, method?: Method): Promise<Response> {
 	const res = await fetch(url(path), {

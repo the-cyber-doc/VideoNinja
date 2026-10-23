@@ -1,0 +1,185 @@
+<script lang="ts">
+	// Every published video, in four collapsible sections by how far its annotation
+	// is. Open, a section's thumbnails scroll inside it. A thumbnail opens the
+	// annotation panel (/videos/<id>). Needs the "video_mgmt" access.
+	import { goto } from '$app/navigation';
+	import { page } from '$app/state';
+	import { url } from '#lib/base.js';
+	import { t, type MessageKey } from '#lib/i18n.svelte.js';
+	import { hasAccess } from '#lib/session.svelte.js';
+	import { formatTime } from '#lib/time.js';
+	import { listVideos, SECTIONS, videoSection, videoThumbnailUrl, type VideoRow } from '#lib/videos/annotations.js';
+
+	const allowed = $derived(hasAccess('video_mgmt'));
+	let videos = $state<VideoRow[] | null>(null);
+	let error = $state('');
+	let failed = $state<Record<number, boolean>>({});
+	const saved = page.url.searchParams.has('saved'); // back from the panel
+
+	$effect(() => {
+		if (!allowed) {
+			goto(url('/'), { replace: true });
+			return;
+		}
+		listVideos().then((list) => (videos = list), (e) => (error = e.message));
+	});
+
+	const groups = $derived(
+		SECTIONS.map((section) => ({ section, videos: (videos ?? []).filter((v) => videoSection(v) === section) }))
+	);
+	// The first section with videos starts open.
+	const firstOpen = $derived(groups.find((g) => g.videos.length)?.section);
+	const duration = (v: VideoRow) => (v.duration_s == null ? '' : formatTime(Math.floor(v.duration_s)));
+</script>
+
+{#if allowed}
+	<div class="page">
+		<h1>{t('videos.title')}</h1>
+		{#if saved}<p class="ok" role="status">{t('videos.saved')}</p>{/if}
+		{#if error}<p class="error" role="alert">{error}</p>{/if}
+
+		{#if videos === null && !error}
+			<p class="hint centered">{t('common.loading')}</p>
+		{:else if videos && !videos.length}
+			<p class="hint centered">{t('videos.none')}</p>
+		{:else if videos}
+			{#each groups as group (group.section)}
+				<details class="section" open={group.section === firstOpen}>
+					<summary>
+						<span class="name">{t(`videos.section.${group.section}` as MessageKey)}</span>
+						<span class="count">{t('videos.count', { n: group.videos.length })}</span>
+						<span class="hint">{t(`videos.section.${group.section}.hint` as MessageKey)}</span>
+					</summary>
+					{#if group.videos.length}
+						<ul class="grid">
+							{#each group.videos as video (video.id)}
+								<li>
+									<a
+										href={url(`/videos/${video.id}`)}
+										aria-label={t('videos.open', { name: video.original_filename, duration: duration(video) })}
+									>
+										<span class="picture">
+											{#if failed[video.id]}
+												<span class="placeholder"></span>
+											{:else}
+												<img
+													src={videoThumbnailUrl(video.id)}
+													alt=""
+													loading="lazy"
+													onerror={() => (failed[video.id] = true)}
+												/>
+											{/if}
+											{#if video.duration_s != null}<span class="duration">{duration(video)}</span>{/if}
+										</span>
+										<span class="file">{video.original_filename}</span>
+									</a>
+								</li>
+							{/each}
+						</ul>
+					{:else}
+						<p class="hint empty">{t('videos.empty_section')}</p>
+					{/if}
+				</details>
+			{/each}
+		{/if}
+	</div>
+{/if}
+
+<style>
+	.page {
+		max-width: 72rem;
+		margin: 0 auto;
+		display: grid;
+		gap: 0.75rem;
+	}
+	h1 {
+		text-align: center;
+		margin-bottom: 0.25rem;
+	}
+	.ok {
+		color: var(--ok);
+		margin: 0;
+		text-align: center;
+	}
+	.section {
+		background: var(--surface);
+		border: 1px solid var(--border);
+		border-radius: var(--radius);
+	}
+	summary {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: baseline;
+		gap: 0.25rem 0.75rem;
+		padding: 0.75rem 1rem;
+		cursor: pointer;
+	}
+	.name {
+		font-weight: 700;
+		font-size: 1.05rem;
+	}
+	.count {
+		color: var(--muted);
+		font-variant-numeric: tabular-nums;
+	}
+	summary .hint {
+		flex-basis: 100%;
+		margin: 0;
+		font-size: 0.85rem;
+	}
+	/* Open: most of the screen, its own scroll bar. */
+	.grid {
+		display: grid;
+		grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
+		gap: 0.75rem;
+		max-height: calc(100dvh - 12rem);
+		overflow-y: auto;
+		margin: 0;
+		padding: 0 1rem 1rem;
+		list-style: none;
+	}
+	.empty {
+		margin: 0;
+		padding: 0 1rem 1rem;
+	}
+	a {
+		display: grid;
+		gap: 0.3rem;
+		color: var(--text);
+		text-decoration: none;
+		font-size: 0.85rem;
+	}
+	.picture {
+		position: relative;
+		display: block;
+	}
+	img,
+	.placeholder {
+		display: block;
+		width: 100%;
+		aspect-ratio: 16 / 9;
+		object-fit: cover;
+		background: var(--border);
+		border-radius: 6px;
+	}
+	a:hover img,
+	a:focus-visible img {
+		outline: 2px solid var(--accent);
+		outline-offset: 2px;
+	}
+	.duration {
+		position: absolute;
+		right: 0.35rem;
+		bottom: 0.35rem;
+		padding: 0.05rem 0.35rem;
+		font-size: 0.75rem;
+		font-variant-numeric: tabular-nums;
+		color: #fff;
+		background: rgb(0 0 0 / 0.75);
+		border-radius: 4px;
+	}
+	.file {
+		overflow-wrap: anywhere;
+		color: var(--muted);
+	}
+</style>

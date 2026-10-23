@@ -446,6 +446,75 @@ def user_videos(con: sqlite3.Connection, user_id: int, since: str) -> list[sqlit
     ).fetchall()
 
 
+# --- video management (published videos, annotated again) ---
+
+
+def published_videos(con: sqlite3.Connection) -> list[sqlite3.Row]:
+    """Every published video with its number of segments, newest upload first."""
+    return con.execute(
+        'SELECT v."id", v."original_filename", v."uploaded_at", v."duration_s", v."all_segments_done",'
+        ' (SELECT count(*) FROM "segment" s WHERE s."video" = v."id") AS "segment_count"'
+        " FROM \"video\" v WHERE v.\"status\" = 'published'"
+        ' ORDER BY datetime(v."uploaded_at") DESC, v."id" DESC'
+    ).fetchall()
+
+
+def published_video(con: sqlite3.Connection, video_id: int) -> sqlite3.Row | None:
+    return con.execute(
+        'SELECT "id", "sha256sum", "thumbnail", "duration_s", "all_segments_done" FROM "video"'
+        " WHERE \"id\" = ? AND \"status\" = 'published'",
+        (video_id,),
+    ).fetchone()
+
+
+def video_segments(con: sqlite3.Connection, video_id: int) -> list[sqlite3.Row]:
+    return con.execute(
+        'SELECT "id", "begin_s", "end_s", "technique", "performer" FROM "segment"'
+        ' WHERE "video" = ? ORDER BY "begin_s", "id"',
+        (video_id,),
+    ).fetchall()
+
+
+def video_tags(con: sqlite3.Connection, video_id: int) -> list[sqlite3.Row]:
+    return con.execute(
+        'SELECT "tag", "value" FROM "video_has_tags" WHERE "video" = ? ORDER BY "tag"', (video_id,)
+    ).fetchall()
+
+
+def video_segment_tags(con: sqlite3.Connection, video_id: int) -> list[sqlite3.Row]:
+    return con.execute(
+        'SELECT t."segment", t."tag", t."value" FROM "segment_has_tags" t'
+        ' JOIN "segment" s ON s."id" = t."segment" WHERE s."video" = ? ORDER BY t."tag"',
+        (video_id,),
+    ).fetchall()
+
+
+def update_segment(
+    con: sqlite3.Connection, segment_id: int, technique: str, begin_s: int, end_s: int, performer: str
+) -> None:
+    con.execute(
+        'UPDATE "segment" SET "technique" = ?, "begin_s" = ?, "end_s" = ?, "performer" = ? WHERE "id" = ?',
+        (technique, begin_s, end_s, performer, segment_id),
+    )
+
+
+def delete_segment(con: sqlite3.Connection, segment_id: int) -> None:
+    con.execute('DELETE FROM "segment_has_tags" WHERE "segment" = ?', (segment_id,))
+    con.execute('DELETE FROM "segment" WHERE "id" = ?', (segment_id,))
+
+
+def clear_segment_tags(con: sqlite3.Connection, segment_id: int) -> None:
+    con.execute('DELETE FROM "segment_has_tags" WHERE "segment" = ?', (segment_id,))
+
+
+def clear_video_tags(con: sqlite3.Connection, video_id: int) -> None:
+    con.execute('DELETE FROM "video_has_tags" WHERE "video" = ?', (video_id,))
+
+
+def set_all_segments_done(con: sqlite3.Connection, video_id: int, done: bool) -> None:
+    con.execute('UPDATE "video" SET "all_segments_done" = ? WHERE "id" = ?', (done, video_id))
+
+
 def requeue_interrupted(con: sqlite3.Connection, max_attempts: int) -> None:
     """At startup: encodings cut by a crash or a reboot go back to the queue,
     unless they were already tried max_attempts times."""
@@ -500,13 +569,14 @@ def job_progress(con: sqlite3.Connection, video_id: int, percent: int) -> bool:
 
 
 def publish_video(
-    con: sqlite3.Connection, video_id: int, sha256: str, directory: str, thumbnail: str | None
+    con: sqlite3.Connection, video_id: int, sha256: str, directory: str, thumbnail: str | None,
+    duration_s: float,
 ) -> bool:
     return con.execute(
         "UPDATE \"video\" SET \"status\" = 'published', \"sha256sum\" = ?, \"directory\" = ?,"
-        ' "thumbnail" = ?, "progress" = 100, "upload" = NULL, "error" = NULL'
+        ' "thumbnail" = ?, "duration_s" = ?, "progress" = 100, "upload" = NULL, "error" = NULL'
         " WHERE \"id\" = ? AND \"status\" = 'encoding'",
-        (sha256, directory, thumbnail, video_id),
+        (sha256, directory, thumbnail, duration_s, video_id),
     ).rowcount == 1
 
 

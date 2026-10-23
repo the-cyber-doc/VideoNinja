@@ -53,15 +53,16 @@ def user_zone(
     return clock.user_zone(user, zone)
 
 
-def require_access(access: str):
-    """Dependency factory: 403 unless the logged-in user's role grants `access`."""
+def require_access(*accesses: str):
+    """Dependency factory: 403 unless the logged-in user's role grants `access`
+    (one of them, if several: e.g. performers for uploads and video management)."""
 
     def check(
         user: sqlite3.Row = Depends(current_user),
         con: sqlite3.Connection = Depends(db.get_db),
     ) -> sqlite3.Row:
-        if access not in queries.role_access(con, user["role"]):
-            log.warning("Denied: user id %s lacks access %r", user["id"], access)
+        if not set(accesses) & set(queries.role_access(con, user["role"])):
+            log.warning("Denied: user id %s lacks access %s", user["id"], " or ".join(map(repr, accesses)))
             raise HTTPException(status.HTTP_403_FORBIDDEN, "Access denied")
         return user
 

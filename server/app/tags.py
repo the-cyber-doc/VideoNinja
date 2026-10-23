@@ -63,7 +63,7 @@ def value_error(rule: Rule, value: str | None, zone: tzinfo) -> str | None:
 
 @router.get("/tags", response_model_exclude_none=True)
 def list_tags(
-    _: sqlite3.Row = Depends(require_access("upload")),
+    _: sqlite3.Row = Depends(require_access("upload", "video_mgmt")),
     con: sqlite3.Connection = Depends(db.get_db),
     lang: str = Depends(i18n.language),
     zone: tzinfo = Depends(user_zone),

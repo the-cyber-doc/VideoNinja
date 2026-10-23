@@ -14,10 +14,12 @@ INSERT INTO "translation" ("id", "en", "fr") VALUES
 	('access.upload.name', 'Upload', 'Téléversement'),
 	('access.annotate.name', 'Annotate', 'Annotation'),
 	('access.comment.name', 'Comment', 'Commentaire'),
+	('access.video_mgmt.name', 'Video management', 'Gestion des vidéos'),
 	('role.admin.name', 'Admin', 'Administrateur'),
 	('role.user.name', 'User', 'Utilisateur'),
 	('role.editor.name', 'Editor', 'Éditeur'),
 	('role.uploader.name', 'Uploader', 'Téléverseur'),
+	('role.video_mgmt.name', 'Video manager', 'Gestionnaire de vidéos'),
 	('ryu.togakure.description', 'School of the Hidden Door', 'École de la porte cachée'),
 	('ryu.gyokko.description', 'The Jeweled Tiger School', 'L''école du tigre de jade'),
 	('ryu.kukishinden.description', 'The Nine Demon Gods School', 'L''école des neuf dieux démons'),
@@ -39,13 +41,15 @@ INSERT INTO "access" ("id", "name") VALUES
 	('segment', 'access.segment.name'),
 	('upload', 'access.upload.name'),
 	('annotate', 'access.annotate.name'),
-	('comment', 'access.comment.name');
+	('comment', 'access.comment.name'),
+	('video_mgmt', 'access.video_mgmt.name');
 
 INSERT INTO "role" ("id", "name") VALUES
 	('admin', 'role.admin.name'),
 	('user', 'role.user.name'),
 	('editor', 'role.editor.name'),
-	('uploader', 'role.uploader.name');
+	('uploader', 'role.uploader.name'),
+	('video_mgmt', 'role.video_mgmt.name');
 
 INSERT INTO "role_has_access" ("role", "access") VALUES
 	('admin', 'user_mgmt'),
@@ -53,6 +57,7 @@ INSERT INTO "role_has_access" ("role", "access") VALUES
 	('admin', 'upload'),
 	('admin', 'annotate'),
 	('admin', 'comment'),
+	('admin', 'video_mgmt'),
 	('user', 'segment'),
 	('user', 'comment'),
 	('editor', 'segment'),
@@ -61,7 +66,13 @@ INSERT INTO "role_has_access" ("role", "access") VALUES
 	('uploader', 'segment'),
 	('uploader', 'annotate'),
 	('uploader', 'upload'),
-	('uploader', 'comment');
+	('uploader', 'comment'),
+	-- Every access but user_mgmt.
+	('video_mgmt', 'segment'),
+	('video_mgmt', 'comment'),
+	('video_mgmt', 'annotate'),
+	('video_mgmt', 'upload'),
+	('video_mgmt', 'video_mgmt');
 
 -- The admin user is created by the first-start setup wizard.
 

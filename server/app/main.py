@@ -4,7 +4,7 @@ from fastapi import FastAPI
 
 from . import (
     auth, comments, crypto, db, encoder, media, nginx, paths, performers, profile, register, security,
-    setup, snapshot, tags, tusd, users, videos,
+    setup, snapshot, tags, tusd, users, video_mgmt, videos,
 )
 
 
@@ -44,6 +44,7 @@ app.include_router(media.router)
 app.include_router(performers.router)
 app.include_router(tags.router)
 app.include_router(videos.router)
+app.include_router(video_mgmt.router)
 app.include_router(tusd.router)
 
 

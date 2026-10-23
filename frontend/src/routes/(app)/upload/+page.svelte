@@ -21,27 +21,11 @@
 		type Performer,
 		type Tag
 	} from '#lib/upload/api.js';
-	import {
-		deleteDraft,
-		listDrafts,
-		loadDraft,
-		newDraft,
-		saveDraft,
-		type Draft,
-		type Mode
-	} from '#lib/upload/draft.svelte.js';
-	import Editor from '#lib/upload/Editor.svelte';
+	import AnnotationPanel from '#lib/upload/AnnotationPanel.svelte';
+	import { deleteDraft, listDrafts, loadDraft, newDraft, saveDraft, type Draft } from '#lib/upload/draft.svelte.js';
 	import { sha256File } from '#lib/upload/hash.js';
 	import MyUploads from '#lib/upload/MyUploads.svelte';
-	import {
-		allSegmentsDone,
-		canProceed,
-		checkboxLocked,
-		segmentProblems,
-		submitBody
-	} from '#lib/upload/rules.js';
-	import SegmentForm from '#lib/upload/SegmentForm.svelte';
-	import TagInput from '#lib/upload/TagInput.svelte';
+	import { submitBody } from '#lib/upload/rules.js';
 	import { startUpload } from '#lib/upload/upload.js';
 
 	type Step = 'pick' | 'hashing' | 'edit' | 'uploading' | 'submitting';
@@ -59,9 +43,6 @@
 	let tags = $state<Tag[]>([]);
 	let hashProgress = $state(0);
 	let uploadProgress = $state(0);
-	let duration = $state(0);
-	let playable = $state(true);
-	let selected = $state<number | null>(null);
 	let duplicate = $state(false);
 	let resumed = $state(false);
 	let message = $state('');
@@ -73,14 +54,6 @@
 	let upload: Upload | null = null;
 
 	const busy = $derived(step === 'hashing' || step === 'uploading' || step === 'submitting');
-	const ready = $derived(!!draft && !unavailable && canProceed(draft, duration, playable));
-	const reason = $derived.by(() => {
-		if (!draft || ready) return '';
-		if (unavailable) return t('upload.reason.unavailable');
-		if (!playable) return t('upload.reason.not_playable');
-		if (draft.mode === null && !draft.segments.length) return t('upload.reason.no_segment');
-		return t('upload.reason.incomplete');
-	});
 
 	$effect(() => {
 		if (!allowed) {
@@ -127,9 +100,7 @@
 		src = '';
 		draft = null;
 		step = 'pick';
-		hashProgress = uploadProgress = duration = 0;
-		playable = true;
-		selected = null;
+		hashProgress = uploadProgress = 0;
 		duplicate = resumed = false;
 		upload = null;
 		if (input) input.value = '';
@@ -165,25 +136,15 @@
 		}
 	}
 
-	function setMode(event: Event, mode: Mode) {
-		if (!draft) return;
-		const n = draft.segments.length;
-		if (mode === 'none' && n && !confirm(t('upload.mode.discard_confirm', { n }))) {
-			(event.currentTarget as HTMLInputElement).checked = false;
-			return;
-		}
-		if (mode === 'none') draft.segments = [];
-		draft.mode = mode;
-	}
-
 	async function newPerformer(name: string) {
 		const performer = await addPerformer(name);
 		performers = [...performers, performer];
 		return performer;
 	}
 
+	/** Called by the panel once the annotation is complete. */
 	function proceed() {
-		if (!draft || !file || !ready) return;
+		if (!draft || !file || unavailable) return;
 		error = message = '';
 		step = 'uploading';
 		uploadProgress = 0;
@@ -282,66 +243,18 @@
 
 		{#if draft && src && step !== 'hashing'}
 			{#await catalog then c}
-				<section class="card">
-					<Editor {src} bind:draft bind:duration bind:playable bind:selected />
-					{#if !playable}
-						<p class="error">{t('upload.not_playable')}</p>
-					{/if}
-				</section>
-
-				<section class="card">
-					<TagInput available={tags} bind:value={draft.tags} label={t('upload.video_tags')} />
-				</section>
-
-				<fieldset class="card mode" disabled={busy}>
-					<legend>{t('upload.mode.label')}</legend>
-					<label class="choice">
-						<input type="radio" name="mode" checked={draft.mode === 'later'} onchange={(e) => setMode(e, 'later')} />
-						{t('upload.mode.later')}
-					</label>
-					<label class="choice">
-						<input type="radio" name="mode" checked={draft.mode === 'none'} onchange={(e) => setMode(e, 'none')} />
-						{t('upload.mode.none')}
-					</label>
-					<button type="button" class="secondary" disabled={draft.mode === null} onclick={() => draft && (draft.mode = null)}>
-						{t('upload.mode.clear')}
-					</button>
-				</fieldset>
-
-				{#if draft.mode !== 'none' && playable}
-					<section class="segments">
-						<h2>{t('upload.segments')}</h2>
-						{#if !draft.segments.length}
-							<p class="hint">{t('upload.no_segments_yet')}</p>
-						{/if}
-						{#each draft.segments as segment, i (segment.key)}
-							<SegmentForm
-								bind:segment={draft.segments[i]}
-								number={i + 1}
-								catalog={c}
-								{performers}
-								{tags}
-								problems={segmentProblems(segment, duration)}
-								selected={segment.key === selected}
-								onselect={() => (selected = segment.key)}
-								onaddperformer={newPerformer}
-								ondelete={() => draft?.segments.splice(i, 1)}
-							/>
-						{/each}
-					</section>
-				{/if}
-
-				<section class="card finish">
-					<label class="choice">
-						<input
-							type="checkbox"
-							checked={allSegmentsDone(draft.mode, draft.allSegmentsDone)}
-							disabled={checkboxLocked(draft.mode) || busy}
-							onchange={(e) => draft && (draft.allSegmentsDone = e.currentTarget.checked)}
-						/>
-						{t('upload.all_done')}
-					</label>
-
+				<AnnotationPanel
+					{src}
+					bind:annotation={draft}
+					catalog={c}
+					{performers}
+					{tags}
+					{busy}
+					blocker={unavailable ? t('upload.reason.unavailable') : ''}
+					onaddperformer={newPerformer}
+					onproceed={proceed}
+					oncancel={cancel}
+				>
 					{#if step === 'uploading' || step === 'submitting'}
 						<label class="bar">
 							{t('upload.step.upload')}
@@ -350,13 +263,7 @@
 						{#if retrying}<p class="error" role="status">{t('upload.retrying')}</p>{/if}
 						{#if step === 'submitting'}<p class="hint">{t('upload.step.submit')}</p>{/if}
 					{/if}
-					{#if reason}<p class="hint">{reason}</p>{/if}
-
-					<div class="buttons">
-						<button type="button" class="secondary" onclick={cancel}>{t('common.cancel')}</button>
-						<button type="button" disabled={!ready || busy} onclick={proceed}>{t('upload.proceed')}</button>
-					</div>
-				</section>
+				</AnnotationPanel>
 			{/await}
 		{/if}
 
@@ -418,34 +325,5 @@
 	.drafts li span:first-child {
 		flex: 1;
 		overflow-wrap: anywhere;
-	}
-	.mode {
-		display: flex;
-		flex-wrap: wrap;
-		align-items: center;
-		gap: 0.5rem 1.25rem;
-	}
-	.mode legend {
-		float: left;
-		width: 100%;
-		padding: 0;
-		font-size: 0.9rem;
-		color: var(--muted);
-	}
-	label.choice {
-		display: flex;
-		align-items: center;
-		gap: 0.5rem;
-		font-size: 1rem;
-		color: var(--text);
-	}
-	.segments {
-		display: grid;
-		gap: 0.75rem;
-	}
-	.buttons {
-		display: flex;
-		justify-content: flex-end;
-		gap: 0.5rem;
 	}
 </style>

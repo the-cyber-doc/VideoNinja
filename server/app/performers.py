@@ -12,7 +12,7 @@ from .auth import require_access
 from .validation import field
 
 router = APIRouter(prefix="/api", tags=["performers"])
-uploader = require_access("upload")
+uploader = require_access("upload", "video_mgmt")  # annotating at upload or later
 
 
 class Performer(BaseModel):

@@ -10,6 +10,8 @@ export type Mode = 'later' | 'none' | null;
 export interface DraftSegment {
 	/** Stable key for the page (not sent). */
 	key: number;
+	/** The server's segment ID, when annotating a published video again. */
+	id?: number;
 	/** Seconds, frame-accurate on the page; rounded to whole seconds when sent. */
 	begin: number;
 	end: number;
@@ -20,17 +22,21 @@ export interface DraftSegment {
 	tags: TagValue[];
 }
 
-export interface Draft {
-	sha256: string;
-	/** The file's name on the device (stored as video.original_filename). */
-	originalFilename: string;
-	size: number;
-	savedAt: number;
+/** What the annotation panel edits: at upload, or later for a published video. */
+export interface Annotation {
 	mode: Mode;
 	/** The checkbox, when no mode forces it. */
 	allSegmentsDone: boolean;
 	segments: DraftSegment[];
 	tags: TagValue[];
+}
+
+export interface Draft extends Annotation {
+	sha256: string;
+	/** The file's name on the device (stored as video.original_filename). */
+	originalFilename: string;
+	size: number;
+	savedAt: number;
 	/** tus upload URL, to resume an interrupted upload. */
 	uploadUrl?: string;
 }

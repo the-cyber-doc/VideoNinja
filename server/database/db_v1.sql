@@ -56,6 +56,7 @@ CREATE TABLE IF NOT EXISTS "video" (
 	"original_filename" VARCHAR NOT NULL,
 	"directory" VARCHAR,
 	"thumbnail" VARCHAR,
+	"duration_s" REAL,
 	"all_segments_done" BOOLEAN NOT NULL DEFAULT 0,
 	"uploaded_by" INTEGER,
 	"uploaded_at" DATETIME NOT NULL,

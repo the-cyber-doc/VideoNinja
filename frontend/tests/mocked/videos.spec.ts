@@ -1,0 +1,186 @@
+import { expect, test, type Page } from '@playwright/test';
+import { fulfillClip } from '../clip';
+
+// The Videos page (video_mgmt access): published videos by section, and the
+// annotation panel for one of them. The API is faked and keeps what is saved.
+const CATALOG = {
+	schools: [{ id: 'gyokko', kanji: '玉虎流', romaji: 'Gyokko Ryu' }],
+	levels: [{ id: 'shoden', kanji: '初伝', romaji: 'Shoden' }],
+	techniques: [
+		{ id: 'gyokko.koku', kanji: '虚空', romaji: 'Koku', ryu: 'gyokko', level: 'shoden' },
+		{ id: 'gyokko.keto', kanji: '闕倒', romaji: 'Keto', ryu: 'gyokko', level: 'shoden' }
+	],
+	segments: []
+};
+const MANAGER = ['segment', 'comment', 'annotate', 'upload', 'video_mgmt'];
+const video = (id: number, segment_count: number, all_segments_done: boolean, duration_s: number | null = 65.4) => ({
+	id,
+	original_filename: `kata-${id}.mp4`,
+	uploaded_at: '2027-01-15T09:00:00+01:00',
+	duration_s,
+	all_segments_done,
+	segment_count
+});
+const VIDEOS = [
+	video(1, 2, false), // in progress
+	video(2, 0, false), // to annotate
+	video(3, 0, false, null), // to annotate, duration unknown
+	video(4, 3, true), // complete
+	video(5, 0, true) // no technique
+];
+const PNG = Buffer.from(
+	'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=',
+	'base64'
+);
+
+async function setup(page: Page, access = MANAGER) {
+	const sent: { method: string; path: string; body?: unknown }[] = [];
+	let annotations = {
+		all_segments_done: false,
+		tags: [],
+		segments: [
+			{ id: 11, begin_s: 1, end_s: 2, technique: 'gyokko.koku', performer: 'hatsumi', tags: [] },
+			{ id: 12, begin_s: 2, end_s: 3, technique: 'gyokko.keto', performer: 'hatsumi', tags: [] }
+		]
+	};
+	page.on('request', (r) => {
+		const path = new URL(r.url()).pathname;
+		if (path.startsWith('/api/') || path.startsWith('/files')) sent.push({ method: r.method(), path, body: r.postDataJSON?.() ?? undefined });
+	});
+	await page.route('/api/setup/status', (r) => r.fulfill({ json: { initialized: true } }));
+	await page.route('/api/auth/me', (r) =>
+		r.fulfill({ json: { username: 'kenji', name: null, role: 'video_mgmt', role_name: 'Video manager', access } })
+	);
+	await page.route('/api/catalog', (r) => r.fulfill({ json: CATALOG }));
+	await page.route('/api/videos', (r) => r.fulfill({ json: VIDEOS }));
+	await page.route('/api/videos/1/annotations', (r) => {
+		if (r.request().method() === 'PUT') annotations = r.request().postDataJSON();
+		return r.fulfill({ json: annotations });
+	});
+	await page.route('/api/performers', (r) => r.fulfill({ json: [{ id: 'hatsumi', name: 'Hatsumi' }] }));
+	await page.route('/api/tags', (r) => r.fulfill({ json: [] }));
+	await page.route('/media/video/*/thumbnail', (r) => r.fulfill({ contentType: 'image/png', body: PNG }));
+	await page.route('/media/video/1', fulfillClip); // the 4 s test clip
+	return sent;
+}
+
+const section = (page: Page, name: string) => page.locator('details.section', { has: page.locator('summary', { hasText: name }) });
+
+test('Videos: in the menu after Upload, only with the video_mgmt access', async ({ page }) => {
+	await setup(page);
+	await page.goto('/');
+	const nav = page.getByRole('navigation', { name: 'Main navigation' });
+	await expect(nav.getByRole('link')).toHaveText(['Schools', 'Upload', 'Videos']);
+	await nav.getByRole('link', { name: 'Videos' }).click();
+	await expect(page).toHaveURL('/videos');
+	await expect(page.getByRole('heading', { name: 'Videos', level: 1 })).toBeVisible();
+});
+
+test('without the access: no entry, page not reachable', async ({ page }) => {
+	await setup(page, ['segment', 'upload']);
+	await page.goto('/');
+	await expect(page.getByRole('navigation', { name: 'Main navigation' }).getByRole('link')).toHaveText(['Schools', 'Upload']);
+	await page.goto('/videos');
+	await expect(page).toHaveURL('/');
+});
+
+test('four sections in order, the first open, each scrolling by itself', async ({ page }) => {
+	await setup(page);
+	await page.goto('/videos');
+	await expect(page.locator('details.section summary .name')).toHaveText(['In progress', 'To annotate', 'Complete', 'No technique']);
+	await expect(page.locator('details.section summary .count')).toHaveText(['1 video(s)', '2 video(s)', '1 video(s)', '1 video(s)']);
+	const open = await page.locator('details.section').evaluateAll((all) => all.map((d) => (d as HTMLDetailsElement).open));
+	expect(open).toEqual([true, false, false, false]);
+
+	// Collapsible.
+	const toAnnotate = section(page, 'To annotate');
+	await toAnnotate.locator('summary').click();
+	await expect(toAnnotate.getByRole('link')).toHaveCount(2);
+	await expect(toAnnotate.getByRole('link').first()).toHaveAttribute('href', '/videos/2');
+	await section(page, 'In progress').locator('summary').click();
+	await expect(section(page, 'In progress').getByRole('link')).toBeHidden();
+
+	// Its own scroll bar, at most about the screen's height.
+	const grid = toAnnotate.locator('.grid');
+	expect(await grid.evaluate((g) => getComputedStyle(g).overflowY)).toBe('auto');
+	expect((await grid.boundingBox())!.height).toBeLessThan(page.viewportSize()!.height);
+});
+
+test('thumbnail: the duration in the bottom right corner', async ({ page }) => {
+	await setup(page);
+	await page.goto('/videos');
+	const link = section(page, 'In progress').getByRole('link');
+	await expect(link).toHaveAccessibleName('Annotate kata-1.mp4 (1:05)');
+	const picture = (await link.locator('img').boundingBox())!;
+	const duration = link.locator('.duration');
+	await expect(duration).toHaveText('1:05');
+	const box = (await duration.boundingBox())!;
+	expect(picture.x + picture.width - (box.x + box.width)).toBeLessThan(12); // right
+	expect(picture.y + picture.height - (box.y + box.height)).toBeLessThan(12); // bottom
+	await expect(link).toContainText('kata-1.mp4');
+	// Unknown duration: no overlay.
+	await section(page, 'To annotate').locator('summary').click();
+	await expect(section(page, 'To annotate').getByRole('link').last().locator('.duration')).toHaveCount(0);
+});
+
+test('annotate a published video: its segments loaded, Proceed saves them, nothing uploaded', async ({ page }) => {
+	const sent = await setup(page);
+	await page.goto('/videos');
+	await section(page, 'In progress').getByRole('link').click();
+	await expect(page).toHaveURL('/videos/1');
+	await expect(page.locator('video').first()).toHaveAttribute('src', '/media/video/1');
+
+	// The saved segments, with school and level from the catalogue.
+	const first = page.getByRole('article', { name: 'Segment 1' });
+	await expect(first.getByLabel('School')).toHaveValue('gyokko');
+	await expect(first.getByLabel('Level')).toHaveValue('shoden');
+	await expect(first.getByLabel('Technique')).toHaveValue('gyokko.koku');
+	await expect(page.getByRole('article', { name: 'Segment 2' }).getByLabel('Technique')).toHaveValue('gyokko.keto');
+
+	// Change one, remove the other, mark it complete.
+	await first.getByLabel('Technique').selectOption('gyokko.keto');
+	page.on('dialog', (d) => d.accept());
+	await page.getByRole('article', { name: 'Segment 2' }).getByRole('button', { name: 'Delete this segment' }).click();
+	await page.getByRole('checkbox', { name: /All the segments have been created/ }).check();
+	await page.getByRole('button', { name: 'Proceed' }).click();
+
+	await expect(page).toHaveURL('/videos?saved');
+	await expect(page.getByRole('status')).toHaveText('Saved.');
+	const put = sent.find((s) => s.method === 'PUT')!;
+	expect(put.path).toBe('/api/videos/1/annotations');
+	expect(put.body).toEqual({
+		all_segments_done: true,
+		tags: [],
+		segments: [{ id: 11, begin_s: 1, end_s: 2, technique: 'gyokko.keto', performer: 'hatsumi', tags: [] }]
+	});
+	expect(sent.filter((s) => s.path.startsWith('/files') || s.path.includes('/submit'))).toEqual([]); // no upload
+});
+
+test('leaving with unsaved changes asks first', async ({ page }) => {
+	await setup(page);
+	await page.goto('/videos/1');
+	await page.getByRole('article', { name: 'Segment 1' }).getByLabel('Technique').selectOption('gyokko.keto');
+	// Every confirmation answered by `answer` (a click interrupted by a dialog may be
+	// replayed by Playwright: never leave one open).
+	const asked: string[] = [];
+	let answer = false;
+	page.on('dialog', (d) => (asked.push(d.message()), answer ? d.accept() : d.dismiss()));
+
+	await page.getByRole('link', { name: /All videos/ }).press('Enter');
+	await expect.poll(() => asked.length).toBeGreaterThan(0);
+	expect(asked[0]).toBe('Leave without saving your changes?');
+	await expect(page).toHaveURL('/videos/1'); // stayed, changes kept
+	await expect(page.getByRole('article', { name: 'Segment 1' }).getByLabel('Technique')).toHaveValue('gyokko.keto');
+
+	answer = true;
+	await page.getByRole('button', { name: 'Cancel' }).press('Enter');
+	await expect(page).toHaveURL('/videos');
+});
+
+test('in French', async ({ page }) => {
+	await page.addInitScript(() => localStorage.setItem('lang', 'fr'));
+	await setup(page);
+	await page.goto('/videos');
+	await expect(page.locator('details.section summary .name')).toHaveText(['En cours', 'À annoter', 'Terminées', 'Sans technique']);
+	await expect(page.getByRole('navigation', { name: 'Navigation principale' }).getByRole('link')).toHaveText(['Écoles', 'Téléverser', 'Vidéos']);
+});

@@ -185,7 +185,7 @@ class Encoder:
             with transaction() as con:
                 row = queries.video(con, video)
                 published = row is not None and queries.publish_video(
-                    con, video, sha256, f"{sha256[:2]}/{sha256}", result["thumbnail"])
+                    con, video, sha256, f"{sha256[:2]}/{sha256}", result["thumbnail"], result["duration_s"])
                 if published:
                     for segment_id, name in result["segment_thumbnails"].items():
                         queries.set_segment_thumbnail(con, segment_id, video, name)

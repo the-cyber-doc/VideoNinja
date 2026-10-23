@@ -9,6 +9,8 @@ client only names the segment. Files: <media>/video/<h2>/<sha256>/<file name>
   second): only the clip's bytes are sent, index first, so it plays while it
   downloads, with Range requests (206) for seeking.
 - /media/segment/<id>/thumbnail: its picture.
+- /media/video/<id> and /media/video/<id>/thumbnail: a whole published video and
+  its picture, for annotating it again (video_mgmt access only).
 
 Without nginx (development), the app serves the files itself from the media
 folder (paths.py); it cuts each clip once with ffmpeg (stream copy, the same
@@ -113,3 +115,36 @@ def segment_thumbnail(
     if not path.is_file():
         raise _not_found()
     return FileResponse(path, headers=NO_STORE)
+
+
+# --- whole videos (video management: annotating a published video) ---
+
+video_access = require_access("video_mgmt")
+
+
+def _video_file(con: sqlite3.Connection, video_id: int, name: str | None) -> Response:
+    row = queries.published_video(con, video_id)
+    if row is None or not name or not SHA256.fullmatch(row["sha256sum"]) or not FILE_NAME.fullmatch(name):
+        raise _not_found()
+    relative = f"{row['sha256sum'][:2]}/{row['sha256sum']}/{name}"
+    if snapshot.x_accel():  # no start/end: nginx sends the whole file, with Range requests
+        return Response(headers={"X-Accel-Redirect": f"{INTERNAL_PREFIX}/{relative}"})
+    path = paths.video_dir() / relative
+    if not path.is_file():
+        raise _not_found()
+    return FileResponse(path, headers=NO_STORE)
+
+
+@router.get("/video/{video_id}")
+def whole_video(
+    video_id: int, _: sqlite3.Row = Depends(video_access), con: sqlite3.Connection = Depends(db.get_db)
+) -> Response:
+    return _video_file(con, video_id, "video.mp4")
+
+
+@router.get("/video/{video_id}/thumbnail")
+def video_thumbnail(
+    video_id: int, _: sqlite3.Row = Depends(video_access), con: sqlite3.Connection = Depends(db.get_db)
+) -> Response:
+    row = queries.published_video(con, video_id)
+    return _video_file(con, video_id, row["thumbnail"] if row else None)

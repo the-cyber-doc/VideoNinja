@@ -30,7 +30,8 @@ def test_login_me_logout(client, admin_secret):
     r = login(client, admin_secret)
     assert r.status_code == 200
     assert r.json() == {"username": "admin", "name": "Admin", "role": "admin", "role_name": "Admin",
-                        "access": ["annotate", "comment", "segment", "upload", "user_mgmt"]}
+                        "access": ["annotate", "comment", "segment", "upload", "user_mgmt",
+                                   "video_mgmt"]}
     cookie = r.headers["set-cookie"]
     for attr in ("__Host-session=", "HttpOnly", "Secure", "SameSite=strict", "Path=/"):
         assert attr in cookie

@@ -1,6 +1,6 @@
 // Rules of the upload page, kept out of the components (unit-tested).
 import type { Submit } from './api';
-import type { Draft, DraftSegment, Mode } from './draft.svelte';
+import type { Annotation, Draft, DraftSegment, Mode } from './draft.svelte';
 
 /** "Define later": not done, read-only. "No technique segment": done, read-only. Else: the user's choice. */
 export function allSegmentsDone(mode: Mode, checked: boolean): boolean {
@@ -36,7 +36,7 @@ export function wholeSeconds(segment: Pick<DraftSegment, 'begin' | 'end'>) {
  * Proceed is possible when every segment is complete and, without any segment,
  * a mode says why. A video the browser cannot play can only be sent with a mode.
  */
-export function canProceed(draft: Draft, duration: number, playable: boolean): boolean {
+export function canProceed(draft: Annotation, duration: number, playable: boolean): boolean {
 	if (draft.mode === 'none') return draft.segments.length === 0;
 	if (!playable) return draft.mode === 'later' && draft.segments.length === 0;
 	if (draft.segments.some((s) => segmentProblems(s, duration).length)) return false;

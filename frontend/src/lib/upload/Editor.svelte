@@ -8,7 +8,7 @@
 	import Icon from '../Icon.svelte';
 	import { t } from '../i18n.svelte';
 	import { formatTime } from '../time';
-	import type { Draft } from './draft.svelte';
+	import type { Annotation } from './draft.svelte';
 	import Timeline from './Timeline.svelte';
 
 	let {
@@ -20,7 +20,7 @@
 		video = $bindable()
 	}: {
 		src: string;
-		draft: Draft;
+		draft: Annotation;
 		duration?: number;
 		playable?: boolean;
 		selected?: number | null;

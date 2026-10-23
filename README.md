@@ -521,12 +521,23 @@ is no way to log in without one. Admins cannot reset their own account.
 
 Roles and what they allow (accesses):
 
-| Role | `segment` | `comment` | `annotate` | `upload` | `user_mgmt` |
-|---|---|---|---|---|---|
-| `user` | ✓ | ✓ | | | |
-| `editor` | ✓ | ✓ | ✓ | | |
-| `uploader` | ✓ | ✓ | ✓ | ✓ | |
-| `admin` | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Role | `segment` | `comment` | `annotate` | `upload` | `video_mgmt` | `user_mgmt` |
+|---|---|---|---|---|---|---|
+| `user` | ✓ | ✓ | | | | |
+| `editor` | ✓ | ✓ | ✓ | | | |
+| `uploader` | ✓ | ✓ | ✓ | ✓ | | |
+| `video_mgmt` | ✓ | ✓ | ✓ | ✓ | ✓ | |
+| `admin` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+
+**Videos** (top menu, right of Upload; `video_mgmt` access) lists every
+published video in four collapsible sections: **In progress** (some
+techniques, not all), **To annotate** (none yet), **Complete**, and **No
+technique** (marked as containing none). Each thumbnail shows the video's
+duration. Clicking one opens the same annotation panel as the upload page,
+with the video from the server and its saved segments and tags: **Proceed**
+saves them (nothing is uploaded). Segments keep their ID; new or re-timed ones
+get a new thumbnail, and the PWA drops saved clips of segments re-timed or
+removed when it gets the new catalogue.
 
 **Comments:** on a technique's page, **Add a comment** (with the `comment`
 access) opens a form for the text and its language (the interface's by

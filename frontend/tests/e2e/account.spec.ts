@@ -247,6 +247,9 @@ test('comments: add, edit and delete my own, saved in the database', async ({ pa
 	await expect(comments.getByRole('img', { name: 'Language: Français' })).toBeVisible();
 	await expect(comments).not.toContainText('(edited)');
 
+	// Times are kept to the second: an edit within the same second as the
+	// creation would not be told apart ("(edited)").
+	await page.waitForTimeout(1100);
 	await comments.getByRole('button', { name: 'Edit' }).click();
 	await comments.getByPlaceholder('Your comment').fill('Encore mieux');
 	await comments.getByRole('button', { name: 'Save' }).click();

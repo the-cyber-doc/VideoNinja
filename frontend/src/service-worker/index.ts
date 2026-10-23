@@ -3,7 +3,9 @@
 // - Page loads: network first, else the cached shell (single-page app).
 // - /api/catalog: stale-while-revalidate, one entry per language. The browser's
 //   HTTP cache revalidates with the ETag, so an unchanged catalogue costs a 304.
-//   When it changed, the open pages are told: {type: 'catalog-updated', lang}.
+//   When it changed, the open pages are told: {type: 'catalog-updated', lang},
+//   and the saved clips and thumbnails of segments removed or re-timed since
+//   (Videos page) are deleted: their URLs carry only the segment's ID.
 // - /api/setup/status, /api/auth/me, /api/techniques/<id>/comments: network first
 //   (always the latest when online), the cached copy only offline.
 // - /media/segment/<id>: the segment's clip, kept for offline use. A segment's
@@ -92,11 +94,13 @@ async function catalog(event: FetchEvent): Promise<Response> {
 	const key = `${CATALOG}?lang=${encodeURIComponent(lang)}`; // same URL for every language
 	const cache = await caches.open(DATA);
 	const cached = await cache.match(key);
+	const before = cached?.clone(); // the page reads `cached` itself
 
 	const update = fetch(request).then(async (response) => {
 		if (response.ok) {
 			await cache.put(key, response.clone());
 			if (cached && cached.headers.get('ETag') !== response.headers.get('ETag')) {
+				if (before) await forgetChangedSegments(before, response.clone());
 				for (const client of await sw.clients.matchAll()) {
 					client.postMessage({ type: 'catalog-updated', lang });
 				}
@@ -107,6 +111,28 @@ async function catalog(event: FetchEvent): Promise<Response> {
 	if (!cached) return update;
 	event.waitUntil(update.catch(() => {})); // offline: keep the cached copy
 	return cached;
+}
+
+type Times = Map<number, string>;
+
+async function segmentTimes(catalog: Response): Promise<Times> {
+	try {
+		const { segments = [] } = (await catalog.json()) as { segments?: { id: number; begin_s: number; end_s: number }[] };
+		return new Map(segments.map((s) => [s.id, `${s.begin_s}-${s.end_s}`]));
+	} catch {
+		return new Map(); // not JSON: nothing to compare
+	}
+}
+
+/** Saved media of segments gone or re-timed between two catalogues: deleted. */
+async function forgetChangedSegments(before: Response, after: Response) {
+	const [old, now] = await Promise.all([segmentTimes(before), segmentTimes(after)]);
+	const media = await caches.open(MEDIA);
+	for (const [id, times] of old) {
+		if (now.get(id) === times) continue;
+		await media.delete(`${BASE}/media/segment/${id}`);
+		await media.delete(`${BASE}/media/segment/${id}/thumbnail`);
+	}
 }
 
 async function networkFirst(request: Request): Promise<Response> {

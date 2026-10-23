@@ -23,19 +23,19 @@ const PNG = Buffer.from(
 	'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=',
 	'base64'
 );
-const catalog = (ids: string[]) => ({
+const catalog = (ids: string[], segment = SEGMENT) => ({
 	schools: ids.map(school),
 	levels: [LEVEL],
 	techniques: [technique],
-	segments: [SEGMENT]
+	segments: [segment]
 });
 
-async function fakeApi(context: BrowserContext, schools = ['togakure', 'gyokko']) {
+async function fakeApi(context: BrowserContext, schools = ['togakure', 'gyokko'], segment = SEGMENT) {
 	await context.route('**/api/setup/status', (r) => r.fulfill({ json: { initialized: true } }));
 	await context.route('**/api/auth/me', (r) => r.fulfill({ json: USER }));
 	await context.route('**/api/auth/logout', (r) => r.fulfill({ status: 204 }));
 	await context.route('**/api/catalog', (r) =>
-		r.fulfill({ json: catalog(schools), headers: { ETag: `"${schools.length}"` } })
+		r.fulfill({ json: catalog(schools, segment), headers: { ETag: `"${schools.length}-${segment.begin_s}"` } })
 	);
 	await context.route('**/api/techniques/*/comments', (r) => r.fulfill({ json: COMMENTS }));
 	await context.route('**/media/segment/7', fulfillClip);
@@ -125,6 +125,29 @@ test('a clip watched online plays offline, with its thumbnail', async ({ page, c
 		return { status: r.status, range: r.headers.get('Content-Range'), length: (await r.arrayBuffer()).byteLength };
 	}, at('/media/segment/7'));
 	expect(part).toEqual({ status: 206, range: `bytes 0-1/${CLIP.length}`, length: 2 });
+});
+
+test('a re-timed segment: its saved clip and thumbnail are deleted', async ({ page, context, at }) => {
+	await fakeApi(context);
+	await controlled(page, at('/schools/togakure/shoden/togakure.t'));
+	await page.getByRole('button', { name: 'Play the segment (0:15)' }).click();
+	const saved = [at('/media/segment/7'), at('/media/segment/7/thumbnail')];
+	await expect.poll(() => cachedPaths(page, 'media')).toEqual(expect.arrayContaining(saved));
+	await page.keyboard.press('Escape');
+
+	// A newer catalogue, the segment unchanged: kept.
+	await context.unroute('**/api/catalog');
+	await fakeApi(context, ['togakure', 'gyokko', 'koto']);
+	await page.reload();
+	await page.goto(at('/schools'));
+	await expect(page.locator('.catalog-card')).toHaveCount(3);
+	expect(await cachedPaths(page, 'media')).toEqual(expect.arrayContaining(saved));
+
+	// Re-timed on the Videos page: the saved copies would show the old cut.
+	await context.unroute('**/api/catalog');
+	await fakeApi(context, ['togakure', 'gyokko', 'koto'], { ...SEGMENT, begin_s: 13 });
+	await page.reload();
+	await expect.poll(() => cachedPaths(page, 'media')).toEqual([]);
 });
 
 test('a newer catalogue replaces the cached one on the open page', async ({ page, context, at }) => {
