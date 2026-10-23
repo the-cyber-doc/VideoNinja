@@ -8,12 +8,13 @@ import sqlite3
 import subprocess
 import threading
 import time
+from pathlib import Path
 
 import pytest
 
 from app import db, encoder
 
-from .test_upload import admin, submit, uploaded  # noqa: F401 (fixture)
+from .test_upload import admin, hook, session, submit, uploaded  # noqa: F401 (fixture)
 
 pytestmark = pytest.mark.skipif(not (shutil.which("ffmpeg") and shutil.which("ffprobe")),
                                 reason="ffmpeg not installed")
@@ -65,13 +66,165 @@ def test_encodes_and_publishes(admin, enc, interlaced):  # noqa: F811
 
     status, error, sha, thumb = row(video)
     assert (status, error, thumb) == ("published", None, "thumb.jpg")
-    folder = enc.derived / sha[:2] / sha
+    folder = enc.videos / sha[:2] / sha
     assert sorted(p.name for p in folder.iterdir()) == ["segment-1.jpg", "thumb.jpg", "video.mp4"]
     assert hashlib.sha256((folder / "video.mp4").read_bytes()).hexdigest() == sha
     encoder.check_encoded(folder / "video.mp4")  # HEVC hvc1 + AAC
+    assert encoder.needs_encoding(folder / "video.mp4") is None  # uploaded again: not encoded twice
     assert not list(enc.work.iterdir())  # scratch cleaned
     enc.housekeeping()
     assert not list(enc.uploads.iterdir())  # original deleted once published
+
+
+# --- originals already in the target format (sample videos next to this file) ---
+
+TESTS = Path(__file__).parent
+READY = TESTS / "video_test_noneed_encoding.mp4"  # 20 s, H.265 hvc1 Main, 1080p60 BT.709, keyframe/s, AAC
+NOT_READY = TESTS / "video_test_need_encoding.webm"  # 20 s, AV1 + Opus in WebM
+samples = pytest.mark.skipif(not (READY.is_file() and NOT_READY.is_file()), reason="sample videos missing")
+
+
+def failing_script(tmp_path) -> tuple[str, Path]:
+    """An encode-videos.sh stand-in that only records that it was called."""
+    called = tmp_path / "called"
+    script = tmp_path / "encode.sh"
+    script.write_text(f"#!/bin/sh\necho \"$@\" >> {called}\nexit 1\n")
+    script.chmod(0o755)
+    return str(script), called
+
+
+def queue_sample(admin, enc, sample: Path) -> int:  # noqa: F811
+    """Like queue(), but the upload is a symlink to the sample (not copied)."""
+    tus_id = uploaded(admin, sha=encoder.file_sha256(sample), size=sample.stat().st_size)
+    (enc.uploads / tus_id).symlink_to(sample)
+    (enc.uploads / f"{tus_id}.info").write_text(json.dumps({"Size": sample.stat().st_size, "Offset": 0}))
+    segment = {"begin_s": 5, "end_s": 15, "technique": "gyokko.koku", "performer": "hatsumi", "tags": []}
+    return submit(admin, tus_id, segments=[segment]).json()["id"]
+
+
+def remuxed(tmp_path, *options, chapters=False) -> Path:
+    """READY with its streams copied into a new MP4 (no encoding), with `options`."""
+    out = tmp_path / "remuxed.mp4"
+    extra = []
+    if chapters:
+        (tmp_path / "chapters.txt").write_text(";FFMETADATA1\n[CHAPTER]\nTIMEBASE=1/1\nSTART=0\nEND=10\n"
+                                               "title=Omote\n")
+        extra = ["-f", "ffmetadata", "-i", str(tmp_path / "chapters.txt"), "-map_chapters", "1"]
+    subprocess.run(["ffmpeg", "-v", "error", "-nostdin", "-y", "-i", f"file:{READY}", *extra, "-c", "copy",
+                    "-tag:v", "hvc1", *options, f"file:{out}"], check=True)
+    return out
+
+
+@samples
+def test_detects_what_needs_encoding():
+    assert encoder.needs_encoding(READY) is None
+    assert encoder.needs_encoding(NOT_READY) == "not an MP4 file"
+
+
+@samples
+@pytest.mark.parametrize("options, reason", [
+    (["-movflags", "+faststart"], None),  # same as READY
+    ([], "no faststart (index after the media data)"),
+    # Only the format counts: metadata (e.g. a phone's GPS location) stays.
+    (["-movflags", "+faststart", "-metadata", "location=+46.2044+006.1432/", "-metadata", "title=Kata"], None),
+    (["-movflags", "+faststart", "-map", "0:v", "-map", "0:a", "-map", "0:a"], "more than one audio stream"),
+])
+def test_published_as_it_is_when_the_format_is_right(tmp_path, options, reason):
+    assert encoder.needs_encoding(remuxed(tmp_path, *options)) == reason
+
+
+@samples
+def test_chapters_are_ignored(tmp_path):
+    with_chapters = remuxed(tmp_path, "-movflags", "+faststart", chapters=True)
+    assert "Omote" in subprocess.run(["ffprobe", "-v", "error", "-show_chapters", str(with_chapters)],
+                                     capture_output=True, text=True, check=True).stdout
+    assert encoder.needs_encoding(with_chapters) is None
+
+
+@samples
+def test_original_in_the_target_format_is_not_encoded(admin, enc, tmp_path):  # noqa: F811
+    enc.script, called = failing_script(tmp_path)
+    video = queue_sample(admin, enc, READY)
+    assert enc.run_once() is True
+
+    status, error, sha, thumb = row(video)
+    assert (status, error, thumb) == ("published", None, "thumb.jpg")
+    assert not called.exists()  # the encoding script never ran
+    # Published as it is: the same file, so the same hash as the original.
+    original_sha = sqlite3.connect(db.db_path()).execute(
+        "SELECT original_sha256 FROM video WHERE id = ?", (video,)).fetchone()[0]
+    assert sha == original_sha == encoder.file_sha256(READY)
+    published = enc.videos / sha[:2] / sha / "video.mp4"
+    assert published.read_bytes() == READY.read_bytes()
+
+
+def copying_script(tmp_path, result: Path) -> str:
+    """An encode-videos.sh stand-in that "encodes" by copying `result` (fast)."""
+    script = tmp_path / "encode.sh"
+    script.write_text("#!/bin/sh\n"
+                      'while [ $# -gt 1 ]; do [ "$1" = -o ] && out=$2; shift; done\n'
+                      f'mkdir -p "$out" && cp {result} "$out/$(basename "$1").mp4"\n')
+    script.chmod(0o755)
+    return str(script)
+
+
+def refused_again(admin, sha: str, size: int) -> None:  # noqa: F811
+    """Uploading a file with this hash again is refused: before the upload (the
+    page's check) and by tusd's pre-create hook (if the page is bypassed)."""
+    assert admin.get(f"/api/videos/exists?original_sha256={sha}").json() == {"exists": True}
+    answer = hook(admin, "pre-create", session(admin), size=size, sha=sha)
+    assert answer["RejectUpload"] is True
+    assert answer["HTTPResponse"]["StatusCode"] == 409
+    assert json.loads(answer["HTTPResponse"]["Body"]) == {"detail": "This video already exists"}
+
+
+@samples
+def test_reupload_of_a_video_published_as_it_is(admin, enc, tmp_path):  # noqa: F811
+    enc.script, _ = failing_script(tmp_path)
+    queue_sample(admin, enc, READY)
+    assert enc.run_once() is True
+    refused_again(admin, encoder.file_sha256(READY), READY.stat().st_size)
+
+
+@samples
+def test_reupload_of_an_encoded_video(admin, enc, tmp_path):  # noqa: F811
+    enc.script = copying_script(tmp_path, READY)  # its "encoding" of NOT_READY is READY
+    video = queue_sample(admin, enc, NOT_READY)
+    assert enc.run_once() is True
+    assert row(video)[2] == encoder.file_sha256(READY) != encoder.file_sha256(NOT_READY)
+    refused_again(admin, encoder.file_sha256(NOT_READY), NOT_READY.stat().st_size)  # the original
+    refused_again(admin, encoder.file_sha256(READY), READY.stat().st_size)  # the published file
+
+
+def test_thumbnail_in_the_middle():
+    assert encoder.middle(0, 20.05, 20.05) == 10.025  # the video's
+    assert encoder.middle(5, 15, 20.05) == 10  # a segment's
+    assert encoder.middle(18, 21, 20.05) == 19.025  # a segment ending after the video (rounded up)
+
+
+@samples
+def test_thumbnails_taken_in_the_middle(admin, enc, tmp_path, monkeypatch):  # noqa: F811
+    taken = {}
+    real = encoder.thumbnail
+
+    def record(video, at_s, out):
+        taken[out.name] = at_s
+        real(video, at_s, out)
+
+    monkeypatch.setattr(encoder, "thumbnail", record)
+    queue_sample(admin, enc, READY)  # one segment, 5-15 s
+    assert enc.run_once() is True
+    assert taken == {"thumb.jpg": encoder.probe_duration(READY) / 2, "segment-1.jpg": 10}
+
+
+@samples
+def test_original_in_another_format_is_encoded(admin, enc, tmp_path):  # noqa: F811
+    enc.script, called = failing_script(tmp_path)  # a real 1080p60 encode would take minutes
+    video = queue_sample(admin, enc, NOT_READY)
+    assert enc.run_once() is True
+    assert len(called.read_text().splitlines()) == 1  # encode-videos.sh was called, once
+    status, error, _, _ = row(video)
+    assert status == "failed" and error.startswith("Encoding failed")
 
 
 def test_hash_mismatch(admin, enc):  # noqa: F811

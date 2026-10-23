@@ -3,5 +3,8 @@
 /** User data (catalogue, current user): deleted on logout and login. */
 export const DATA = 'data';
 
+/** Segment clips and thumbnails seen: deleted on logout and login. */
+export const MEDIA = 'media';
+
 /** IndexedDB database of the upload drafts: deleted on logout and login. */
 export const UPLOAD_DB = 'videoninja-upload';

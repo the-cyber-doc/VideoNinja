@@ -1,18 +1,25 @@
 // Upload API (app side). The file itself goes to tusd (upload.ts); the app only
 // gets metadata and reports the queue status. Needs the "upload" access.
 import { api, apiHeaders } from '../api';
+import { url } from '../base';
 
 export interface Performer {
 	id: string;
 	name: string;
 }
 
-/** A tag kind: one of `values` if given, else free text. */
+/** A tag kind: one of `values` (sorted by name) if given, else text: any, or a year
+ * from `min` to `max` (format 'year'). Names are in the request's language. */
 export interface Tag {
 	id: string;
-	values?: string[];
+	name: string;
+	values?: { id: string; name: string }[];
+	format?: 'year';
+	min?: number;
+	max?: number;
 }
 
+/** A tag put on a video or segment: `value` is a fixed value's ID, or the free text as typed. */
 export interface TagValue {
 	id: string;
 	value?: string;
@@ -63,7 +70,7 @@ export const myUploads = () => api<UploadStatus[]>('/api/uploads/mine');
 export const retry = (id: number) => api<void>(`/api/videos/${id}/retry`, {});
 
 export async function remove(id: number) {
-	const res = await fetch(`/api/videos/${id}`, {
+	const res = await fetch(url(`/api/videos/${id}`), {
 		method: 'DELETE',
 		headers: apiHeaders(),
 		credentials: 'same-origin'

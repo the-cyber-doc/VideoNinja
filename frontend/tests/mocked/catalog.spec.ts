@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { fulfillClip } from '../clip';
 
 // The API is faked: school → levels → techniques → technique page, and back.
 const CATALOG = {
@@ -26,8 +27,8 @@ const CATALOG = {
 };
 const COMMENTS = [
 	// Newest first, as sent by the server.
-	{ id: 3, user: 'Hana', created_at: '2027-01-15T09:00:00+01:00', lang: 'fr', text: 'Très bien' },
-	{ id: 1, user: 'kenji', created_at: '2023-11-14T23:13:20+01:00', lang: 'en', text: 'First\nsecond line' }
+	{ id: 3, user: 'Hana', created_at: '2027-01-15T09:00:00+01:00', modified_at: '2027-01-15T09:00:00+01:00', lang: 'fr', text: 'Très bien', mine: false },
+	{ id: 1, user: 'kenji', created_at: '2023-11-14T23:13:20+01:00', modified_at: '2023-11-14T23:13:20+01:00', lang: 'en', text: 'First\nsecond line', mine: true }
 ];
 
 async function loggedIn(page: Page) {
@@ -102,11 +103,11 @@ test('technique page: segment thumbnails, then comments newest first', async ({ 
 	await page.goto('/schools/gyokko/shoden/gyokko.koku');
 
 	const videos = page.locator('section').first();
-	const thumbs = videos.getByRole('img');
-	await expect(thumbs).toHaveCount(2);
-	await expect(thumbs.first()).toHaveAttribute('src', '/media/segment/7/thumbnail');
-	await expect(thumbs.first()).toHaveAttribute('alt', 'Segment 0:12–0:27');
-	await expect(videos.getByText('1:15–1:30')).toBeVisible();
+	// Each segment: its picture and its duration.
+	await expect(videos.getByRole('button')).toHaveText(['0:15', '0:15']);
+	await expect(videos.getByRole('button', { name: 'Play the segment (0:15)' })).toHaveCount(2);
+	await expect(videos.locator('img').first()).toHaveAttribute('src', '/media/segment/7/thumbnail');
+	await expect(videos.locator('img').last()).toHaveAttribute('src', '/media/segment/8/thumbnail');
 
 	const comments = page.locator('.comment');
 	await expect(comments).toHaveCount(2);
@@ -121,12 +122,133 @@ test('technique page: segment thumbnails, then comments newest first', async ({ 
 	await expect(page.getByRole('heading', { level: 2 })).toHaveText(['Videos', 'Comments']);
 });
 
+test('clicking a segment plays its clip in a dialog', async ({ page }) => {
+	await loggedIn(page);
+	const asked: string[] = [];
+	await page.route('/media/segment/*', (r) => {
+		asked.push(new URL(r.request().url()).pathname);
+		return fulfillClip(r);
+	});
+	await page.goto('/schools/gyokko/shoden/gyokko.koku');
+	await page.getByRole('button', { name: 'Play the segment (0:15)' }).first().click();
+
+	const player = page.getByRole('dialog', { name: 'Koku, segment of 0:15' });
+	await expect(player).toBeVisible();
+	await expect(player.locator('video')).toHaveAttribute('src', '/media/segment/7');
+	await expect.poll(() => player.locator('video').evaluate((v: HTMLVideoElement) => v.currentTime)).toBeGreaterThan(0);
+	expect(asked).toContain('/media/segment/7'); // the clip only: the server cut it
+	await page.keyboard.press('Escape');
+	await expect(player).toHaveCount(0); // closed: the video is gone, so it stops
+
+	await page.getByRole('button', { name: 'Play the segment (0:15)' }).last().click();
+	await expect(page.locator('dialog video')).toHaveAttribute('src', '/media/segment/8');
+	await page.getByRole('button', { name: 'Close' }).click();
+	await expect(page.locator('dialog')).toHaveCount(0);
+});
+
+test('the player: slow motion and frame by frame', async ({ page }) => {
+	await loggedIn(page);
+	await page.route('/media/segment/*', fulfillClip);
+	await page.goto('/schools/gyokko/shoden/gyokko.koku');
+	await page.getByRole('button', { name: 'Play the segment (0:15)' }).first().click();
+	const player = page.getByRole('dialog');
+	const video = player.locator('video');
+	const time = () => video.evaluate((v: HTMLVideoElement) => v.currentTime);
+
+	const speeds = player.getByRole('group', { name: 'Speed' }).getByRole('button');
+	await expect(speeds).toHaveText(['1×', '0.5×', '0.25×', '0.125×']);
+	await expect(speeds.first()).toHaveAttribute('aria-pressed', 'true');
+	await speeds.nth(2).click();
+	await expect(speeds.nth(2)).toHaveAttribute('aria-pressed', 'true');
+	await expect(speeds.first()).toHaveAttribute('aria-pressed', 'false');
+	expect(await video.evaluate((v: HTMLVideoElement) => v.playbackRate)).toBe(0.25);
+
+	// Frame by frame: the clip is 25 fps, measured from the first frames played.
+	await expect.poll(time).toBeGreaterThan(0.3);
+	const moved = async (action: () => Promise<void>) => {
+		const before = await time();
+		await action();
+		return Math.round(((await time()) - before) * 1000);
+	};
+	await player.getByRole('button', { name: 'Next frame' }).click(); // pauses: measured from here
+	expect(await video.evaluate((v: HTMLVideoElement) => v.paused)).toBe(true);
+	expect(await moved(() => player.getByRole('button', { name: 'Next frame' }).click())).toBe(40);
+	expect(await moved(() => player.getByRole('button', { name: 'Previous frame' }).click())).toBe(-40);
+	expect(await moved(() => page.keyboard.press('ArrowRight'))).toBe(40);
+	await video.focus(); // also when the video has the focus (its own arrows jump 5 s)
+	expect(await moved(() => page.keyboard.press('ArrowLeft'))).toBe(-40);
+});
+
+test('the player: own play/pause, also with Space', async ({ page }) => {
+	await loggedIn(page);
+	await page.route('/media/segment/*', fulfillClip);
+	await page.goto('/schools/gyokko/shoden/gyokko.koku');
+	await page.getByRole('button', { name: 'Play the segment (0:15)' }).first().click();
+	const player = page.getByRole('dialog');
+	const paused = () => player.locator('video').evaluate((v: HTMLVideoElement) => v.paused);
+	await expect.poll(paused).toBe(false); // starts by itself
+	await player.getByRole('button', { name: 'Pause' }).click();
+	await expect.poll(paused).toBe(true);
+	await player.getByRole('button', { name: 'Play' }).click();
+	await expect.poll(paused).toBe(false);
+	await player.locator('video').focus();
+	await page.keyboard.press(' ');
+	await expect.poll(paused).toBe(true);
+});
+
+test.describe('the player on a phone', () => {
+	test.use({ viewport: { width: 393, height: 851 }, hasTouch: true, isMobile: true });
+
+	test('play/pause can be tapped; the controls are small, on one line', async ({ page }) => {
+		await loggedIn(page);
+		await page.route('/media/segment/*', fulfillClip);
+		await page.goto('/schools/gyokko/shoden/gyokko.koku');
+		await page.getByRole('button', { name: 'Play the segment (0:15)' }).first().tap();
+		const player = page.getByRole('dialog');
+		const paused = () => player.locator('video').evaluate((v: HTMLVideoElement) => v.paused);
+		await expect.poll(paused).toBe(false);
+		await player.getByRole('button', { name: 'Pause' }).tap();
+		await expect.poll(paused).toBe(true);
+		await player.getByRole('button', { name: 'Play' }).tap();
+		await expect.poll(paused).toBe(false);
+
+		const controls = [
+			player.getByRole('button', { name: 'Previous frame' }),
+			player.getByRole('button', { name: 'Pause' }),
+			player.getByRole('button', { name: 'Next frame' }),
+			...(await player.getByRole('group', { name: 'Speed' }).getByRole('button').all())
+		];
+		const boxes = await Promise.all(controls.map(async (c) => (await c.boundingBox())!));
+		for (const box of boxes) expect(box.height).toBeLessThanOrEqual(34);
+		expect(new Set(boxes.map((box) => Math.round(box.y))).size).toBe(1); // one line
+	});
+});
+
+test('the player in French: speeds with a decimal comma', async ({ page }) => {
+	await page.addInitScript(() => localStorage.setItem('lang', 'fr'));
+	await loggedIn(page);
+	await page.route('/media/segment/*', fulfillClip);
+	await page.goto('/schools/gyokko/shoden/gyokko.koku');
+	await page.getByRole('button', { name: 'Lire le segment (0:15)' }).first().click();
+	const player = page.getByRole('dialog');
+	await expect(player.getByRole('group', { name: 'Vitesse' }).getByRole('button')).toHaveText(['1×', '0,5×', '0,25×', '0,125×']);
+	await expect(player.getByRole('button', { name: 'Image suivante' })).toBeVisible();
+});
+
+test('a clip that cannot be played says so', async ({ page }) => {
+	await loggedIn(page);
+	await page.route('/media/segment/*', (r) => r.fulfill({ status: 404 }));
+	await page.goto('/schools/gyokko/shoden/gyokko.koku');
+	await page.getByRole('button', { name: 'Play the segment (0:15)' }).first().click();
+	await expect(page.getByRole('dialog')).toContainText('This clip cannot be played.');
+});
+
 test('technique without videos or comments', async ({ page }) => {
 	await loggedIn(page);
 	await page.route('/media/segment/*/thumbnail', (r) => r.fulfill({ status: 404 })); // newest route wins
 	await page.goto('/schools/gyokko/shoden/gyokko.keto');
 	// The thumbnail is missing: a placeholder keeps the place.
-	await expect(page.getByRole('img', { name: 'Segment 0:01–0:05' })).toHaveClass(/placeholder/);
+	await expect(page.getByRole('button', { name: 'Play the segment (0:04)' }).locator('.placeholder')).toBeVisible();
 	await expect(page.getByText('No comments yet.')).toBeVisible();
 });
 
@@ -173,5 +295,5 @@ test('a segment published later shows without reloading the app', async ({ page 
 	await crumbs(page).getByRole('link', { name: 'Shoden' }).click();
 	await page.clock.fastForward('00:31');
 	await page.getByRole('link', { name: /Koku/ }).click();
-	await expect(page.locator('section').first().getByRole('img')).toHaveCount(2);
+	await expect(page.locator('section').first().getByRole('button', { name: /Play the segment/ })).toHaveCount(2);
 });

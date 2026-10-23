@@ -2,7 +2,8 @@
 	// The video's timeline: film strip, segments as coloured bands, playhead, and
 	// the begin marker set with "Begin here". Click = seek; click-and-drag on an
 	// empty place = new segment; drag a segment's edge = move it; click a segment
-	// = select it.
+	// = select it. The pointer's position is previewed all the time (hovering,
+	// creating, resizing): onpreview(time), then onpreview(null) when it leaves.
 	import { t } from '../i18n.svelte';
 	import { formatTime } from '../time';
 	import type { DraftSegment } from './draft.svelte';
@@ -17,7 +18,8 @@
 		onseek,
 		oncreate,
 		onchange,
-		onselect
+		onselect,
+		onpreview
 	}: {
 		duration: number;
 		current: number;
@@ -30,7 +32,21 @@
 		oncreate: (begin: number, end: number) => void;
 		onchange: (key: number, begin: number, end: number) => void;
 		onselect: (key: number | null) => void;
+		/** The time under the pointer, or null: back to the playhead. */
+		onpreview: (time: number | null) => void;
 	} = $props();
+
+	let hover = $state<number | null>(null);
+	function preview(time: number | null) {
+		hover = time;
+		onpreview(time);
+	}
+
+	/** Pointer outside the track: the playhead's frame again. */
+	function outside(e: PointerEvent) {
+		const rect = track!.getBoundingClientRect();
+		return e.clientX < rect.left || e.clientX > rect.right || e.clientY < rect.top || e.clientY > rect.bottom;
+	}
 
 	let track = $state<HTMLElement>();
 	let drag = $state<
@@ -67,8 +83,10 @@
 	}
 
 	function move(e: PointerEvent) {
-		if (!drag) return;
 		const time = timeAt(e);
+		// While dragging (pointer captured), also outside the track: the edge being placed.
+		if (drag || !outside(e)) preview(time);
+		if (!drag) return;
 		if (drag.kind === 'create') {
 			drag.end = time;
 		} else {
@@ -89,6 +107,8 @@
 			}
 		}
 		drag = null;
+		// A finger has no hover; a mouse released outside the track has left it.
+		if (e.pointerType === 'touch' || outside(e)) preview(null);
 	}
 </script>
 
@@ -105,7 +125,8 @@
 	onpointerdown={down}
 	onpointermove={move}
 	onpointerup={up}
-	onpointercancel={() => (drag = null)}
+	onpointercancel={() => ((drag = null), preview(null))}
+	onpointerleave={() => drag || preview(null)}
 >
 	<div class="strip" aria-hidden="true">
 		{#each strip as image, i (i)}
@@ -139,6 +160,11 @@
 		<div class="marker" style:left={pct(marker)} title={t('upload.begin_here')}></div>
 	{/if}
 	<div class="playhead" style:left={pct(current)}></div>
+	{#if hover !== null}
+		<div class="hover" style:left={pct(hover)} aria-hidden="true">
+			<span class:right={hover > duration / 2}>{formatTime(Math.floor(hover))}</span>
+		</div>
+	{/if}
 </div>
 
 <style>
@@ -147,6 +173,7 @@
 		flex: 1;
 		min-width: 0;
 		height: 4rem;
+		min-height: 4rem; /* in a column (phones), flex: 1 alone would shrink it to nothing */
 		border: 1px solid var(--border);
 		border-radius: 6px;
 		background: var(--bg);
@@ -224,5 +251,29 @@
 	}
 	.marker {
 		border-left: 2px dashed var(--text);
+	}
+	.hover {
+		position: absolute;
+		top: 0;
+		bottom: 0;
+		width: 1px;
+		background: var(--text);
+		opacity: 0.8;
+		pointer-events: none;
+	}
+	.hover span {
+		position: absolute;
+		top: 0;
+		left: 3px;
+		padding: 0 0.25rem;
+		font-size: 0.75rem;
+		font-variant-numeric: tabular-nums;
+		color: #fff;
+		background: rgb(0 0 0 / 0.65);
+		border-radius: 3px;
+	}
+	.hover span.right {
+		left: auto;
+		right: 3px;
 	}
 </style>

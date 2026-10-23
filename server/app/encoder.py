@@ -3,9 +3,11 @@
 Loop: delete the originals no longer needed, claim the oldest queued video,
 check its original (complete, SHA-256 as announced, long enough), encode it
 with tools/encode-videos/encode-videos.sh (libx265, NNEDI3 deinterlacing, HDR
-tone mapping), check the result, store it under derived/<h2>/<sha256>/ with its
-thumbnails, and publish it. The CPU work is done by ffmpeg (child process, low
-priority); this thread only waits and reports progress to the database.
+tone mapping) unless it is already in that format (then it is published as
+it is, same bytes and same SHA-256: see needs_encoding), check the result,
+store it under video/<h2>/<sha256>/ with its thumbnails, and publish it.
+The CPU work is done by ffmpeg (child process, low priority); this thread only
+waits and reports progress to the database.
 
 Restart: encodings cut by a crash or reboot are queued again at startup (at
 most MAX_ATTEMPTS tries); a clean shutdown puts the current one back without
@@ -40,6 +42,7 @@ POLL_S = 10
 PROGRESS_EVERY_S = 5
 HASH_SHARE = 5  # % of the progress bar for checking the original; encoding gets the rest up to 95
 THUMB_WIDTH = 320
+GOP_S = 1  # encode-videos.sh's keyframe interval (-g), needed by the nginx mp4 module's cuts
 DEFAULT_SCRIPT = Path(__file__).resolve().parents[2] / "tools" / "encode-videos" / "encode-videos.sh"
 
 
@@ -71,8 +74,8 @@ class JobError(Exception):
 class Encoder:
     def __init__(self) -> None:
         self.uploads = paths.upload_dir()
-        self.derived = paths.media_dir() / "derived"
-        self.work = self.derived / ".work"  # same filesystem as derived/: moves are renames
+        self.videos = paths.video_dir()
+        self.work = self.videos / ".work"  # same filesystem as video/: moves are renames
         self.preset = os.environ.get("VIDEONINJA_X265_PRESET", "medium")
         self.script = os.environ.get("VIDEONINJA_ENCODE_SCRIPT", str(DEFAULT_SCRIPT))
         self.stopping = threading.Event()
@@ -177,7 +180,7 @@ class Encoder:
 
     def publish(self, video: int, result: dict) -> None:
         sha256 = result["sha256"]
-        folder = self.derived / sha256[:2] / sha256
+        folder = self.videos / sha256[:2] / sha256
         try:
             with transaction() as con:
                 row = queries.video(con, video)
@@ -220,17 +223,25 @@ class Encoder:
             raise JobError("A segment ends after the end of the video")
 
         work.mkdir(parents=True, exist_ok=True)
-        encoded = self.encode(video, original, work, duration)
+        reason = needs_encoding(original)
+        if reason:
+            log.info("Video %s: encoding (%s)", video, reason)
+            encoded = self.encode(video, original, work, duration)
+        else:
+            log.info("Video %s: already in the target format, published as it is", video)
+            encoded = work / "out" / "video.mp4"
+            encoded.parent.mkdir()
+            shutil.copyfile(original, encoded)  # a copy: the original stays until published
         check_encoded(encoded)
         sha256 = file_sha256(encoded)
-        folder = self.derived / sha256[:2] / sha256
+        folder = self.videos / sha256[:2] / sha256
         folder.mkdir(parents=True, exist_ok=True)
 
-        thumbnail(encoded, duration * 0.1, work / "thumb.jpg")
+        thumbnail(encoded, middle(0, duration, duration), work / "thumb.jpg")
         segment_thumbnails = {}
         for s in job["segments"]:
             name = f"segment-{s['id']}.jpg"
-            thumbnail(encoded, min(s["begin_s"] + 1, s["end_s"], duration), work / name)
+            thumbnail(encoded, middle(s["begin_s"], s["end_s"], duration), work / name)
             segment_thumbnails[s["id"]] = name
         # Thumbnails first, the video last: video.mp4 present = folder complete.
         for name in ["thumb.jpg", *segment_thumbnails.values()]:
@@ -257,7 +268,6 @@ class Encoder:
         out = work / "out"
         cmd = ["nice", "-n", "10", self.script, "-c", "-x", self.preset, "-P", str(progress_file),
                "-o", str(out), "-f", str(original)]
-        log.info("Video %s: encoding", video)
         with (work / "encode.log").open("wb") as log_file:
             # Own process group: stopping it stops ffmpeg too (kill_encoding).
             self.process = subprocess.Popen(cmd, stdout=log_file, stderr=subprocess.STDOUT,
@@ -337,6 +347,92 @@ def check_encoded(path: Path) -> None:
         raise JobError("Encoded video is not HEVC/hvc1")
     if any(a.get("codec_name") != "aac" for a in audios):
         raise JobError("Encoded audio is not AAC")
+
+
+def needs_encoding(path: Path) -> str | None:
+    """Why the original must be encoded, or None if its format is already what
+    encode-videos.sh makes: MP4 with faststart, one H.265 Main 8-bit video
+    (hvc1), SDR BT.709, progressive, a keyframe every GOP_S seconds, AAC stereo
+    (or no audio). Only the format counts: metadata (GPS location, dates…),
+    chapters and other streams (data, subtitles) are ignored and stay in the
+    file. Such a file (e.g. encoded with the script before upload) is published
+    as it is: encoding it again would only lose quality and take the Pi minutes
+    to hours. When unsure: encode."""
+    out = run(["ffprobe", "-v", "error", "-show_entries",
+               "format=format_name:stream=codec_type,codec_name,codec_tag_string,profile,pix_fmt,"
+               "width,height,field_order,color_transfer,color_primaries,channels,avg_frame_rate"
+               ":stream_side_data=side_data_type", "-of", "json", f"file:{path}"])
+    data = json.loads(out)
+    fmt = data.get("format", {})
+    if "mp4" not in fmt.get("format_name", "").split(","):
+        return "not an MP4 file"
+    if not moov_first(path):
+        return "no faststart (index after the media data)"
+    streams = data.get("streams", [])
+    v = [s for s in streams if s.get("codec_type") == "video"]
+    a = [s for s in streams if s.get("codec_type") == "audio"]
+    if len(v) != 1:
+        return "no video" if not v else "more than one video stream"
+    if len(a) > 1:
+        return "more than one audio stream"
+    v, a = v[0], a[0] if a else None
+    if (v.get("codec_name"), v.get("codec_tag_string"), v.get("profile")) != ("hevc", "hvc1", "Main"):
+        return f"video is {v.get('codec_name')}/{v.get('codec_tag_string')} {v.get('profile')}, not hevc/hvc1 Main"
+    if v.get("pix_fmt") != "yuv420p":
+        return f"pixel format {v.get('pix_fmt')}, not yuv420p"
+    if v.get("width", 1) % 2 or v.get("height", 1) % 2:
+        return "odd dimensions"
+    if v.get("field_order") != "progressive":
+        return f"field order {v.get('field_order', 'unknown')}, not progressive"
+    for key in ("color_transfer", "color_primaries"):
+        if v.get(key, "unknown") not in ("bt709", "unknown"):
+            return f"{key} {v[key]}, not BT.709 (HDR?)"
+    if any("DOVI" in d.get("side_data_type", "") for d in v.get("side_data_list", [])):
+        return "Dolby Vision"
+    if a is not None and (a.get("codec_name"), a.get("profile"), a.get("channels")) != ("aac", "LC", 2):
+        return f"audio is {a.get('codec_name')} {a.get('profile')} with {a.get('channels')} channels, not AAC stereo"
+    return keyframe_problem(path, v.get("avg_frame_rate", "0/1"))
+
+
+def keyframe_problem(path: Path, frame_rate: str) -> str | None:
+    """None if the video starts with a keyframe and has one at least every GOP_S
+    seconds (one frame of tolerance). Reads packet headers only: no decoding."""
+    num, _, den = frame_rate.partition("/")
+    frame_s = float(den or 1) / float(num) if float(num or 0) else 0.1
+    out = run(["ffprobe", "-v", "error", "-select_streams", "v:0", "-show_entries", "packet=pts_time,flags",
+               "-of", "csv=p=0", f"file:{path}"])
+    keys = sorted(float(t) for t, _, flags in (line.partition(",") for line in out.splitlines())
+                  if "K" in flags and t not in ("", "N/A"))
+    if not keys or keys[0] > frame_s:
+        return "does not start with a keyframe"
+    gap = max((b - a for a, b in zip(keys, keys[1:])), default=0)
+    if gap > GOP_S + frame_s:
+        return f"keyframes up to {gap:.1f} s apart, not every {GOP_S} s"
+    return None
+
+
+def moov_first(path: Path) -> bool:
+    """The MP4 index (moov box) comes before the media data (mdat): faststart,
+    playback starts before the whole file is downloaded."""
+    with path.open("rb") as f:
+        while header := f.read(8):
+            if len(header) < 8:
+                return False
+            size, box = int.from_bytes(header[:4]), header[4:]
+            if box in (b"moov", b"mdat"):
+                return box == b"moov"
+            if size == 1:  # 64-bit size after the type
+                size = int.from_bytes(f.read(8)) - 8
+            if size < 8:  # 0 = up to the end of the file
+                return False
+            f.seek(size - 8, os.SEEK_CUR)
+    return False
+
+
+def middle(begin_s: float, end_s: float, duration: float) -> float:
+    """Where a thumbnail is taken: the middle of the video or segment. A segment
+    may end up to 1 s after the video (rounded seconds): only its part inside counts."""
+    return (begin_s + min(end_s, duration)) / 2
 
 
 def thumbnail(video: Path, at_s: float, out: Path) -> None:

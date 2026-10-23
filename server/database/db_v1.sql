@@ -92,17 +92,35 @@ CREATE TABLE IF NOT EXISTS "comment" (
 	"lang" TEXT NOT NULL,
 	"text" TEXT NOT NULL,
 	"created_at" DATETIME NOT NULL,
+	"modified_at" DATETIME NOT NULL,
 	FOREIGN KEY ("technique") REFERENCES "technique"("id")
 	ON UPDATE NO ACTION ON DELETE NO ACTION,
 	FOREIGN KEY ("user") REFERENCES "user"("id")
 	ON UPDATE NO ACTION ON DELETE NO ACTION
 );
 
+-- A tag with rows in tag_value takes one of them (video_has_tags / segment_has_tags
+-- store the value's id); without, text (stored as typed, not translated) in its
+-- value_format: NULL = any text, 'year' = a year, at most 100 years ago, not in the future.
 CREATE TABLE IF NOT EXISTS "tag" (
 	"id" VARCHAR NOT NULL UNIQUE,
-	"fixed_values" BOOLEAN NOT NULL,
-	"list_of_values" VARCHAR,
-	PRIMARY KEY("id")
+	"name" VARCHAR NOT NULL,
+	"value_format" VARCHAR,
+	PRIMARY KEY("id"),
+	FOREIGN KEY ("name") REFERENCES "translation"("id")
+	ON UPDATE NO ACTION ON DELETE NO ACTION
+);
+
+-- Shown sorted by name, in the user's language.
+CREATE TABLE IF NOT EXISTS "tag_value" (
+	"tag" VARCHAR NOT NULL,
+	"id" VARCHAR NOT NULL,
+	"name" VARCHAR NOT NULL,
+	PRIMARY KEY("tag", "id"),
+	FOREIGN KEY ("tag") REFERENCES "tag"("id")
+	ON UPDATE NO ACTION ON DELETE NO ACTION,
+	FOREIGN KEY ("name") REFERENCES "translation"("id")
+	ON UPDATE NO ACTION ON DELETE NO ACTION
 );
 
 CREATE TABLE IF NOT EXISTS "video_has_tags" (

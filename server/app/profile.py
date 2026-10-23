@@ -7,12 +7,11 @@ current password, and logs the user out of every other session.
 import logging
 import sqlite3
 
-from fastapi import APIRouter, Cookie, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 
 from . import crypto, db, i18n, queries, security
-from .auth import UserOut, current_user, user_out
-from .security import SESSION_COOKIE
+from .auth import UserOut, current_user, session_token, user_out
 from .validation import field
 
 log = logging.getLogger("uvicorn.error")
@@ -59,7 +58,7 @@ def set_password(
     body: PasswordIn,
     user: sqlite3.Row = Depends(current_user),
     con: sqlite3.Connection = Depends(db.get_db),
-    token: str = Cookie(alias=SESSION_COOKIE),
+    token: str = Depends(session_token),
 ) -> None:
     _check_password(con, user, body.current_password)
     with con:
@@ -79,7 +78,7 @@ def confirm_totp(
     body: TotpConfirmIn,
     user: sqlite3.Row = Depends(current_user),
     con: sqlite3.Connection = Depends(db.get_db),
-    token: str = Cookie(alias=SESSION_COOKIE),
+    token: str = Depends(session_token),
 ) -> None:
     """Replace the TOTP secret, once a code from the new one proves the app is set up."""
     _check_password(con, user, body.current_password)

@@ -1,6 +1,7 @@
 <script lang="ts">
 	// Tags as removable chips. Add: type or pick a tag name (only existing tags:
 	// admins define them), then its value: one of its fixed values, or free text.
+	// Shown by their (translated) names, kept by ID: a language change relabels them.
 	import Icon from '../Icon.svelte';
 	import { t } from '../i18n.svelte';
 	import type { Tag, TagValue } from './api';
@@ -15,10 +16,29 @@
 	let name = $state('');
 	let tagValue = $state('');
 	const unused = $derived(available.filter((tag) => !value.some((v) => v.id === tag.id)));
-	const chosen = $derived(unused.find((tag) => tag.id === name));
+	const same = (a: string, b: string) => a.localeCompare(b, undefined, { sensitivity: 'base' }) === 0;
+	const chosen = $derived(unused.find((tag) => same(tag.name, name.trim())));
+
+	const tagName = (id: string) => available.find((tag) => tag.id === id)?.name ?? id;
+	function chip(tag: TagValue) {
+		const values = available.find((a) => a.id === tag.id)?.values;
+		const value = values ? (values.find((v) => v.id === tag.value)?.name ?? tag.value) : tag.value;
+		return value ? t('upload.tag.chip', { name: tagName(tag.id), value }) : tagName(tag.id);
+	}
+
+	// The server checks it again.
+	const valueOk = $derived.by(() => {
+		if (!chosen) return false;
+		if (chosen.values) return !!tagValue;
+		if (chosen.format === 'year') {
+			const year = Number(tagValue);
+			return /^[0-9]{4}$/.test(tagValue) && year >= chosen.min! && year <= chosen.max!;
+		}
+		return true;
+	});
 
 	function add() {
-		if (!chosen || (chosen.values && !tagValue)) return;
+		if (!chosen || !valueOk) return;
 		value.push(tagValue ? { id: chosen.id, value: tagValue } : { id: chosen.id });
 		name = '';
 		tagValue = '';
@@ -31,11 +51,11 @@
 		<ul>
 			{#each value as tag, i (tag.id)}
 				<li class="chip">
-					{tag.id}{tag.value ? `: ${tag.value}` : ''}
+					{chip(tag)}
 					<button
 						type="button"
-						title={t('upload.tag.remove', { name: tag.id })}
-						aria-label={t('upload.tag.remove', { name: tag.id })}
+						title={t('upload.tag.remove', { name: tagName(tag.id) })}
+						aria-label={t('upload.tag.remove', { name: tagName(tag.id) })}
 						onclick={() => value.splice(i, 1)}
 					>
 						<Icon name="cross" size={14} />
@@ -57,20 +77,33 @@
 			/>
 			<datalist id="{id}-names">
 				{#each unused as tag (tag.id)}
-					<option value={tag.id}></option>
+					<option value={tag.name}></option>
 				{/each}
 			</datalist>
 			{#if chosen?.values}
 				<select bind:value={tagValue} aria-label={t('upload.tag.value')}>
 					<option value="">{t('upload.tag.value')}</option>
-					{#each chosen.values as v (v)}
-						<option value={v}>{v}</option>
+					{#each chosen.values as v (v.id)}
+						<option value={v.id}>{v.name}</option>
 					{/each}
 				</select>
+			{:else if chosen?.format === 'year'}
+				<input
+					type="number"
+					inputmode="numeric"
+					min={chosen.min}
+					max={chosen.max}
+					step="1"
+					value={tagValue}
+					oninput={(e) => (tagValue = e.currentTarget.value)}
+					onkeydown={(e) => e.key === 'Enter' && (e.preventDefault(), add())}
+					placeholder={t('upload.tag.year', { min: chosen.min!, max: chosen.max! })}
+					aria-label={t('upload.tag.year', { min: chosen.min!, max: chosen.max! })}
+				/>
 			{:else if chosen}
 				<input bind:value={tagValue} placeholder={t('upload.tag.value')} aria-label={t('upload.tag.value')} maxlength="64" />
 			{/if}
-			<button type="button" class="secondary" disabled={!chosen || (!!chosen.values && !tagValue)} onclick={add}>
+			<button type="button" class="secondary" disabled={!valueOk} onclick={add}>
 				{t('upload.add')}
 			</button>
 		</div>

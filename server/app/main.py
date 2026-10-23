@@ -3,14 +3,16 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from . import (
-    auth, comments, crypto, db, encoder, media, performers, profile, register, security, setup,
-    snapshot, tags, tusd, users, videos,
+    auth, comments, crypto, db, encoder, media, nginx, paths, performers, profile, register, security,
+    setup, snapshot, tags, tusd, users, videos,
 )
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     crypto.load_key()  # refuse to start without the encryption key
+    paths.base_path()  # refuse to start with an invalid VIDEONINJA_BASE_PATH
+    nginx.start()  # also before the setup: it serves the setup wizard
     if db.is_initialized():
         app.state.setup_token = None
         con = db.connect()
@@ -27,6 +29,7 @@ async def lifespan(app: FastAPI):
     encoder.stop()  # the current encoding goes back to the queue
     tusd.stop()
     snapshot.flush()  # don't lose a pending rebuild
+    nginx.stop()
 
 
 app = FastAPI(title="Video Ninja", lifespan=lifespan)

@@ -5,6 +5,7 @@
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import { api, currentUser, isInitialized } from '#lib/api.js';
+	import { url } from '#lib/base.js';
 	import { i18n, t } from '#lib/i18n.svelte.js';
 	import Icon from '#lib/Icon.svelte';
 	import LanguageMenu from '#lib/LanguageMenu.svelte';
@@ -21,9 +22,9 @@
 	$effect(() => {
 		(async () => {
 			try {
-				if (!(await isInitialized())) return goto('/setup', { replace: true });
+				if (!(await isInitialized())) return goto(url('/setup'), { replace: true });
 				session.user = await currentUser();
-				if (!session.user) return goto('/login', { replace: true });
+				if (!session.user) return goto(url('/login'), { replace: true });
 				persistStorage();
 			} catch (e) {
 				error = (e as Error).message;
@@ -36,7 +37,9 @@
 		void i18n.lang;
 		if (!untrack(() => session.user)) return;
 		currentUser()
-			.then((user) => user && (session.user = user))
+			.then((user) => {
+				if (user) session.user = user; // a statement: an object assigned to state is proxied
+			})
 			.catch(() => {}); // keep the current name: only the role label is stale
 	});
 
@@ -54,7 +57,7 @@
 		await api('/api/auth/logout', {});
 		await clearUserData();
 		session.user = null;
-		goto('/login', { replace: true });
+		goto(url('/login'), { replace: true });
 	}
 </script>
 
@@ -63,7 +66,7 @@
 {#if session.user}
 	<div class="app">
 		<header>
-			<a class="brand" href="/">Video Ninja</a>
+			<a class="brand" href={url('/')}>Video Ninja</a>
 			<MainNav />
 			<div class="tools">
 				<LanguageMenu />
@@ -82,9 +85,9 @@
 						<!-- Entries: Profile first, Log out always last. -->
 						<div class="menu" role="menu">
 							<p class="who">{session.user.name ?? session.user.username}</p>
-							<a role="menuitem" href="/profile">{t('menu.profile')}</a>
+							<a role="menuitem" href={url('/profile')}>{t('menu.profile')}</a>
 							{#if hasAccess('user_mgmt')}
-								<a role="menuitem" href="/admin/users">{t('menu.user_mgmt')}</a>
+								<a role="menuitem" href={url('/admin/users')}>{t('menu.user_mgmt')}</a>
 							{/if}
 							<button role="menuitem" class="logout" onclick={logout}>{t('menu.logout')}</button>
 						</div>

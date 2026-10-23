@@ -1,4 +1,5 @@
 import { i18n } from './i18n.svelte';
+import { url } from './base';
 
 export class ApiError extends Error {
 	constructor(
@@ -42,9 +43,11 @@ export function apiHeaders(): Record<string, string> {
 	};
 }
 
-async function request(path: string, body?: unknown): Promise<Response> {
-	const res = await fetch(path, {
-		method: body === undefined ? 'GET' : 'POST',
+type Method = 'GET' | 'POST' | 'PATCH' | 'DELETE';
+
+async function request(path: string, body?: unknown, method?: Method): Promise<Response> {
+	const res = await fetch(url(path), {
+		method: method ?? (body === undefined ? 'GET' : 'POST'),
 		headers: {
 			...apiHeaders(),
 			...(body === undefined ? {} : { 'Content-Type': 'application/json' })
@@ -56,9 +59,9 @@ async function request(path: string, body?: unknown): Promise<Response> {
 	return res;
 }
 
-/** GET when body is undefined, POST JSON otherwise. */
-export async function api<T>(path: string, body?: unknown): Promise<T> {
-	const res = await request(path, body);
+/** GET when body is undefined, POST JSON otherwise; or the method given (PATCH, DELETE). */
+export async function api<T>(path: string, body?: unknown, method?: Method): Promise<T> {
+	const res = await request(path, body, method);
 	return res.status === 204 ? (undefined as T) : res.json();
 }
 

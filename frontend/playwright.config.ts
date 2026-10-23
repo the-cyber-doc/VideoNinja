@@ -6,6 +6,12 @@ import { defineConfig, devices } from '@playwright/test';
 // faked with context.route, Chromium. tests/e2e: real backend, fresh database,
 // Chromium only (the flows change the database, so they run once, in order).
 const API_PORT = 8001; // not 8000, so a running dev backend does not interfere
+// Not 4173 (`npm run preview`'s default): a preview started by hand would be taken
+// for the test build, with an old build and /api going to the dev backend.
+const APP_PORT = 4183;
+// The same app built under a base path (as served at https://example.org/videoninja/).
+const SUBPATH_PORT = 4184;
+const SUBPATH = '/videoninja';
 
 export default defineConfig({
 	testDir: 'tests',
@@ -13,7 +19,7 @@ export default defineConfig({
 	retries: process.env.CI ? 1 : 0,
 	reporter: process.env.CI ? [['list'], ['html', { open: 'never' }]] : 'list',
 	use: {
-		baseURL: 'https://localhost:4173',
+		baseURL: `https://localhost:${APP_PORT}`,
 		ignoreHTTPSErrors: true, // self-signed certificate of the preview server
 		locale: 'en-US', // the UI follows the browser language: pin it (tests/mocked/i18n.spec.ts changes it)
 		trace: 'retain-on-failure'
@@ -39,16 +45,35 @@ export default defineConfig({
 				launchOptions: { args: ['--ignore-certificate-errors'] }
 			}
 		},
-		{ name: 'e2e', testDir: 'tests/e2e', use: devices['Desktop Chrome'], fullyParallel: false }
+		{ name: 'e2e', testDir: 'tests/e2e', use: devices['Desktop Chrome'], fullyParallel: false },
+		{
+			// The service worker tests again, and the links and API paths, under a base path.
+			name: 'subpath',
+			testDir: 'tests',
+			testMatch: ['pwa/**/*.spec.ts', 'subpath/**/*.spec.ts'],
+			use: {
+				...devices['Desktop Chrome'],
+				baseURL: `https://localhost:${SUBPATH_PORT}${SUBPATH}/`,
+				launchOptions: { args: ['--ignore-certificate-errors'] }
+			}
+		}
 	],
 	webServer: [
 		{
 			// Built app over https, /api proxied to the test backend.
-			command: 'npm run build && npm run preview -- --port 4173 --strictPort',
-			url: 'https://localhost:4173',
+			command: `npm run build && npm run preview -- --port ${APP_PORT} --strictPort`,
+			url: `https://localhost:${APP_PORT}`,
 			ignoreHTTPSErrors: true,
 			env: { API_URL: `http://localhost:${API_PORT}` },
-			reuseExistingServer: !process.env.CI,
+			reuseExistingServer: false, // always the current code
+			timeout: 120_000
+		},
+		{
+			command: `npm run build && npm run preview -- --port ${SUBPATH_PORT} --strictPort`,
+			url: `https://localhost:${SUBPATH_PORT}${SUBPATH}/`,
+			ignoreHTTPSErrors: true,
+			env: { BASE_PATH: SUBPATH, BUILD_NAME: 'subpath', API_URL: `http://localhost:${API_PORT}` },
+			reuseExistingServer: false,
 			timeout: 120_000
 		},
 		{

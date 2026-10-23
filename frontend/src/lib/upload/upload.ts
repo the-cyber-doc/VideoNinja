@@ -2,6 +2,7 @@
 // 50 MB chunks. The upload URL is kept in the draft: after leaving the page,
 // picking the same file again continues where it stopped.
 import { Upload } from 'tus-js-client';
+import { url } from '../base';
 
 export const CHUNK_SIZE = 50 * 1024 * 1024; // nginx: client_max_body_size 64m on /files/
 
@@ -22,7 +23,7 @@ export function startUpload(
 	callbacks: UploadCallbacks
 ): Upload {
 	const upload: Upload = new Upload(file, {
-		endpoint: '/files/',
+		endpoint: url('/files/'),
 		uploadUrl: meta.uploadUrl ?? null,
 		chunkSize: CHUNK_SIZE,
 		retryDelays: [0, 3000, 10000, 30000, 60000],

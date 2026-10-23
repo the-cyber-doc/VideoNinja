@@ -30,6 +30,20 @@ interface Fake {
 	tusRequests: string[];
 }
 
+// As the server sends them: names in the request's language, sorted by name.
+const TAGS: Record<string, object[]> = {
+	en: [
+		{ id: 'note', name: 'Note' },
+		{ id: 'place', name: 'Place', values: [{ id: 'dojo', name: 'Dojo' }, { id: 'outdoor', name: 'Outdoor' }] },
+		{ id: 'year', name: 'Year', format: 'year', min: 1926, max: 2026 }
+	],
+	fr: [
+		{ id: 'place', name: 'Lieu', values: [{ id: 'dojo', name: 'Dojo' }, { id: 'outdoor', name: 'Extérieur' }] },
+		{ id: 'note', name: 'Remarque' },
+		{ id: 'year', name: 'Année', format: 'year', min: 1926, max: 2026 }
+	]
+};
+
 async function setup(page: Page, user = UPLOADER, over: Partial<Fake> = {}): Promise<Fake> {
 	const fake: Fake = {
 		exists: false,
@@ -44,9 +58,7 @@ async function setup(page: Page, user = UPLOADER, over: Partial<Fake> = {}): Pro
 	await page.route('/api/setup/status', (r) => r.fulfill({ json: { initialized: true } }));
 	await page.route('/api/auth/me', (r) => r.fulfill({ json: user }));
 	await page.route('/api/catalog', (r) => r.fulfill({ json: CATALOG }));
-	await page.route('/api/tags', (r) =>
-		r.fulfill({ json: [{ id: 'place', values: ['dojo', 'outdoor'] }, { id: 'note' }] })
-	);
+	await page.route('/api/tags', (r) => r.fulfill({ json: TAGS[r.request().headers()['accept-language']] }));
 	await page.route('/api/performers', async (r) => {
 		if (r.request().method() === 'POST') {
 			const { name } = r.request().postDataJSON();
@@ -130,7 +142,7 @@ test('the file is checked by SHA-256: an uploaded one is refused', async ({ page
 	const check = page.waitForRequest(`/api/videos/exists?original_sha256=${CLIP_SHA}`);
 	await page.getByLabel('Video file').setInputFiles(CLIP);
 	await check;
-	await expect(page.getByText('This video was already uploaded.')).toBeVisible();
+	await expect(page.getByText('This video already exists.')).toBeVisible();
 	await expect(page.locator('video')).toHaveCount(0);
 });
 
@@ -172,10 +184,10 @@ test('segments by drag and by I/O, complete them, proceed: upload then submit', 
 	await first.getByPlaceholder("Performer's name").fill('Noguchi');
 	await first.getByRole('button', { name: 'Add' }).first().click();
 	await expect(first.getByLabel('Performer')).toHaveValue('noguchi');
-	await first.getByPlaceholder('Add a tag').fill('place');
-	await first.getByLabel('Value').selectOption('dojo');
+	await first.getByPlaceholder('Add a tag').fill('place'); // any case
+	await first.getByLabel('Value').selectOption({ label: 'Outdoor' });
 	await first.getByRole('button', { name: 'Add', exact: true }).click();
-	await expect(first.getByText('place: dojo')).toBeVisible();
+	await expect(first.getByText('Place: Outdoor')).toBeVisible();
 	await expect(proceed(page)).toBeEnabled();
 
 	// 2. Seek by clicking the timeline, then I and O keys.
@@ -202,7 +214,7 @@ test('segments by drag and by I/O, complete them, proceed: upload then submit', 
 	expect(body).toMatchObject({ original_filename: 'clip.webm', all_segments_done: true, tags: [] });
 	const segments = body.segments as { begin_s: number; end_s: number }[];
 	expect(segments).toHaveLength(2);
-	expect(segments[0]).toMatchObject({ technique: 'gyokko.koku', performer: 'noguchi', tags: [{ id: 'place', value: 'dojo' }] });
+	expect(segments[0]).toMatchObject({ technique: 'gyokko.koku', performer: 'noguchi', tags: [{ id: 'place', value: 'outdoor' }] }); // the ID, not the name
 	// Whole seconds, begin down, end up; drag 10–40 % of 4 s ≈ 0.4–1.6 s.
 	expect(segments[0].begin_s).toBe(0);
 	expect(segments[0].end_s).toBe(2);
@@ -294,6 +306,128 @@ test('a video just published: the catalogue is fetched again at once', async ({ 
 	fake.mine = [{ ...status, status: 'published', progress: 100 }];
 	await expect(page.getByText('Published')).toBeVisible({ timeout: 10_000 });
 	await expect.poll(() => catalogRequests).toBe(before + 1);
+});
+
+/** The frame shown by the video, in seconds. */
+const shown = (page: Page) => page.locator('video').evaluate((v: HTMLVideoElement) => v.currentTime);
+const marker = (page: Page) => page.getByRole('slider', { name: 'Timeline' });
+
+test('the timeline shows the frame under the pointer; the seek marker stays', async ({ page }) => {
+	await setup(page);
+	await openClip(page); // 4 s
+	let box = await timeline(page);
+	const at = (fraction: number) => [box.x + box.width * fraction, box.y + box.height / 2] as const;
+	const near = (time: number) => (value: number) => Math.abs(value - time) < 0.2;
+
+	await page.mouse.click(...at(0.25)); // the seek marker: 1 s
+	await expect(marker(page)).toHaveAttribute('aria-valuenow', '1');
+
+	// Hovering: the video shows that frame, the marker does not move.
+	await page.mouse.move(...at(0.75), { steps: 4 });
+	await expect.poll(async () => near(3)(await shown(page))).toBe(true);
+	await expect(marker(page)).toHaveAttribute('aria-valuenow', '1');
+	// Leaving the timeline: back to the marker's frame.
+	await page.mouse.move(box.x + box.width * 0.75, box.y - 40);
+	await expect.poll(async () => near(1)(await shown(page))).toBe(true);
+
+	// Creating a segment: the frame under the pointer while dragging.
+	await page.mouse.move(...at(0.3));
+	await page.mouse.down();
+	await page.mouse.move(...at(0.8), { steps: 4 });
+	await expect.poll(async () => near(3.2)(await shown(page))).toBe(true);
+	await page.mouse.up();
+	await expect(page.getByRole('article', { name: 'Segment 1' })).toBeVisible();
+
+	// Resizing it: the frame of the edge being moved, the marker still at 1 s.
+	box = await timeline(page);
+	await page.mouse.move(...at(0.8));
+	await page.mouse.down();
+	await page.mouse.move(...at(0.9), { steps: 4 });
+	await expect.poll(async () => near(3.6)(await shown(page))).toBe(true);
+	await page.mouse.up();
+	await page.mouse.move(box.x + box.width * 0.9, box.y - 40);
+	await expect.poll(async () => near(1)(await shown(page))).toBe(true);
+	await expect(marker(page)).toHaveAttribute('aria-valuenow', '1');
+});
+
+test('→ steps one frame of the video (measured: 25 fps here)', async ({ page }) => {
+	await setup(page);
+	await openClip(page);
+	const box = await timeline(page);
+	// The frame duration is measured in the background; until then, 1/30 s.
+	await expect
+		.poll(async () => {
+			await page.mouse.click(box.x + box.width * 0.25, box.y + box.height / 2); // 1 s
+			await page.mouse.move(box.x, box.y - 40); // off the timeline: no preview
+			const before = await shown(page);
+			await page.locator('body').press('ArrowRight');
+			return Math.round(((await shown(page)) - before) * 1000);
+		})
+		.toBe(40);
+});
+
+test('video tags come right after the video, before the segment choices', async ({ page }) => {
+	await setup(page);
+	await openClip(page);
+	const tags = page.locator('.card', { has: page.getByText('Tags of the video') });
+	const before = await tags.evaluate((el) => {
+		const mode = document.querySelector('fieldset.mode')!;
+		const video = document.querySelector('video')!;
+		const follows = (a: Node, b: Node) => !!(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
+		return follows(video, el) && follows(el, mode);
+	});
+	expect(before).toBe(true);
+});
+
+test.describe('on a phone', () => {
+	test.use({ viewport: { width: 360, height: 780 } });
+
+	test('the timeline keeps its height; Begin here and End here stay together', async ({ page }) => {
+		await setup(page);
+		await openClip(page);
+		expect((await timeline(page)).height).toBeGreaterThanOrEqual(56);
+		const begin = (await page.getByRole('button', { name: 'Begin here' }).boundingBox())!;
+		const end = (await page.getByRole('button', { name: 'End here' }).boundingBox())!;
+		const sideBySide = Math.abs(begin.y - end.y) < 2 && end.x > begin.x;
+		const stacked = Math.abs(begin.x - end.x) < 2 && end.y > begin.y;
+		expect(sideBySide || stacked).toBe(true);
+	});
+});
+
+test('tags: shown by their translated names, kept by ID', async ({ page }) => {
+	await setup(page);
+	await openClip(page);
+	const video = page.locator('.card', { has: page.getByText('Tags of the video') });
+	await video.getByPlaceholder('Add a tag').fill('Place');
+	await expect(video.getByLabel('Value').locator('option')).toHaveText(['Value', 'Dojo', 'Outdoor']);
+	await video.getByLabel('Value').selectOption({ label: 'Outdoor' });
+	await video.getByRole('button', { name: 'Add', exact: true }).click();
+	await video.getByPlaceholder('Add a tag').fill('note');
+	await video.getByLabel('Value').fill('Très bien');
+	await video.getByRole('button', { name: 'Add', exact: true }).click();
+	await expect(video.locator('.chip')).toHaveText(['Place: Outdoor', 'Note: Très bien']);
+
+	// Another language: the names are reloaded and the chips relabelled; free text stays as typed.
+	await page.getByRole('button', { name: 'Language: English' }).click();
+	await page.getByRole('menuitemradio', { name: 'Français' }).click();
+	const videoFr = page.locator('.card', { has: page.getByText('Étiquettes de la vidéo') });
+	await expect(videoFr.locator('.chip')).toHaveText(['Lieu : Extérieur', 'Remarque : Très bien']);
+});
+
+test('a year tag only takes a year in its range', async ({ page }) => {
+	await setup(page);
+	await openClip(page);
+	const video = page.locator('.card', { has: page.getByText('Tags of the video') });
+	await video.getByPlaceholder('Add a tag').fill('Year');
+	const year = video.getByLabel('Year (1926–2026)');
+	const add = video.getByRole('button', { name: 'Add', exact: true });
+	for (const wrong of ['1925', '2027', '99']) {
+		await year.fill(wrong);
+		await expect(add).toBeDisabled();
+	}
+	await year.fill('2024');
+	await add.click();
+	await expect(video.locator('.chip')).toHaveText(['Year: 2024']);
 });
 
 test('in French', async ({ page }) => {

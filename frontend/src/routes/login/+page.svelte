@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import { url } from '#lib/base.js';
 	import { api, isInitialized } from '#lib/api.js';
 	import { t } from '#lib/i18n.svelte.js';
 	import { clearUserData } from '#lib/pwa.js';
@@ -13,7 +14,7 @@
 
 	$effect(() => {
 		isInitialized().then((ok) => {
-			if (!ok) goto('/setup', { replace: true });
+			if (!ok) goto(url('/setup'), { replace: true });
 		});
 	});
 
@@ -24,7 +25,7 @@
 		try {
 			await api('/api/auth/login', { username, password, totp_code: totpCode });
 			await clearUserData(); // nothing cached from a previous user
-			goto('/', { replace: true });
+			goto(url('/'), { replace: true });
 		} catch (e) {
 			error = (e as Error).message;
 			totpCode = '';

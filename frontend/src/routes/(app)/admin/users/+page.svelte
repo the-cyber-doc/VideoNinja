@@ -2,6 +2,7 @@
 	// User management: needs the 'user_mgmt' access. Hidden from the menu otherwise,
 	// and the API refuses every call (403) whatever the page does.
 	import { goto } from '$app/navigation';
+	import { url } from '#lib/base.js';
 	import { api } from '#lib/api.js';
 	import { i18n, t } from '#lib/i18n.svelte.js';
 	import Icon from '#lib/Icon.svelte';
@@ -37,7 +38,7 @@
 
 	$effect(() => {
 		if (!allowed) {
-			goto('/', { replace: true });
+			goto(url('/'), { replace: true });
 			return;
 		}
 		void i18n.lang; // reload on language change: role names are translated by the server
@@ -69,15 +70,15 @@
 
 	/** Show the invitation link and try to copy it to the clipboard. */
 	async function showLink(user: string, invite: Invite) {
-		const url = `${location.origin}/register#${invite.token}`;
+		const href = `${location.origin}${url('/register')}#${invite.token}`;
 		let copied = false;
 		try {
-			await navigator.clipboard.writeText(url);
+			await navigator.clipboard.writeText(href);
 			copied = true;
 		} catch {
 			// No clipboard access: the link stays visible to copy by hand.
 		}
-		link = { username: user, url, expires_at: invite.expires_at, copied };
+		link = { username: user, url: href, expires_at: invite.expires_at, copied };
 	}
 
 	const create = (e: SubmitEvent) => {

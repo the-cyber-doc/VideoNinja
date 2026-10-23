@@ -243,10 +243,11 @@ def segments(con: sqlite3.Connection) -> list[sqlite3.Row]:
     ).fetchall()
 
 
-def segment_thumbnail(con: sqlite3.Connection, segment_id: int) -> sqlite3.Row | None:
-    """The video's SHA-256 and the thumbnail file name: the segment's own, else its video's."""
+def segment_media(con: sqlite3.Connection, segment_id: int) -> sqlite3.Row | None:
+    """The encoded video's SHA-256 (NULL until published), the segment's times and
+    its thumbnail file name: the segment's own, else its video's."""
     return con.execute(
-        'SELECT v."sha256sum", COALESCE(s."thumbnail", v."thumbnail") AS "thumbnail"'
+        'SELECT v."sha256sum", s."begin_s", s."end_s", COALESCE(s."thumbnail", v."thumbnail") AS "thumbnail"'
         ' FROM "segment" s JOIN "video" v ON v."id" = s."video" WHERE s."id" = ?',
         (segment_id,),
     ).fetchone()
@@ -255,14 +256,45 @@ def segment_thumbnail(con: sqlite3.Connection, segment_id: int) -> sqlite3.Row |
 # --- comment ---
 
 
-def technique_comments(con: sqlite3.Connection, technique_id: str) -> list[sqlite3.Row]:
-    """Newest first, with the author's display name (else username)."""
+def technique_comments(con: sqlite3.Connection, technique_id: str, user_id: int) -> list[sqlite3.Row]:
+    """Last modified first, with the author's display name (else username) and
+    "mine": written by `user_id`."""
     return con.execute(
-        'SELECT c."id", COALESCE(u."name", u."username") AS "user", c."created_at", c."lang", c."text"'
+        'SELECT c."id", COALESCE(u."name", u."username") AS "user", c."created_at", c."modified_at",'
+        ' c."lang", c."text", c."user" = ? AS "mine"'
         ' FROM "comment" c JOIN "user" u ON u."id" = c."user"'
-        ' WHERE c."technique" = ? ORDER BY datetime(c."created_at") DESC, c."id" DESC',
-        (technique_id,),
+        ' WHERE c."technique" = ? ORDER BY datetime(c."modified_at") DESC, c."id" DESC',
+        (user_id, technique_id),
     ).fetchall()
+
+
+def comment(con: sqlite3.Connection, comment_id: int, user_id: int) -> sqlite3.Row | None:
+    """One comment, as in technique_comments, with its author's ID ("author")."""
+    return con.execute(
+        'SELECT c."id", COALESCE(u."name", u."username") AS "user", c."created_at", c."modified_at",'
+        ' c."lang", c."text", c."user" = ? AS "mine", c."user" AS "author"'
+        ' FROM "comment" c JOIN "user" u ON u."id" = c."user" WHERE c."id" = ?',
+        (user_id, comment_id),
+    ).fetchone()
+
+
+def insert_comment(con: sqlite3.Connection, technique_id: str, user_id: int, lang: str, text: str, now: str) -> int:
+    return con.execute(
+        'INSERT INTO "comment" ("technique", "user", "lang", "text", "created_at", "modified_at")'
+        " VALUES (?, ?, ?, ?, ?, ?)",
+        (technique_id, user_id, lang, text, now, now),
+    ).lastrowid
+
+
+def update_comment(con: sqlite3.Connection, comment_id: int, lang: str, text: str, now: str) -> None:
+    con.execute(
+        'UPDATE "comment" SET "lang" = ?, "text" = ?, "modified_at" = ? WHERE "id" = ?',
+        (lang, text, now, comment_id),
+    )
+
+
+def delete_comment(con: sqlite3.Connection, comment_id: int) -> None:
+    con.execute('DELETE FROM "comment" WHERE "id" = ?', (comment_id,))
 
 
 # --- performer / tag ---
@@ -288,7 +320,19 @@ def insert_performer(con: sqlite3.Connection, performer_id: str, name: str) -> N
 
 
 def tags(con: sqlite3.Connection) -> list[sqlite3.Row]:
-    return con.execute('SELECT "id", "fixed_values", "list_of_values" FROM "tag" ORDER BY "id"').fetchall()
+    """Every tag, with its name in each language ("name_en", "name_fr")."""
+    return con.execute(
+        'SELECT g."id", g."value_format", t."en" AS "name_en", t."fr" AS "name_fr"'
+        ' FROM "tag" g JOIN "translation" t ON t."id" = g."name"'
+    ).fetchall()
+
+
+def tag_values(con: sqlite3.Connection) -> list[sqlite3.Row]:
+    """Every fixed value of every tag, with its name in each language."""
+    return con.execute(
+        'SELECT v."tag", v."id", t."en" AS "name_en", t."fr" AS "name_fr"'
+        ' FROM "tag_value" v JOIN "translation" t ON t."id" = v."name"'
+    ).fetchall()
 
 
 # --- upload (tus) ---
@@ -336,10 +380,12 @@ def deleted_uploads(con: sqlite3.Connection) -> list[str]:
 # --- video (queue) ---
 
 
-def original_known(con: sqlite3.Connection, original_sha256: str) -> bool:
-    """A video (pending, failed or published) already has this original."""
+def video_known(con: sqlite3.Connection, sha256: str) -> bool:
+    """A video (pending, failed or published) has this original, or this encoded
+    file (e.g. downloaded from the app and uploaded again)."""
     return (
-        con.execute('SELECT 1 FROM "video" WHERE "original_sha256" = ?', (original_sha256,)).fetchone()
+        con.execute('SELECT 1 FROM "video" WHERE "original_sha256" = ? OR "sha256sum" = ?', (sha256, sha256))
+        .fetchone()
         is not None
     )
 

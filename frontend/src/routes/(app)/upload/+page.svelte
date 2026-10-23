@@ -7,8 +7,9 @@
 	import { beforeNavigate, goto } from '$app/navigation';
 	import { onDestroy } from 'svelte';
 	import type { Upload } from 'tus-js-client';
+	import { url } from '#lib/base.js';
 	import { loadCatalog } from '#lib/catalog.svelte.js';
-	import { t } from '#lib/i18n.svelte.js';
+	import { i18n, t } from '#lib/i18n.svelte.js';
 	import { hasAccess } from '#lib/session.svelte.js';
 	import {
 		addPerformer,
@@ -83,13 +84,18 @@
 
 	$effect(() => {
 		if (!allowed) {
-			goto('/', { replace: true });
+			goto(url('/'), { replace: true });
 			return;
 		}
 		loadPerformers().then((list) => (performers = list), (e) => (error = e.message));
-		loadTags().then((list) => (tags = list), (e) => (error = e.message));
 		listDrafts().then((list) => (drafts = list), () => {});
 		checkAvailable();
+	});
+
+	$effect(() => {
+		if (!allowed) return;
+		void i18n.lang; // reload on language change: tag names are translated by the server
+		loadTags().then((list) => (tags = list), (e) => (error = e.message));
 	});
 
 	function checkAvailable() {
@@ -283,6 +289,10 @@
 					{/if}
 				</section>
 
+				<section class="card">
+					<TagInput available={tags} bind:value={draft.tags} label={t('upload.video_tags')} />
+				</section>
+
 				<fieldset class="card mode" disabled={busy}>
 					<legend>{t('upload.mode.label')}</legend>
 					<label class="choice">
@@ -320,10 +330,6 @@
 						{/each}
 					</section>
 				{/if}
-
-				<section class="card">
-					<TagInput available={tags} bind:value={draft.tags} label={t('upload.video_tags')} />
-				</section>
 
 				<section class="card finish">
 					<label class="choice">

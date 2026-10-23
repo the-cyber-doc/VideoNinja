@@ -6,27 +6,41 @@
 //   When it changed, the open pages are told: {type: 'catalog-updated', lang}.
 // - /api/setup/status, /api/auth/me, /api/techniques/<id>/comments: network first
 //   (always the latest when online), the cached copy only offline.
-// - Anything else (other API calls, media): network only, never cached.
-// DATA holds user data: deleted on logout and login (clearUserData in $lib/pwa.ts).
+// - /media/segment/<id>: the segment's clip, kept for offline use. A segment's
+//   clip does not change: cache first, with Range requests answered from it
+//   (range.ts). Not saved yet: downloaded once, for the player and the cache at
+//   the same time (see clip()).
+// - /media/segment/<id>/thumbnail: cache first, checked in the background.
+// - Anything else (other API calls): network only, never cached.
+// DATA and MEDIA hold user data: deleted on logout and login (clearUserData in $lib/pwa.ts).
 // Type-checked with its own tsconfig.json (WebWorker types, no DOM).
 import { version } from '$app/env';
 import { assets, immutable } from '$app/manifest';
 import { self as sw } from '$app/service-worker';
-import { DATA } from '#lib/pwa-caches.js';
+import { DATA, MEDIA } from '#lib/pwa-caches.js';
+import { rangeResponse } from './range';
 
 const SHELL = `shell-${version}`;
+// The app's base path ('' or e.g. '/videoninja'): the service worker is at <base>/service-worker.js.
+const BASE = new URL('.', sw.location.href).pathname.replace(/\/$/, '');
+const ROOT = `${BASE}/`; // the single-page app's shell
+const escaped = BASE.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const path = (pattern: string) => new RegExp(`^${escaped}${pattern}$`);
 // Manifest paths are relative to the base path, where the service worker is.
 const ASSETS = new Set(
 	[...immutable, ...assets].map((file) => new URL(file.path, sw.location.href).pathname)
 );
 // API reads also kept for offline use (network first).
-const OFFLINE_API = [/^\/api\/setup\/status$/, /^\/api\/auth\/me$/, /^\/api\/techniques\/[^/]+\/comments$/];
+const OFFLINE_API = [path('/api/setup/status'), path('/api/auth/me'), path('/api/techniques/[^/]+/comments')];
+const CATALOG = `${BASE}/api/catalog`;
+const CLIP = path('/media/segment/\\d+');
+const THUMBNAIL = path('/media/segment/\\d+/thumbnail');
 
 sw.addEventListener('install', (event) => {
 	event.waitUntil(
 		caches
 			.open(SHELL)
-			.then((cache) => cache.addAll([...ASSETS, '/']))
+			.then((cache) => cache.addAll([...ASSETS, ROOT]))
 			.then(() => sw.skipWaiting())
 	);
 });
@@ -49,8 +63,10 @@ sw.addEventListener('fetch', (event) => {
 
 	if (ASSETS.has(url.pathname)) event.respondWith(cacheFirst(request));
 	else if (request.mode === 'navigate') event.respondWith(page(request));
-	else if (url.pathname === '/api/catalog') event.respondWith(catalog(event));
+	else if (url.pathname === CATALOG) event.respondWith(catalog(event));
 	else if (OFFLINE_API.some((path) => path.test(url.pathname))) event.respondWith(networkFirst(request));
+	else if (CLIP.test(url.pathname)) event.respondWith(clip(event));
+	else if (THUMBNAIL.test(url.pathname)) event.respondWith(thumbnail(event));
 });
 
 // ignoreVary: the server's Vary (Origin, Accept-Encoding) would make a module
@@ -66,14 +82,14 @@ async function page(request: Request): Promise<Response> {
 	try {
 		return await fetch(request);
 	} catch (e) {
-		return (await caches.match('/', SHELL_MATCH)) ?? Promise.reject(e);
+		return (await caches.match(ROOT, SHELL_MATCH)) ?? Promise.reject(e);
 	}
 }
 
 async function catalog(event: FetchEvent): Promise<Response> {
 	const request = event.request;
 	const lang = request.headers.get('Accept-Language') ?? '';
-	const key = `/api/catalog?lang=${encodeURIComponent(lang)}`; // same URL for every language
+	const key = `${CATALOG}?lang=${encodeURIComponent(lang)}`; // same URL for every language
 	const cache = await caches.open(DATA);
 	const cached = await cache.match(key);
 
@@ -103,4 +119,57 @@ async function networkFirst(request: Request): Promise<Response> {
 	} catch (e) {
 		return (await cache.match(request)) ?? Promise.reject(e);
 	}
+}
+
+// Clips being saved (URL → done), so that one is downloaded once, not per request.
+const saving = new Map<string, Promise<void>>();
+
+function save(event: FetchEvent, key: string, response: Response, cache: Cache) {
+	const done = cache
+		.put(key, response)
+		.catch(() => {}) // storage full, or the download cut: saved next time
+		.finally(() => saving.delete(key));
+	saving.set(key, done);
+	event.waitUntil(done);
+}
+
+async function clip(event: FetchEvent): Promise<Response> {
+	const request = event.request;
+	const key = request.url;
+	const range = request.headers.get('Range');
+	const cache = await caches.open(MEDIA);
+	const cached = await cache.match(key);
+	if (cached) return rangeResponse(cached, range);
+	if (saving.has(key)) return fetch(request); // being saved: this part from the network
+
+	// The whole clip asked for (Chrome, Firefox: "bytes=0-"): one download, split
+	// between the player (it plays as the bytes arrive) and the cache. A 200 answer
+	// to such a request is valid HTTP: the browser takes the whole file.
+	if (!range || /^bytes=0-$/.test(range.trim())) {
+		const response = await fetch(key, { credentials: 'same-origin' }); // without Range
+		if (response.status === 200) save(event, key, response.clone(), cache);
+		return response;
+	}
+	// A part (Safari's first request "bytes=0-1", a seek): from the network, and
+	// the whole clip saved in the background, once.
+	event.waitUntil(
+		fetch(key, { credentials: 'same-origin' })
+			.then((whole) => (whole.status === 200 ? save(event, key, whole, cache) : undefined))
+			.catch(() => {})
+	);
+	return fetch(request);
+}
+
+async function thumbnail(event: FetchEvent): Promise<Response> {
+	const request = event.request;
+	const cache = await caches.open(MEDIA);
+	const cached = await cache.match(request);
+	const check = fetch(request).then(async (response) => {
+		if (response.ok) await cache.put(request, response.clone());
+		else if (response.status === 404) await cache.delete(request); // segment removed
+		return response;
+	});
+	if (!cached) return check;
+	event.waitUntil(check.catch(() => {})); // offline: keep the cached copy
+	return cached;
 }

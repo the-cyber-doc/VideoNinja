@@ -5,4 +5,12 @@
 !server/database/
 !tools/encode-videos/encode-videos.sh
 !tools/encode-videos/nnedi3_weights.bin
+!nginx/nginx.conf
+!frontend/package.json
+!frontend/package-lock.json
+!frontend/vite.config.ts
+!frontend/tsconfig.json
+!frontend/src/
+!frontend/static/
 **/__pycache__
+**/*.test.ts

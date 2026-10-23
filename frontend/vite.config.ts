@@ -3,7 +3,20 @@ import basicSsl from '@vitejs/plugin-basic-ssl';
 import { sveltekit } from '@sveltejs/kit/vite';
 import { defineConfig } from 'vitest/config';
 
+// Where the browser sees the app: '' (the domain's root, default) or e.g.
+// '/videoninja' (a subfolder; the Docker image's build argument). Build time only.
+const BASE_PATH = (process.env.BASE_PATH ?? '').replace(/\/$/, '');
+if (!/^(\/[\w.~-]+)*$/.test(BASE_PATH)) throw new Error(`BASE_PATH must look like /videoninja, not ${BASE_PATH}`);
+// BUILD_NAME: a second build next to the usual one (the browser tests build the app
+// twice, at the root and under a base path): build-<name>/, .svelte-kit-<name>/.
+const suffix = process.env.BUILD_NAME ? `-${process.env.BUILD_NAME}` : '';
+// /api and /media reach the backend without the base path (as nginx forwards them).
+const toBackend = (target: string) => ({ target, rewrite: (path: string) => path.slice(BASE_PATH.length) });
+
 export default defineConfig({
+	cacheDir: `node_modules/.vite${suffix}`,
+	// For the app's code ($lib/base.ts) and the service worker.
+	define: { __BASE_PATH__: JSON.stringify(BASE_PATH) },
 	plugins: [
 		// Dev over https: the session cookie is Secure (__Host-), as in production.
 		basicSsl(),
@@ -16,14 +29,15 @@ export default defineConfig({
 
 			// Static SPA shell (no data in it); nginx serves it, the app serves data.
 			// precompress: .br + .gz next to each file, for gzip_static/brotli_static.
-			adapter: adapter({ fallback: 'index.html', precompress: true }),
+			adapter: adapter({ pages: `build${suffix}`, assets: `build${suffix}`, fallback: 'index.html', precompress: true }),
+			outDir: `.svelte-kit${suffix}`,
 
 			// Registered by the app, in production builds only ($lib/pwa.ts).
 			serviceWorker: { register: false },
 
 			// Absolute asset paths (/_app/…) in every page: the service worker serves the
 			// cached "/" for any URL offline, where relative paths (../_app/…) would break.
-			paths: { relative: false },
+			paths: { relative: false, base: BASE_PATH as '' | `/${string}` },
 
 			// Script policy in a <meta> of the page, with the hash of SvelteKit's inline
 			// boot script (it changes with every build). nginx sends the rest of the
@@ -32,12 +46,15 @@ export default defineConfig({
 		})
 	],
 	server: {
-		// Dev only: the FastAPI server (uvicorn on :8000) answers /api, tusd (:1080)
-		// the uploads. API_URL: another backend, e.g. the one started by the browser
-		// tests. xfwd: tusd builds upload URLs from X-Forwarded-Host (-behind-proxy).
+		// Dev only (nginx in production): the FastAPI server (uvicorn on :8000) answers
+		// /api and /media (thumbnails), tusd (:1080) the uploads. API_URL: another
+		// backend, e.g. the one started by the browser tests. xfwd: tusd builds upload
+		// URLs from X-Forwarded-Host (-behind-proxy). `vite preview` uses the same.
+		// tusd's own base path includes BASE_PATH: /files goes to it unchanged.
 		proxy: {
-			'/api': process.env.API_URL ?? 'http://localhost:8000',
-			'/files': { target: process.env.TUSD_URL ?? 'http://localhost:1080', xfwd: true }
+			[`${BASE_PATH}/api`]: toBackend(process.env.API_URL ?? 'http://localhost:8000'),
+			[`${BASE_PATH}/media`]: toBackend(process.env.API_URL ?? 'http://localhost:8000'),
+			[`${BASE_PATH}/files`]: { target: process.env.TUSD_URL ?? 'http://localhost:1080', xfwd: true }
 		},
 		// Rules shared with the backend, outside frontend/ (see src/lib/validation.ts).
 		fs: { allow: ['../server/app/validation.json'] }

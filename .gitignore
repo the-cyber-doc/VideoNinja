@@ -11,7 +11,9 @@ htmlcov/
 # Node / SvelteKit
 node_modules/
 .svelte-kit/
+.svelte-kit-*/
 frontend/build/
+frontend/build-*/
 
 # SQLite (local dev databases)
 *.db

@@ -4,11 +4,10 @@ from datetime import tzinfo
 from zoneinfo import ZoneInfo
 
 from cryptography.exceptions import InvalidTag
-from fastapi import APIRouter, Cookie, Depends, HTTPException, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from pydantic import BaseModel
 
 from . import clock, crypto, db, i18n, queries, security
-from .security import SESSION_COOKIE
 from .validation import field
 
 log = logging.getLogger("uvicorn.error")
@@ -30,9 +29,14 @@ class UserOut(BaseModel):
     access: list[str]  # what the role allows, e.g. "user_mgmt": the UI shows matching menus
 
 
+def session_token(request: Request) -> str | None:
+    """Dependency: the session cookie's value (its name depends on the base path)."""
+    return request.cookies.get(security.session_cookie()[0])
+
+
 def current_user(
     con: sqlite3.Connection = Depends(db.get_db),
-    token: str | None = Cookie(default=None, alias=SESSION_COOKIE),
+    token: str | None = Depends(session_token),
     zone: ZoneInfo | None = Depends(clock.zone),
 ) -> sqlite3.Row:
     """Dependency for every protected endpoint: 401 unless a valid session cookie is sent."""
@@ -104,11 +108,12 @@ def login(
 
     security.purge_expired_sessions(con)
     token = security.create_session(con, user, zone)
+    name, path = security.session_cookie()
     response.set_cookie(
-        SESSION_COOKIE,
+        name,
         token,
         max_age=security.SESSION_MAX_S,  # the server enforces the 30-day idle expiry
-        path="/",
+        path=path,
         secure=True,
         httponly=True,
         samesite="strict",
@@ -120,11 +125,12 @@ def login(
 def logout(
     response: Response,
     con: sqlite3.Connection = Depends(db.get_db),
-    token: str | None = Cookie(default=None, alias=SESSION_COOKIE),
+    token: str | None = Depends(session_token),
 ) -> None:
     if token:
         security.delete_session(con, token)
-    response.delete_cookie(SESSION_COOKIE, path="/", secure=True, httponly=True, samesite="strict")
+    name, path = security.session_cookie()
+    response.delete_cookie(name, path=path, secure=True, httponly=True, samesite="strict")
 
 
 @router.get("/me")

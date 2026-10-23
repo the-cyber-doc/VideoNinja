@@ -15,7 +15,7 @@ from pydantic import BaseModel, Field, model_validator
 from . import clock, db, queries, tusd
 from .auth import require_access, user_zone
 from .snapshot import rebuild_after_write
-from .tags import tag_values
+from .tags import Rule, tag_rules, value_error
 from .validation import RULES, field
 
 router = APIRouter(prefix="/api", tags=["videos"])
@@ -63,16 +63,14 @@ def _unprocessable(detail: str) -> HTTPException:
     return HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, detail)
 
 
-def _check_tags(tags: list[TagIn], known: dict[str, sqlite3.Row]) -> None:
+def _check_tags(tags: list[TagIn], known: dict[str, Rule], zone: tzinfo) -> None:
     if len({t.id for t in tags}) != len(tags):
         raise _unprocessable("A tag is given twice")
     for tag in tags:
-        row = known.get(tag.id)
-        if row is None:
+        if tag.id not in known:
             raise _unprocessable(f"Unknown tag: {tag.id}")
-        values = tag_values(row)
-        if values is not None and tag.value not in values:
-            raise _unprocessable(f"Tag {tag.id}: the value must be one of {', '.join(values)}")
+        if error := value_error(known[tag.id], tag.value, zone):
+            raise _unprocessable(f"Tag {tag.id}: {error}")
 
 
 def _may_manage(con: sqlite3.Connection, me: sqlite3.Row, video: sqlite3.Row | None) -> sqlite3.Row:
@@ -96,8 +94,8 @@ def exists(
     _: sqlite3.Row = Depends(uploader),
     con: sqlite3.Connection = Depends(db.get_db),
 ) -> dict[str, bool]:
-    """True if this original was already uploaded (published, pending or failed)."""
-    return {"exists": queries.original_known(con, original_sha256)}
+    """True if a video (published, pending or failed) has this original or this encoded file."""
+    return {"exists": queries.video_known(con, original_sha256)}
 
 
 @router.post(
@@ -113,14 +111,14 @@ def submit(
     zone: tzinfo = Depends(user_zone),
 ) -> dict[str, int]:
     """Queue a finished upload for encoding, with its segments and tags."""
-    known_tags = {r["id"]: r for r in queries.tags(con)}
-    _check_tags(body.tags, known_tags)
+    known_tags = tag_rules(con)
+    _check_tags(body.tags, known_tags, zone)
     for segment in body.segments:
         if not queries.technique_exists(con, segment.technique):
             raise _unprocessable(f"Unknown technique: {segment.technique}")
         if not queries.performer_exists(con, segment.performer):
             raise _unprocessable(f"Unknown performer: {segment.performer}")
-        _check_tags(segment.tags, known_tags)
+        _check_tags(segment.tags, known_tags, zone)
 
     with con:
         upload = queries.upload(con, tus_id)
@@ -128,8 +126,8 @@ def submit(
             raise HTTPException(status.HTTP_404_NOT_FOUND, "Unknown upload")
         if upload["state"] != "finished":
             raise HTTPException(status.HTTP_409_CONFLICT, "The upload is not finished")
-        if queries.original_known(con, upload["original_sha256"]):
-            raise HTTPException(status.HTTP_409_CONFLICT, "This video was already uploaded")
+        if queries.video_known(con, upload["original_sha256"]):
+            raise HTTPException(status.HTTP_409_CONFLICT, "This video already exists")
         video_id = queries.insert_video(
             con, upload["original_sha256"], body.original_filename, body.all_segments_done,
             me["id"], clock.at(0, zone), tus_id,

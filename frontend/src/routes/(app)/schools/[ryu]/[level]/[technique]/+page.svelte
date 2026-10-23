@@ -33,7 +33,7 @@
 			{/if}
 			<section>
 				<h2>{t('technique.videos')}</h2>
-				<SegmentThumbnails segments={segmentsOf(c, technique.id)} />
+				<SegmentThumbnails segments={segmentsOf(c, technique.id)} title={technique.romaji} />
 			</section>
 			<section>
 				<h2>{t('technique.comments')}</h2>

@@ -1,6 +1,7 @@
 // The app's side of the PWA (the service worker is src/service-worker/).
 import { dev } from '$app/env';
-import { DATA, UPLOAD_DB } from './pwa-caches';
+import { url } from './base';
+import { DATA, MEDIA, UPLOAD_DB } from './pwa-caches';
 
 /** Production build only (SvelteKit's automatic registration is off, see vite.config.ts).
  * In development the service worker is an ES module, which Firefox cannot run, and
@@ -12,7 +13,7 @@ export function registerServiceWorker() {
 			.getRegistrations()
 			.then((all) => all.forEach((registration) => registration.unregister()));
 	} else {
-		navigator.serviceWorker.register('/service-worker.js').catch((e) => console.error(e));
+		navigator.serviceWorker.register(url('/service-worker.js'), { scope: url('/') }).catch((e) => console.error(e));
 	}
 }
 
@@ -25,6 +26,7 @@ export function persistStorage() {
 export async function clearUserData() {
 	try {
 		await caches.delete(DATA);
+		await caches.delete(MEDIA);
 	} catch {
 		// no Cache API (insecure context, storage blocked): nothing stored
 	}

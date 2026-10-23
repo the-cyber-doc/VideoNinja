@@ -1,34 +1,114 @@
-"""Comments on techniques. Read by every logged-in user.
+"""Comments on techniques. Read by every logged-in user; written with the
+"comment" access; each user edits and deletes only their own.
 
 Not in the catalogue snapshot: written by users and changing often.
 """
 
+import logging
 import sqlite3
+from datetime import tzinfo
+from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
-from . import db, queries
-from .auth import current_user
+from . import clock, db, i18n, queries
+from .auth import current_user, require_access, user_zone
+from .validation import field
 
+log = logging.getLogger("uvicorn.error")
 router = APIRouter(prefix="/api", tags=["comments"])
+commenter = require_access("comment")
 
 
 class CommentOut(BaseModel):
     id: int
     user: str  # display name, else username
     created_at: str  # e.g. "2026-10-23T12:13:38+02:00" (app/clock.py)
+    modified_at: str  # = created_at until edited
     lang: str  # language the comment is written in
     text: str
+    mine: bool  # written by the caller: they may edit and delete it
+
+
+class CommentIn(BaseModel):
+    text: str = field("comment_text")
+    lang: Literal[*i18n.LANGS]  # type: ignore[valid-type]
+
+    @field_validator("text")
+    @classmethod
+    def not_blank(cls, text: str) -> str:
+        text = text.strip()
+        if not text:
+            raise ValueError("The comment is empty")
+        return text
+
+
+def _out(row: sqlite3.Row) -> CommentOut:
+    return CommentOut(**{k: row[k] for k in CommentOut.model_fields})
+
+
+def _own(con: sqlite3.Connection, comment_id: int, me: sqlite3.Row) -> sqlite3.Row:
+    """The comment, if `me` wrote it: 404 unknown, 403 someone else's."""
+    row = queries.comment(con, comment_id, me["id"])
+    if row is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Unknown comment")
+    if not row["mine"]:
+        log.warning("Denied: user id %s tried to change comment %s of user id %s", me["id"], comment_id, row["author"])
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Only its author can change a comment")
+    return row
+
+
+def _technique(con: sqlite3.Connection, technique_id: str) -> None:
+    if not queries.technique_exists(con, technique_id):
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Unknown technique")
 
 
 @router.get("/techniques/{technique_id}/comments")
 def technique_comments(
     technique_id: str,
-    _: sqlite3.Row = Depends(current_user),
+    me: sqlite3.Row = Depends(current_user),
     con: sqlite3.Connection = Depends(db.get_db),
 ) -> list[CommentOut]:
-    """Newest first."""
-    if not queries.technique_exists(con, technique_id):
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Unknown technique")
-    return [CommentOut(**dict(r)) for r in queries.technique_comments(con, technique_id)]
+    """Last modified first."""
+    _technique(con, technique_id)
+    return [_out(r) for r in queries.technique_comments(con, technique_id, me["id"])]
+
+
+@router.post("/techniques/{technique_id}/comments", status_code=status.HTTP_201_CREATED)
+def add_comment(
+    technique_id: str,
+    body: CommentIn,
+    me: sqlite3.Row = Depends(commenter),
+    con: sqlite3.Connection = Depends(db.get_db),
+    zone: tzinfo = Depends(user_zone),
+) -> CommentOut:
+    _technique(con, technique_id)
+    with con:
+        comment_id = queries.insert_comment(con, technique_id, me["id"], body.lang, body.text, clock.at(0, zone))
+    return _out(queries.comment(con, comment_id, me["id"]))
+
+
+@router.patch("/comments/{comment_id}")
+def edit_comment(
+    comment_id: int,
+    body: CommentIn,
+    me: sqlite3.Row = Depends(commenter),
+    con: sqlite3.Connection = Depends(db.get_db),
+    zone: tzinfo = Depends(user_zone),
+) -> CommentOut:
+    with con:
+        _own(con, comment_id, me)
+        queries.update_comment(con, comment_id, body.lang, body.text, clock.at(0, zone))
+    return _out(queries.comment(con, comment_id, me["id"]))
+
+
+@router.delete("/comments/{comment_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_comment(
+    comment_id: int,
+    me: sqlite3.Row = Depends(commenter),
+    con: sqlite3.Connection = Depends(db.get_db),
+) -> None:
+    with con:
+        _own(con, comment_id, me)
+        queries.delete_comment(con, comment_id)

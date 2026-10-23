@@ -1,5 +1,6 @@
 // Main navigation, centred in the header. One entry per page: add new pages here.
 import type { MessageKey } from './i18n.svelte';
+import { url } from './base';
 
 export interface NavEntry {
 	href: string;
@@ -9,6 +10,6 @@ export interface NavEntry {
 }
 
 export const NAV: NavEntry[] = [
-	{ href: '/schools', label: 'nav.schools' },
-	{ href: '/upload', label: 'nav.upload', access: 'upload' }
+	{ href: url('/schools'), label: 'nav.schools' },
+	{ href: url('/upload'), label: 'nav.upload', access: 'upload' }
 ];

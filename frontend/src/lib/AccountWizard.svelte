@@ -6,6 +6,7 @@
 	//   chosen by the admin.
 	import { goto } from '$app/navigation';
 	import { api, isInitialized, ndjson } from '#lib/api.js';
+	import { url } from '#lib/base.js';
 	import { t, type MessageKey } from '#lib/i18n.svelte.js';
 	import { onTotpInput, rules } from '#lib/validation.js';
 
@@ -42,7 +43,7 @@
 	$effect(() => {
 		if (setup) {
 			isInitialized().then((ok) => {
-				if (ok) goto('/login', { replace: true });
+				if (ok) goto(url('/login'), { replace: true });
 			});
 		} else {
 			// The invitation is checked at once: the user sees who it is for, or why it fails.
@@ -256,7 +257,7 @@
 			<p>
 				{setup ? t('wizard.setup_ready') : t('wizard.register_ready')}
 			</p>
-			<button onclick={() => goto('/login', { replace: true })}>
+			<button onclick={() => goto(url('/login'), { replace: true })}>
 				{t('wizard.go_to_login')}
 			</button>
 		{/if}

@@ -2,13 +2,12 @@
 real ffmpeg runs in test_encoder.py)."""
 
 import sqlite3
-from datetime import timedelta
+from datetime import UTC, datetime, timedelta
 
 import pyotp
 import pytest
 
-from app import clock, db, encoder, i18n, snapshot
-from app.security import SESSION_COOKIE
+from app import clock, db, encoder, i18n, security, snapshot
 
 from .test_auth import login
 from .test_users import USER_PASSWORD, create, register, user_login
@@ -17,14 +16,29 @@ ORIGINAL = "1" * 64
 ENCODED = "e" * 64
 
 
+def add_tags(con):
+    """"place": fixed values (one without French name: falls back to English); "note": free text."""
+    con.executemany("INSERT INTO translation (id, en, fr) VALUES (?, ?, ?)", [
+        ("tag.place.name", "Place", "Lieu"),
+        ("tag.note.name", "Note", "Remarque"),
+        ("tag_value.place.dojo.name", "Dojo", "Dojo"),
+        ("tag_value.place.outdoor.name", "Outdoor", "Extérieur"),
+        ("tag_value.place.online.name", "Online", None),
+    ])
+    con.executemany("INSERT INTO tag (id, name) VALUES (?, ?)", [
+        ("place", "tag.place.name"), ("note", "tag.note.name")])
+    con.executemany("INSERT INTO tag_value (tag, id, name) VALUES ('place', ?, ?)", [
+        ("dojo", "tag_value.place.dojo.name"), ("outdoor", "tag_value.place.outdoor.name"),
+        ("online", "tag_value.place.online.name")])
+
+
 @pytest.fixture
 def admin(client, admin_secret):
     assert login(client, admin_secret).status_code == 200
     con = sqlite3.connect(db.db_path())
     with con:
         con.execute("INSERT INTO performer (id, name) VALUES ('hatsumi', 'Hatsumi')")
-        con.execute("INSERT INTO tag (id, fixed_values, list_of_values) VALUES ('place', 1, 'dojo, outdoor')")
-        con.execute("INSERT INTO tag (id, fixed_values) VALUES ('note', 0)")
+        add_tags(con)
     return client
 
 
@@ -58,7 +72,7 @@ def video_row(video_id):
 
 def hook(client, type_, cookie=None, size=1000, sha=ORIGINAL, filename="kata.mov", tus_id="", offset=0,
          deferred=False):
-    headers = {"Cookie": [f"{SESSION_COOKIE}={cookie}"]} if cookie else {}
+    headers = {"Cookie": [f"{security.session_cookie()[0]}={cookie}"]} if cookie else {}
     return client.post("/internal/tusd-hook", json={"Type": type_, "Event": {
         "Upload": {"ID": tus_id, "Size": size, "SizeIsDeferred": deferred, "Offset": offset,
                    "MetaData": {"original_sha256": sha, "filename": filename}},
@@ -66,7 +80,7 @@ def hook(client, type_, cookie=None, size=1000, sha=ORIGINAL, filename="kata.mov
 
 
 def session(client):
-    return client.cookies.get(SESSION_COOKIE)
+    return client.cookies.get(security.session_cookie()[0])
 
 
 def uploaded(client, sha=ORIGINAL, size=1000) -> str:
@@ -105,8 +119,81 @@ def test_performers(admin):
     assert names == sorted(names, key=i18n.sort_key)
 
 
-def test_tags(admin):
-    assert admin.get("/api/tags").json() == [{"id": "note"}, {"id": "place", "values": ["dojo", "outdoor"]}]
+def test_tags_translated(admin):
+    """Sorted by name in the request's language, and their values too."""
+    def ours(lang):
+        tags = admin.get("/api/tags", headers={"Accept-Language": lang}).json()
+        return [t for t in tags if t["id"] in ("place", "note")]  # not the seeded ones
+
+    assert ours("en") == [
+        {"id": "note", "name": "Note"},
+        {"id": "place", "name": "Place", "values": [
+            {"id": "dojo", "name": "Dojo"}, {"id": "online", "name": "Online"}, {"id": "outdoor", "name": "Outdoor"}]},
+    ]
+    assert ours("fr") == [
+        {"id": "place", "name": "Lieu", "values": [
+            {"id": "dojo", "name": "Dojo"}, {"id": "outdoor", "name": "Extérieur"},
+            {"id": "online", "name": "Online"}]},  # no French name: the English one
+        {"id": "note", "name": "Remarque"},
+    ]
+
+
+def test_seeded_tags(admin, monkeypatch):
+    monkeypatch.setattr(clock, "now", lambda: datetime(2026, 10, 23, tzinfo=UTC))
+    seeded = ("location", "event", "year", "country")
+    for lang, names in [("en", ["Country", "Event", "Location", "Year"]),
+                        ("fr", ["Année", "Événement", "Lieu", "Pays"])]:
+        tags = {t["id"]: t for t in admin.get("/api/tags", headers={"Accept-Language": lang}).json()
+                if t["id"] in seeded}
+        assert [t["name"] for t in sorted(tags.values(), key=lambda t: i18n.sort_key(t["name"]))] == names
+        countries = tags["country"]["values"]
+        assert len(countries) == 249  # ISO 3166-1 alpha-3
+        assert all(len(c["id"]) == 3 and c["id"].isupper() for c in countries)
+        assert [c["name"] for c in countries] == sorted((c["name"] for c in countries), key=i18n.sort_key)
+        assert tags["year"] == {"id": "year", "name": {"en": "Year", "fr": "Année"}[lang], "format": "year",
+                                "min": 1926, "max": 2026}
+    fr = {t["id"]: t for t in admin.get("/api/tags", headers={"Accept-Language": "fr"}).json()}
+    assert fr["location"]["values"] == [{"id": "dojo", "name": "Dojo"}, {"id": "outdoor", "name": "Extérieur"}]
+    assert fr["event"]["values"] == [{"id": "class", "name": "Cours"}, {"id": "demo", "name": "Démonstration"},
+                                     {"id": "seminar", "name": "Stage"}]
+    country = {c["id"]: c["name"] for c in fr["country"]["values"]}
+    assert (country["CHE"], country["JPN"], country["RUS"]) == ("Suisse", "Japon", "Russie")
+    # Every country has its own French name (the same as English only where it really is).
+    en = {c["id"]: c["name"] for t in admin.get("/api/tags").json() if t["id"] == "country" for c in t["values"]}
+    assert sum(country[c] != en[c] for c in en) > 150
+
+
+@pytest.mark.parametrize("value, ok", [
+    ("1926", True), ("2026", True), ("1999", True),
+    ("1925", False), ("2027", False), ("99", False), ("20x6", False), ("２０２０", False), (None, False),
+])
+def test_year_tag(admin, monkeypatch, value, ok):
+    monkeypatch.setattr(clock, "now", lambda: datetime(2026, 10, 23, tzinfo=UTC))
+    tag = {"id": "year"} if value is None else {"id": "year", "value": value}
+    r = submit(admin, uploaded(admin), tags=[tag])
+    assert r.status_code == (201 if ok else 422), r.text
+    if not ok:
+        assert "a year from 1926 to 2026" in r.text
+
+
+def test_year_in_the_user_timezone(admin, monkeypatch):
+    # New Year's Eve 23:30 UTC: already 2026 in Tokyo. (A past date: the session stays valid.)
+    monkeypatch.setattr(clock, "now", lambda: datetime(2025, 12, 31, 23, 30, tzinfo=UTC))
+    body = {"original_filename": "kata.mov", "all_segments_done": False, "tags": [{"id": "year", "value": "2026"}]}
+    for zone, sha, status in [("Europe/London", "a" * 64, 422), ("Asia/Tokyo", "b" * 64, 201)]:
+        r = admin.post(f"/api/uploads/{uploaded(admin, sha=sha)}/submit", json=body, headers={"Time-Zone": zone})
+        assert r.status_code == status, zone
+
+
+def test_tag_values_stored_by_id_free_text_as_typed(admin):
+    tus_id = uploaded(admin)
+    by_name = {**SEGMENT, "tags": [{"id": "place", "value": "Extérieur"}]}  # a name, not the ID
+    assert submit(admin, tus_id, [by_name]).status_code == 422
+    segment = {**SEGMENT, "tags": [{"id": "place", "value": "outdoor"}]}
+    assert submit(admin, tus_id, [segment], tags=[{"id": "note", "value": "Très bien, 二回目"}]).status_code == 201
+    con = sqlite3.connect(db.db_path())
+    assert con.execute("SELECT tag, value FROM segment_has_tags").fetchall() == [("place", "outdoor")]
+    assert con.execute("SELECT tag, value FROM video_has_tags").fetchall() == [("note", "Très bien, 二回目")]
 
 
 def test_upload_apis_need_upload_access(client, admin):
@@ -294,7 +381,7 @@ def test_interrupted_jobs_requeued_at_startup(admin, enc):
 
 def test_deleted_before_publishing(admin, enc):
     video = submit(admin, uploaded(admin)).json()["id"]
-    folder = enc.derived / ENCODED[:2] / ENCODED
+    folder = enc.videos / ENCODED[:2] / ENCODED
 
     def gone(job):
         folder.mkdir(parents=True)

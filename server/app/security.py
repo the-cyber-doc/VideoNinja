@@ -9,9 +9,8 @@ import segno
 from argon2 import PasswordHasher
 from argon2.exceptions import InvalidHashError, VerificationError
 
-from . import clock, queries
+from . import clock, paths, queries
 
-SESSION_COOKIE = "__Host-session"
 SESSION_IDLE_S = 30 * 24 * 3600  # sliding: each visit extends to 30 days from now
 SESSION_MAX_S = 365 * 24 * 3600  # absolute cap, whatever the activity
 SESSION_REFRESH_S = 24 * 3600  # rewrite last_seen at most once a day
@@ -51,6 +50,17 @@ def totp_enrollment(username: str) -> dict[str, str]:
 
 def verify_totp(secret: str, code: str) -> bool:
     return pyotp.TOTP(secret).verify(code.strip(), valid_window=1)
+
+
+def session_cookie() -> tuple[str, str]:
+    """The session cookie's name and path.
+
+    At the domain's root: "__Host-session", Path=/ (the browser then enforces
+    Secure, no Domain, Path=/). Under a base path, the app shares its origin with
+    the domain's other sites: "__Secure-session" with Path=<base path>, so that
+    their servers never receive it (a __Host- cookie must have Path=/)."""
+    base = paths.base_path()
+    return ("__Secure-session", base) if base else ("__Host-session", "/")
 
 
 def _session_id(token: str) -> str:

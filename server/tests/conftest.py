@@ -17,6 +17,7 @@ def no_background_services(monkeypatch):
     """No tusd process, no encoding thread: tests drive the encoder themselves."""
     monkeypatch.setenv("VIDEONINJA_TUSD", "0")
     monkeypatch.setenv("VIDEONINJA_ENCODER", "0")
+    monkeypatch.setenv("VIDEONINJA_NGINX", "0")
 
 
 @pytest.fixture(autouse=True)

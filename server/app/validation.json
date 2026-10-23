@@ -12,5 +12,6 @@
 	"original_filename": { "min_length": 1, "max_length": 255, "pattern": "^[^\\/\\\\]+$" },
 	"catalog_id": { "min_length": 1, "max_length": 64 },
 	"performer_name": { "min_length": 1, "max_length": 64 },
-	"tag_value": { "max_length": 64 }
+	"tag_value": { "max_length": 64 },
+	"comment_text": { "min_length": 1, "max_length": 4000 }
 }

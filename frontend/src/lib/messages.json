@@ -48,9 +48,29 @@
 	},
 	"technique.videos": { "en": "Videos", "fr": "Vidéos" },
 	"technique.no_videos": { "en": "No videos yet.", "fr": "Pas encore de vidéo." },
-	"technique.segment": { "en": "Segment {begin}–{end}", "fr": "Segment {begin}–{end}" },
+	"technique.play": { "en": "Play the segment ({duration})", "fr": "Lire le segment ({duration})" },
+	"player.label": { "en": "{title}, segment of {duration}", "fr": "{title}, segment de {duration}" },
+	"player.close": { "en": "Close", "fr": "Fermer" },
+	"player.speed": { "en": "Speed", "fr": "Vitesse" },
+	"player.speed_value": { "en": "{speed}×", "fr": "{speed}×" },
+	"player.error": {
+		"en": "This clip cannot be played. Offline, only the clips already watched are available.",
+		"fr": "Ce clip ne peut pas être lu. Hors ligne, seuls les clips déjà regardés sont disponibles."
+	},
 	"technique.comments": { "en": "Comments", "fr": "Commentaires" },
 	"technique.no_comments": { "en": "No comments yet.", "fr": "Pas encore de commentaire." },
+	"comments.add": { "en": "Add a comment", "fr": "Ajouter un commentaire" },
+	"comments.text": { "en": "Your comment", "fr": "Votre commentaire" },
+	"comments.language": { "en": "Language of the comment", "fr": "Langue du commentaire" },
+	"comments.save": { "en": "Save", "fr": "Enregistrer" },
+	"comments.edit": { "en": "Edit", "fr": "Modifier" },
+	"comments.delete": { "en": "Delete", "fr": "Supprimer" },
+	"comments.delete_confirm": { "en": "Delete this comment?", "fr": "Supprimer ce commentaire ?" },
+	"comments.edited": { "en": "(edited)", "fr": "(modifié)" },
+	"comments.offline": {
+		"en": "Not possible offline: try again with a connection.",
+		"fr": "Impossible hors ligne : réessayez avec une connexion."
+	},
 
 	"menu.user": { "en": "User menu", "fr": "Menu utilisateur" },
 	"menu.profile": { "en": "Profile", "fr": "Profil" },
@@ -175,8 +195,8 @@
 		"fr": "Vérification du fichier (SHA-256)…"
 	},
 	"upload.duplicate": {
-		"en": "This video was already uploaded.",
-		"fr": "Cette vidéo a déjà été téléversée."
+		"en": "This video already exists.",
+		"fr": "Cette vidéo existe déjà."
 	},
 	"upload.resumed": {
 		"en": "Unfinished work found for this file: resumed.",
@@ -196,17 +216,17 @@
 		"en": "This browser cannot play this file. It can still be uploaded with “Define segments later”: segments are added once the server has encoded it.",
 		"fr": "Ce navigateur ne peut pas lire ce fichier. Il peut quand même être téléversé avec « Définir les segments plus tard » : les segments seront ajoutés une fois la vidéo encodée par le serveur."
 	},
-	"upload.player.back_frame": { "en": "Previous frame", "fr": "Image précédente" },
-	"upload.player.play": { "en": "Play", "fr": "Lecture" },
-	"upload.player.pause": { "en": "Pause", "fr": "Pause" },
-	"upload.player.stop": { "en": "Stop", "fr": "Arrêt" },
-	"upload.player.forward_frame": { "en": "Next frame", "fr": "Image suivante" },
+	"player.back_frame": { "en": "Previous frame", "fr": "Image précédente" },
+	"player.play": { "en": "Play", "fr": "Lecture" },
+	"player.pause": { "en": "Pause", "fr": "Pause" },
+	"player.stop": { "en": "Stop", "fr": "Arrêt" },
+	"player.forward_frame": { "en": "Next frame", "fr": "Image suivante" },
 	"upload.timeline": { "en": "Timeline", "fr": "Chronologie" },
 	"upload.begin_here": { "en": "Begin here (I)", "fr": "Début ici (I)" },
 	"upload.end_here": { "en": "End here (O)", "fr": "Fin ici (O)" },
 	"upload.timeline_hint": {
-		"en": "Drag across the film strip to create a segment, drag its edges to adjust it. Keys: Space play/pause, ← → one frame, I begin, O end.",
-		"fr": "Glissez sur la pellicule pour créer un segment, glissez ses bords pour l'ajuster. Touches : Espace lecture/pause, ← → une image, I début, O fin."
+		"en": "Point at the film strip to see that frame, click to move the playhead there. Drag across it to create a segment, drag its edges to adjust it. Keys: Space play/pause, ← → one frame, I begin, O end.",
+		"fr": "Pointez la pellicule pour voir cette image, cliquez pour y placer la tête de lecture. Glissez dessus pour créer un segment, glissez ses bords pour l'ajuster. Touches : Espace lecture/pause, ← → une image, I début, O fin."
 	},
 	"upload.segments": { "en": "Segments", "fr": "Segments" },
 	"upload.no_segments_yet": {
@@ -231,6 +251,8 @@
 	"upload.video_tags": { "en": "Tags of the video", "fr": "Étiquettes de la vidéo" },
 	"upload.tag.add": { "en": "Add a tag", "fr": "Ajouter une étiquette" },
 	"upload.tag.value": { "en": "Value", "fr": "Valeur" },
+	"upload.tag.chip": { "en": "{name}: {value}", "fr": "{name} : {value}" },
+	"upload.tag.year": { "en": "Year ({min}–{max})", "fr": "Année ({min}–{max})" },
 	"upload.tag.remove": { "en": "Remove the tag {name}", "fr": "Retirer l'étiquette {name}" },
 	"upload.tag.none": {
 		"en": "No tags defined yet.",

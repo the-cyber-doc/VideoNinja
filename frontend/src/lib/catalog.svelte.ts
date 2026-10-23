@@ -3,6 +3,7 @@
 // usually a 304), so new segments show without reloading the app.
 // Same shape and IDs as the server's snapshot: nulls omitted, names stored once.
 import { api } from './api';
+import { url } from './base';
 import { i18n, t, type Lang } from './i18n.svelte';
 import { onCatalogUpdated } from './pwa';
 
@@ -117,14 +118,14 @@ export const segmentsOf = (catalog: Catalog, technique: string) =>
 // --- URLs: /schools/<ryu>/<level>/<technique> ---
 
 const part = encodeURIComponent;
-export const schoolHref = (ryu: string) => `/schools/${part(ryu)}`;
+export const schoolHref = (ryu: string) => url(`/schools/${part(ryu)}`);
 export const levelHref = (ryu: string, level: string) => `${schoolHref(ryu)}/${part(level)}`;
 export const techniqueHref = (ryu: string, level: string, technique: string) =>
 	`${levelHref(ryu, level)}/${part(technique)}`;
 
 /** Breadcrumbs: Schools › school › level › technique, as far as given. */
 export function catalogCrumbs(school?: School, level?: Level, technique?: Technique) {
-	const items = [{ label: t('nav.schools'), href: '/schools' }];
+	const items = [{ label: t('nav.schools'), href: url('/schools') }];
 	if (school) items.push({ label: school.romaji, href: schoolHref(school.id) });
 	if (school && level) items.push({ label: level.romaji, href: levelHref(school.id, level.id) });
 	if (school && level && technique) {

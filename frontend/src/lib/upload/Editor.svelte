@@ -2,6 +2,9 @@
 	// The local video (never uploaded here), its controls and the timeline where
 	// segments are marked. Keys: Space play/pause, ← → one frame, I begin, O end,
 	// Escape clears the selection.
+	// `current` is the seek marker (playhead): it moves when seeking or playing.
+	// Pointing at the timeline shows that frame in the video without moving it;
+	// when the pointer leaves, the video shows the marker's frame again.
 	import Icon from '../Icon.svelte';
 	import { t } from '../i18n.svelte';
 	import { formatTime } from '../time';
@@ -33,11 +36,50 @@
 
 	const clamp = (time: number) => Math.min(Math.max(time, 0), duration);
 
-	function seek(time: number) {
+	let previewing = false;
+	let resume = false; // playing when the preview started: play again after it
+	let pending: number | null = null; // the latest frame asked for while a seek runs
+
+	/** Show this frame. Seeks one at a time: a fast pointer would queue hundreds. */
+	function show(time: number) {
 		if (!video) return;
-		// Also at once: the bound value only follows on the next timeupdate event,
-		// and I/O pressed right after a click must use the clicked time.
-		current = video.currentTime = clamp(time);
+		if (video.seeking) pending = time;
+		else video.currentTime = time;
+	}
+
+	function seeked() {
+		if (pending === null) return;
+		const time = pending;
+		pending = null;
+		show(time);
+	}
+
+	function seek(time: number) {
+		// At once, not on the next timeupdate: I/O pressed right after a click
+		// must use the clicked time.
+		current = clamp(time);
+		show(current);
+	}
+
+	function preview(time: number | null) {
+		if (!video) return;
+		if (time !== null) {
+			if (!previewing) {
+				previewing = true;
+				resume = !video.paused;
+				video.pause();
+			}
+			show(clamp(time));
+		} else if (previewing) {
+			previewing = false;
+			show(current);
+			if (resume) video.play();
+		}
+	}
+
+	/** Playing moves the marker; a preview's seeks never do. */
+	function timeupdate() {
+		if (video && !previewing && !video.paused) current = video.currentTime;
 	}
 
 	const step = (frames: number) => {
@@ -116,11 +158,14 @@
 		}
 	}
 
-	/** Frame duration from two consecutive frames, played muted for a moment. */
-	async function measureFrame(v: HTMLVideoElement): Promise<number> {
+	/** Frame duration from consecutive frames, played for a moment by a hidden,
+	 * muted video: the visible one (and its seek marker) is never disturbed. */
+	async function measureFrame(url: string): Promise<number> {
+		const v = document.createElement('video');
 		if (!('requestVideoFrameCallback' in v)) return frame;
-		const muted = v.muted;
 		v.muted = true;
+		v.preload = 'auto';
+		v.src = url;
 		const times: number[] = [];
 		const measured = await new Promise<number>((resolve) => {
 			const timer = setTimeout(() => resolve(frame), 2000);
@@ -135,8 +180,8 @@
 			v.play().catch(() => resolve(frame));
 		});
 		v.pause();
-		v.muted = muted;
-		v.currentTime = 0;
+		v.removeAttribute('src');
+		v.load();
 		return measured;
 	}
 
@@ -167,7 +212,7 @@
 		duration = video.duration;
 		playable = video.videoWidth > 0;
 		if (!playable) return;
-		frame = await measureFrame(video);
+		frame = await measureFrame(src);
 		makeStrip(src, duration);
 	}
 </script>
@@ -180,8 +225,10 @@
 		bind:this={video}
 		{src}
 		preload="auto"
-		bind:currentTime={current}
 		bind:paused
+		ontimeupdate={timeupdate}
+		onseeked={seeked}
+		onended={() => video && (current = video.currentTime)}
 		onloadedmetadata={loaded}
 		onerror={() => (playable = false)}
 	></video>
@@ -189,16 +236,16 @@
 	{#if playable}
 		<div class="controls">
 			<div class="buttons">
-				<button type="button" class="icon" title={t('upload.player.back_frame')} aria-label={t('upload.player.back_frame')} onclick={() => step(-1)}>
+				<button type="button" class="icon" title={t('player.back_frame')} aria-label={t('player.back_frame')} onclick={() => step(-1)}>
 					<Icon name="frame-back" />
 				</button>
-				<button type="button" class="icon" title={t(paused ? 'upload.player.play' : 'upload.player.pause')} aria-label={t(paused ? 'upload.player.play' : 'upload.player.pause')} onclick={toggle}>
+				<button type="button" class="icon" title={t(paused ? 'player.play' : 'player.pause')} aria-label={t(paused ? 'player.play' : 'player.pause')} onclick={toggle}>
 					<Icon name={paused ? 'play' : 'pause'} />
 				</button>
-				<button type="button" class="icon" title={t('upload.player.stop')} aria-label={t('upload.player.stop')} onclick={stop}>
+				<button type="button" class="icon" title={t('player.stop')} aria-label={t('player.stop')} onclick={stop}>
 					<Icon name="stop" />
 				</button>
-				<button type="button" class="icon" title={t('upload.player.forward_frame')} aria-label={t('upload.player.forward_frame')} onclick={() => step(1)}>
+				<button type="button" class="icon" title={t('player.forward_frame')} aria-label={t('player.forward_frame')} onclick={() => step(1)}>
 					<Icon name="frame-forward" />
 				</button>
 			</div>
@@ -213,12 +260,16 @@
 				oncreate={create}
 				onchange={change}
 				onselect={(key) => (selected = key)}
+				onpreview={preview}
 			/>
 		</div>
 		<div class="marks">
 			<span class="time">{formatTime(Math.floor(current))} / {formatTime(Math.floor(duration))}</span>
-			<button type="button" class="secondary" onclick={beginHere}>{t('upload.begin_here')}</button>
-			<button type="button" class="secondary" onclick={endHere}>{t('upload.end_here')}</button>
+			<!-- Together: they wrap as a pair, side by side or one above the other. -->
+			<span class="mark-buttons">
+				<button type="button" class="secondary" onclick={beginHere}>{t('upload.begin_here')}</button>
+				<button type="button" class="secondary" onclick={endHere}>{t('upload.end_here')}</button>
+			</span>
 		</div>
 		<p class="hint">{t('upload.timeline_hint')}</p>
 	{/if}
@@ -258,6 +309,11 @@
 		display: flex;
 		flex-wrap: wrap;
 		align-items: center;
+		gap: 0.5rem;
+	}
+	.mark-buttons {
+		display: flex;
+		flex-wrap: wrap;
 		gap: 0.5rem;
 	}
 	.time {

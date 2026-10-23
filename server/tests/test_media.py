@@ -1,8 +1,11 @@
+import shutil
 import sqlite3
+from pathlib import Path
 
 import pyotp
+import pytest
 
-from app import db
+from app import db, encoder
 
 from .test_auth import login
 from .test_catalog import SHA, add_segments
@@ -44,7 +47,7 @@ def test_served_by_the_app_without_nginx(client, admin_secret, tmp_path, monkeyp
     monkeypatch.setenv("VIDEONINJA_MEDIA_DIR", str(tmp_path / "media"))
     login(client, admin_secret)
     add_segments()
-    folder = tmp_path / "media" / "derived" / "ab" / SHA
+    folder = tmp_path / "media" / "video" / "ab" / SHA
     folder.mkdir(parents=True)
     (folder / "seg1.jpg").write_bytes(b"\xff\xd8 jpeg")
     r = client.get("/media/segment/1/thumbnail")
@@ -69,3 +72,66 @@ def test_needs_segment_access(client, admin_secret, monkeypatch):
     r = kenji.get("/media/segment/1/thumbnail")
     assert r.status_code == 403
     assert "x-accel-redirect" not in r.headers
+
+
+# --- clips ---
+
+
+def test_clip_cut_by_nginx(client, admin_secret, monkeypatch):
+    monkeypatch.setenv("VIDEONINJA_X_ACCEL", "1")
+    login(client, admin_secret)
+    add_segments()
+    # The app sets the times from the database; nginx's mp4 module cuts the clip.
+    r = client.get("/media/segment/1")
+    assert r.status_code == 200 and r.content == b""
+    assert r.headers["x-accel-redirect"] == f"{THUMBS}/video.mp4?start=12&end=27"
+    assert client.get("/media/segment/2").headers["x-accel-redirect"].endswith("?start=40&end=55")
+
+
+def test_clip_not_published_or_unknown(client, admin_secret, monkeypatch):
+    monkeypatch.setenv("VIDEONINJA_X_ACCEL", "1")
+    login(client, admin_secret)
+    add_segments()
+    with sqlite3.connect(db.db_path()) as con:
+        con.execute("UPDATE video SET sha256sum = NULL, status = 'queued'")
+    assert client.get("/media/segment/1").status_code == 404
+    assert client.get("/media/segment/99").status_code == 404
+
+
+def test_clip_needs_login(client, admin_secret, monkeypatch):
+    monkeypatch.setenv("VIDEONINJA_X_ACCEL", "1")
+    login(client, admin_secret)
+    add_segments()
+    client.post("/api/auth/logout")
+    r = client.get("/media/segment/1")
+    assert r.status_code == 401
+    assert "x-accel-redirect" not in r.headers
+
+
+READY = Path(__file__).parent / "video_test_noneed_encoding.mp4"  # 20 s, a keyframe every second
+
+
+@pytest.mark.skipif(not (shutil.which("ffmpeg") and READY.is_file()), reason="ffmpeg or sample missing")
+def test_clip_cut_by_the_app_without_nginx(client, admin_secret, tmp_path, monkeypatch):
+    monkeypatch.setenv("VIDEONINJA_MEDIA_DIR", str(tmp_path / "media"))
+    login(client, admin_secret)
+    add_segments()
+    with sqlite3.connect(db.db_path()) as con:
+        con.execute("UPDATE segment SET begin_s = 5, end_s = 15 WHERE id = 1")
+    folder = tmp_path / "media" / "video" / "ab" / SHA
+    folder.mkdir(parents=True)
+    (folder / "video.mp4").symlink_to(READY)
+
+    r = client.get("/media/segment/1")
+    assert r.status_code == 200 and r.headers["content-type"] == "video/mp4"
+    assert r.headers["accept-ranges"] == "bytes"  # without it, browsers cannot seek in a 200 answer
+    clip = tmp_path / "clip.mp4"
+    clip.write_bytes(r.content)
+    assert 9.5 < encoder.probe_duration(clip) < 11.5  # from the keyframe at or before 5 s
+    assert len(r.content) < READY.stat().st_size * 0.7  # only the clip, not the whole video
+    # Range requests (seeking, Safari): 206 with the asked bytes.
+    part = client.get("/media/segment/1", headers={"Range": "bytes=0-99"})
+    assert part.status_code == 206 and part.content == r.content[:100]
+    assert part.headers["content-range"] == f"bytes 0-99/{len(r.content)}"
+    # Cut once, then served from the cache folder.
+    assert [p.name for p in (tmp_path / "media" / "clips").iterdir()] == [f"{SHA}-5-15.mp4"]

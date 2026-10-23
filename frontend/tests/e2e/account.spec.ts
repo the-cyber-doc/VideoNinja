@@ -76,6 +76,13 @@ test('setup is closed afterwards', async ({ request }) => {
 	expect(res.status()).toBe(404);
 });
 
+test('media requests reach the backend (as nginx does in production)', async ({ request }) => {
+	// Not logged in: the app's 401 (JSON), not a 404 page from the frontend server.
+	const res = await request.get('/media/segment/1/thumbnail');
+	expect(res.status()).toBe(401);
+	expect(await res.json()).toEqual({ detail: 'Not logged in' });
+});
+
 test('wrong password is refused', async ({ page }) => {
 	await fillLogin(page, admin, 'wrong password!');
 	await expect(page.getByRole('alert')).toBeVisible();
@@ -161,7 +168,7 @@ test('user management: create a user and get the invitation link', async ({ page
 	await page.getByRole('button', { name: 'Create' }).click();
 
 	inviteLink = await page.getByLabel('Invitation link').inputValue();
-	expect(inviteLink).toMatch(/^https:\/\/localhost:4173\/register#[\w-]{40,}$/);
+	expect(inviteLink).toMatch(/^https:\/\/localhost:\d+\/register#[\w-]{40,}$/);
 	const row = page.getByRole('row', { name: /kenji/ });
 	await expect(row).toContainText('Invitation pending');
 	await expect(row.getByRole('button', { name: 'Copy invite link' })).toBeVisible();
@@ -221,4 +228,34 @@ test('user management: reset a registered account', async ({ page }) => {
 	await logOut(page);
 	await fillLogin(page, kenji);
 	await expect(page.getByRole('alert')).toBeVisible();
+});
+
+test('comments: add, edit and delete my own, saved in the database', async ({ page }) => {
+	page.on('dialog', (d) => d.accept());
+	await logIn(page);
+	await page.goto('/schools/gyokko/shoden/gyokko.koku');
+	const comments = page.locator('.comment');
+	await expect(page.getByText('No comments yet.')).toBeVisible();
+
+	await page.getByRole('button', { name: 'Add a comment' }).click();
+	await page.getByPlaceholder('Your comment').fill('Très bien, 二回目');
+	await page.getByLabel('Language of the comment').selectOption({ label: 'Français' });
+	await page.getByRole('button', { name: 'Save' }).click();
+	await expect(comments).toHaveCount(1);
+	await page.reload(); // stored by the server
+	await expect(comments).toHaveText([/Sensei.*Très bien, 二回目/]); // display name set by the profile test
+	await expect(comments.getByRole('img', { name: 'Language: Français' })).toBeVisible();
+	await expect(comments).not.toContainText('(edited)');
+
+	await comments.getByRole('button', { name: 'Edit' }).click();
+	await comments.getByPlaceholder('Your comment').fill('Encore mieux');
+	await comments.getByRole('button', { name: 'Save' }).click();
+	await page.reload();
+	await expect(comments).toHaveText([/Encore mieux.*/]);
+	await expect(comments).toContainText('(edited)');
+
+	await comments.getByRole('button', { name: 'Delete' }).click();
+	await expect(page.getByText('No comments yet.')).toBeVisible();
+	await page.reload();
+	await expect(page.getByText('No comments yet.')).toBeVisible();
 });

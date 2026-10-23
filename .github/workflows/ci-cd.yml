@@ -172,8 +172,8 @@ jobs:
       id: build
       uses: docker/build-push-action@v7
       with:
-        # Repository root: the image also needs tools/encode-videos/
-        # (server/Dockerfile.dockerignore keeps the context small).
+        # Repository root: the image also builds frontend/ and needs nginx/ and
+        # tools/encode-videos/ (server/Dockerfile.dockerignore keeps the context small).
         context: .
         file: ./server/Dockerfile
         platforms: ${{ matrix.platform }}
