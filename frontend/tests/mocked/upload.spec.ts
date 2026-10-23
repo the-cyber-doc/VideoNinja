@@ -277,6 +277,25 @@ test('my uploads: queue position, encoding progress, failure with retry', async 
 	await expect.poll(() => retried).toBe('POST');
 });
 
+test('a video just published: the catalogue is fetched again at once', async ({ page }) => {
+	const status = { id: 1, filename: 'a.mov', status: 'encoding', progress: 90, error: null, uploaded_s: 1_800_000_000, queue_position: null };
+	const fake = await setup(page, UPLOADER, { mine: [status] });
+	let catalogRequests = 0;
+	await page.route('/api/catalog', (r) => {
+		catalogRequests++;
+		return r.fulfill({ json: CATALOG });
+	});
+	// As in the app: the catalogue is in memory (a schools page), then the upload page.
+	await page.goto('/schools');
+	await expect.poll(() => catalogRequests).toBe(1);
+	await page.getByRole('link', { name: 'Upload' }).click();
+	await expect(page.getByText('Encoding: 90 %')).toBeVisible();
+	const before = catalogRequests;
+	fake.mine = [{ ...status, status: 'published', progress: 100 }];
+	await expect(page.getByText('Published')).toBeVisible({ timeout: 10_000 });
+	await expect.poll(() => catalogRequests).toBe(before + 1);
+});
+
 test('in French', async ({ page }) => {
 	await page.addInitScript(() => localStorage.setItem('lang', 'fr'));
 	await setup(page);

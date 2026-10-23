@@ -1,4 +1,6 @@
-// The catalogue (schools, levels, techniques, segments), loaded once per language.
+// The catalogue (schools, levels, techniques, segments), kept in memory per language
+// and checked again in the background when a page uses it (at most every 30 s;
+// usually a 304), so new segments show without reloading the app.
 // Same shape and IDs as the server's snapshot: nulls omitted, names stored once.
 import { api } from './api';
 import { i18n, t, type Lang } from './i18n.svelte';
@@ -47,7 +49,9 @@ export interface Catalog {
 }
 
 const loaded = new Map<Lang, Promise<Catalog>>();
-// Bumped when the service worker has a newer catalogue: pages using it reload it.
+const checkedAt = new Map<Lang, number>(); // last request to the server, per language
+const REVALIDATE_MS = 30_000;
+// Bumped when a newer catalogue arrived: pages using it show it.
 const changes = $state({ count: 0 });
 
 if (typeof window !== 'undefined') {
@@ -64,11 +68,33 @@ export function loadCatalog(): Promise<Catalog> {
 	const lang = i18n.lang;
 	let catalog = loaded.get(lang);
 	if (!catalog) {
+		checkedAt.set(lang, Date.now());
 		catalog = api<Catalog>('/api/catalog');
 		catalog.catch(() => loaded.delete(lang)); // retry on the next call
 		loaded.set(lang, catalog);
+	} else if (Date.now() - (checkedAt.get(lang) ?? 0) > REVALIDATE_MS) {
+		revalidate(lang);
 	}
 	return catalog;
+}
+
+/** Ask the server again (now): e.g. one of my uploads was just published. */
+export function refreshCatalog() {
+	if (loaded.has(i18n.lang)) revalidate(i18n.lang);
+}
+
+/** Fetch in the background; replace the catalogue only if it changed. */
+async function revalidate(lang: Lang) {
+	checkedAt.set(lang, Date.now());
+	try {
+		const [fresh, current] = await Promise.all([api<Catalog>('/api/catalog'), loaded.get(lang)]);
+		if (JSON.stringify(fresh) !== JSON.stringify(current)) {
+			loaded.set(lang, Promise.resolve(fresh));
+			changes.count++;
+		}
+	} catch {
+		// offline or server down: keep showing what we have
+	}
 }
 
 // --- Lookups (same IDs as the URL) ---

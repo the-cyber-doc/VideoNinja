@@ -159,3 +159,19 @@ test('in French', async ({ page }) => {
 	await expect(page.getByRole('heading', { level: 2 })).toHaveText(['Vidéos', 'Commentaires']);
 	await expect(page.locator('.comment').first().getByRole('img', { name: 'Langue : Français' })).toBeVisible();
 });
+
+test('a segment published later shows without reloading the app', async ({ page }) => {
+	await page.clock.install();
+	await loggedIn(page);
+	let catalog = { ...CATALOG, segments: [] as typeof CATALOG.segments };
+	await page.route('/api/catalog', (r) => r.fulfill({ json: catalog }));
+	await page.goto('/schools/gyokko/shoden/gyokko.koku');
+	await expect(page.getByText('No videos yet.')).toBeVisible();
+
+	// Published on the server meanwhile; the user goes on navigating in the app.
+	catalog = CATALOG;
+	await crumbs(page).getByRole('link', { name: 'Shoden' }).click();
+	await page.clock.fastForward('00:31');
+	await page.getByRole('link', { name: /Koku/ }).click();
+	await expect(page.locator('section').first().getByRole('img')).toHaveCount(2);
+});

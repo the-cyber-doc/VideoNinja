@@ -1,6 +1,7 @@
 <script lang="ts">
 	// My uploads on the server: queued (place in the queue), encoding (%),
 	// published, failed (Retry / Delete). Refreshed every few seconds while shown.
+	import { refreshCatalog } from '../catalog.svelte';
 	import { i18n, t } from '../i18n.svelte';
 	import { myUploads, remove, retry, type UploadStatus } from './api';
 
@@ -9,10 +10,15 @@
 	let error = $state('');
 	const POLL_MS = 5000;
 
+	let published = new Set<number>(); // seen published: a new one means new segments
+
 	async function load() {
 		try {
 			list = await myUploads();
 			error = '';
+			const now = new Set(list.filter((u) => u.status === 'published').map((u) => u.id));
+			if ([...now].some((id) => !published.has(id))) refreshCatalog();
+			published = now;
 		} catch (e) {
 			error = (e as Error).message;
 		}
