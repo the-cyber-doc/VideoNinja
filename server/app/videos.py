@@ -1,20 +1,19 @@
 """Uploading videos (the user's side): duplicate check, submit, status, retry, delete.
 
-The file itself goes to tusd (see tusd.py) and is encoded by the worker (see
-worker_api.py): the app never reads or writes video bytes, it only knows the tus
-ID and the hashes. A submitted video waits in the queue and is published when
+The file itself goes to tusd (see tusd.py) and is encoded by the app's queue
+(see encoder.py). A submitted video waits in the queue and is published when
 encoded; until then its segments are not in the catalogue.
 """
 
 import sqlite3
-import time
+from datetime import tzinfo
 from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field, model_validator
 
-from . import db, queries, tusd
-from .auth import require_access
+from . import clock, db, queries, tusd
+from .auth import require_access, user_zone
 from .snapshot import rebuild_after_write
 from .tags import tag_values
 from .validation import RULES, field
@@ -44,7 +43,7 @@ class SegmentIn(BaseModel):
 
 
 class SubmitIn(BaseModel):
-    filename: str = field("filename")
+    original_filename: str = field("original_filename")
     all_segments_done: bool
     segments: list[SegmentIn] = Field(default=[], max_length=500)
     tags: list[TagIn] = Field(default=[], max_length=50)
@@ -52,11 +51,11 @@ class SubmitIn(BaseModel):
 
 class UploadStatus(BaseModel):
     id: int
-    filename: str
+    original_filename: str
     status: Literal["queued", "encoding", "published", "failed"]
     progress: int
     error: str | None
-    uploaded_s: int
+    uploaded_at: str  # e.g. "2026-10-23T12:13:38+02:00" (app/clock.py)
     queue_position: int | None  # 1 = next to be encoded
 
 
@@ -111,6 +110,7 @@ def submit(
     body: SubmitIn,
     me: sqlite3.Row = Depends(uploader),
     con: sqlite3.Connection = Depends(db.get_db),
+    zone: tzinfo = Depends(user_zone),
 ) -> dict[str, int]:
     """Queue a finished upload for encoding, with its segments and tags."""
     known_tags = {r["id"]: r for r in queries.tags(con)}
@@ -131,8 +131,8 @@ def submit(
         if queries.original_known(con, upload["original_sha256"]):
             raise HTTPException(status.HTTP_409_CONFLICT, "This video was already uploaded")
         video_id = queries.insert_video(
-            con, upload["original_sha256"], body.filename, body.all_segments_done,
-            me["id"], int(time.time()), tus_id,
+            con, upload["original_sha256"], body.original_filename, body.all_segments_done,
+            me["id"], clock.at(0, zone), tus_id,
         )
         for tag in body.tags:
             queries.insert_video_tag(con, video_id, tag.id, tag.value)
@@ -148,7 +148,7 @@ def submit(
 @router.get("/uploads/mine")
 def my_uploads(me: sqlite3.Row = Depends(uploader), con: sqlite3.Connection = Depends(db.get_db)) -> list[UploadStatus]:
     """My videos waiting, being encoded or failed, and those published this week."""
-    rows = queries.user_videos(con, me["id"], int(time.time()) - RECENT_S)
+    rows = queries.user_videos(con, me["id"], clock.at(-RECENT_S))
     return [UploadStatus(**dict(r)) for r in rows]
 
 
@@ -163,7 +163,7 @@ def retry(video_id: int, me: sqlite3.Row = Depends(uploader), con: sqlite3.Conne
 
 @router.delete("/videos/{video_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete(video_id: int, me: sqlite3.Row = Depends(uploader), con: sqlite3.Connection = Depends(db.get_db)) -> None:
-    """Drop a video that is not published yet. The worker deletes its original."""
+    """Drop a video that is not published yet. The encoder deletes its original."""
     with con:
         video = _may_manage(con, me, queries.video(con, video_id))
         if video["status"] in ("published", "encoding"):

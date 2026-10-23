@@ -81,4 +81,9 @@ INSERT INTO "technique" ("id", "kanji", "romaji", "ryu", "level", "description")
 	('gyokko.keto', '闕倒', 'Keto', 'gyokko', 'shoden', 'technique.gyokko.keto.description'),
 	('gyokko.hanebi', '跳火', 'Hanebi', 'gyokko', 'shoden', 'technique.gyokko.hanebi.description');
 
+INSERT INTO "performer" ("id","name") VALUES
+  ('kacem-zoughari','Kacem Zoughari'),
+  ('masaaki-hatsumi','Hatsumi'),
+  ('toshitsugu-takamatsu','Takamatsu');
+
 COMMIT;

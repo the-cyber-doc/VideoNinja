@@ -17,7 +17,8 @@
 	}
 	interface Invite {
 		token: string;
-		expires_s: number;
+		/** UTC, ISO 8601: "2026-10-30T10:13:38Z". */
+		expires_at: string;
 	}
 
 	const allowed = $derived(hasAccess('user_mgmt'));
@@ -30,7 +31,7 @@
 	let busy = $state(false);
 
 	/** Last invitation link handed out, shown so it can be copied by hand too. */
-	let link = $state<{ username: string; url: string; expires_s: number; copied: boolean } | null>(
+	let link = $state<{ username: string; url: string; expires_at: string; copied: boolean } | null>(
 		null
 	);
 
@@ -76,7 +77,7 @@
 		} catch {
 			// No clipboard access: the link stays visible to copy by hand.
 		}
-		link = { username: user, url, expires_s: invite.expires_s, copied };
+		link = { username: user, url, expires_at: invite.expires_at, copied };
 	}
 
 	const create = (e: SubmitEvent) => {
@@ -145,7 +146,7 @@
 				<div class="link" role="status">
 					<p>
 						{t('users.invite_link_for')} <strong>{link.username}</strong>{t('users.valid_until', {
-							expires: new Date(link.expires_s * 1000).toLocaleString(i18n.lang)
+							expires: new Date(link.expires_at).toLocaleString(i18n.lang)
 						})}
 						{link.copied ? t('users.copied') : t('users.copy_it')}
 					</p>

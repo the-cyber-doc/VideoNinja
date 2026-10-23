@@ -18,7 +18,7 @@ export interface UploadCallbacks {
 
 export function startUpload(
 	file: File,
-	meta: { sha256: string; filename: string; uploadUrl?: string },
+	meta: { sha256: string; originalFilename: string; uploadUrl?: string },
 	callbacks: UploadCallbacks
 ): Upload {
 	const upload: Upload = new Upload(file, {
@@ -26,7 +26,8 @@ export function startUpload(
 		uploadUrl: meta.uploadUrl ?? null,
 		chunkSize: CHUNK_SIZE,
 		retryDelays: [0, 3000, 10000, 30000, 60000],
-		metadata: { filename: meta.filename, original_sha256: meta.sha256 },
+		// "filename": the tus metadata convention; the server stores it as video.original_filename.
+		metadata: { filename: meta.originalFilename, original_sha256: meta.sha256 },
 		storeFingerprintForResuming: false, // the URL is kept in the draft instead
 		onUploadUrlAvailable: () => upload.url && callbacks.onUrl(upload.url),
 		onProgress: (sent, total) => callbacks.onProgress(total ? sent / total : 0),

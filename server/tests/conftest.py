@@ -1,10 +1,12 @@
 import base64
 import os
+from datetime import UTC
 
 import pyotp
 import pytest
 from fastapi.testclient import TestClient
 
+from app import clock
 from app.main import app
 
 PASSWORD = "correct horse battery"
@@ -15,6 +17,13 @@ def no_background_services(monkeypatch):
     """No tusd process, no encoding thread: tests drive the encoder themselves."""
     monkeypatch.setenv("VIDEONINJA_TUSD", "0")
     monkeypatch.setenv("VIDEONINJA_ENCODER", "0")
+
+
+@pytest.fixture(autouse=True)
+def server_zone_utc(monkeypatch):
+    """The server's timezone (dates written without a browser request), whatever the host's.
+    Not by setting TZ: the process keeps its own (pyotp's TOTP codes would be off)."""
+    monkeypatch.setattr(clock, "server_zone", lambda: UTC)
 
 
 @pytest.fixture(autouse=True)

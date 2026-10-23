@@ -2,12 +2,12 @@
 real ffmpeg runs in test_encoder.py)."""
 
 import sqlite3
-import time
+from datetime import timedelta
 
 import pyotp
 import pytest
 
-from app import db, encoder, snapshot
+from app import clock, db, encoder, i18n, snapshot
 from app.security import SESSION_COOKIE
 
 from .test_auth import login
@@ -82,7 +82,7 @@ SEGMENT = {"begin_s": 12, "end_s": 27, "technique": "gyokko.koku", "performer": 
 
 
 def submit(client, tus_id, segments=(SEGMENT,), **extra):
-    body = {"filename": "kata.mov", "all_segments_done": True, "segments": list(segments),
+    body = {"original_filename": "kata.mov", "all_segments_done": True, "segments": list(segments),
             "tags": [{"id": "note", "value": "first try"}], **extra}
     return client.post(f"/api/uploads/{tus_id}/submit", json=body)
 
@@ -91,14 +91,18 @@ def submit(client, tus_id, segments=(SEGMENT,), **extra):
 
 
 def test_performers(admin):
+    seeded = {p["id"] for p in admin.get("/api/performers").json()}  # seed data + fixture
     r = admin.post("/api/performers", json={"name": "  Noguchi   Yukio "})
     assert r.status_code == 201
     assert r.json() == {"id": "noguchi-yukio", "name": "Noguchi Yukio"}
     assert admin.post("/api/performers", json={"name": "noguchi yukio"}).status_code == 409
     assert admin.post("/api/performers", json={"name": "Noguchi-Yukio"}).json()["id"] == "noguchi-yukio-2"
     assert admin.post("/api/performers", json={"name": "Él"}).json()["id"] == "el"
-    names = [p["name"] for p in admin.get("/api/performers").json()]
-    assert names == ["Él", "Hatsumi", "Noguchi Yukio", "Noguchi-Yukio"]
+    performers = admin.get("/api/performers").json()
+    assert [p["name"] for p in performers if p["id"] not in seeded] == ["Él", "Noguchi Yukio", "Noguchi-Yukio"]
+    # The whole list sorted by name, ignoring case and accents ("Él" with the E's).
+    names = [p["name"] for p in performers]
+    assert names == sorted(names, key=i18n.sort_key)
 
 
 def test_tags(admin):
@@ -139,12 +143,15 @@ def test_pre_create_refusals(admin, monkeypatch):
 
 
 def test_pre_create_accepts_and_names_the_upload(admin):
+    con = sqlite3.connect(db.db_path())
+    with con:  # saved from an earlier browser request
+        con.execute("UPDATE user SET time_zone = 'Asia/Kolkata'")
     answer = hook(admin, "pre-create", session(admin))
     tus_id = answer["ChangeFileInfo"]["ID"]
     assert len(tus_id) == 32 and "RejectUpload" not in answer
-    row = sqlite3.connect(db.db_path()).execute("SELECT state, size FROM upload WHERE tus_id = ?",
-                                                (tus_id,)).fetchone()
-    assert row == ("uploading", 1000)
+    row = con.execute("SELECT state, size, created_at FROM upload WHERE tus_id = ?", (tus_id,)).fetchone()
+    assert row[:2] == ("uploading", 1000)
+    assert row[2].endswith("+05:30")  # no browser request: the user's saved timezone
 
     hook(admin, "post-finish", tus_id=tus_id, offset=999)  # incomplete: not finished
     assert submit(admin, tus_id).status_code == 409
@@ -178,6 +185,15 @@ def test_submit_only_own_upload(client, admin):
     secret = register(create(admin, username="hana", role="uploader"))
     hana = user_login("hana", USER_PASSWORD, pyotp.TOTP(secret).now())
     assert submit(hana, tus_id).status_code == 404
+
+
+def test_upload_date_in_the_browser_timezone(admin):
+    tus_id = uploaded(admin)
+    body = {"original_filename": "kata.mov", "all_segments_done": False}
+    r = admin.post(f"/api/uploads/{tus_id}/submit", json=body, headers={"Time-Zone": "America/Sao_Paulo"})
+    assert r.status_code == 201
+    (mine,) = admin.get("/api/uploads/mine").json()
+    assert mine["uploaded_at"].endswith("-03:00")
 
 
 def test_without_segments(admin):
@@ -354,8 +370,8 @@ def test_abandoned_uploads_expire(admin, enc, monkeypatch):
     enc.housekeeping()
     assert len(list(enc.uploads.iterdir())) == 3  # all recent
 
-    later = time.time() + encoder.UPLOAD_EXPIRY_S + 1
-    monkeypatch.setattr(time, "time", lambda: later)
+    later = clock.now() + timedelta(seconds=encoder.UPLOAD_EXPIRY_S + 1)
+    monkeypatch.setattr(clock, "now", lambda: later)
     enc.housekeeping()
     assert [p.name for p in enc.uploads.iterdir()] == [queued]
     # Their owner can no longer continue them.

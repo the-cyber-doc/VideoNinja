@@ -17,7 +17,7 @@ router = APIRouter(prefix="/api", tags=["comments"])
 class CommentOut(BaseModel):
     id: int
     user: str  # display name, else username
-    created_s: int
+    created_at: str  # e.g. "2026-10-23T12:13:38+02:00" (app/clock.py)
     lang: str  # language the comment is written in
     text: str
 

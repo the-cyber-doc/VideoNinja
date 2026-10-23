@@ -8,7 +8,7 @@ from pydantic import Field
 
 RULES: dict[str, dict[str, Any]] = {
     name: rule
-    for name, rule in json.loads(Path(__file__).with_name("validation.json").read_text()).items()
+    for name, rule in json.loads(Path(__file__).with_name("validation.json").read_text(encoding="utf-8")).items()
     if not name.startswith("_")
 }
 

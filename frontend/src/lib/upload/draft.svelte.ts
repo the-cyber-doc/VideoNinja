@@ -22,7 +22,8 @@ export interface DraftSegment {
 
 export interface Draft {
 	sha256: string;
-	filename: string;
+	/** The file's name on the device (stored as video.original_filename). */
+	originalFilename: string;
 	size: number;
 	savedAt: number;
 	mode: Mode;
@@ -58,8 +59,17 @@ async function run<T>(mode: IDBTransactionMode, action: (store: IDBObjectStore) 
 	}
 }
 
-export const loadDraft = (sha256: string) =>
-	run<Draft | undefined>('readonly', (s) => s.get(sha256));
+/** Drafts saved before the rename filename → originalFilename keep their name. */
+function upgrade(draft: Draft & { filename?: string }): Draft {
+	if (!draft.originalFilename && draft.filename) draft.originalFilename = draft.filename;
+	delete draft.filename;
+	return draft;
+}
+
+export const loadDraft = async (sha256: string) => {
+	const draft = await run<Draft | undefined>('readonly', (s) => s.get(sha256));
+	return draft && upgrade(draft);
+};
 
 /** Saved copy: Svelte state proxies cannot be stored as they are. */
 export const saveDraft = (draft: Draft) =>
@@ -69,12 +79,12 @@ export const deleteDraft = (sha256: string) => run('readwrite', (s) => s.delete(
 
 /** Newest first. */
 export const listDrafts = async () =>
-	(await run<Draft[]>('readonly', (s) => s.getAll())).sort((a, b) => b.savedAt - a.savedAt);
+	(await run<Draft[]>('readonly', (s) => s.getAll())).map(upgrade).sort((a, b) => b.savedAt - a.savedAt);
 
 export function newDraft(sha256: string, file: File): Draft {
 	return {
 		sha256,
-		filename: file.name,
+		originalFilename: file.name,
 		size: file.size,
 		savedAt: Date.now(),
 		mode: null,

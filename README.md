@@ -109,6 +109,7 @@ catalogue snapshots in `catalog/` are ignored by git.
 | `VIDEONINJA_UPLOAD_DIR` | `uploads/` next to the database (image: `/srv/uploads`) | tusd's folder: originals waiting to be encoded. |
 | `VIDEONINJA_MAX_UPLOAD_GB` | `20` | Largest upload accepted (tusd and the app). |
 | `VIDEONINJA_X265_PRESET` | `medium` | libx265 preset of the encoding queue (`ultrafast` … `veryslow`; slower = smaller files). |
+| `TZ` | system timezone (image: UTC) | Server's timezone (IANA name, e.g. `Europe/Zurich`), for dates written without a user: invitations. Users' dates are in their browser's timezone. |
 | `VIDEONINJA_TUSD` / `VIDEONINJA_ENCODER` | on | `0`: don't start tusd / the encoding thread (tests). tusd also needs the binary (`PATH` or `VIDEONINJA_TUSD_BIN`), encoding needs `ffmpeg`. |
 
 ### 3. Frontend (terminal 2)
@@ -327,6 +328,17 @@ export, re-add `"id" INTEGER PRIMARY KEY AUTOINCREMENT` on `video`, `segment`,
 `user` and `comment`. On first start the app uses the highest
 `N` for which both `db_vN.sql` and `db_vN_init.sql` exist.
 
+Conventions: text is UTF-8 (`PRAGMA encoding = 'UTF-8'`). Dates are in columns
+named `…_at` declared `DATETIME`, holding ISO 8601 text with the UTC offset in
+one format, `2026-10-23T12:13:38+02:00` (`server/app/clock.py`); the API sends
+them as they are. They are written in the user's timezone: the frontend sends
+the browser's (`Time-Zone: Europe/Zurich`) on every API call and the app saves
+it in `user.time_zone`, for writes without a browser request (tusd hooks).
+Invitations and background jobs use the server's timezone (`TZ`). Offsets
+differ, so the text does not sort chronologically: SQL compares and orders
+dates through `datetime()` (which converts to UTC), never as plain text.
+Positions inside a video stay whole seconds (`segment.begin_s`, `end_s`).
+
 ### Releasing
 
 ```bash
@@ -402,6 +414,7 @@ services:
     environment:
       VIDEONINJA_MAX_UPLOAD_GB: "20"
       VIDEONINJA_X265_PRESET: medium   # "fast": about 2x faster, slightly bigger files
+      TZ: Europe/Zurich                # invitation expiry dates; users get their browser's
     volumes:
       - data:/data
       # Same paths on the host: nginx reads catalogue and media (read-only).
@@ -809,6 +822,13 @@ http {
 
         root /srv/www;
         client_max_body_size 1m;    # API requests only; uploads go to tusd
+
+        # "; charset=utf-8" on text responses that lack it (static files, the
+        # app's own text/plain). Not JSON: always UTF-8 by definition (RFC 8259),
+        # it has no charset parameter.
+        charset       utf-8;
+        charset_types text/css text/plain text/xml text/vtt application/javascript
+                      application/manifest+json image/svg+xml;   # text/html always
 
         # --- Headers (see the maps above) -----------------------------------
         add_header Cache-Control   $cache_control   always;

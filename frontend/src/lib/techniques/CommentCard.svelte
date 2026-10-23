@@ -6,13 +6,14 @@
 	export interface Comment {
 		id: number;
 		user: string;
-		created_s: number;
+		/** ISO 8601 with the UTC offset (the author's timezone): "2026-10-23T12:13:38+02:00". */
+		created_at: string;
 		lang: string;
 		text: string;
 	}
 
 	let { comment }: { comment: Comment } = $props();
-	const date = $derived(new Date(comment.created_s * 1000));
+	const date = $derived(new Date(comment.created_at));
 	const when = $derived(
 		new Intl.DateTimeFormat(i18n.lang, { dateStyle: 'medium', timeStyle: 'short' }).format(date)
 	);

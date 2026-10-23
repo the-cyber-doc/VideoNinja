@@ -1,11 +1,13 @@
 import logging
 import sqlite3
+from datetime import tzinfo
+from zoneinfo import ZoneInfo
 
 from cryptography.exceptions import InvalidTag
 from fastapi import APIRouter, Cookie, Depends, HTTPException, Response, status
 from pydantic import BaseModel
 
-from . import crypto, db, i18n, queries, security
+from . import clock, crypto, db, i18n, queries, security
 from .security import SESSION_COOKIE
 from .validation import field
 
@@ -31,12 +33,20 @@ class UserOut(BaseModel):
 def current_user(
     con: sqlite3.Connection = Depends(db.get_db),
     token: str | None = Cookie(default=None, alias=SESSION_COOKIE),
+    zone: ZoneInfo | None = Depends(clock.zone),
 ) -> sqlite3.Row:
     """Dependency for every protected endpoint: 401 unless a valid session cookie is sent."""
-    user = security.session_user(con, token) if token else None
+    user = security.session_user(con, token, zone) if token else None
     if user is None:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Not logged in")
     return user
+
+
+def user_zone(
+    user: sqlite3.Row = Depends(current_user), zone: ZoneInfo | None = Depends(clock.zone)
+) -> tzinfo:
+    """Dependency: the timezone to write this request's dates in (see clock.user_zone)."""
+    return clock.user_zone(user, zone)
 
 
 def require_access(access: str):
@@ -83,6 +93,7 @@ def login(
     response: Response,
     con: sqlite3.Connection = Depends(db.get_db),
     lang: str = Depends(i18n.language),
+    zone: ZoneInfo | None = Depends(clock.zone),
 ) -> UserOut:
     user = queries.user_for_login(con, body.username)
     password_ok = security.verify_password(user["pw_hash"] if user else None, body.password)
@@ -92,7 +103,7 @@ def login(
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid username, password or code")
 
     security.purge_expired_sessions(con)
-    token = security.create_session(con, user["id"])
+    token = security.create_session(con, user, zone)
     response.set_cookie(
         SESSION_COOKIE,
         token,

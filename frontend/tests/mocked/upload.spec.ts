@@ -199,7 +199,7 @@ test('segments by drag and by I/O, complete them, proceed: upload then submit', 
 
 	const [{ url, body }] = fake.submitted as { url: string; body: Record<string, unknown> }[];
 	expect(url).toMatch(/\/api\/uploads\/abc123\/submit$/);
-	expect(body).toMatchObject({ filename: 'clip.webm', all_segments_done: true, tags: [] });
+	expect(body).toMatchObject({ original_filename: 'clip.webm', all_segments_done: true, tags: [] });
 	const segments = body.segments as { begin_s: number; end_s: number }[];
 	expect(segments).toHaveLength(2);
 	expect(segments[0]).toMatchObject({ technique: 'gyokko.koku', performer: 'noguchi', tags: [{ id: 'place', value: 'dojo' }] });
@@ -257,9 +257,9 @@ test('cancel forgets the work and resets the page', async ({ page }) => {
 test('my uploads: queue position, encoding progress, failure with retry', async ({ page }) => {
 	await setup(page, UPLOADER, {
 		mine: [
-			{ id: 3, filename: 'c.mov', status: 'failed', progress: 10, error: 'Encoding failed', uploaded_s: 1_800_000_000, queue_position: null },
-			{ id: 2, filename: 'b.mov', status: 'queued', progress: 0, error: null, uploaded_s: 1_800_000_000, queue_position: 2 },
-			{ id: 1, filename: 'a.mov', status: 'encoding', progress: 42, error: null, uploaded_s: 1_800_000_000, queue_position: null }
+			{ id: 3, original_filename: 'c.mov', status: 'failed', progress: 10, error: 'Encoding failed', uploaded_at: '2027-01-15T09:00:00+01:00', queue_position: null },
+			{ id: 2, original_filename: 'b.mov', status: 'queued', progress: 0, error: null, uploaded_at: '2027-01-15T09:00:00+01:00', queue_position: 2 },
+			{ id: 1, original_filename: 'a.mov', status: 'encoding', progress: 42, error: null, uploaded_at: '2027-01-15T09:00:00+01:00', queue_position: null }
 		]
 	});
 	let retried = '';
@@ -278,7 +278,7 @@ test('my uploads: queue position, encoding progress, failure with retry', async 
 });
 
 test('a video just published: the catalogue is fetched again at once', async ({ page }) => {
-	const status = { id: 1, filename: 'a.mov', status: 'encoding', progress: 90, error: null, uploaded_s: 1_800_000_000, queue_position: null };
+	const status = { id: 1, original_filename: 'a.mov', status: 'encoding', progress: 90, error: null, uploaded_at: '2027-01-15T09:00:00+01:00', queue_position: null };
 	const fake = await setup(page, UPLOADER, { mine: [status] });
 	let catalogRequests = 0;
 	await page.route('/api/catalog', (r) => {

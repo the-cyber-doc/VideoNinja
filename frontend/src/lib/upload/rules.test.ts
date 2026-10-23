@@ -15,7 +15,7 @@ const segment = (over: Partial<DraftSegment> = {}): DraftSegment => ({
 });
 const draft = (over: Partial<Draft> = {}): Draft => ({
 	sha256: 'a'.repeat(64),
-	filename: 'kata.mov',
+	originalFilename: 'kata.mov',
 	size: 1,
 	savedAt: 0,
 	mode: null,

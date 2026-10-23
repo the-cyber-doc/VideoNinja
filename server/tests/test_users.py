@@ -48,7 +48,7 @@ def statuses(admin) -> dict[str, str]:
 def expire_invites():
     con = sqlite3.connect(db.db_path())
     with con:
-        con.execute("UPDATE invite SET expires_s = 0")
+        con.execute("UPDATE invite SET expires_at = '1970-01-01T00:00:00Z'")
 
 
 def test_create_and_list(admin):

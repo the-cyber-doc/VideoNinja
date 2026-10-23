@@ -29,7 +29,7 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, Header, HTTPException, status
 
-from . import db, paths, queries, security
+from . import clock, db, paths, queries, security
 from .auth import require_access
 from .security import SESSION_COOKIE
 from .validation import RULES
@@ -38,7 +38,7 @@ log = logging.getLogger("uvicorn.error")
 router = APIRouter(prefix="/internal", tags=["internal"])
 SHA256 = re.compile(RULES["sha256"]["pattern"])
 BASE_PATH = "/files/"  # tusd's -base-path, as nginx forwards it
-FILENAME = re.compile(RULES["filename"]["pattern"])
+FILENAME = re.compile(RULES["original_filename"]["pattern"])
 
 
 def max_upload_bytes() -> int:
@@ -87,13 +87,15 @@ def _pre_create(con: sqlite3.Connection, event: dict[str, Any]) -> dict[str, Any
         return _reject(400, "The file size must be known")
     if size > max_upload_bytes():
         return _reject(413, "File too large")
+    # "filename": the tus metadata convention (tus-js-client); stored as video.original_filename.
     if not SHA256.fullmatch(original_sha256) or not FILENAME.fullmatch(meta.get("filename", "")):
         return _reject(400, "Invalid metadata")
     with con:
         if queries.original_known(con, original_sha256):
             return _reject(409, "This video was already uploaded")
         tus_id = secrets.token_hex(16)  # the upload's file name in tusd's folder
-        queries.insert_upload(con, tus_id, user["id"], original_sha256, size, int(time.time()))
+        # The hook has no browser request: the user's saved timezone.
+        queries.insert_upload(con, tus_id, user["id"], original_sha256, size, clock.at(0, clock.user_zone(user)))
     log.info("Upload %s accepted for user id %s (%d bytes)", tus_id, user["id"], size)
     return {"ChangeFileInfo": {"ID": tus_id}}
 
@@ -189,7 +191,8 @@ class Tusd:
         while not self.stopping.is_set():
             started = time.monotonic()
             self.process = subprocess.Popen(
-                self.command(), stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True
+                self.command(), stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                text=True, encoding="utf-8", errors="replace",
             )
             log.info("tusd started (pid %s, port %s)", self.process.pid, self.port)
             for line in self.process.stdout:  # until it exits

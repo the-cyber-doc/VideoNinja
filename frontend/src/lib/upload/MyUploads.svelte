@@ -40,8 +40,8 @@
 		load();
 	}
 
-	const date = (s: number) =>
-		new Intl.DateTimeFormat(i18n.lang, { dateStyle: 'medium', timeStyle: 'short' }).format(s * 1000);
+	const date = (at: string) =>
+		new Intl.DateTimeFormat(i18n.lang, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(at));
 
 	function label(u: UploadStatus) {
 		switch (u.status) {
@@ -65,8 +65,8 @@
 			{#each list as u (u.id)}
 				<li class={u.status}>
 					<div class="row">
-						<strong>{u.filename}</strong>
-						<span class="when">{date(u.uploaded_s)}</span>
+						<strong>{u.original_filename}</strong>
+						<span class="when">{date(u.uploaded_at)}</span>
 					</div>
 					<div class="row">
 						<span class="status">{label(u)}</span>

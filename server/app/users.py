@@ -2,13 +2,12 @@
 
 import logging
 import sqlite3
-import time
 from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 
-from . import db, i18n, invites, queries
+from . import clock, db, i18n, invites, queries
 from .auth import require_access
 from .validation import field
 
@@ -38,7 +37,7 @@ class CreateIn(BaseModel):
 
 class InviteOut(BaseModel):
     token: str  # the link is <origin>/register#<token>
-    expires_s: int
+    expires_at: str  # e.g. "2026-10-30T12:13:38+01:00" (app/clock.py)
 
 
 @router.get("/roles")
@@ -54,7 +53,7 @@ def roles(
 
 @router.get("/users")
 def list_users(_: sqlite3.Row = Depends(admin), con: sqlite3.Connection = Depends(db.get_db)) -> list[UserRow]:
-    rows = queries.list_users(con, int(time.time()))
+    rows = queries.list_users(con, clock.at())
     return [
         UserRow(
             id=r["id"],
@@ -68,7 +67,7 @@ def list_users(_: sqlite3.Row = Depends(admin), con: sqlite3.Connection = Depend
 
 
 def _invite_out(con: sqlite3.Connection, user_id: int, token: str) -> InviteOut:
-    return InviteOut(token=token, expires_s=queries.invite_expiry(con, user_id))
+    return InviteOut(token=token, expires_at=queries.invite_expiry(con, user_id))
 
 
 @router.post("/users", status_code=status.HTTP_201_CREATED)

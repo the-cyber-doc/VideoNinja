@@ -7,6 +7,9 @@ so one transaction can span several of them.
 
 import sqlite3
 
+# Dates are text with their UTC offset, "2026-10-23T12:13:38+02:00" (app/clock.py),
+# in different timezones: always compare and sort them through datetime().
+
 # --- user ---
 
 
@@ -33,7 +36,8 @@ def username_exists(con: sqlite3.Connection, username: str) -> bool:
 
 def user_for_login(con: sqlite3.Connection, username: str) -> sqlite3.Row | None:
     return con.execute(
-        'SELECT "id", "username", "name", "pw_hash", "totp", "role" FROM "user" WHERE "username" = ?',
+        'SELECT "id", "username", "name", "pw_hash", "totp", "role", "time_zone" FROM "user"'
+        ' WHERE "username" = ?',
         (username,),
     ).fetchone()
 
@@ -42,15 +46,19 @@ def user_pw_hash(con: sqlite3.Connection, user_id: int) -> str | None:
     return con.execute('SELECT "pw_hash" FROM "user" WHERE "id" = ?', (user_id,)).fetchone()[0]
 
 
-def list_users(con: sqlite3.Connection, now: int) -> list[sqlite3.Row]:
+def list_users(con: sqlite3.Connection, now: str) -> list[sqlite3.Row]:
     """Every user with "registered" (password + TOTP set) and "invited" (valid invitation)."""
     return con.execute(
         'SELECT u."id", u."username", u."name", u."role",'
         ' u."pw_hash" IS NOT NULL AND u."totp" IS NOT NULL AS "registered",'
-        ' COALESCE(i."expires_s" > ?, 0) AS "invited"'
+        ' COALESCE(datetime(i."expires_at") > datetime(?), 0) AS "invited"'
         ' FROM "user" u LEFT JOIN "invite" i ON i."user" = u."id" ORDER BY u."username"',
         (now,),
     ).fetchall()
+
+
+def set_user_time_zone(con: sqlite3.Connection, user_id: int, time_zone: str) -> None:
+    con.execute('UPDATE "user" SET "time_zone" = ? WHERE "id" = ?', (time_zone, user_id))
 
 
 def set_user_name(con: sqlite3.Connection, user_id: int, name: str | None) -> None:
@@ -113,29 +121,30 @@ def role_access(con: sqlite3.Connection, role: str) -> list[str]:
 
 
 def insert_session(
-    con: sqlite3.Connection, session_id: str, user_id: int, now: int, expires_s: int
+    con: sqlite3.Connection, session_id: str, user_id: int, now: str, expires_at: str
 ) -> None:
     con.execute(
-        'INSERT INTO "session" ("id", "user", "created_s", "last_seen_s", "expires_s")'
+        'INSERT INTO "session" ("id", "user", "created_at", "last_seen_at", "expires_at")'
         " VALUES (?, ?, ?, ?, ?)",
-        (session_id, user_id, now, now, expires_s),
+        (session_id, user_id, now, now, expires_at),
     )
 
 
-def session_user(con: sqlite3.Connection, session_id: str, now: int) -> sqlite3.Row | None:
+def session_user(con: sqlite3.Connection, session_id: str, now: str) -> sqlite3.Row | None:
     """The unexpired session's times and its user."""
     return con.execute(
-        'SELECT s."created_s", s."last_seen_s", u."id", u."username", u."name", u."role"'
+        'SELECT s."created_at", s."last_seen_at", u."id", u."username", u."name", u."role",'
+        ' u."time_zone"'
         ' FROM "session" s JOIN "user" u ON u."id" = s."user"'
-        ' WHERE s."id" = ? AND s."expires_s" > ?',
+        ' WHERE s."id" = ? AND datetime(s."expires_at") > datetime(?)',
         (session_id, now),
     ).fetchone()
 
 
-def touch_session(con: sqlite3.Connection, session_id: str, now: int, expires_s: int) -> None:
+def touch_session(con: sqlite3.Connection, session_id: str, now: str, expires_at: str) -> None:
     con.execute(
-        'UPDATE "session" SET "last_seen_s" = ?, "expires_s" = ? WHERE "id" = ?',
-        (now, expires_s, session_id),
+        'UPDATE "session" SET "last_seen_at" = ?, "expires_at" = ? WHERE "id" = ?',
+        (now, expires_at, session_id),
     )
 
 
@@ -151,40 +160,40 @@ def delete_user_sessions(con: sqlite3.Connection, user_id: int, except_id: str |
         con.execute('DELETE FROM "session" WHERE "user" = ? AND "id" != ?', (user_id, except_id))
 
 
-def delete_expired_sessions(con: sqlite3.Connection, now: int) -> None:
-    con.execute('DELETE FROM "session" WHERE "expires_s" <= ?', (now,))
+def delete_expired_sessions(con: sqlite3.Connection, now: str) -> None:
+    con.execute('DELETE FROM "session" WHERE datetime("expires_at") <= datetime(?)', (now,))
 
 
 # --- invite ---
 
 
 def replace_invite(
-    con: sqlite3.Connection, user_id: int, token_hash: str, token: str, expires_s: int
+    con: sqlite3.Connection, user_id: int, token_hash: str, token: str, expires_at: str
 ) -> None:
     con.execute(
-        'INSERT OR REPLACE INTO "invite" ("user", "token_hash", "token", "expires_s") VALUES (?, ?, ?, ?)',
-        (user_id, token_hash, token, expires_s),
+        'INSERT OR REPLACE INTO "invite" ("user", "token_hash", "token", "expires_at") VALUES (?, ?, ?, ?)',
+        (user_id, token_hash, token, expires_at),
     )
 
 
-def invited_user(con: sqlite3.Connection, token_hash: str, now: int) -> sqlite3.Row | None:
+def invited_user(con: sqlite3.Connection, token_hash: str, now: str) -> sqlite3.Row | None:
     return con.execute(
         'SELECT u."id", u."username", u."name", u."role" FROM "invite" i JOIN "user" u ON u."id" = i."user"'
-        ' WHERE i."token_hash" = ? AND i."expires_s" > ?',
+        ' WHERE i."token_hash" = ? AND datetime(i."expires_at") > datetime(?)',
         (token_hash, now),
     ).fetchone()
 
 
-def invite_token(con: sqlite3.Connection, user_id: int, now: int) -> str | None:
+def invite_token(con: sqlite3.Connection, user_id: int, now: str) -> str | None:
     """The user's unexpired invitation token, still encrypted."""
     row = con.execute(
-        'SELECT "token" FROM "invite" WHERE "user" = ? AND "expires_s" > ?', (user_id, now)
+        'SELECT "token" FROM "invite" WHERE "user" = ? AND datetime("expires_at") > datetime(?)', (user_id, now)
     ).fetchone()
     return row[0] if row else None
 
 
 def invite_expiry(con: sqlite3.Connection, user_id: int) -> int:
-    return con.execute('SELECT "expires_s" FROM "invite" WHERE "user" = ?', (user_id,)).fetchone()[0]
+    return con.execute('SELECT "expires_at" FROM "invite" WHERE "user" = ?', (user_id,)).fetchone()[0]
 
 
 def delete_invite(con: sqlite3.Connection, user_id: int) -> bool:
@@ -249,9 +258,9 @@ def segment_thumbnail(con: sqlite3.Connection, segment_id: int) -> sqlite3.Row |
 def technique_comments(con: sqlite3.Connection, technique_id: str) -> list[sqlite3.Row]:
     """Newest first, with the author's display name (else username)."""
     return con.execute(
-        'SELECT c."id", COALESCE(u."name", u."username") AS "user", c."created_s", c."lang", c."text"'
+        'SELECT c."id", COALESCE(u."name", u."username") AS "user", c."created_at", c."lang", c."text"'
         ' FROM "comment" c JOIN "user" u ON u."id" = c."user"'
-        ' WHERE c."technique" = ? ORDER BY c."created_s" DESC, c."id" DESC',
+        ' WHERE c."technique" = ? ORDER BY datetime(c."created_at") DESC, c."id" DESC',
         (technique_id,),
     ).fetchall()
 
@@ -286,10 +295,10 @@ def tags(con: sqlite3.Connection) -> list[sqlite3.Row]:
 
 
 def insert_upload(
-    con: sqlite3.Connection, tus_id: str, user_id: int, original_sha256: str, size: int, now: int
+    con: sqlite3.Connection, tus_id: str, user_id: int, original_sha256: str, size: int, now: str
 ) -> None:
     con.execute(
-        'INSERT INTO "upload" ("tus_id", "user", "original_sha256", "size", "created_s") VALUES (?, ?, ?, ?, ?)',
+        'INSERT INTO "upload" ("tus_id", "user", "original_sha256", "size", "created_at") VALUES (?, ?, ?, ?, ?)',
         (tus_id, user_id, original_sha256, size, now),
     )
 
@@ -309,11 +318,11 @@ def delete_upload(con: sqlite3.Connection, tus_id: str) -> None:
     con.execute('DELETE FROM "upload" WHERE "tus_id" = ?', (tus_id,))
 
 
-def expire_uploads(con: sqlite3.Connection, created_before: int) -> None:
+def expire_uploads(con: sqlite3.Connection, created_before: str) -> None:
     """Uploads abandoned (never finished) or never submitted: their files go."""
     con.execute(
         "UPDATE \"upload\" SET \"state\" = 'deleted'"
-        " WHERE \"state\" IN ('uploading', 'finished') AND \"created_s\" < ?"
+        " WHERE \"state\" IN ('uploading', 'finished') AND datetime(\"created_at\") < datetime(?)"
         ' AND "tus_id" NOT IN (SELECT "upload" FROM "video" WHERE "upload" IS NOT NULL)',
         (created_before,),
     )
@@ -338,16 +347,16 @@ def original_known(con: sqlite3.Connection, original_sha256: str) -> bool:
 def insert_video(
     con: sqlite3.Connection,
     original_sha256: str,
-    filename: str,
+    original_filename: str,
     all_segments_done: bool,
     user_id: int,
-    now: int,
+    now: str,
     tus_id: str,
 ) -> int:
     return con.execute(
-        'INSERT INTO "video" ("original_sha256", "filename", "all_segments_done", "uploaded_by",'
-        ' "uploaded_s", "upload") VALUES (?, ?, ?, ?, ?, ?)',
-        (original_sha256, filename, all_segments_done, user_id, now, tus_id),
+        'INSERT INTO "video" ("original_sha256", "original_filename", "all_segments_done", "uploaded_by",'
+        ' "uploaded_at", "upload") VALUES (?, ?, ?, ?, ?, ?)',
+        (original_sha256, original_filename, all_segments_done, user_id, now, tus_id),
     ).lastrowid
 
 
@@ -376,16 +385,16 @@ def video(con: sqlite3.Connection, video_id: int) -> sqlite3.Row | None:
     ).fetchone()
 
 
-def user_videos(con: sqlite3.Connection, user_id: int, since: int) -> list[sqlite3.Row]:
+def user_videos(con: sqlite3.Connection, user_id: int, since: str) -> list[sqlite3.Row]:
     """The user's videos not published yet, and those published since `since`, newest first,
     with their place in the queue (1 = next to be encoded)."""
     return con.execute(
-        'SELECT v."id", v."filename", v."status", v."progress", v."error", v."uploaded_s",'
+        'SELECT v."id", v."original_filename", v."status", v."progress", v."error", v."uploaded_at",'
         " CASE WHEN v.\"status\" = 'queued' THEN"
         "  (SELECT count(*) FROM \"video\" q WHERE q.\"status\" = 'queued' AND q.\"id\" <= v.\"id\")"
         ' END AS "queue_position"'
         ' FROM "video" v WHERE v."uploaded_by" = ?'
-        " AND (v.\"status\" != 'published' OR v.\"uploaded_s\" >= ?)"
+        " AND (v.\"status\" != 'published' OR datetime(v.\"uploaded_at\") >= datetime(?))"
         ' ORDER BY v."id" DESC',
         (user_id, since),
     ).fetchall()

@@ -183,7 +183,7 @@
 		uploadProgress = 0;
 		retrying = false;
 		const current = draft;
-		upload = startUpload(file, { sha256: current.sha256, filename: current.filename, uploadUrl: current.uploadUrl }, {
+		upload = startUpload(file, { sha256: current.sha256, originalFilename: current.originalFilename, uploadUrl: current.uploadUrl }, {
 			onUrl: (url) => (current.uploadUrl = url),
 			onProgress: (f) => {
 				uploadProgress = f;
@@ -262,7 +262,7 @@
 					<ul>
 						{#each drafts as d (d.sha256)}
 							<li>
-								<span>{d.filename}</span>
+								<span>{d.originalFilename}</span>
 								<span class="hint">{t('upload.draft_segments', { n: d.segments.length })}</span>
 								<button type="button" class="secondary" onclick={() => discard(d.sha256)}>
 									{t('upload.draft_discard')}

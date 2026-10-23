@@ -30,7 +30,7 @@ def load_key() -> None:
     global _aead
     path = key_file()
     try:
-        key = base64.b64decode(path.read_text().strip(), validate=True)
+        key = base64.b64decode(path.read_text(encoding="utf-8").strip(), validate=True)
     except FileNotFoundError:
         raise RuntimeError(
             f"Encryption key file not found: {path} (README: Development step 2, Production step 1)"

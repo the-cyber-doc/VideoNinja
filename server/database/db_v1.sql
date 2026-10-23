@@ -1,3 +1,8 @@
+-- Text is UTF-8. Dates (…_at): ISO 8601 text with the UTC offset, in the user's
+-- timezone, "2026-10-23T12:13:38+02:00" (app/clock.py). Offsets differ: compare
+-- and sort them through datetime(), never as plain text.
+PRAGMA encoding = 'UTF-8';
+
 CREATE TABLE IF NOT EXISTS "config" (
 	"name" VARCHAR NOT NULL UNIQUE,
 	"type" VARCHAR NOT NULL,
@@ -48,12 +53,12 @@ CREATE TABLE IF NOT EXISTS "video" (
 	"id" INTEGER PRIMARY KEY AUTOINCREMENT,
 	"sha256sum" TEXT UNIQUE,
 	"original_sha256" TEXT NOT NULL UNIQUE,
-	"filename" VARCHAR NOT NULL,
+	"original_filename" VARCHAR NOT NULL,
 	"directory" VARCHAR,
 	"thumbnail" VARCHAR,
 	"all_segments_done" BOOLEAN NOT NULL DEFAULT 0,
 	"uploaded_by" INTEGER,
-	"uploaded_s" INTEGER NOT NULL,
+	"uploaded_at" DATETIME NOT NULL,
 	"status" VARCHAR NOT NULL DEFAULT 'queued'
 		CHECK ("status" IN ('queued', 'encoding', 'published', 'failed')),
 	"progress" INTEGER NOT NULL DEFAULT 0,
@@ -86,7 +91,7 @@ CREATE TABLE IF NOT EXISTS "comment" (
 	"user" INTEGER NOT NULL,
 	"lang" TEXT NOT NULL,
 	"text" TEXT NOT NULL,
-	"created_s" INTEGER NOT NULL,
+	"created_at" DATETIME NOT NULL,
 	FOREIGN KEY ("technique") REFERENCES "technique"("id")
 	ON UPDATE NO ACTION ON DELETE NO ACTION,
 	FOREIGN KEY ("user") REFERENCES "user"("id")
@@ -129,6 +134,7 @@ CREATE TABLE IF NOT EXISTS "user" (
 	"pw_hash" VARCHAR,
 	"totp" VARCHAR,
 	"role" VARCHAR NOT NULL,
+	"time_zone" VARCHAR,
 	FOREIGN KEY ("role") REFERENCES "role"("id")
 	ON UPDATE NO ACTION ON DELETE NO ACTION
 );
@@ -175,9 +181,9 @@ CREATE TABLE IF NOT EXISTS "translation" (
 CREATE TABLE IF NOT EXISTS "session" (
 	"id" VARCHAR NOT NULL UNIQUE,
 	"user" INTEGER NOT NULL,
-	"created_s" INTEGER NOT NULL,
-	"last_seen_s" INTEGER NOT NULL,
-	"expires_s" INTEGER NOT NULL,
+	"created_at" DATETIME NOT NULL,
+	"last_seen_at" DATETIME NOT NULL,
+	"expires_at" DATETIME NOT NULL,
 	PRIMARY KEY("id"),
 	FOREIGN KEY ("user") REFERENCES "user"("id")
 	ON UPDATE NO ACTION ON DELETE CASCADE
@@ -194,7 +200,7 @@ CREATE TABLE IF NOT EXISTS "upload" (
 	"size" INTEGER NOT NULL,
 	"state" VARCHAR NOT NULL DEFAULT 'uploading'
 		CHECK ("state" IN ('uploading', 'finished', 'deleted')),
-	"created_s" INTEGER NOT NULL,
+	"created_at" DATETIME NOT NULL,
 	FOREIGN KEY ("user") REFERENCES "user"("id")
 	ON UPDATE NO ACTION ON DELETE CASCADE
 );
@@ -203,7 +209,7 @@ CREATE TABLE IF NOT EXISTS "invite" (
 	"user" INTEGER NOT NULL UNIQUE,
 	"token_hash" VARCHAR NOT NULL UNIQUE,
 	"token" VARCHAR NOT NULL,
-	"expires_s" INTEGER NOT NULL,
+	"expires_at" DATETIME NOT NULL,
 	PRIMARY KEY("user"),
 	FOREIGN KEY ("user") REFERENCES "user"("id")
 	ON UPDATE NO ACTION ON DELETE CASCADE

@@ -28,6 +28,17 @@ test('menu without user management access', async ({ page }) => {
 	await expect(page.getByRole('menu')).toBeHidden();
 });
 
+test.describe('in Tokyo', () => {
+	test.use({ timezoneId: 'Asia/Tokyo' });
+
+	test('API calls send the timezone, for the dates the server writes', async ({ page }) => {
+		await loggedInAs(page, USER);
+		const me = page.waitForRequest('/api/auth/me');
+		await page.goto('/');
+		expect((await me).headers()['time-zone']).toBe('Asia/Tokyo');
+	});
+});
+
 test('menu with user management access', async ({ page }) => {
 	await loggedInAs(page, ADMIN);
 	await page.goto('/');
@@ -86,14 +97,14 @@ test('user list: status icons and actions', async ({ page }) => {
 
 	// Copy: the link is shown (and copied when the browser allows it).
 	await page.route('/api/admin/users/3/invite', (r) =>
-		r.fulfill({ json: { token: 'tok-123', expires_s: 2_000_000_000 } })
+		r.fulfill({ json: { token: 'tok-123', expires_at: '2033-05-18T05:33:20+02:00' } })
 	);
 	await row('kenji').getByRole('button', { name: 'Copy invite link' }).click();
 	await expect(page.getByLabel('Invitation link')).toHaveValue(/\/register#tok-123$/);
 
 	// Reset of an expired invitation: no confirmation needed, new link shown.
 	await page.route('/api/admin/users/4/reset', (r) =>
-		r.fulfill({ json: { token: 'tok-456', expires_s: 2_000_000_000 } })
+		r.fulfill({ json: { token: 'tok-456', expires_at: '2033-05-18T05:33:20+02:00' } })
 	);
 	await row('taro').getByRole('button', { name: 'Reset account' }).click();
 	await expect(page.getByLabel('Invitation link')).toHaveValue(/\/register#tok-456$/);

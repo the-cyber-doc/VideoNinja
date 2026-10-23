@@ -1,6 +1,6 @@
 // Upload API (app side). The file itself goes to tusd (upload.ts); the app only
 // gets metadata and reports the queue status. Needs the "upload" access.
-import { api } from '../api';
+import { api, apiHeaders } from '../api';
 
 export interface Performer {
 	id: string;
@@ -27,7 +27,7 @@ export interface SubmitSegment {
 }
 
 export interface Submit {
-	filename: string;
+	original_filename: string;
 	all_segments_done: boolean;
 	segments: SubmitSegment[];
 	tags: TagValue[];
@@ -35,11 +35,12 @@ export interface Submit {
 
 export interface UploadStatus {
 	id: number;
-	filename: string;
+	original_filename: string;
 	status: 'queued' | 'encoding' | 'published' | 'failed';
 	progress: number;
 	error: string | null;
-	uploaded_s: number;
+	/** ISO 8601 with the UTC offset (the author's timezone): "2026-10-23T12:13:38+02:00". */
+	uploaded_at: string;
 	/** 1 = next to be encoded. */
 	queue_position: number | null;
 }
@@ -62,6 +63,10 @@ export const myUploads = () => api<UploadStatus[]>('/api/uploads/mine');
 export const retry = (id: number) => api<void>(`/api/videos/${id}/retry`, {});
 
 export async function remove(id: number) {
-	const res = await fetch(`/api/videos/${id}`, { method: 'DELETE', credentials: 'same-origin' });
+	const res = await fetch(`/api/videos/${id}`, {
+		method: 'DELETE',
+		headers: apiHeaders(),
+		credentials: 'same-origin'
+	});
 	if (!res.ok) throw new Error(`HTTP ${res.status}`);
 }

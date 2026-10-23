@@ -1,14 +1,15 @@
 import hashlib
 import secrets
 import sqlite3
-import time
+from datetime import timedelta, tzinfo
+from zoneinfo import ZoneInfo
 
 import pyotp
 import segno
 from argon2 import PasswordHasher
 from argon2.exceptions import InvalidHashError, VerificationError
 
-from . import queries
+from . import clock, queries
 
 SESSION_COOKIE = "__Host-session"
 SESSION_IDLE_S = 30 * 24 * 3600  # sliding: each visit extends to 30 days from now
@@ -59,29 +60,40 @@ def _session_id(token: str) -> str:
 
 def purge_expired_sessions(con: sqlite3.Connection) -> None:
     with con:
-        queries.delete_expired_sessions(con, int(time.time()))
+        queries.delete_expired_sessions(con, clock.at())
 
 
-def create_session(con: sqlite3.Connection, user_id: int) -> str:
-    """Store a new session and return the cookie token."""
+def create_session(con: sqlite3.Connection, user: sqlite3.Row, zone: tzinfo | None = None) -> str:
+    """Store a new session and return the cookie token. `zone`: the browser's timezone."""
     token = secrets.token_urlsafe(32)
-    now = int(time.time())
+    tz = clock.user_zone(user, zone)
     with con:
-        queries.insert_session(con, _session_id(token), user_id, now, now + SESSION_IDLE_S)
+        remember_zone(con, user, zone)
+        queries.insert_session(con, _session_id(token), user["id"], clock.at(0, tz), clock.at(SESSION_IDLE_S, tz))
     return token
 
 
-def session_user(con: sqlite3.Connection, token: str) -> sqlite3.Row | None:
-    """Return the session's user, or None. Extends the session (sliding expiry)."""
-    now = int(time.time())
+def remember_zone(con: sqlite3.Connection, user: sqlite3.Row, zone: ZoneInfo | None) -> None:
+    """Save the browser's timezone on the user, for writes without a browser request."""
+    if zone is not None and zone.key != user["time_zone"]:
+        queries.set_user_time_zone(con, user["id"], zone.key)
+
+
+def session_user(con: sqlite3.Connection, token: str, zone: ZoneInfo | None = None) -> sqlite3.Row | None:
+    """Return the session's user, or None. Extends the session (sliding expiry).
+    `zone`: the browser's timezone (None: the user's saved one)."""
+    now = clock.now()
     sid = _session_id(token)
-    row = queries.session_user(con, sid, now)
+    row = queries.session_user(con, sid, clock.text(now))
     if row is None:
         return None
-    if now - row["last_seen_s"] >= SESSION_REFRESH_S:
-        expires = min(now + SESSION_IDLE_S, row["created_s"] + SESSION_MAX_S)
-        with con:
-            queries.touch_session(con, sid, now, expires)
+    with con:
+        remember_zone(con, row, zone)
+        if now - clock.parse(row["last_seen_at"]) >= timedelta(seconds=SESSION_REFRESH_S):
+            expires = min(now + timedelta(seconds=SESSION_IDLE_S),
+                          clock.parse(row["created_at"]) + timedelta(seconds=SESSION_MAX_S))
+            tz = clock.user_zone(row, zone)
+            queries.touch_session(con, sid, clock.text(now, tz), clock.text(expires, tz))
     return row
 
 

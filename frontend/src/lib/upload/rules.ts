@@ -45,7 +45,7 @@ export function canProceed(draft: Draft, duration: number, playable: boolean): b
 
 export function submitBody(draft: Draft): Submit {
 	return {
-		filename: draft.filename,
+		original_filename: draft.originalFilename,
 		all_segments_done: allSegmentsDone(draft.mode, draft.allSegmentsDone),
 		segments: draft.segments.map((s) => ({
 			...wholeSeconds(s),

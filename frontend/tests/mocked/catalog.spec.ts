@@ -26,8 +26,8 @@ const CATALOG = {
 };
 const COMMENTS = [
 	// Newest first, as sent by the server.
-	{ id: 3, user: 'Hana', created_s: 1_800_000_000, lang: 'fr', text: 'Très bien' },
-	{ id: 1, user: 'kenji', created_s: 1_700_000_000, lang: 'en', text: 'First\nsecond line' }
+	{ id: 3, user: 'Hana', created_at: '2027-01-15T09:00:00+01:00', lang: 'fr', text: 'Très bien' },
+	{ id: 1, user: 'kenji', created_at: '2023-11-14T23:13:20+01:00', lang: 'en', text: 'First\nsecond line' }
 ];
 
 async function loggedIn(page: Page) {

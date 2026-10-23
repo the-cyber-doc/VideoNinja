@@ -30,7 +30,7 @@ from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
 
-from . import db, paths, queries, snapshot
+from . import clock, db, paths, queries, snapshot
 
 log = logging.getLogger("uvicorn.error")
 
@@ -128,7 +128,7 @@ class Encoder:
     def housekeeping(self) -> None:
         """Delete the originals of published, dropped or abandoned uploads."""
         with transaction() as con:
-            queries.expire_uploads(con, int(time.time()) - UPLOAD_EXPIRY_S)
+            queries.expire_uploads(con, clock.at(-UPLOAD_EXPIRY_S))
             tus_ids = queries.deleted_uploads(con)
         for tus_id in tus_ids:
             for path in self.upload_files(tus_id):
@@ -273,7 +273,7 @@ class Encoder:
             finally:
                 self.kill_encoding()  # stopped, deleted or failed: nothing keeps running
         if self.process.returncode != 0:
-            tail = (work / "encode.log").read_text(errors="replace").strip().splitlines()[-5:]
+            tail = (work / "encode.log").read_text(encoding="utf-8", errors="replace").strip().splitlines()[-5:]
             raise JobError("Encoding failed: " + " | ".join(tail))
         return out / f"{original.name}.mp4"
 
@@ -301,7 +301,7 @@ def check_complete(original: Path, info: Path) -> None:
     """tusd's file store keeps the announced Size in <id>.info, but not the
     offset (it stays 0): the data received is the file's size on disk."""
     try:
-        meta = json.loads(info.read_text())
+        meta = json.loads(info.read_text(encoding="utf-8"))
     except (OSError, ValueError):
         raise JobError("The uploaded file is missing") from None
     if not original.is_file() or original.stat().st_size != meta.get("Size"):
@@ -309,7 +309,7 @@ def check_complete(original: Path, info: Path) -> None:
 
 
 def run(cmd: list[str]) -> str:
-    result = subprocess.run(cmd, capture_output=True, text=True)
+    result = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace")
     if result.returncode != 0:
         raise JobError(f"{cmd[0]} failed: {result.stderr.strip()[-500:]}")
     return result.stdout
@@ -349,7 +349,7 @@ def thumbnail(video: Path, at_s: float, out: Path) -> None:
 def out_time_s(progress_file: Path) -> float:
     """Last out_time_us of ffmpeg's -progress output, in seconds."""
     try:
-        lines = progress_file.read_text().splitlines()
+        lines = progress_file.read_text(encoding="utf-8").splitlines()
     except OSError:
         return 0.0
     for line in reversed(lines):

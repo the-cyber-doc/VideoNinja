@@ -4,7 +4,7 @@ import { expect, test, type BrowserContext, type Page } from '@playwright/test';
 // which (unlike page.route) also sees the service worker's requests.
 const USER = { username: 'kenji', name: null, role: 'user', role_name: 'User', access: ['segment'] };
 const school = (id: string) => ({ id, kanji: `${id}流`, romaji: `${id} Ryu` });
-const COMMENTS = [{ id: 1, user: 'Hana', created_s: 1_800_000_000, lang: 'fr', text: 'Très bien' }];
+const COMMENTS = [{ id: 1, user: 'Hana', created_at: '2027-01-15T09:00:00+01:00', lang: 'fr', text: 'Très bien' }];
 const LEVEL = { id: 'shoden', kanji: '初伝', romaji: 'Shoden' };
 const technique = { id: 'togakure.t', kanji: '技', romaji: 'Waza', ryu: 'togakure', level: 'shoden' };
 const catalog = (ids: string[]) => ({

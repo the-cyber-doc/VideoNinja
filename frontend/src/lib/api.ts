@@ -31,12 +31,22 @@ async function errorMessage(res: Response): Promise<string> {
 	return `HTTP ${res.status}`;
 }
 
+/** Sent on every API call. */
+export function apiHeaders(): Record<string, string> {
+	return {
+		// Translated content (role names, descriptions…) comes back in this language.
+		'Accept-Language': i18n.lang,
+		// Dates are written in this timezone (IANA name, e.g. 'Europe/Zurich'), and the
+		// server saves it for the user.
+		'Time-Zone': Intl.DateTimeFormat().resolvedOptions().timeZone
+	};
+}
+
 async function request(path: string, body?: unknown): Promise<Response> {
 	const res = await fetch(path, {
 		method: body === undefined ? 'GET' : 'POST',
 		headers: {
-			// Translated content (role names, descriptions…) comes back in this language.
-			'Accept-Language': i18n.lang,
+			...apiHeaders(),
 			...(body === undefined ? {} : { 'Content-Type': 'application/json' })
 		},
 		body: body === undefined ? undefined : JSON.stringify(body),
