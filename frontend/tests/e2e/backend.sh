@@ -13,5 +13,7 @@ mkdir -p "$dir"
 "$python" -c "import base64, os; print(base64.b64encode(os.urandom(32)).decode())" > "$dir/key"
 
 cd "$server"
+# No uploads in these flows: no tusd process, no encoding thread.
 VIDEONINJA_DB="$dir/videoninja.db" VIDEONINJA_KEY_FILE="$dir/key" \
+	VIDEONINJA_TUSD=0 VIDEONINJA_ENCODER=0 \
 	exec "$python" -m uvicorn app.main:app --port "$port" > "$dir/server.log" 2>&1

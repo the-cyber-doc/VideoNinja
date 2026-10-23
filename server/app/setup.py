@@ -10,7 +10,7 @@ from fastapi import APIRouter, HTTPException, Request, status
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
-from . import db, security, snapshot
+from . import db, encoder, security, snapshot, tusd
 from .validation import field
 
 log = logging.getLogger("uvicorn.error")
@@ -87,6 +87,8 @@ def complete(body: CompleteIn, request: Request) -> StreamingResponse:
             request.app.state.setup_token = None
             log.warning("Setup complete: admin user %r created.", body.username)
             snapshot.schedule()  # first catalogue (failures logged; GET /api/catalog retries)
+            tusd.start()
+            encoder.start()
         except Exception:
             log.exception("Setup failed")
             yield json.dumps({"error": "Setup failed, see server logs"}) + "\n"

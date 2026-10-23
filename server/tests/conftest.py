@@ -11,6 +11,13 @@ PASSWORD = "correct horse battery"
 
 
 @pytest.fixture(autouse=True)
+def no_background_services(monkeypatch):
+    """No tusd process, no encoding thread: tests drive the encoder themselves."""
+    monkeypatch.setenv("VIDEONINJA_TUSD", "0")
+    monkeypatch.setenv("VIDEONINJA_ENCODER", "0")
+
+
+@pytest.fixture(autouse=True)
 def key_file(tmp_path, monkeypatch):
     path = tmp_path / "videoninja_key"
     path.write_text(base64.b64encode(os.urandom(32)).decode())

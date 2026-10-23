@@ -71,7 +71,8 @@ label {
 	color: var(--muted);
 }
 
-input {
+input,
+select {
 	font: inherit;
 	padding: 0.55rem 0.7rem;
 	color: var(--text);

@@ -19,6 +19,9 @@ frontend/build/
 *.db-shm
 # Catalogue snapshots written next to a local dev database
 server/catalog/
+# Uploads and encoded media of a local dev setup
+server/uploads/
+server/media/
 
 # Encryption keys (dev key: server/dev.key)
 *.key

@@ -37,6 +37,7 @@
 	"nav.main": { "en": "Main navigation", "fr": "Navigation principale" },
 	"nav.schools": { "en": "Schools", "fr": "Écoles" },
 	"nav.breadcrumbs": { "en": "Breadcrumb", "fr": "Fil d'Ariane" },
+	"nav.upload": { "en": "Upload", "fr": "Téléverser" },
 
 	"schools.title": { "en": "Schools", "fr": "Écoles" },
 	"levels.title": { "en": "Levels", "fr": "Niveaux" },
@@ -161,5 +162,151 @@
 	},
 	"users.status.registered": { "en": "Registered", "fr": "Inscrit" },
 	"users.status.invited": { "en": "Invitation pending", "fr": "Invitation en attente" },
-	"users.status.expired": { "en": "Invitation expired", "fr": "Invitation expirée" }
+	"users.status.expired": { "en": "Invitation expired", "fr": "Invitation expirée" },
+
+	"upload.title": { "en": "Upload a video", "fr": "Téléverser une vidéo" },
+	"upload.choose": { "en": "Video file", "fr": "Fichier vidéo" },
+	"upload.hint_local": {
+		"en": "The video is opened on this device: nothing is sent before you press Proceed.",
+		"fr": "La vidéo est ouverte sur cet appareil : rien n'est envoyé avant d'appuyer sur Lancer."
+	},
+	"upload.hashing": {
+		"en": "Checking the file (SHA-256)…",
+		"fr": "Vérification du fichier (SHA-256)…"
+	},
+	"upload.duplicate": {
+		"en": "This video was already uploaded.",
+		"fr": "Cette vidéo a déjà été téléversée."
+	},
+	"upload.resumed": {
+		"en": "Unfinished work found for this file: resumed.",
+		"fr": "Travail non terminé retrouvé pour ce fichier : repris."
+	},
+	"upload.drafts": {
+		"en": "Unfinished uploads on this device",
+		"fr": "Téléversements non terminés sur cet appareil"
+	},
+	"upload.draft_resume_hint": {
+		"en": "Choose the same file again to continue.",
+		"fr": "Choisissez à nouveau le même fichier pour continuer."
+	},
+	"upload.draft_segments": { "en": "{n} segment(s)", "fr": "{n} segment(s)" },
+	"upload.draft_discard": { "en": "Discard", "fr": "Abandonner" },
+	"upload.not_playable": {
+		"en": "This browser cannot play this file. It can still be uploaded with “Define segments later”: segments are added once the server has encoded it.",
+		"fr": "Ce navigateur ne peut pas lire ce fichier. Il peut quand même être téléversé avec « Définir les segments plus tard » : les segments seront ajoutés une fois la vidéo encodée par le serveur."
+	},
+	"upload.player.back_frame": { "en": "Previous frame", "fr": "Image précédente" },
+	"upload.player.play": { "en": "Play", "fr": "Lecture" },
+	"upload.player.pause": { "en": "Pause", "fr": "Pause" },
+	"upload.player.stop": { "en": "Stop", "fr": "Arrêt" },
+	"upload.player.forward_frame": { "en": "Next frame", "fr": "Image suivante" },
+	"upload.timeline": { "en": "Timeline", "fr": "Chronologie" },
+	"upload.begin_here": { "en": "Begin here (I)", "fr": "Début ici (I)" },
+	"upload.end_here": { "en": "End here (O)", "fr": "Fin ici (O)" },
+	"upload.timeline_hint": {
+		"en": "Drag across the film strip to create a segment, drag its edges to adjust it. Keys: Space play/pause, ← → one frame, I begin, O end.",
+		"fr": "Glissez sur la pellicule pour créer un segment, glissez ses bords pour l'ajuster. Touches : Espace lecture/pause, ← → une image, I début, O fin."
+	},
+	"upload.segments": { "en": "Segments", "fr": "Segments" },
+	"upload.no_segments_yet": {
+		"en": "No segment yet: mark one on the timeline.",
+		"fr": "Aucun segment : marquez-en un sur la chronologie."
+	},
+	"upload.segment_n": { "en": "Segment {n}", "fr": "Segment {n}" },
+	"upload.segment.delete": { "en": "Delete this segment", "fr": "Supprimer ce segment" },
+	"upload.segment.bad_times": {
+		"en": "The segment must end after it begins, inside the video.",
+		"fr": "Le segment doit finir après son début, dans la vidéo."
+	},
+	"upload.segment.school": { "en": "School", "fr": "École" },
+	"upload.segment.level": { "en": "Level", "fr": "Niveau" },
+	"upload.segment.technique": { "en": "Technique", "fr": "Technique" },
+	"upload.segment.performer": { "en": "Performer", "fr": "Exécutant" },
+	"upload.segment.choose": { "en": "Choose…", "fr": "Choisir…" },
+	"upload.segment.add_performer": { "en": "Add a performer…", "fr": "Ajouter un exécutant…" },
+	"upload.segment.performer_name": { "en": "Performer's name", "fr": "Nom de l'exécutant" },
+	"upload.add": { "en": "Add", "fr": "Ajouter" },
+	"upload.tags": { "en": "Tags", "fr": "Étiquettes" },
+	"upload.video_tags": { "en": "Tags of the video", "fr": "Étiquettes de la vidéo" },
+	"upload.tag.add": { "en": "Add a tag", "fr": "Ajouter une étiquette" },
+	"upload.tag.value": { "en": "Value", "fr": "Valeur" },
+	"upload.tag.remove": { "en": "Remove the tag {name}", "fr": "Retirer l'étiquette {name}" },
+	"upload.tag.none": {
+		"en": "No tags defined yet.",
+		"fr": "Aucune étiquette définie pour l'instant."
+	},
+	"upload.mode.label": { "en": "Segments of this video", "fr": "Segments de cette vidéo" },
+	"upload.mode.later": { "en": "Define segments later", "fr": "Définir les segments plus tard" },
+	"upload.mode.none": {
+		"en": "This video does not contain any technique segment",
+		"fr": "Cette vidéo ne contient aucun segment de technique"
+	},
+	"upload.mode.clear": { "en": "Clear", "fr": "Effacer" },
+	"upload.mode.discard_confirm": {
+		"en": "Remove the {n} segment(s) already marked?",
+		"fr": "Supprimer le(s) {n} segment(s) déjà marqué(s) ?"
+	},
+	"upload.all_done": {
+		"en": "All the segments have been created: this video needs no further work",
+		"fr": "Tous les segments ont été créés : cette vidéo ne nécessite pas d'autre traitement"
+	},
+	"upload.reason.no_segment": {
+		"en": "Mark at least one segment, or choose an option under “Segments of this video”.",
+		"fr": "Marquez au moins un segment, ou choisissez une option sous « Segments de cette vidéo »."
+	},
+	"upload.reason.incomplete": {
+		"en": "Each segment needs its times, school, level, technique and performer.",
+		"fr": "Chaque segment a besoin de ses temps, école, niveau, technique et exécutant."
+	},
+	"upload.reason.not_playable": {
+		"en": "Choose “Define segments later” or “No technique segment” to send this file.",
+		"fr": "Choisissez « Définir les segments plus tard » ou « Aucun segment de technique » pour envoyer ce fichier."
+	},
+	"upload.proceed": { "en": "Proceed", "fr": "Lancer" },
+	"upload.cancel_confirm": {
+		"en": "Cancel this upload and forget its segments?",
+		"fr": "Annuler ce téléversement et oublier ses segments ?"
+	},
+	"upload.leave_confirm": {
+		"en": "Leave the page? The work is kept and the upload continues when you come back.",
+		"fr": "Quitter la page ? Le travail est conservé et l'envoi reprendra à votre retour."
+	},
+	"upload.step.upload": { "en": "Uploading the original", "fr": "Envoi de l'original" },
+	"upload.step.submit": { "en": "Sending the segments…", "fr": "Envoi des segments…" },
+	"upload.submitted": {
+		"en": "Uploaded. The video waits in the server's queue to be encoded, then it is published: you can leave this page.",
+		"fr": "Envoyée. La vidéo attend son encodage dans la file du serveur, puis elle sera publiée : vous pouvez quitter cette page."
+	},
+	"upload.mine": { "en": "My uploads", "fr": "Mes téléversements" },
+	"upload.none_yet": { "en": "None yet.", "fr": "Aucun pour l'instant." },
+	"upload.status.queued": {
+		"en": "Waiting to be encoded (position {n} in the queue)",
+		"fr": "En attente d'encodage (position {n} dans la file)"
+	},
+	"upload.status.encoding": { "en": "Encoding: {n} %", "fr": "Encodage : {n} %" },
+	"upload.status.published": { "en": "Published", "fr": "Publiée" },
+	"upload.status.failed": { "en": "Failed: {error}", "fr": "Échec : {error}" },
+	"upload.retry": { "en": "Retry", "fr": "Réessayer" },
+	"upload.delete": { "en": "Delete", "fr": "Supprimer" },
+	"upload.delete_confirm": {
+		"en": "Delete this video and its segments?",
+		"fr": "Supprimer cette vidéo et ses segments ?"
+	},
+	"upload.unavailable": {
+		"en": "Uploads are not possible right now: the server's upload service (tusd) is not running. You can still prepare the segments: they are kept on this device.",
+		"fr": "Les téléversements sont impossibles pour l'instant : le service d'envoi du serveur (tusd) ne fonctionne pas. Vous pouvez quand même préparer les segments : ils sont conservés sur cet appareil."
+	},
+	"upload.reason.unavailable": {
+		"en": "Proceed is possible once the server can receive uploads again.",
+		"fr": "Lancer sera possible dès que le serveur pourra de nouveau recevoir des téléversements."
+	},
+	"upload.retrying": {
+		"en": "The upload server cannot be reached: retrying…",
+		"fr": "Le serveur d'envoi est injoignable : nouvelle tentative…"
+	},
+	"upload.failed": {
+		"en": "The upload failed: {error}. Proceed again to continue where it stopped.",
+		"fr": "L'envoi a échoué : {error}. Relancez pour continuer là où il s'est arrêté."
+	}
 }

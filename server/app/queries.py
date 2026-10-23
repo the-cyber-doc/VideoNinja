@@ -226,8 +226,11 @@ def technique_exists(con: sqlite3.Connection, technique_id: str) -> bool:
 
 
 def segments(con: sqlite3.Connection) -> list[sqlite3.Row]:
+    """Segments of published videos only: the others are not encoded yet."""
     return con.execute(
-        'SELECT "id", "video", "technique", "begin_s", "end_s", "performer" FROM "segment" ORDER BY "id"'
+        'SELECT s."id", s."video", s."technique", s."begin_s", s."end_s", s."performer"'
+        ' FROM "segment" s JOIN "video" v ON v."id" = s."video"'
+        " WHERE v.\"status\" = 'published' ORDER BY s.\"id\""
     ).fetchall()
 
 
@@ -251,3 +254,235 @@ def technique_comments(con: sqlite3.Connection, technique_id: str) -> list[sqlit
         ' WHERE c."technique" = ? ORDER BY c."created_s" DESC, c."id" DESC',
         (technique_id,),
     ).fetchall()
+
+
+# --- performer / tag ---
+
+
+def performers(con: sqlite3.Connection) -> list[sqlite3.Row]:
+    return con.execute('SELECT "id", "name" FROM "performer"').fetchall()
+
+
+def performer_exists(con: sqlite3.Connection, performer_id: str) -> bool:
+    return con.execute('SELECT 1 FROM "performer" WHERE "id" = ?', (performer_id,)).fetchone() is not None
+
+
+def performer_name_exists(con: sqlite3.Connection, name: str) -> bool:
+    return (
+        con.execute('SELECT 1 FROM "performer" WHERE "name" = ? COLLATE NOCASE', (name,)).fetchone()
+        is not None
+    )
+
+
+def insert_performer(con: sqlite3.Connection, performer_id: str, name: str) -> None:
+    con.execute('INSERT INTO "performer" ("id", "name") VALUES (?, ?)', (performer_id, name))
+
+
+def tags(con: sqlite3.Connection) -> list[sqlite3.Row]:
+    return con.execute('SELECT "id", "fixed_values", "list_of_values" FROM "tag" ORDER BY "id"').fetchall()
+
+
+# --- upload (tus) ---
+
+
+def insert_upload(
+    con: sqlite3.Connection, tus_id: str, user_id: int, original_sha256: str, size: int, now: int
+) -> None:
+    con.execute(
+        'INSERT INTO "upload" ("tus_id", "user", "original_sha256", "size", "created_s") VALUES (?, ?, ?, ?, ?)',
+        (tus_id, user_id, original_sha256, size, now),
+    )
+
+
+def upload(con: sqlite3.Connection, tus_id: str) -> sqlite3.Row | None:
+    return con.execute(
+        'SELECT "tus_id", "user", "original_sha256", "size", "state" FROM "upload" WHERE "tus_id" = ?',
+        (tus_id,),
+    ).fetchone()
+
+
+def set_upload_state(con: sqlite3.Connection, tus_id: str, state: str) -> None:
+    con.execute('UPDATE "upload" SET "state" = ? WHERE "tus_id" = ?', (state, tus_id))
+
+
+def delete_upload(con: sqlite3.Connection, tus_id: str) -> None:
+    con.execute('DELETE FROM "upload" WHERE "tus_id" = ?', (tus_id,))
+
+
+def expire_uploads(con: sqlite3.Connection, created_before: int) -> None:
+    """Uploads abandoned (never finished) or never submitted: their files go."""
+    con.execute(
+        "UPDATE \"upload\" SET \"state\" = 'deleted'"
+        " WHERE \"state\" IN ('uploading', 'finished') AND \"created_s\" < ?"
+        ' AND "tus_id" NOT IN (SELECT "upload" FROM "video" WHERE "upload" IS NOT NULL)',
+        (created_before,),
+    )
+
+
+def deleted_uploads(con: sqlite3.Connection) -> list[str]:
+    rows = con.execute("SELECT \"tus_id\" FROM \"upload\" WHERE \"state\" = 'deleted' ORDER BY \"id\"")
+    return [r[0] for r in rows]
+
+
+# --- video (queue) ---
+
+
+def original_known(con: sqlite3.Connection, original_sha256: str) -> bool:
+    """A video (pending, failed or published) already has this original."""
+    return (
+        con.execute('SELECT 1 FROM "video" WHERE "original_sha256" = ?', (original_sha256,)).fetchone()
+        is not None
+    )
+
+
+def insert_video(
+    con: sqlite3.Connection,
+    original_sha256: str,
+    filename: str,
+    all_segments_done: bool,
+    user_id: int,
+    now: int,
+    tus_id: str,
+) -> int:
+    return con.execute(
+        'INSERT INTO "video" ("original_sha256", "filename", "all_segments_done", "uploaded_by",'
+        ' "uploaded_s", "upload") VALUES (?, ?, ?, ?, ?, ?)',
+        (original_sha256, filename, all_segments_done, user_id, now, tus_id),
+    ).lastrowid
+
+
+def insert_segment(
+    con: sqlite3.Connection, video_id: int, technique: str, begin_s: int, end_s: int, performer: str
+) -> int:
+    return con.execute(
+        'INSERT INTO "segment" ("video", "technique", "begin_s", "end_s", "performer") VALUES (?, ?, ?, ?, ?)',
+        (video_id, technique, begin_s, end_s, performer),
+    ).lastrowid
+
+
+def insert_video_tag(con: sqlite3.Connection, video_id: int, tag: str, value: str | None) -> None:
+    con.execute('INSERT INTO "video_has_tags" ("video", "tag", "value") VALUES (?, ?, ?)', (video_id, tag, value))
+
+
+def insert_segment_tag(con: sqlite3.Connection, segment_id: int, tag: str, value: str | None) -> None:
+    con.execute(
+        'INSERT INTO "segment_has_tags" ("segment", "tag", "value") VALUES (?, ?, ?)', (segment_id, tag, value)
+    )
+
+
+def video(con: sqlite3.Connection, video_id: int) -> sqlite3.Row | None:
+    return con.execute(
+        'SELECT "id", "status", "uploaded_by", "upload", "attempts" FROM "video" WHERE "id" = ?', (video_id,)
+    ).fetchone()
+
+
+def user_videos(con: sqlite3.Connection, user_id: int, since: int) -> list[sqlite3.Row]:
+    """The user's videos not published yet, and those published since `since`, newest first,
+    with their place in the queue (1 = next to be encoded)."""
+    return con.execute(
+        'SELECT v."id", v."filename", v."status", v."progress", v."error", v."uploaded_s",'
+        " CASE WHEN v.\"status\" = 'queued' THEN"
+        "  (SELECT count(*) FROM \"video\" q WHERE q.\"status\" = 'queued' AND q.\"id\" <= v.\"id\")"
+        ' END AS "queue_position"'
+        ' FROM "video" v WHERE v."uploaded_by" = ?'
+        " AND (v.\"status\" != 'published' OR v.\"uploaded_s\" >= ?)"
+        ' ORDER BY v."id" DESC',
+        (user_id, since),
+    ).fetchall()
+
+
+def requeue_interrupted(con: sqlite3.Connection, max_attempts: int) -> None:
+    """At startup: encodings cut by a crash or a reboot go back to the queue,
+    unless they were already tried max_attempts times."""
+    con.execute(
+        "UPDATE \"video\" SET \"status\" = 'failed', \"error\" = 'Encoding interrupted too many times'"
+        " WHERE \"status\" = 'encoding' AND \"attempts\" >= ?",
+        (max_attempts,),
+    )
+    con.execute("UPDATE \"video\" SET \"status\" = 'queued' WHERE \"status\" = 'encoding'")
+
+
+def next_job(con: sqlite3.Connection) -> sqlite3.Row | None:
+    """The oldest queued video."""
+    return con.execute(
+        'SELECT "id", "upload", "original_sha256" FROM "video"'
+        " WHERE \"status\" = 'queued' ORDER BY \"id\" LIMIT 1"
+    ).fetchone()
+
+
+def claim_job(con: sqlite3.Connection, video_id: int) -> bool:
+    """False if it is no longer queued (deleted meanwhile)."""
+    return con.execute(
+        "UPDATE \"video\" SET \"status\" = 'encoding', \"attempts\" = \"attempts\" + 1,"
+        ' "progress" = 0, "error" = NULL'
+        " WHERE \"id\" = ? AND \"status\" = 'queued'",
+        (video_id,),
+    ).rowcount == 1
+
+
+def release_job(con: sqlite3.Connection, video_id: int) -> None:
+    """Clean shutdown during an encoding: back to the queue, the attempt not counted."""
+    con.execute(
+        "UPDATE \"video\" SET \"status\" = 'queued', \"attempts\" = max(\"attempts\" - 1, 0)"
+        " WHERE \"id\" = ? AND \"status\" = 'encoding'",
+        (video_id,),
+    )
+
+
+def job_segments(con: sqlite3.Connection, video_id: int) -> list[sqlite3.Row]:
+    return con.execute(
+        'SELECT "id", "begin_s", "end_s" FROM "segment" WHERE "video" = ? ORDER BY "id"', (video_id,)
+    ).fetchall()
+
+
+def job_progress(con: sqlite3.Connection, video_id: int, percent: int) -> bool:
+    """False if the video is no longer being encoded (deleted meanwhile)."""
+    return con.execute(
+        'UPDATE "video" SET "progress" = ?'
+        " WHERE \"id\" = ? AND \"status\" = 'encoding'",
+        (percent, video_id),
+    ).rowcount == 1
+
+
+def publish_video(
+    con: sqlite3.Connection, video_id: int, sha256: str, directory: str, thumbnail: str | None
+) -> bool:
+    return con.execute(
+        "UPDATE \"video\" SET \"status\" = 'published', \"sha256sum\" = ?, \"directory\" = ?,"
+        ' "thumbnail" = ?, "progress" = 100, "upload" = NULL, "error" = NULL'
+        " WHERE \"id\" = ? AND \"status\" = 'encoding'",
+        (sha256, directory, thumbnail, video_id),
+    ).rowcount == 1
+
+
+def set_segment_thumbnail(con: sqlite3.Connection, segment_id: int, video_id: int, name: str) -> None:
+    con.execute(
+        'UPDATE "segment" SET "thumbnail" = ? WHERE "id" = ? AND "video" = ?', (name, segment_id, video_id)
+    )
+
+
+def requeue_or_fail(con: sqlite3.Connection, video_id: int, error: str, requeue: bool) -> bool:
+    return con.execute(
+        'UPDATE "video" SET "status" = ?, "error" = ?'
+        " WHERE \"id\" = ? AND \"status\" = 'encoding'",
+        ("queued" if requeue else "failed", error, video_id),
+    ).rowcount == 1
+
+
+def retry_video(con: sqlite3.Connection, video_id: int) -> bool:
+    return con.execute(
+        "UPDATE \"video\" SET \"status\" = 'queued', \"attempts\" = 0, \"error\" = NULL, \"progress\" = 0"
+        " WHERE \"id\" = ? AND \"status\" = 'failed'",
+        (video_id,),
+    ).rowcount == 1
+
+
+def delete_video(con: sqlite3.Connection, video_id: int) -> None:
+    """The video, its segments and tags (not published: nothing else refers to them)."""
+    con.execute(
+        'DELETE FROM "segment_has_tags" WHERE "segment" IN (SELECT "id" FROM "segment" WHERE "video" = ?)',
+        (video_id,),
+    )
+    con.execute('DELETE FROM "segment" WHERE "video" = ?', (video_id,))
+    con.execute('DELETE FROM "video_has_tags" WHERE "video" = ?', (video_id,))
+    con.execute('DELETE FROM "video" WHERE "id" = ?', (video_id,))

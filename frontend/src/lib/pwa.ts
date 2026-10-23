@@ -1,6 +1,6 @@
 // The app's side of the PWA (the service worker is src/service-worker/).
 import { dev } from '$app/env';
-import { DATA } from './pwa-caches';
+import { DATA, UPLOAD_DB } from './pwa-caches';
 
 /** Production build only (SvelteKit's automatic registration is off, see vite.config.ts).
  * In development the service worker is an ES module, which Firefox cannot run, and
@@ -27,6 +27,11 @@ export async function clearUserData() {
 		await caches.delete(DATA);
 	} catch {
 		// no Cache API (insecure context, storage blocked): nothing stored
+	}
+	try {
+		indexedDB.deleteDatabase(UPLOAD_DB); // upload drafts
+	} catch {
+		// no IndexedDB: nothing stored
 	}
 }
 

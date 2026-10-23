@@ -23,13 +23,22 @@ export default defineConfig({
 
 			// Absolute asset paths (/_app/…) in every page: the service worker serves the
 			// cached "/" for any URL offline, where relative paths (../_app/…) would break.
-			paths: { relative: false }
+			paths: { relative: false },
+
+			// Script policy in a <meta> of the page, with the hash of SvelteKit's inline
+			// boot script (it changes with every build). nginx sends the rest of the
+			// Content-Security-Policy; both apply, so only this exact inline script runs.
+			csp: { mode: 'hash', directives: { 'script-src': ['self', 'wasm-unsafe-eval'] } }
 		})
 	],
 	server: {
-		// Dev only: the FastAPI server (uvicorn on :8000) answers /api.
-		// API_URL: another backend, e.g. the one started by the browser tests.
-		proxy: { '/api': process.env.API_URL ?? 'http://localhost:8000' },
+		// Dev only: the FastAPI server (uvicorn on :8000) answers /api, tusd (:1080)
+		// the uploads. API_URL: another backend, e.g. the one started by the browser
+		// tests. xfwd: tusd builds upload URLs from X-Forwarded-Host (-behind-proxy).
+		proxy: {
+			'/api': process.env.API_URL ?? 'http://localhost:8000',
+			'/files': { target: process.env.TUSD_URL ?? 'http://localhost:1080', xfwd: true }
+		},
 		// Rules shared with the backend, outside frontend/ (see src/lib/validation.ts).
 		fs: { allow: ['../server/app/validation.json'] }
 	},

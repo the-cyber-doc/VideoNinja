@@ -32,6 +32,8 @@ IDET_FRAMES=500       # frames analysed by idet when field order is unknown
 FORCE=0
 DRY_RUN=0
 USE_CPU=0             # 1 = libx265 instead of NVENC (testing / no GPU)
+X265_PRESET="medium"  # libx265 preset (-c): ultrafast .. placebo, slower = smaller
+PROGRESS=""           # file for ffmpeg's -progress output (key=value, e.g. out_time_us)
 EXTENSIONS="mov|mp4|m4v|mkv|avi|mts|m2ts|webm|3gp|mpg|mpeg|vob|ts|dv"
 
 usage() {
@@ -51,6 +53,8 @@ Options:
   -f        Overwrite existing outputs
   -n        Dry run: show detection and ffmpeg commands only
   -c        CPU encoding with libx265 (no NVIDIA GPU needed)
+  -x PRESET libx265 preset with -c (default: $X265_PRESET)
+  -P FILE   Write ffmpeg's progress (key=value lines, out_time_us…) to FILE
   -h        Help
 EOF
 }
@@ -59,7 +63,7 @@ log()  { printf '%s %s\n' "$(date '+%H:%M:%S')" "$*" >&2; }
 die()  { log "ERROR: $*"; exit 1; }
 
 # ---------- options ----------
-while getopts ":o:q:p:g:t:d:w:2fnch" opt; do
+while getopts ":o:q:p:g:t:d:w:x:P:2fnch" opt; do
   case $opt in
     o) OUT_DIR=$OPTARG ;;
     q) CQ=$OPTARG ;;
@@ -72,6 +76,8 @@ while getopts ":o:q:p:g:t:d:w:2fnch" opt; do
     f) FORCE=1 ;;
     n) DRY_RUN=1 ;;
     c) USE_CPU=1 ;;
+    x) X265_PRESET=$OPTARG ;;
+    P) PROGRESS=$OPTARG ;;
     h) usage; exit 0 ;;
     :) die "Option -$OPTARG needs a value" ;;
     *) usage; exit 2 ;;
@@ -84,6 +90,8 @@ shift $((OPTIND - 1))
 [[ $GOP_SECONDS =~ ^[0-9.]+$ ]] || die "-g must be a number"
 [[ $TONEMAP =~ ^(auto|libplacebo|zscale)$ ]] || die "-t must be auto, libplacebo or zscale"
 [[ $DEINT =~ ^(auto|on|off)$ ]]              || die "-d must be auto, on or off"
+[[ $X265_PRESET =~ ^(ultrafast|superfast|veryfast|faster|fast|medium|slow|slower|veryslow|placebo)$ ]] \
+  || die "-x must be a libx265 preset (ultrafast .. placebo)"
 DR_SUFFIX=""; (( DOUBLE_RATE )) && DR_SUFFIX=" double-rate"
 
 # ---------- dependency checks ----------
@@ -97,7 +105,7 @@ has_filter()  { grep -qx -- "$1" <<<"$FILTERS"; }
 
 if (( USE_CPU )); then
   has_encoder libx265 || die "libx265 encoder not available in this ffmpeg build"
-  VENC=(-c:v libx265 -preset medium -crf "$CQ" -profile:v main -forced-idr 1 -x265-params log-level=error)
+  VENC=(-c:v libx265 -preset "$X265_PRESET" -crf "$CQ" -profile:v main -forced-idr 1 -x265-params log-level=error)
 else
   has_encoder hevc_nvenc || die "hevc_nvenc not available (NVIDIA driver / ffmpeg build?). Use -c for CPU."
   VENC=(-c:v hevc_nvenc -preset "$PRESET" -tune hq -rc vbr -cq "$CQ" -b:v 0
@@ -205,6 +213,7 @@ run_encode() {   # in out mode tin interlace
   local tmp="${out%.*}.part.mp4"
   local -a cmd=(ffmpeg -hide_banner -nostdin -loglevel error -stats -y)
   (( USE_CPU )) || cmd+=(-hwaccel cuda)
+  [[ -n $PROGRESS ]] && cmd+=(-progress "file:$PROGRESS")
   cmd+=(-i "file:$in"
         -map 0:v:0 -map '0:a:0?' -map_metadata -1 -map_chapters -1
         -vf "$(build_vf "$mode" "$tin" "$il")"
@@ -303,7 +312,7 @@ process_file() {   # in relative_path
 }
 
 # ---------- main ----------
-log "Encoder: $([[ $USE_CPU -eq 1 ]] && echo libx265 || echo "hevc_nvenc $PRESET") | CQ $CQ | original size | GOP ${GOP_SECONDS}s"
+log "Encoder: $([[ $USE_CPU -eq 1 ]] && echo "libx265 $X265_PRESET" || echo "hevc_nvenc $PRESET") | CQ $CQ | original size | GOP ${GOP_SECONDS}s"
 log "Tone mappers: libplacebo=$HAS_LIBPLACEBO zscale=$HAS_ZSCALE (mode: $TONEMAP)"
 if [[ $DEINT == off ]]; then
   log "Deinterlacing: off"

@@ -42,8 +42,9 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements-dev.txt
-        # Precompression of the catalogue snapshots (as in the Docker image).
-        sudo apt-get update && sudo apt-get install -y --no-install-recommends brotli zopfli
+        # As in the Docker image: precompression of the catalogue snapshots,
+        # ffmpeg for the encoding tests (tiny generated clips).
+        sudo apt-get update && sudo apt-get install -y --no-install-recommends brotli zopfli ffmpeg
 
     - name: Run tests
       working-directory: ./server
@@ -171,7 +172,10 @@ jobs:
       id: build
       uses: docker/build-push-action@v7
       with:
-        context: ./server
+        # Repository root: the image also needs tools/encode-videos/
+        # (server/Dockerfile.dockerignore keeps the context small).
+        context: .
+        file: ./server/Dockerfile
         platforms: ${{ matrix.platform }}
         labels: ${{ steps.meta.outputs.labels }}
         outputs: ${{ env.RELEASE == 'true' && format('type=image,name={0}/{1},push-by-digest=true,name-canonical=true,push=true', env.REGISTRY, env.IMAGE_NAME) || 'type=cacheonly' }}

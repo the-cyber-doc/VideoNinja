@@ -3,7 +3,6 @@
 import logging
 import sqlite3
 import time
-import unicodedata
 from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -42,11 +41,6 @@ class InviteOut(BaseModel):
     expires_s: int
 
 
-def sort_key(text: str) -> str:
-    """Case- and accent-insensitive, so "Éditeur" sorts with the E's, not after "Z"."""
-    return "".join(c for c in unicodedata.normalize("NFKD", text.casefold()) if not unicodedata.combining(c))
-
-
 @router.get("/roles")
 def roles(
     _: sqlite3.Row = Depends(admin),
@@ -55,7 +49,7 @@ def roles(
 ) -> list[RoleOut]:
     """Every role, named in the request's language and sorted by that name."""
     out = [RoleOut(id=r["id"], name=i18n.pick(r, "name", lang, r["id"])) for r in queries.roles(con)]
-    return sorted(out, key=lambda r: sort_key(r.name))
+    return sorted(out, key=lambda r: i18n.sort_key(r.name))
 
 
 @router.get("/users")

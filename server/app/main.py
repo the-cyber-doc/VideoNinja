@@ -2,7 +2,10 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
-from . import auth, comments, crypto, db, media, profile, register, security, setup, snapshot, users
+from . import (
+    auth, comments, crypto, db, encoder, media, performers, profile, register, security, setup,
+    snapshot, tags, tusd, users, videos,
+)
 
 
 @asynccontextmanager
@@ -16,9 +19,13 @@ async def lifespan(app: FastAPI):
         finally:
             con.close()
         snapshot.rebuild()  # the database may have changed while the app was stopped
+        tusd.start()
+        encoder.start()
     else:
-        app.state.setup_token = setup.new_setup_token()
+        app.state.setup_token = setup.new_setup_token()  # uploads start after setup
     yield
+    encoder.stop()  # the current encoding goes back to the queue
+    tusd.stop()
     snapshot.flush()  # don't lose a pending rebuild
 
 
@@ -31,6 +38,10 @@ app.include_router(users.router)
 app.include_router(snapshot.router)
 app.include_router(comments.router)
 app.include_router(media.router)
+app.include_router(performers.router)
+app.include_router(tags.router)
+app.include_router(videos.router)
+app.include_router(tusd.router)
 
 
 @app.get("/health")

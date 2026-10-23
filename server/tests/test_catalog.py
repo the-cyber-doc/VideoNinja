@@ -66,12 +66,13 @@ SHA = "ab" + "0" * 62
 
 
 def add_segments(segment_thumbnail="seg1.jpg", video_thumbnail="thumb.jpg"):
-    """One video with two segments of Koku: the first with its own thumbnail."""
+    """One published video with two segments of Koku: the first with its own thumbnail."""
     con = sqlite3.connect(db.db_path())
     with con:
         con.execute("INSERT INTO performer (id, name) VALUES ('hatsumi', 'Hatsumi')")
-        con.execute("INSERT INTO video (sha256sum, filename, directory, thumbnail) VALUES (?, 'a.mp4', 'x', ?)",
-                    (SHA, video_thumbnail))
+        con.execute("INSERT INTO video (sha256sum, original_sha256, filename, directory, thumbnail, uploaded_s,"
+                    " status) VALUES (?, ?, 'a.mp4', ?, ?, 0, 'published')",
+                    (SHA, "f" * 64, f"ab/{SHA}", video_thumbnail))
         con.execute("INSERT INTO segment (video, technique, begin_s, end_s, performer, thumbnail)"
                     " VALUES (1, 'gyokko.koku', 12, 27, 'hatsumi', ?)", (segment_thumbnail,))
         con.execute("INSERT INTO segment (video, technique, begin_s, end_s, performer)"

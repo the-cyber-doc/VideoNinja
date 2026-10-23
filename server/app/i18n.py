@@ -7,6 +7,7 @@ Japanese names (kanji, romaji) are not translations: they are sent as they are.
 """
 
 import sqlite3
+import unicodedata
 
 from fastapi import Header
 
@@ -42,3 +43,8 @@ def language(accept_language: str | None = Header(default=None)) -> str:
 
 def pick(row: sqlite3.Row, key: str, lang: str, fallback: str | None = None) -> str | None:
     return row[f"{key}_{lang}"] or row[f"{key}_{DEFAULT}"] or fallback
+
+
+def sort_key(text: str) -> str:
+    """Case- and accent-insensitive, so "Éditeur" sorts with the E's, not after "Z"."""
+    return "".join(c for c in unicodedata.normalize("NFKD", text.casefold()) if not unicodedata.combining(c))

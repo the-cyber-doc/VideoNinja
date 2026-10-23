@@ -8,4 +8,7 @@ export interface NavEntry {
 	access?: string;
 }
 
-export const NAV: NavEntry[] = [{ href: '/schools', label: 'nav.schools' }];
+export const NAV: NavEntry[] = [
+	{ href: '/schools', label: 'nav.schools' },
+	{ href: '/upload', label: 'nav.upload', access: 'upload' }
+];

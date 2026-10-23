@@ -1,0 +1,8 @@
+# Build context = repository root: send only what the image needs.
+*
+!server/requirements.txt
+!server/app/
+!server/database/
+!tools/encode-videos/encode-videos.sh
+!tools/encode-videos/nnedi3_weights.bin
+**/__pycache__

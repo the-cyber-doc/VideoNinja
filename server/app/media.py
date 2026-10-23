@@ -3,19 +3,17 @@
 The app computes the file path from the database; the client only names the
 segment. Files: <media>/derived/<h2>/<sha256>/<file name> (nginx: /protected/,
 aliased to /srv/media/derived/). Without nginx (development), the app serves
-the file itself from VIDEONINJA_MEDIA_DIR, if set.
+the file itself from the media folder (paths.py).
 """
 
 import logging
-import os
 import re
 import sqlite3
-from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from fastapi.responses import FileResponse
 
-from . import db, queries, snapshot
+from . import db, paths, queries, snapshot
 from .auth import require_access
 
 log = logging.getLogger("uvicorn.error")
@@ -38,7 +36,7 @@ def segment_thumbnail(
     con: sqlite3.Connection = Depends(db.get_db),
 ) -> Response:
     row = queries.segment_thumbnail(con, segment_id)
-    if row is None or row["thumbnail"] is None:
+    if row is None or not row["thumbnail"] or not row["sha256sum"]:  # none, or not published yet
         raise _not_found()
     sha, name = row["sha256sum"], row["thumbnail"]
     if not (SHA256.fullmatch(sha) and FILE_NAME.fullmatch(name)):
@@ -48,8 +46,7 @@ def segment_thumbnail(
 
     if snapshot.x_accel():
         return Response(headers={"X-Accel-Redirect": f"{INTERNAL_PREFIX}/{relative}"})
-    media_dir = os.environ.get("VIDEONINJA_MEDIA_DIR")
-    path = Path(media_dir) / "derived" / relative if media_dir else None
-    if path is None or not path.is_file():
+    path = paths.media_dir() / "derived" / relative
+    if not path.is_file():
         raise _not_found()
     return FileResponse(path, headers={"Cache-Control": "private, no-store"})

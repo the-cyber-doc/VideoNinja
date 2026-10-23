@@ -41,12 +41,27 @@ CREATE TABLE IF NOT EXISTS "technique" (
 	ON UPDATE NO ACTION ON DELETE NO ACTION
 );
 
+-- Uploaded by the browser, encoded by the worker, published asynchronously.
+-- Until published: sha256sum and directory are NULL, the original waits in the
+-- upload folder (upload = its tus ID). Only published videos are in the catalogue.
 CREATE TABLE IF NOT EXISTS "video" (
 	"id" INTEGER PRIMARY KEY AUTOINCREMENT,
-	"sha256sum" TEXT NOT NULL UNIQUE,
+	"sha256sum" TEXT UNIQUE,
+	"original_sha256" TEXT NOT NULL UNIQUE,
 	"filename" VARCHAR NOT NULL,
-	"directory" VARCHAR NOT NULL,
-	"thumbnail" VARCHAR
+	"directory" VARCHAR,
+	"thumbnail" VARCHAR,
+	"all_segments_done" BOOLEAN NOT NULL DEFAULT 0,
+	"uploaded_by" INTEGER,
+	"uploaded_s" INTEGER NOT NULL,
+	"status" VARCHAR NOT NULL DEFAULT 'queued'
+		CHECK ("status" IN ('queued', 'encoding', 'published', 'failed')),
+	"progress" INTEGER NOT NULL DEFAULT 0,
+	"error" TEXT,
+	"attempts" INTEGER NOT NULL DEFAULT 0,
+	"upload" VARCHAR,
+	FOREIGN KEY ("uploaded_by") REFERENCES "user"("id")
+	ON UPDATE NO ACTION ON DELETE SET NULL
 );
 
 CREATE TABLE IF NOT EXISTS "segment" (
@@ -164,6 +179,22 @@ CREATE TABLE IF NOT EXISTS "session" (
 	"last_seen_s" INTEGER NOT NULL,
 	"expires_s" INTEGER NOT NULL,
 	PRIMARY KEY("id"),
+	FOREIGN KEY ("user") REFERENCES "user"("id")
+	ON UPDATE NO ACTION ON DELETE CASCADE
+);
+
+-- tus uploads (tusd), from creation until the worker deleted the original.
+-- state: uploading, finished (complete, waiting for submit or encoding),
+-- deleted (the worker must remove its files).
+CREATE TABLE IF NOT EXISTS "upload" (
+	"id" INTEGER PRIMARY KEY AUTOINCREMENT,
+	"tus_id" VARCHAR NOT NULL UNIQUE,
+	"user" INTEGER NOT NULL,
+	"original_sha256" TEXT NOT NULL,
+	"size" INTEGER NOT NULL,
+	"state" VARCHAR NOT NULL DEFAULT 'uploading'
+		CHECK ("state" IN ('uploading', 'finished', 'deleted')),
+	"created_s" INTEGER NOT NULL,
 	FOREIGN KEY ("user") REFERENCES "user"("id")
 	ON UPDATE NO ACTION ON DELETE CASCADE
 );

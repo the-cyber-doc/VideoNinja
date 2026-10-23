@@ -1,0 +1,277 @@
+<script lang="ts">
+	// The local video (never uploaded here), its controls and the timeline where
+	// segments are marked. Keys: Space play/pause, ← → one frame, I begin, O end,
+	// Escape clears the selection.
+	import Icon from '../Icon.svelte';
+	import { t } from '../i18n.svelte';
+	import { formatTime } from '../time';
+	import type { Draft } from './draft.svelte';
+	import Timeline from './Timeline.svelte';
+
+	let {
+		src,
+		draft = $bindable(),
+		duration = $bindable(0),
+		playable = $bindable(true),
+		selected = $bindable(null),
+		video = $bindable()
+	}: {
+		src: string;
+		draft: Draft;
+		duration?: number;
+		playable?: boolean;
+		selected?: number | null;
+		video?: HTMLVideoElement;
+	} = $props();
+
+	let current = $state(0);
+	let paused = $state(true);
+	let marker = $state<number | null>(null);
+	let frame = $state(1 / 30); // seconds per frame, measured once the video is loaded
+	let strip = $state<string[]>([]);
+	const STRIP_IMAGES = 24;
+
+	const clamp = (time: number) => Math.min(Math.max(time, 0), duration);
+
+	function seek(time: number) {
+		if (!video) return;
+		// Also at once: the bound value only follows on the next timeupdate event,
+		// and I/O pressed right after a click must use the clicked time.
+		current = video.currentTime = clamp(time);
+	}
+
+	const step = (frames: number) => {
+		video?.pause();
+		seek(current + frames * frame);
+	};
+
+	function stop() {
+		video?.pause();
+		seek(0);
+	}
+
+	const toggle = () => (video?.paused ? video.play() : video?.pause());
+
+	function nextKey() {
+		return Math.max(0, ...draft.segments.map((s) => s.key)) + 1;
+	}
+
+	function create(begin: number, end: number) {
+		// The new segment starts with the previous one's school, level and performer.
+		const last = draft.segments.at(-1);
+		const key = nextKey();
+		draft.segments.push({
+			key,
+			begin,
+			end,
+			school: last?.school ?? '',
+			level: last?.level ?? '',
+			technique: '',
+			performer: last?.performer ?? '',
+			tags: []
+		});
+		selected = key;
+		marker = null;
+	}
+
+	function change(key: number, begin: number, end: number) {
+		const segment = draft.segments.find((s) => s.key === key);
+		if (segment) Object.assign(segment, { begin: clamp(begin), end: clamp(end) });
+	}
+
+	/** I: the selected segment's begin, else the marker of a new segment. */
+	function beginHere() {
+		const segment = draft.segments.find((s) => s.key === selected);
+		if (segment && current < segment.end) segment.begin = current;
+		else marker = current;
+	}
+
+	/** O: ends the segment started by the marker, else the selected segment's end. */
+	function endHere() {
+		if (marker !== null && current > marker) return create(marker, current);
+		const segment = draft.segments.find((s) => s.key === selected);
+		if (segment && current > segment.begin) segment.end = current;
+	}
+
+	function onkeydown(e: KeyboardEvent) {
+		const target = e.target as HTMLElement;
+		if (!playable || target.closest('input, select, textarea, button') || e.ctrlKey || e.metaKey || e.altKey) {
+			return;
+		}
+		const actions: Record<string, () => void> = {
+			' ': toggle,
+			ArrowLeft: () => step(-1),
+			ArrowRight: () => step(1),
+			i: beginHere,
+			o: endHere,
+			Escape: () => {
+				selected = null;
+				marker = null;
+			}
+		};
+		const action = actions[e.key.length === 1 ? e.key.toLowerCase() : e.key];
+		if (action) {
+			e.preventDefault();
+			action();
+		}
+	}
+
+	/** Frame duration from two consecutive frames, played muted for a moment. */
+	async function measureFrame(v: HTMLVideoElement): Promise<number> {
+		if (!('requestVideoFrameCallback' in v)) return frame;
+		const muted = v.muted;
+		v.muted = true;
+		const times: number[] = [];
+		const measured = await new Promise<number>((resolve) => {
+			const timer = setTimeout(() => resolve(frame), 2000);
+			const onFrame = (_: number, meta: VideoFrameCallbackMetadata) => {
+				times.push(meta.mediaTime);
+				if (times.length < 6) return v.requestVideoFrameCallback(onFrame);
+				clearTimeout(timer);
+				const gaps = times.slice(1).map((time, i) => time - times[i]).filter((gap) => gap > 0.001);
+				resolve(gaps.length ? Math.min(...gaps) : frame);
+			};
+			v.requestVideoFrameCallback(onFrame);
+			v.play().catch(() => resolve(frame));
+		});
+		v.pause();
+		v.muted = muted;
+		v.currentTime = 0;
+		return measured;
+	}
+
+	/** Film strip: frames grabbed by a second, hidden video element. */
+	async function makeStrip(url: string, total: number) {
+		const probe = document.createElement('video');
+		probe.muted = true;
+		probe.preload = 'auto';
+		probe.src = url;
+		await new Promise((resolve) => probe.addEventListener('loadeddata', resolve, { once: true }));
+		const canvas = document.createElement('canvas');
+		canvas.height = 54;
+		canvas.width = Math.max(1, Math.round((54 * probe.videoWidth) / (probe.videoHeight || 1)));
+		const images: string[] = [];
+		for (let i = 0; i < STRIP_IMAGES && url === src; i++) {
+			probe.currentTime = ((i + 0.5) * total) / STRIP_IMAGES;
+			await new Promise((resolve) => probe.addEventListener('seeked', resolve, { once: true }));
+			canvas.getContext('2d')!.drawImage(probe, 0, 0, canvas.width, canvas.height);
+			images.push(canvas.toDataURL('image/jpeg', 0.6));
+			strip = [...images];
+		}
+		probe.removeAttribute('src');
+		probe.load();
+	}
+
+	async function loaded() {
+		if (!video) return;
+		duration = video.duration;
+		playable = video.videoWidth > 0;
+		if (!playable) return;
+		frame = await measureFrame(video);
+		makeStrip(src, duration);
+	}
+</script>
+
+<svelte:window {onkeydown} />
+
+<div class="editor">
+	<!-- svelte-ignore a11y_media_has_caption: the user's own video, being edited -->
+	<video
+		bind:this={video}
+		{src}
+		preload="auto"
+		bind:currentTime={current}
+		bind:paused
+		onloadedmetadata={loaded}
+		onerror={() => (playable = false)}
+	></video>
+
+	{#if playable}
+		<div class="controls">
+			<div class="buttons">
+				<button type="button" class="icon" title={t('upload.player.back_frame')} aria-label={t('upload.player.back_frame')} onclick={() => step(-1)}>
+					<Icon name="frame-back" />
+				</button>
+				<button type="button" class="icon" title={t(paused ? 'upload.player.play' : 'upload.player.pause')} aria-label={t(paused ? 'upload.player.play' : 'upload.player.pause')} onclick={toggle}>
+					<Icon name={paused ? 'play' : 'pause'} />
+				</button>
+				<button type="button" class="icon" title={t('upload.player.stop')} aria-label={t('upload.player.stop')} onclick={stop}>
+					<Icon name="stop" />
+				</button>
+				<button type="button" class="icon" title={t('upload.player.forward_frame')} aria-label={t('upload.player.forward_frame')} onclick={() => step(1)}>
+					<Icon name="frame-forward" />
+				</button>
+			</div>
+			<Timeline
+				{duration}
+				{current}
+				segments={draft.segments}
+				{selected}
+				{marker}
+				{strip}
+				onseek={seek}
+				oncreate={create}
+				onchange={change}
+				onselect={(key) => (selected = key)}
+			/>
+		</div>
+		<div class="marks">
+			<span class="time">{formatTime(Math.floor(current))} / {formatTime(Math.floor(duration))}</span>
+			<button type="button" class="secondary" onclick={beginHere}>{t('upload.begin_here')}</button>
+			<button type="button" class="secondary" onclick={endHere}>{t('upload.end_here')}</button>
+		</div>
+		<p class="hint">{t('upload.timeline_hint')}</p>
+	{/if}
+</div>
+
+<style>
+	.editor {
+		display: grid;
+		gap: 0.6rem;
+	}
+	video {
+		width: 100%;
+		max-height: 60vh;
+		background: #000;
+		border-radius: var(--radius);
+	}
+	.controls {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+	}
+	.buttons {
+		display: flex;
+		gap: 0.25rem;
+	}
+	button.icon {
+		display: grid;
+		place-items: center;
+		width: 2.2rem;
+		height: 2.2rem;
+		padding: 0;
+		color: var(--text);
+		background: var(--surface);
+		border: 1px solid var(--border);
+	}
+	.marks {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 0.5rem;
+	}
+	.time {
+		font-variant-numeric: tabular-nums;
+		color: var(--muted);
+		margin-right: auto;
+	}
+	@media (max-width: 30rem) {
+		.controls {
+			flex-direction: column;
+			align-items: stretch;
+		}
+		.buttons {
+			justify-content: center;
+		}
+	}
+</style>
