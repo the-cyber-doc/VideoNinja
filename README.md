@@ -37,8 +37,33 @@ Self-hosted on a Raspberry Pi 5 with Docker behind nginx.
 | Python | 3.15 | Same as the Docker image and CI. Easiest via [uv](https://docs.astral.sh/uv/) |
 | Node.js | ≥ 22.17 (24 LTS recommended) | Required by SvelteKit 3; CI uses 24. Easiest via [fnm](https://github.com/Schniz/fnm), see [Frontend](#3-frontend-terminal-2) |
 | brotli, zopfli | any | Optional: precompress the catalogue snapshots (`apt install brotli zopfli`). Without them the app logs a warning and writes the JSON only. |
-| ffmpeg | recent, with the `nnedi` filter | Only for `tools/encode-videos/` |
+| ffmpeg | recent, with `libx265` and the `nnedi` filter | Encodes uploaded videos (and `tools/encode-videos/`). Debian/Ubuntu: `sudo apt install ffmpeg`. Without it, uploads stay queued. |
+| tusd | v2.10.1 (as in `server/Dockerfile`) | Receives uploads; the backend starts it. See [Installing tusd](#installing-tusd). Without it, the upload page warns that uploads are not possible. |
 | Docker | optional | Only to build/run the image locally |
+
+#### Installing tusd
+
+tusd is a single binary, installed for your user only (no sudo). The backend
+finds it on `PATH`, or at `VIDEONINJA_TUSD_BIN`. The checksum is the one
+published with the release (also pinned in `server/Dockerfile`):
+
+```bash
+# amd64 (most PCs). On arm64 (Raspberry Pi, Apple silicon Linux VMs) use the
+# second ARCH/SHA line instead.
+ARCH=amd64 SHA=e8c8d7738275d2d9377db953aecbc242262d3620e77fbd3c1491361d9cea6ac8
+# ARCH=arm64 SHA=134e575a6524698b54d989958c680f0a4ec243d9622c1926e30e27c2a86e4752
+
+cd "$(mktemp -d)"
+curl -sSLO "https://github.com/tus/tusd/releases/download/v2.10.1/tusd_linux_$ARCH.tar.gz"
+echo "$SHA  tusd_linux_$ARCH.tar.gz" | sha256sum -c     # must print: OK
+tar -xzf "tusd_linux_$ARCH.tar.gz"
+mkdir -p ~/.local/bin && mv "tusd_linux_$ARCH/tusd" ~/.local/bin/
+tusd -version                                        # Version: v2.10.1
+```
+
+If `tusd -version` is not found, add `~/.local/bin` to `PATH` (e.g.
+`export PATH="$HOME/.local/bin:$PATH"` in `~/.bashrc`), then open a new
+terminal.
 
 ### 1. Get the code
 
@@ -280,11 +305,14 @@ are installed; without them it logs a warning and uploads stay queued.
 Uploads and encoded videos go to `server/uploads/` and `server/media/`
 (ignored by git); without nginx the app serves the thumbnails itself.
 
+Install both first (see [Prerequisites](#prerequisites) and
+[Installing tusd](#installing-tusd)), then start the backend as usual; a fast
+x265 preset keeps encodings short while developing:
+
 ```bash
-# tusd: a release from https://github.com/tus/tusd/releases (version: server/Dockerfile)
-# ffmpeg with libx265 and nnedi: e.g. `sudo apt install ffmpeg` (Debian/Ubuntu)
 VIDEONINJA_DB=dev.db VIDEONINJA_KEY_FILE=dev.key VIDEONINJA_X265_PRESET=ultrafast \
   uvicorn app.main:app --reload
+# The log must show: "tusd started (pid …, port 1080)" and "Encoder started".
 ```
 
 In development `/files` reaches tusd without nginx's per-request check (see
