@@ -93,7 +93,7 @@ pip install -r requirements-dev.txt
 # Encryption key for development (32 random bytes, base64). Never commit it.
 python -c "import base64, os; print(base64.b64encode(os.urandom(32)).decode())" > dev.key
 
-VIDEONINJA_DB=dev.db VIDEONINJA_KEY_FILE=dev.key uvicorn app.main:app --reload
+VIDEONINJA_DB=dev.db VIDEONINJA_DB_KEY_FILE=dev.key uvicorn app.main:app --reload
 ```
 
 The API listens on `http://localhost:8000`. `dev.db`, `dev.key` and the
@@ -102,7 +102,8 @@ catalogue snapshots in `catalog/` are ignored by git.
 | Variable | Default | Purpose |
 |---|---|---|
 | `VIDEONINJA_DB` | `/data/videoninja.db` | SQLite database file. If missing, the app starts in setup mode. |
-| `VIDEONINJA_KEY_FILE` | `/run/secrets/videoninja_key` | Key that encrypts the TOTP secrets in the database. The app does not start without it. |
+| `VIDEONINJA_DB_KEY_FILE` | `/run/secrets/videoninja_key` | Key that encrypts the TOTP secrets in the database. The app does not start without it. |
+| `VIDEONINJA_DB_KEY` | unset | The key itself (base64), instead of a file. Setting it together with `VIDEONINJA_DB_KEY_FILE` refuses the start. The app removes it from its environment once read, so nginx, tusd and ffmpeg don't inherit it. Prefer the file (Docker secret): a variable shows in `docker inspect`. |
 | `VIDEONINJA_CATALOG_DIR` | `catalog/` next to the database (image: `/srv/catalog`) | Catalogue snapshots (static JSON files, see [Catalogue updates](#catalogue-updates)). |
 | `VIDEONINJA_X_ACCEL` | unset (image: `1`) | `1`: behind nginx, `/api/catalog` answers with `X-Accel-Redirect` and nginx sends the file. Unset: the app sends the file itself (development, no nginx). |
 | `VIDEONINJA_MEDIA_DIR` | `media/` next to the database (image: `/srv/media`) | Encoded videos and thumbnails (`video/<h2>/<sha256>/…`), written by the encoding queue. Without nginx the app serves the thumbnails from here. |
@@ -324,7 +325,7 @@ Install both first (see [Prerequisites](#prerequisites) and
 x265 preset keeps encodings short while developing:
 
 ```bash
-VIDEONINJA_DB=dev.db VIDEONINJA_KEY_FILE=dev.key VIDEONINJA_X265_PRESET=ultrafast \
+VIDEONINJA_DB=dev.db VIDEONINJA_DB_KEY_FILE=dev.key VIDEONINJA_X265_PRESET=ultrafast \
   uvicorn app.main:app --reload
 # The log must show: "tusd started (pid …)" and "Encoder started".
 ```
@@ -409,11 +410,9 @@ Compose plugin, Docker data on a local SSD (SQLite must not be on NFS).
 ```bash
 sudo install -d -m 755 /opt/videoninja
 cd /opt/videoninja
-sudo install -d -m 700 secrets
-sudo sh -c 'umask 077; openssl rand -base64 32 > secrets/videoninja_key'
-# The container runs as UID 10001 and must be able to read the key.
-sudo chown 10001 secrets/videoninja_key
-sudo chmod 400 secrets/videoninja_key
+# The encryption key, in .env next to docker-compose.yaml: Compose reads it and
+# passes it to the container as VIDEONINJA_DB_KEY. Readable by root only.
+sudo sh -c 'umask 077; echo "VIDEONINJA_DB_KEY=$(openssl rand -base64 32)" > .env'
 # Catalogue snapshots, uploads (originals waiting to be encoded) and media
 # (encoded videos and thumbnails): written by the container (UID 10001).
 sudo install -d -o 10001 -m 750 /srv/catalog /srv/uploads /srv/media
@@ -431,14 +430,15 @@ database volume, so a copy of the database alone reveals nothing.
 copy). If the key is lost, no stored TOTP secret can be read and nobody can log
 in.
 
-### 2. `compose.yaml`
+### 2. `docker-compose.yaml`
 
-Replace `<dockerhub-user>` with the Docker Hub account CI publishes to.
+The image is published on Docker Hub:
+[thecyberdoc/videoninja](https://hub.docker.com/r/thecyberdoc/videoninja).
 
 ```yaml
 services:
   server:
-    image: <dockerhub-user>/videoninja:0.1   # or a full version / latest
+    image: thecyberdoc/videoninja:latest   # or pin a version: 1.2 / 1.2.3
     container_name: videoninja
     restart: unless-stopped
     read_only: true
@@ -450,6 +450,12 @@ services:
     mem_limit: 2g
     tmpfs: [/tmp]   # also nginx's pid and temporary files
     environment:
+      # The encryption key, from .env (step 1): not written in this file.
+      VIDEONINJA_DB_KEY: ${VIDEONINJA_DB_KEY:?missing in .env}
+      # Or, safer, a Docker secret (not shown by docker inspect): remove the
+      # line above and uncomment `secrets:` here and at the end of the file. The
+      # app reads VIDEONINJA_DB_KEY_FILE, by default /run/secrets/videoninja_key.
+      # VIDEONINJA_DB_KEY_FILE: /run/secrets/videoninja_key
       VIDEONINJA_MAX_UPLOAD_GB: "20"
       VIDEONINJA_X265_PRESET: medium   # "fast": about 2x faster, slightly bigger files
       TZ: Europe/Zurich                # invitation expiry dates; users get their browser's
@@ -458,23 +464,46 @@ services:
       - /srv/catalog:/srv/catalog
       - /srv/media:/srv/media
       - /srv/uploads:/srv/uploads
-    secrets:
-      - videoninja_key
+    # secrets:
+    #   - videoninja_key
     ports:
       # nginx, plain HTTP: only your TLS proxy, on this host, may reach it.
       # (Proxy in another container: put both on a Docker network instead.)
       - "127.0.0.1:8080:8080"
     logging:
-      driver: json-file
-      options: { max-size: "10m", max-file: "3" }
+      driver: journald   # rotated by journald; journalctl -t docker-videoninja
+      options:
+        tag: "docker-{{.Name}}"
 
-secrets:
-  videoninja_key:
-    file: ./secrets/videoninja_key   # mounted at /run/secrets/videoninja_key
+# secrets:
+#   videoninja_key:
+#     file: ./secrets/videoninja_key   # mounted at /run/secrets/videoninja_key
 
 volumes:
   data:   # holds /data/videoninja.db
 ```
+
+The key in `VIDEONINJA_DB_KEY` is visible to anyone who can run
+`docker inspect` on the container (root or the `docker` group on this host).
+Keep `.env` readable by root only and never commit it. The app removes the
+variable from its environment once read, so nginx, tusd and ffmpeg never see it.
+
+A Docker secret keeps the key out of `docker inspect`. To use one instead of
+`.env`, create the file and uncomment the two `secrets:` blocks above (and
+remove the `VIDEONINJA_DB_KEY` line):
+
+```bash
+sudo install -d -m 700 secrets
+sudo sh -c 'umask 077; openssl rand -base64 32 > secrets/videoninja_key'
+# The container runs as UID 10001 and must be able to read the key.
+sudo chown 10001 secrets/videoninja_key
+sudo chmod 400 secrets/videoninja_key
+```
+
+Set only one of `VIDEONINJA_DB_KEY` and `VIDEONINJA_DB_KEY_FILE`: with both,
+the app refuses to start. Moving an existing installation from one to the
+other: put the **same** key in the secret file (the value after
+`VIDEONINJA_DB_KEY=` in `.env`), or nobody can log in.
 
 Published tags, for a release `v1.2.3`: `1.2.3` (exact), `1.2` (receives patch
 releases), `1` and `latest`. Pin `1.2` for safe updates, or `1.2.3` to stay put.

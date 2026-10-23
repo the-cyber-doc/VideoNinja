@@ -4,8 +4,9 @@ Format: "v1:<nonce>:<ciphertext+tag>" (base64url), AES-256-GCM. The "v1" prefix
 names the key version, so the key can be rotated later. The caller passes
 associated data (e.g. the user ID) so a ciphertext copied to another row fails.
 
-The key is 32 random bytes, base64, in a file kept apart from the database
-(a Docker secret in production). Without it the app does not start.
+The key is 32 random bytes, base64, kept apart from the database: in a file
+(VIDEONINJA_DB_KEY_FILE, a Docker secret in production) or in the environment
+(VIDEONINJA_DB_KEY). Without it, or with both, the app does not start.
 """
 
 import base64
@@ -22,23 +23,35 @@ _aead: AESGCM | None = None
 
 
 def key_file() -> Path:
-    return Path(os.environ.get("VIDEONINJA_KEY_FILE", DEFAULT_KEY_FILE))
+    return Path(os.environ.get("VIDEONINJA_DB_KEY_FILE", DEFAULT_KEY_FILE))
 
 
-def load_key() -> None:
-    """Read the key file. Raises RuntimeError with a clear message if missing or invalid."""
-    global _aead
+def _read_key() -> tuple[str, str]:
+    """The key's base64 text and where it came from (for error messages, never the key)."""
+    text = os.environ.pop("VIDEONINJA_DB_KEY", None)  # popped: the processes the app starts don't inherit it
+    if text is not None:
+        if "VIDEONINJA_DB_KEY_FILE" in os.environ:
+            raise RuntimeError("Both VIDEONINJA_DB_KEY and VIDEONINJA_DB_KEY_FILE are set: keep only one")
+        return text, "VIDEONINJA_DB_KEY"
     path = key_file()
     try:
-        key = base64.b64decode(path.read_text(encoding="utf-8").strip(), validate=True)
+        return path.read_text(encoding="utf-8"), str(path)
     except FileNotFoundError:
         raise RuntimeError(
             f"Encryption key file not found: {path} (README: Development step 2, Production step 1)"
         ) from None
+
+
+def load_key() -> None:
+    """Read the key. Raises RuntimeError with a clear message if missing, ambiguous or invalid."""
+    global _aead
+    text, source = _read_key()
+    try:
+        key = base64.b64decode(text.strip(), validate=True)
     except ValueError:
-        raise RuntimeError(f"Encryption key file is not valid base64: {path}") from None
+        raise RuntimeError(f"Encryption key is not valid base64: {source}") from None
     if len(key) != 32:
-        raise RuntimeError(f"Encryption key must be 32 bytes, got {len(key)}: {path}")
+        raise RuntimeError(f"Encryption key must be 32 bytes, got {len(key)}: {source}")
     _aead = AESGCM(key)
 
 

@@ -63,6 +63,32 @@ def test_bad_key_file_refuses_start(key_file, tmp_path, monkeypatch, content, me
             pass
 
 
+def test_key_from_environment(key_file, monkeypatch):
+    """VIDEONINJA_DB_KEY instead of the file; removed from the environment the children inherit."""
+    crypto.load_key()
+    token = crypto.encrypt("secret", "ad")
+    monkeypatch.delenv("VIDEONINJA_DB_KEY_FILE")
+    monkeypatch.setenv("VIDEONINJA_DB_KEY", f" {key_file.read_text()}\n")
+    key_file.unlink()
+    crypto.load_key()
+    assert "VIDEONINJA_DB_KEY" not in os.environ
+    assert crypto.decrypt(token, "ad") == "secret"
+
+
+@pytest.mark.parametrize("value, message", [(None, "Both"), ("not base64!", "base64: VIDEONINJA_DB_KEY$"),
+                                            ("", "32 bytes, got 0: VIDEONINJA_DB_KEY$")])
+def test_bad_key_variable_refuses_start(key_file, tmp_path, monkeypatch, value, message):
+    if value is None:
+        value = key_file.read_text()  # valid, but VIDEONINJA_DB_KEY_FILE is set too
+    else:
+        monkeypatch.delenv("VIDEONINJA_DB_KEY_FILE")
+    monkeypatch.setenv("VIDEONINJA_DB_KEY", value)
+    monkeypatch.setenv("VIDEONINJA_DB", str(tmp_path / "videoninja.db"))
+    with pytest.raises(RuntimeError, match=message):
+        with TestClient(app):
+            pass
+
+
 def test_login_refused_if_secret_moved_to_other_row(client, admin_secret):
     """A ciphertext copied onto another user's row must not decrypt there."""
     con = sqlite3.connect(db.db_path())

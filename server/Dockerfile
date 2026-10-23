@@ -87,13 +87,15 @@ COPY server/database/ database/
 COPY --chmod=755 tools/encode-videos/encode-videos.sh /app/encode/
 COPY tools/encode-videos/nnedi3_weights.bin /app/encode/
 
+# The encryption key: the Docker secret /run/secrets/videoninja_key (the app's
+# default), or VIDEONINJA_DB_KEY_FILE (another file), or VIDEONINJA_DB_KEY (the key
+# itself). Not set here: setting both refuses the start.
 # Volumes: database, catalogue snapshots, media, uploads waiting to be encoded.
 # The rest of the filesystem can stay read-only (nginx's temporary files: /tmp).
 ENV PATH=/opt/venv/bin:$PATH \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     VIDEONINJA_DB=/data/videoninja.db \
-    VIDEONINJA_KEY_FILE=/run/secrets/videoninja_key \
     VIDEONINJA_CATALOG_DIR=/srv/catalog \
     VIDEONINJA_UPLOAD_DIR=/srv/uploads \
     VIDEONINJA_MEDIA_DIR=/srv/media \

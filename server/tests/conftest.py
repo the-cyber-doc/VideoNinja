@@ -31,7 +31,7 @@ def server_zone_utc(monkeypatch):
 def key_file(tmp_path, monkeypatch):
     path = tmp_path / "videoninja_key"
     path.write_text(base64.b64encode(os.urandom(32)).decode())
-    monkeypatch.setenv("VIDEONINJA_KEY_FILE", str(path))
+    monkeypatch.setenv("VIDEONINJA_DB_KEY_FILE", str(path))
     return path
 
 

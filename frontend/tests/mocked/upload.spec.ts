@@ -350,20 +350,27 @@ test('the timeline shows the frame under the pointer; the seek marker stays', as
 	await expect(marker(page)).toHaveAttribute('aria-valuenow', '1');
 });
 
-test('→ steps one frame of the video (measured: 25 fps here)', async ({ page }) => {
-	await setup(page);
-	await openClip(page);
-	const box = await timeline(page);
-	// The frame duration is measured in the background; until then, 1/30 s.
-	await expect
-		.poll(async () => {
-			await page.mouse.click(box.x + box.width * 0.25, box.y + box.height / 2); // 1 s
-			await page.mouse.move(box.x, box.y - 40); // off the timeline: no preview
-			const before = await shown(page);
-			await page.locator('body').press('ArrowRight');
-			return Math.round(((await shown(page)) - before) * 1000);
-		})
-		.toBe(40);
+// Exact frame steps need the browser's frame timestamps (requestVideoFrameCallback).
+// Playwright's WebKit on Linux plays media through GStreamer, not Safari's media
+// stack: its timestamps are not the frames' (CI measured 6, 21 and 33 ms for 40).
+test.describe('frame by frame', () => {
+	test.skip(({ browserName }) => browserName === 'webkit', "Linux WebKit's frame timestamps (GStreamer) are not Safari's");
+
+	test('→ steps one frame of the video (measured: 25 fps here)', async ({ page }) => {
+		await setup(page);
+		await openClip(page);
+		const box = await timeline(page);
+		// The frame duration is measured in the background; until then, 1/30 s.
+		await expect
+			.poll(async () => {
+				await page.mouse.click(box.x + box.width * 0.25, box.y + box.height / 2); // 1 s
+				await page.mouse.move(box.x, box.y - 40); // off the timeline: no preview
+				const before = await shown(page);
+				await page.locator('body').press('ArrowRight');
+				return Math.round(((await shown(page)) - before) * 1000);
+			})
+			.toBe(40);
+	});
 });
 
 test('video tags come right after the video, before the segment choices', async ({ page }) => {
