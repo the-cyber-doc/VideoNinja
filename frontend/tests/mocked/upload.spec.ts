@@ -168,6 +168,15 @@ test('modes and the "all segments done" checkbox', async ({ page }) => {
 	await expect(proceed(page)).toBeDisabled();
 });
 
+test('the file name above the video, me as uploader and as the author of my segments', async ({ page }) => {
+	await setup(page);
+	await openClip(page);
+	await expect(page.locator('.about .filename')).toHaveText('clip.webm');
+	await expect(page.locator('.about .uploader')).toHaveText('Uploaded by kenji');
+	await drag(page, 0.1, 0.4);
+	await expect(page.getByRole('article', { name: 'Segment 1' }).locator('header .author')).toHaveText('Created by kenji');
+});
+
 test('segments by drag and by I/O, complete them, proceed: upload then submit', async ({ page }) => {
 	const fake = await setup(page);
 	await openClip(page);

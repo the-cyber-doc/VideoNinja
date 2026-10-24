@@ -20,6 +20,7 @@
 
 	let catalog = $state<Catalog | null>(null);
 	let annotation = $state<Annotation | null>(null);
+	let about = $state({ filename: '', uploadedBy: null as string | null });
 	let saved = ''; // the annotation as loaded or last saved: unsaved changes ask before leaving
 	let performers = $state<Performer[]>([]);
 	let tags = $state<Tag[]>([]);
@@ -38,6 +39,7 @@
 			Promise.all([loadCatalog(), getAnnotations(video)]).then(
 				([c, a]) => {
 					catalog = c;
+					about = { filename: a.original_filename, uploadedBy: a.uploaded_by };
 					annotation = toAnnotation(a, c);
 					saved = JSON.stringify(annotation);
 				},
@@ -90,6 +92,8 @@
 		{#if annotation && catalog}
 			<AnnotationPanel
 				src={videoUrl(id)}
+				filename={about.filename}
+				uploadedBy={about.uploadedBy}
 				bind:annotation
 				{catalog}
 				{performers}

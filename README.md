@@ -278,7 +278,8 @@ The app is installable and opens offline. Pieces:
 | `static/icons/*.png` | App icons (192, 512, maskable 512, Apple 180), generated from the favicon: run `npm run icons` after changing it, and commit the PNGs |
 | `static/manifest.webmanifest` | Name, icons, colours, `display: standalone` |
 | `src/service-worker/` | Service worker, registered by SvelteKit; type-checked with its own `tsconfig.json` (`npm run check`) |
-| `src/lib/pwa.ts` | App side: persistent storage, clearing user data on logout/login, catalogue update messages |
+| `src/lib/pwa.ts` | App side: persistent storage, clearing user data on logout/login, catalogue update messages, checks for a new version |
+| `src/lib/UpdateBanner.svelte` | "A new version of the app is available" with **Reload**, on every page |
 
 What the service worker does:
 
@@ -311,6 +312,16 @@ What the service worker does:
 - **Segment thumbnails** (`/media/segment/<id>/thumbnail`): cache first,
   checked in the background (a `404`, segment removed, deletes it).
 - **Everything else** (other API calls): network only, never cached.
+
+**New versions.** The browser looks for a new service worker only when a page
+loads, and an installed app is usually resumed, not reloaded. So the app also
+checks (`registration.update()`) whenever it comes back to the foreground, and
+every hour while it is open. A new service worker takes over at once
+(`skipWaiting`, `clients.claim`) and deletes the old shell cache, but the open
+page still runs the old code: it shows "A new version of the app is
+available" with a **Reload** button. It never reloads by itself, since an
+annotation may be in progress (upload drafts are saved; the Videos page asks
+before leaving unsaved changes). Not shown on the first install.
 
 User data (caches `data` and `media`) is deleted on logout and after each login. In
 production, nginx also sends `Clear-Site-Data` on logout.
@@ -447,6 +458,17 @@ Invitations and background jobs use the server's timezone (`TZ`). Offsets
 differ, so the text does not sort chronologically: SQL compares and orders
 dates through `datetime()` (which converts to UTC), never as plain text.
 Positions inside a video stay whole seconds (`segment.begin_s`, `end_s`).
+
+Authors: `video.uploaded_by` and `segment.created_by` (the user who added the
+segment, at upload or later on the Videos page; editing a segment keeps it).
+Both `ON DELETE SET NULL`. The annotation API sends display names (the user's
+name, else the username), never user IDs.
+
+`db_v1.sql` is still changed in place: there is no migration yet. A database
+created before a change to it must be rebuilt (development:
+`tools/make-dev-db.py --force`; production: a new setup). Since
+`segment.created_by` was added, older databases fail on the Videos page and
+on uploads.
 
 Tags: a tag's name and its fixed values' names are translated (`tag.name`,
 `tag_value.name`: translation IDs `tag.<id>.name`, `tag_value.<tag>.<id>.name`,

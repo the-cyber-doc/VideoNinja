@@ -79,15 +79,39 @@ def test_list_published_videos(admin):
 def test_get_annotations(admin):
     sql("INSERT INTO video_has_tags (video, tag, value) VALUES (1, 'place', 'dojo')")
     sql("INSERT INTO segment_has_tags (segment, tag, value) VALUES (2, 'place', 'outdoor')")
+    sql("UPDATE video SET uploaded_by = 1")
+    sql("UPDATE segment SET created_by = 1 WHERE id = 1")  # segment 2: author unknown
     assert admin.get("/api/videos/1/annotations").json() == {
         "all_segments_done": False,
+        "original_filename": "a.mp4",
+        "uploaded_by": "Admin",
         "tags": [{"id": "place", "value": "dojo"}],
         "segments": [
-            {"id": 1, "begin_s": 12, "end_s": 27, "technique": "gyokko.koku", "performer": "hatsumi", "tags": []},
+            {"id": 1, "begin_s": 12, "end_s": 27, "technique": "gyokko.koku", "performer": "hatsumi", "tags": [],
+             "created_by": "Admin"},
             {"id": 2, "begin_s": 40, "end_s": 55, "technique": "gyokko.koku", "performer": "hatsumi",
-             "tags": [{"id": "place", "value": "outdoor"}]},
+             "tags": [{"id": "place", "value": "outdoor"}], "created_by": None},
         ],
     }
+
+
+def test_authors_by_display_name(admin, tmp_path, monkeypatch):
+    """A new segment is its creator's; an edited one keeps its author, whatever the client sends."""
+    monkeypatch.setenv("VIDEONINJA_MEDIA_DIR", str(tmp_path / "media"))
+    (tmp_path / "media" / "video" / "ab" / SHA).mkdir(parents=True)
+    monkeypatch.setattr("app.encoder.thumbnail", lambda video, at, out: out.write_bytes(b"jpg"))
+    sql("UPDATE segment SET created_by = 1")
+    sql("UPDATE user SET name = NULL WHERE id = 1")  # no display name: the username
+    secret = register(create(admin, role="video_mgmt"))  # kenji, display name "Kenji"
+    kenji = user_login("kenji", USER_PASSWORD, pyotp.TOTP(secret).now())
+    body = {"all_segments_done": False, "segments": [
+        {"id": 1, "begin_s": 12, "end_s": 28, "technique": "gyokko.koku", "performer": "hatsumi",
+         "created_by": "Kenji"},  # read only: ignored
+        {"begin_s": 30, "end_s": 35, "technique": "gyokko.koku", "performer": "hatsumi", "created_by": "admin"},
+    ]}
+    r = kenji.put("/api/videos/1/annotations", json=body)
+    assert r.status_code == 200, r.text
+    assert [(s["id"], s["created_by"]) for s in r.json()["segments"]] == [(1, "admin"), (3, "Kenji")]
 
 
 def test_save_keeps_ids_adds_and_removes(admin, tmp_path, monkeypatch):

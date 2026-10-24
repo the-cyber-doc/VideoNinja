@@ -4,6 +4,7 @@
 	import { techniquesOf, type Catalog } from '../catalog.svelte';
 	import Icon from '../Icon.svelte';
 	import { t } from '../i18n.svelte';
+	import { displayName } from '../session.svelte';
 	import { formatTime } from '../time';
 	import type { Performer, Tag } from './api';
 	import type { DraftSegment } from './draft.svelte';
@@ -42,6 +43,8 @@
 		segment.school && segment.level ? techniquesOf(catalog, segment.school, segment.level) : []
 	);
 	const missing = (field: SegmentField) => problems.includes(field);
+	// Not set: a new segment, mine. null: its author is unknown.
+	const author = $derived(segment.createdBy === undefined ? displayName() : segment.createdBy);
 	const time = (seconds: number) => `${formatTime(Math.floor(seconds))}.${Math.floor((seconds % 1) * 10)}`;
 
 	function schoolChanged() {
@@ -75,6 +78,7 @@
 			<strong>{t('upload.segment_n', { n: number })}</strong>
 			<span class:invalid={missing('times')}>{time(segment.begin)} – {time(segment.end)}</span>
 		</button>
+		<span class="author">{t('upload.segment.created_by', { name: author ?? t('upload.deleted_user') })}</span>
 		<button
 			type="button"
 			class="icon"
@@ -155,7 +159,15 @@
 	header {
 		display: flex;
 		align-items: center;
-		justify-content: space-between;
+		gap: 0.5rem;
+	}
+	header .link {
+		margin-right: auto;
+	}
+	.author {
+		font-size: 0.85rem;
+		color: var(--muted);
+		text-align: right;
 	}
 	button.link {
 		display: flex;

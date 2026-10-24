@@ -37,10 +37,12 @@ async function setup(page: Page, access = MANAGER) {
 	const sent: { method: string; path: string; body?: unknown }[] = [];
 	let annotations = {
 		all_segments_done: false,
+		original_filename: 'kata-1.mp4',
+		uploaded_by: 'Hana',
 		tags: [],
 		segments: [
-			{ id: 11, begin_s: 1, end_s: 2, technique: 'gyokko.koku', performer: 'hatsumi', tags: [] },
-			{ id: 12, begin_s: 2, end_s: 3, technique: 'gyokko.keto', performer: 'hatsumi', tags: [] }
+			{ id: 11, begin_s: 1, end_s: 2, technique: 'gyokko.koku', performer: 'hatsumi', tags: [], created_by: 'Hana' },
+			{ id: 12, begin_s: 2, end_s: 3, technique: 'gyokko.keto', performer: 'hatsumi', tags: [], created_by: null }
 		]
 	};
 	page.on('request', (r) => {
@@ -222,6 +224,40 @@ test('annotate a published video: its segments loaded, Proceed saves them, nothi
 	expect(sent.filter((s) => s.path.startsWith('/files') || s.path.includes('/submit'))).toEqual([]); // no upload
 });
 
+test('who did what: the file name, its uploader, each segment\'s author (mine for a new one)', async ({ page }) => {
+	await setup(page);
+	await page.goto('/videos/1');
+	const about = page.locator('.about');
+	await expect(about.locator('.filename')).toHaveText('kata-1.mp4');
+	await expect(about.locator('.uploader')).toHaveText('Uploaded by Hana');
+	// The file name above the video, on the left; the uploader opposite.
+	const [name, uploader, video] = await Promise.all(
+		[about.locator('.filename'), about.locator('.uploader'), page.locator('video').first()].map((l) => l.boundingBox())
+	);
+	expect(name!.y + name!.height).toBeLessThanOrEqual(video!.y);
+	expect(uploader!.x).toBeGreaterThan(name!.x + name!.width);
+
+	const author = (n: number) => page.getByRole('article', { name: `Segment ${n}` }).locator('header .author');
+	await expect(author(1)).toHaveText('Created by Hana');
+	await expect(author(2)).toHaveText('Created by a deleted user');
+	// Left of the delete button.
+	const [label, cross] = await Promise.all([
+		author(1).boundingBox(),
+		page.getByRole('article', { name: 'Segment 1' }).getByRole('button', { name: 'Delete this segment' }).boundingBox()
+	]);
+	expect(label!.x + label!.width).toBeLessThanOrEqual(cross!.x);
+
+	// A new segment (drag on the timeline): mine (no display name: the username).
+	const slider = page.getByRole('slider', { name: 'Timeline' });
+	await slider.scrollIntoViewIfNeeded();
+	const box = (await slider.boundingBox())!;
+	await page.mouse.move(box.x + box.width * 0.8, box.y + box.height / 2);
+	await page.mouse.down();
+	await page.mouse.move(box.x + box.width * 0.95, box.y + box.height / 2, { steps: 4 });
+	await page.mouse.up();
+	await expect(author(3)).toHaveText('Created by kenji');
+});
+
 test('leaving with unsaved changes asks first', async ({ page }) => {
 	await setup(page);
 	await page.goto('/videos/1');
@@ -249,4 +285,8 @@ test('in French', async ({ page }) => {
 	await page.goto('/videos');
 	await expect(page.locator('details.section summary .name')).toHaveText(['En cours', 'À annoter', 'Terminées', 'Sans technique']);
 	await expect(page.getByRole('navigation', { name: 'Navigation principale' }).getByRole('link')).toHaveText(['Écoles', 'Téléverser', 'Vidéos']);
+	await page.goto('/videos/1');
+	await expect(page.locator('.about .uploader')).toHaveText('Envoyée par Hana');
+	await expect(page.getByRole('article', { name: 'Segment 1' }).locator('header .author')).toHaveText('Créé par Hana');
+	await expect(page.getByRole('article', { name: 'Segment 2' }).locator('header .author')).toHaveText('Créé par un utilisateur supprimé');
 });

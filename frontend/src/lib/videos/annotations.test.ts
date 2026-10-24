@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Catalog } from '../catalog.svelte';
-import { toAnnotation, toAnnotations, videoSection, type Annotations } from './annotations';
+import { toAnnotation, toAnnotations, videoSection, type AnnotationsOut } from './annotations';
 
 const catalog = {
 	schools: [],
@@ -21,19 +21,21 @@ describe('sections', () => {
 });
 
 describe('annotations <-> the panel', () => {
-	const saved: Annotations = {
+	const saved: AnnotationsOut = {
 		all_segments_done: false,
+		original_filename: 'kata.mov',
+		uploaded_by: 'Hana',
 		tags: [{ id: 'note', value: null as unknown as string }, { id: 'place', value: 'dojo' }],
-		segments: [{ id: 4, begin_s: 12, end_s: 27, technique: 'gyokko.koku', performer: 'hatsumi', tags: [] }]
+		segments: [{ id: 4, begin_s: 12, end_s: 27, technique: 'gyokko.koku', performer: 'hatsumi', tags: [], created_by: 'Hana' }]
 	};
 
-	it('school and level from the catalogue, the ID kept, empty values dropped', () => {
+	it('school and level from the catalogue, the ID and author kept, empty values dropped', () => {
 		expect(toAnnotation(saved, catalog)).toEqual({
 			mode: null,
 			allSegmentsDone: false,
 			tags: [{ id: 'note' }, { id: 'place', value: 'dojo' }],
 			segments: [
-				{ key: 1, id: 4, begin: 12, end: 27, school: 'gyokko', level: 'shoden', technique: 'gyokko.koku', performer: 'hatsumi', tags: [] }
+				{ key: 1, id: 4, createdBy: 'Hana', begin: 12, end: 27, school: 'gyokko', level: 'shoden', technique: 'gyokko.koku', performer: 'hatsumi', tags: [] }
 			]
 		});
 	});
@@ -43,9 +45,9 @@ describe('annotations <-> the panel', () => {
 		expect(toAnnotation({ ...saved, segments: [], all_segments_done: true }, catalog).mode).toBe('none');
 	});
 
-	it('back to the server: IDs kept, new segments without one, whole seconds', () => {
+	it('back to the server: IDs kept, new segments without one, whole seconds, no author', () => {
 		const annotation = toAnnotation(saved, catalog);
-		annotation.segments.push({ ...annotation.segments[0], key: 2, id: undefined, begin: 30.4, end: 40.2 });
+		annotation.segments.push({ ...annotation.segments[0], key: 2, id: undefined, createdBy: undefined, begin: 30.4, end: 40.2 });
 		annotation.allSegmentsDone = true;
 		expect(toAnnotations(annotation)).toEqual({
 			all_segments_done: true,

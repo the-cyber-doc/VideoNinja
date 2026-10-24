@@ -407,11 +407,13 @@ def insert_video(
 
 
 def insert_segment(
-    con: sqlite3.Connection, video_id: int, technique: str, begin_s: int, end_s: int, performer: str
+    con: sqlite3.Connection, video_id: int, technique: str, begin_s: int, end_s: int, performer: str, user_id: int
 ) -> int:
+    """user_id: who created the segment (kept when it is edited later)."""
     return con.execute(
-        'INSERT INTO "segment" ("video", "technique", "begin_s", "end_s", "performer") VALUES (?, ?, ?, ?, ?)',
-        (video_id, technique, begin_s, end_s, performer),
+        'INSERT INTO "segment" ("video", "technique", "begin_s", "end_s", "performer", "created_by")'
+        " VALUES (?, ?, ?, ?, ?, ?)",
+        (video_id, technique, begin_s, end_s, performer, user_id),
     ).lastrowid
 
 
@@ -460,17 +462,23 @@ def published_videos(con: sqlite3.Connection) -> list[sqlite3.Row]:
 
 
 def published_video(con: sqlite3.Connection, video_id: int) -> sqlite3.Row | None:
+    """uploaded_by: the uploader's display name (name, else username); None if unknown."""
     return con.execute(
-        'SELECT "id", "sha256sum", "thumbnail", "duration_s", "all_segments_done" FROM "video"'
-        " WHERE \"id\" = ? AND \"status\" = 'published'",
+        'SELECT v."id", v."sha256sum", v."thumbnail", v."duration_s", v."all_segments_done",'
+        ' v."original_filename", COALESCE(u."name", u."username") AS "uploaded_by"'
+        ' FROM "video" v LEFT JOIN "user" u ON u."id" = v."uploaded_by"'
+        " WHERE v.\"id\" = ? AND v.\"status\" = 'published'",
         (video_id,),
     ).fetchone()
 
 
 def video_segments(con: sqlite3.Connection, video_id: int) -> list[sqlite3.Row]:
+    """created_by: the author's display name (name, else username); None if unknown."""
     return con.execute(
-        'SELECT "id", "begin_s", "end_s", "technique", "performer" FROM "segment"'
-        ' WHERE "video" = ? ORDER BY "begin_s", "id"',
+        'SELECT s."id", s."begin_s", s."end_s", s."technique", s."performer",'
+        ' COALESCE(u."name", u."username") AS "created_by"'
+        ' FROM "segment" s LEFT JOIN "user" u ON u."id" = s."created_by"'
+        ' WHERE s."video" = ? ORDER BY s."begin_s", s."id"',
         (video_id,),
     ).fetchall()
 

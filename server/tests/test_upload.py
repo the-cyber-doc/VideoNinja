@@ -283,6 +283,13 @@ def test_upload_date_in_the_browser_timezone(admin):
     assert mine["uploaded_at"].endswith("-03:00")
 
 
+def test_segments_created_by_the_uploader(admin):
+    assert submit(admin, uploaded(admin)).status_code == 201
+    con = sqlite3.connect(db.db_path())
+    assert con.execute("SELECT s.created_by, u.username FROM segment s JOIN user u ON u.id = s.created_by"
+                       ).fetchall() == [(1, "admin")]
+
+
 def test_without_segments(admin):
     r = submit(admin, uploaded(admin), segments=[], all_segments_done=False)  # "define segments later"
     assert r.status_code == 201

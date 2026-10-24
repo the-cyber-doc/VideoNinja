@@ -4,3 +4,6 @@ import type { User } from './api';
 export const session = $state<{ user: User | null }>({ user: null });
 
 export const hasAccess = (access: string) => session.user?.access.includes(access) ?? false;
+
+/** The logged-in user's display name: their name, else their username. */
+export const displayName = () => (session.user ? (session.user.name ?? session.user.username) : '');

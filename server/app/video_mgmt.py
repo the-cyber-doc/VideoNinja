@@ -48,6 +48,17 @@ class Annotations(BaseModel):
     tags: list[TagIn] = Field(default=[], max_length=50)
 
 
+# Read only: who did what, by display name (never user IDs). None: user unknown.
+class SegmentOut(AnnotatedSegment):
+    created_by: str | None
+
+
+class AnnotationsOut(Annotations):
+    original_filename: str
+    uploaded_by: str | None
+    segments: list[SegmentOut]
+
+
 def _published(con: sqlite3.Connection, video_id: int) -> sqlite3.Row:
     row = queries.published_video(con, video_id)
     if row is None:
@@ -68,15 +79,17 @@ def list_videos(_: sqlite3.Row = Depends(manager), con: sqlite3.Connection = Dep
 @router.get("/videos/{video_id}/annotations")
 def get_annotations(
     video_id: int, _: sqlite3.Row = Depends(manager), con: sqlite3.Connection = Depends(db.get_db)
-) -> Annotations:
+) -> AnnotationsOut:
     video = _published(con, video_id)
     segment_tags: dict[int, list[sqlite3.Row]] = {}
     for r in queries.video_segment_tags(con, video_id):
         segment_tags.setdefault(r["segment"], []).append(r)
-    return Annotations(
+    return AnnotationsOut(
         all_segments_done=video["all_segments_done"],
+        original_filename=video["original_filename"],
+        uploaded_by=video["uploaded_by"],
         tags=_tags(queries.video_tags(con, video_id)),
-        segments=[AnnotatedSegment(**dict(s), tags=_tags(segment_tags.get(s["id"], [])))
+        segments=[SegmentOut(**dict(s), tags=_tags(segment_tags.get(s["id"], [])))
                   for s in queries.video_segments(con, video_id)],
     )
 
@@ -88,7 +101,7 @@ def save_annotations(
     me: sqlite3.Row = Depends(manager),
     con: sqlite3.Connection = Depends(db.get_db),
     zone: tzinfo = Depends(user_zone),
-) -> Annotations:
+) -> AnnotationsOut:
     video = _published(con, video_id)
     existing = {s["id"]: s for s in queries.video_segments(con, video_id)}
     known_tags = tag_rules(con)
@@ -116,7 +129,7 @@ def save_annotations(
             old = existing.get(segment.id)
             if old is None:
                 segment_id = queries.insert_segment(
-                    con, video_id, segment.technique, segment.begin_s, segment.end_s, segment.performer)
+                    con, video_id, segment.technique, segment.begin_s, segment.end_s, segment.performer, me["id"])
                 retimed.append(segment_id)
             else:
                 segment_id = segment.id

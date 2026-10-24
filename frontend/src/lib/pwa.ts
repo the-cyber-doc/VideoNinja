@@ -13,8 +13,34 @@ export function registerServiceWorker() {
 			.getRegistrations()
 			.then((all) => all.forEach((registration) => registration.unregister()));
 	} else {
-		navigator.serviceWorker.register(url('/service-worker.js'), { scope: url('/') }).catch((e) => console.error(e));
+		navigator.serviceWorker
+			.register(url('/service-worker.js'), { scope: url('/') })
+			.then(checkForUpdates, (e) => console.error(e));
 	}
+}
+
+const UPDATE_CHECK_MS = 60 * 60 * 1000;
+
+/** The browser looks for a new service worker only when a page loads: an
+ * installed app is resumed instead, and SvelteKit navigations load no page.
+ * So: when the app comes back to the foreground, and every hour while open. */
+function checkForUpdates(registration: ServiceWorkerRegistration) {
+	const check = () => registration.update().catch(() => {}); // offline: next time
+	document.addEventListener('visibilitychange', () => document.visibilityState === 'visible' && check());
+	setInterval(check, UPDATE_CHECK_MS);
+}
+
+/** Call `listener` when a new version of the app took over (its service worker
+ * activates at once and deletes the old files): the page still runs the old code
+ * until it is reloaded. Not on the first install (the page had no service worker). */
+export function onAppUpdated(listener: () => void) {
+	const container = navigator.serviceWorker;
+	if (!container) return;
+	let controlled = !!container.controller;
+	container.addEventListener('controllerchange', () => {
+		if (controlled) listener();
+		controlled = true;
+	});
 }
 
 /** Ask the browser not to evict the caches under storage pressure (best effort). */

@@ -6,6 +6,7 @@
 	import type { Snippet } from 'svelte';
 	import type { Catalog } from '../catalog.svelte';
 	import { t } from '../i18n.svelte';
+	import { displayName } from '../session.svelte';
 	import type { Performer, Tag } from './api';
 	import type { Annotation, Mode } from './draft.svelte';
 	import Editor from './Editor.svelte';
@@ -15,6 +16,8 @@
 
 	let {
 		src,
+		filename,
+		uploadedBy = displayName(),
 		annotation = $bindable(),
 		catalog,
 		performers,
@@ -27,6 +30,10 @@
 		children
 	}: {
 		src: string;
+		/** The video's original file name. */
+		filename: string;
+		/** Who uploaded it (display name); null: user unknown. Default: the current user. */
+		uploadedBy?: string | null;
 		annotation: Annotation;
 		catalog: Catalog;
 		performers: Performer[];
@@ -67,6 +74,10 @@
 </script>
 
 <section class="card">
+	<div class="about">
+		<strong class="filename">{filename}</strong>
+		<span class="uploader">{t('upload.uploaded_by', { name: uploadedBy ?? t('upload.deleted_user') })}</span>
+	</div>
 	<Editor {src} bind:draft={annotation} bind:duration bind:playable bind:selected />
 	{#if !playable}
 		<p class="error">{t('upload.not_playable')}</p>
@@ -148,6 +159,20 @@
 		background: var(--surface);
 		border: 1px solid var(--border);
 		border-radius: var(--radius);
+	}
+	.about {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: baseline;
+		justify-content: space-between;
+		gap: 0.25rem 1rem;
+	}
+	.filename {
+		overflow-wrap: anywhere;
+	}
+	.uploader {
+		font-size: 0.85rem;
+		color: var(--muted);
 	}
 	.mode {
 		display: flex;

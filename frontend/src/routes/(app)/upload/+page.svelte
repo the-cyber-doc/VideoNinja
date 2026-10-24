@@ -245,6 +245,7 @@
 			{#await catalog then c}
 				<AnnotationPanel
 					{src}
+					filename={draft.originalFilename}
 					bind:annotation={draft}
 					catalog={c}
 					{performers}

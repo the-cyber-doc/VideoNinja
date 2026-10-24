@@ -214,3 +214,40 @@ test('logout deletes the cached user data', async ({ page, context, at }) => {
 	expect((await cached()).filter((path) => path !== at('/api/setup/status'))).toEqual([]);
 	expect(await page.evaluate(() => caches.has('media'))).toBe(false); // clips and thumbnails too
 });
+
+test('a new version took over: the app offers to reload, never on the first install', async ({ page, context, at }) => {
+	await fakeApi(context);
+	// Counts the app's checks for a new service worker.
+	await page.addInitScript(() => {
+		const update = ServiceWorkerRegistration.prototype.update;
+		Object.assign(window, { updateChecks: 0 });
+		ServiceWorkerRegistration.prototype.update = function () {
+			(window as unknown as { updateChecks: number }).updateChecks++;
+			return update.call(this);
+		};
+	});
+	const checks = () => page.evaluate(() => (window as unknown as { updateChecks: number }).updateChecks);
+	const banner = page.getByRole('status').filter({ hasText: 'A new version of the app is available.' });
+
+	// First install: the service worker takes control of the open page, not an update.
+	await page.goto(at('/schools'));
+	await page.evaluate(() => navigator.serviceWorker.ready);
+	await expect.poll(() => page.evaluate(() => !!navigator.serviceWorker.controller)).toBe(true);
+	await expect(cards(page)).toHaveCount(2);
+	await expect(banner).toHaveCount(0);
+
+	// Back in the foreground (an installed app resumed): checked for a new version.
+	const before = await checks();
+	await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
+	await expect.poll(checks).toBe(before + 1);
+
+	// A new version took over (the browser's controllerchange; Playwright cannot
+	// serve another service-worker.js to the browser's update check).
+	await page.evaluate(() => navigator.serviceWorker.dispatchEvent(new Event('controllerchange')));
+	await expect(banner).toBeVisible();
+	await expect(cards(page)).toHaveCount(2); // nothing reloaded by itself
+
+	await banner.getByRole('button', { name: 'Reload' }).click();
+	await expect(cards(page)).toHaveCount(2);
+	await expect(banner).toHaveCount(0);
+});

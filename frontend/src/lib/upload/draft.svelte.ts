@@ -12,6 +12,9 @@ export interface DraftSegment {
 	key: number;
 	/** The server's segment ID, when annotating a published video again. */
 	id?: number;
+	/** Who created it (display name), from the server; null: user unknown. Shown, never sent.
+	 * Not set: a new segment, the current user's. */
+	createdBy?: string | null;
 	/** Seconds, frame-accurate on the page; rounded to whole seconds when sent. */
 	begin: number;
 	end: number;

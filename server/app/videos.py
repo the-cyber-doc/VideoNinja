@@ -136,7 +136,7 @@ def submit(
             queries.insert_video_tag(con, video_id, tag.id, tag.value)
         for segment in body.segments:
             segment_id = queries.insert_segment(
-                con, video_id, segment.technique, segment.begin_s, segment.end_s, segment.performer
+                con, video_id, segment.technique, segment.begin_s, segment.end_s, segment.performer, me["id"]
             )
             for tag in segment.tags:
                 queries.insert_segment_tag(con, segment_id, tag.id, tag.value)

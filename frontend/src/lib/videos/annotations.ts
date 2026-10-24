@@ -23,17 +23,24 @@ export interface SavedSegment extends SubmitSegment {
 	id?: number;
 }
 
-/** GET and PUT /api/videos/<id>/annotations. */
+/** PUT /api/videos/<id>/annotations. */
 export interface Annotations {
 	all_segments_done: boolean;
 	segments: SavedSegment[];
 	tags: TagValue[];
 }
 
+/** GET (and PUT's answer): also who did what, by display name (null: user unknown). */
+export interface AnnotationsOut extends Annotations {
+	original_filename: string;
+	uploaded_by: string | null;
+	segments: (SavedSegment & { created_by: string | null })[];
+}
+
 export const listVideos = () => api<VideoRow[]>('/api/videos');
-export const getAnnotations = (id: number) => api<Annotations>(`/api/videos/${id}/annotations`);
+export const getAnnotations = (id: number) => api<AnnotationsOut>(`/api/videos/${id}/annotations`);
 export const saveAnnotations = (id: number, body: Annotations) =>
-	api<Annotations>(`/api/videos/${id}/annotations`, body, 'PUT');
+	api<AnnotationsOut>(`/api/videos/${id}/annotations`, body, 'PUT');
 
 export const videoUrl = (id: number) => url(`/media/video/${id}`);
 export const videoThumbnailUrl = (id: number) => url(`/media/video/${id}/thumbnail`);
@@ -54,7 +61,7 @@ const tagValues = (tags: TagValue[]) =>
 /** The server's annotation, for the panel: school and level from the catalogue,
  * the mode from what was saved (no segment: "no technique" if marked done, else
  * "define later"). */
-export function toAnnotation(saved: Annotations, catalog: Catalog): Annotation {
+export function toAnnotation(saved: AnnotationsOut, catalog: Catalog): Annotation {
 	const mode: Mode = saved.segments.length ? null : saved.all_segments_done ? 'none' : 'later';
 	return {
 		mode,
@@ -65,6 +72,7 @@ export function toAnnotation(saved: Annotations, catalog: Catalog): Annotation {
 			return {
 				key: i + 1,
 				id: s.id,
+				createdBy: s.created_by,
 				begin: s.begin_s,
 				end: s.end_s,
 				school: technique?.ryu ?? '',
