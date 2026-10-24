@@ -289,6 +289,27 @@ test('my uploads: queue position, encoding progress, failure with retry', async 
 	await expect.poll(() => retried).toBe('POST');
 });
 
+test('nothing queued or encoding: my uploads are not polled', async ({ page }) => {
+	await page.clock.install();
+	await setup(page, UPLOADER, {
+		mine: [
+			{ id: 2, original_filename: 'b.mov', status: 'failed', progress: 10, error: 'Encoding failed', uploaded_at: '2027-01-15T09:00:00+01:00', queue_position: null },
+			{ id: 1, original_filename: 'a.mov', status: 'published', progress: 100, error: null, uploaded_at: '2027-01-15T09:00:00+01:00', queue_position: null }
+		]
+	});
+	let requests = 0;
+	await page.route('/api/uploads/mine', (r) => {
+		requests++;
+		return r.fallback();
+	});
+	await page.goto('/upload');
+	await expect(page.getByText('Failed: Encoding failed')).toBeVisible();
+	const shown = requests;
+	await page.clock.fastForward('00:30');
+	await page.evaluate(() => new Promise(requestAnimationFrame));
+	expect(requests).toBe(shown);
+});
+
 test('a video just published: the catalogue is fetched again at once', async ({ page }) => {
 	const status = { id: 1, original_filename: 'a.mov', status: 'encoding', progress: 90, error: null, uploaded_at: '2027-01-15T09:00:00+01:00', queue_position: null };
 	const fake = await setup(page, UPLOADER, { mine: [status] });

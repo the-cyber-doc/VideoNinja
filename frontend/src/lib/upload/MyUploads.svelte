@@ -1,6 +1,8 @@
 <script lang="ts">
 	// My uploads on the server: queued (place in the queue), encoding (%),
-	// published, failed (Retry / Delete). Refreshed every few seconds while shown.
+	// published, failed (Retry / Delete). Refreshed every few seconds while one
+	// is queued or encoding and the page is visible; otherwise only when shown,
+	// after a submit or an action, and when the page becomes visible again.
 	import { refreshCatalog } from '../catalog.svelte';
 	import { i18n, t } from '../i18n.svelte';
 	import { myUploads, remove, retry, type UploadStatus } from './api';
@@ -24,12 +26,23 @@
 		}
 	}
 
+	/** Something the server is still working on: worth checking again soon. */
+	const pending = $derived(list.some((u) => u.status === 'queued' || u.status === 'encoding'));
+
 	$effect(() => {
 		void refresh; // reload at once after a submit
 		load();
+	});
+
+	$effect(() => {
+		if (!pending) return;
 		const timer = setInterval(() => document.visibilityState === 'visible' && load(), POLL_MS);
 		return () => clearInterval(timer);
 	});
+
+	function visible() {
+		if (document.visibilityState === 'visible') load(); // e.g. back from another tab
+	}
 
 	async function act(action: () => Promise<unknown>) {
 		try {
@@ -56,6 +69,8 @@
 		}
 	}
 </script>
+
+<svelte:document onvisibilitychange={visible} />
 
 <section class="mine">
 	<h2>{t('upload.mine')}</h2>
