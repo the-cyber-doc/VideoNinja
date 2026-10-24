@@ -7,6 +7,7 @@
 	import { url } from '#lib/base.js';
 	import { t, type MessageKey } from '#lib/i18n.svelte.js';
 	import { hasAccess } from '#lib/session.svelte.js';
+	import Icon from '#lib/Icon.svelte';
 	import { formatTime } from '#lib/time.js';
 	import SavedBadge from '#lib/SavedBadge.svelte';
 	import { listVideos, SECTIONS, videoSection, videoThumbnailUrl, videoUrl, type VideoRow } from '#lib/videos/annotations.js';
@@ -49,6 +50,8 @@
 					<summary>
 						<span class="name">{t(`videos.section.${group.section}` as MessageKey)}</span>
 						<span class="count">{t('videos.count', { n: group.videos.length })}</span>
+						<!-- Pointing right: collapsed; down: expanded (the open state is the details element's). -->
+						<span class="arrow"><Icon name="chevron-down" size={20} /></span>
 						<span class="hint">{t(`videos.section.${group.section}.hint` as MessageKey)}</span>
 					</summary>
 					{#if group.videos.length}
@@ -117,6 +120,25 @@
 		gap: 0.25rem 0.75rem;
 		padding: 0.75rem 1rem;
 		cursor: pointer;
+		list-style: none; /* the arrow replaces the browser's marker */
+	}
+	summary::-webkit-details-marker {
+		display: none; /* Safari */
+	}
+	.arrow {
+		align-self: center;
+		margin-left: auto;
+		line-height: 0;
+		color: var(--muted);
+		transition: transform 0.15s;
+	}
+	.section:not([open]) .arrow {
+		transform: rotate(-90deg);
+	}
+	@media (prefers-reduced-motion: reduce) {
+		.arrow {
+			transition: none;
+		}
 	}
 	.name {
 		font-weight: 700;

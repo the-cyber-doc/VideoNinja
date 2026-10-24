@@ -174,6 +174,34 @@ test('four sections in order, the first open, each scrolling by itself', async (
 	expect((await grid.boundingBox())!.height).toBeLessThan(page.viewportSize()!.height);
 });
 
+test('each section: an arrow on the right, pointing right when collapsed, down when expanded', async ({ page }) => {
+	await setup(page);
+	await page.goto('/videos');
+	/** The arrow's rotation in degrees (0: down) and its place on the section's title line. */
+	const arrow = (name: string) =>
+		section(page, name).locator('summary').evaluate((summary) => {
+			const icon = summary.querySelector('.arrow')!;
+			const { a, b } = new DOMMatrix(getComputedStyle(icon).transform === 'none' ? undefined : getComputedStyle(icon).transform);
+			const box = icon.getBoundingClientRect();
+			const line = summary.getBoundingClientRect();
+			const count = summary.querySelector('.count')!.getBoundingClientRect();
+			return {
+				degrees: Math.round((Math.atan2(b, a) * 180) / Math.PI),
+				right: line.right - box.right < 24, // at the right end
+				titleLine: box.top < count.bottom && box.bottom > count.top // on the title's line, not the hint's
+			};
+		});
+	await expect.poll(() => arrow('In progress')).toEqual({ degrees: 0, right: true, titleLine: true }); // open: down
+	await expect.poll(() => arrow('To annotate')).toEqual({ degrees: -90, right: true, titleLine: true }); // closed: right
+	// The browser's own marker is hidden: one arrow only.
+	expect(await section(page, 'To annotate').locator('summary').evaluate((s) => getComputedStyle(s).listStyleType)).toBe('none');
+
+	await section(page, 'To annotate').locator('summary').click(); // expanded
+	await expect.poll(() => arrow('To annotate').then((a) => a.degrees)).toBe(0);
+	await section(page, 'In progress').locator('summary').click(); // collapsed
+	await expect.poll(() => arrow('In progress').then((a) => a.degrees)).toBe(-90);
+});
+
 test('thumbnail: bottom right, the duration then whether the video is on the device', async ({ page }) => {
 	await setup(page);
 	await page.goto('/videos');
