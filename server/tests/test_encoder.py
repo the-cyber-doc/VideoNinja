@@ -11,8 +11,10 @@ import time
 from pathlib import Path
 
 import pytest
+from fastapi.testclient import TestClient
 
 from app import db, encoder
+from app.main import app
 
 from .test_upload import admin, hook, session, submit, uploaded  # noqa: F401 (fixture)
 
@@ -296,3 +298,19 @@ def test_stopping_kills_ffmpeg_too(enc, tmp_path):
     time.sleep(0.2)
     with pytest.raises(ProcessLookupError):
         os.kill(child, 0)  # the "ffmpeg" is gone
+
+
+@pytest.mark.parametrize("value, preset", [("fast", "fast"), (" Medium\r", "medium"), ('"slow"', "slow")])
+def test_x265_preset_tidied(monkeypatch, value, preset):
+    monkeypatch.setenv("VIDEONINJA_X265_PRESET", value)
+    assert encoder.x265_preset() == preset
+
+
+@pytest.mark.parametrize("value", ["", "p6", "medium fast"])
+def test_invalid_x265_preset_refuses_start(tmp_path, monkeypatch, value):
+    """Checked at startup with the value received, not at the first encoding."""
+    monkeypatch.setenv("VIDEONINJA_DB", str(tmp_path / "videoninja.db"))
+    monkeypatch.setenv("VIDEONINJA_X265_PRESET", value)
+    with pytest.raises(RuntimeError, match=rf"VIDEONINJA_X265_PRESET={value!r}: must be one of ultrafast"):
+        with TestClient(app):
+            pass

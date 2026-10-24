@@ -127,6 +127,43 @@ test('a clip watched online plays offline, with its thumbnail', async ({ page, c
 	expect(part).toEqual({ status: 206, range: `bytes 0-1/${CLIP.length}`, length: 2 });
 });
 
+test("Safari's range requests: one download of the whole clip, the parts from it", async ({ page, context, at }) => {
+	await fakeApi(context);
+	const network: (string | null)[] = []; // the Range header of each clip request reaching the server
+	await context.route('**/media/segment/7', (route) => {
+		network.push(route.request().headers()['range'] ?? null);
+		return fulfillClip(route);
+	});
+	await controlled(page, at('/schools/togakure/shoden/togakure.t'));
+	// Safari's first request, then a seek while the clip is still being saved.
+	const parts = await page.evaluate(async (clip) => {
+		const part = async (range: string) => {
+			const r = await fetch(clip, { headers: { Range: range } });
+			return { status: r.status, range: r.headers.get('Content-Range'), length: (await r.arrayBuffer()).byteLength };
+		};
+		return Promise.all([part('bytes=0-1'), part('bytes=100-199')]);
+	}, at('/media/segment/7'));
+	expect(parts).toEqual([
+		{ status: 206, range: `bytes 0-1/${CLIP.length}`, length: 2 },
+		{ status: 206, range: `bytes 100-199/${CLIP.length}`, length: 100 }
+	]);
+	// One request, without Range (the server allows one clip per user at a time).
+	expect(network).toEqual([null]);
+	expect(await cachedPaths(page, 'media')).toContain(at('/media/segment/7'));
+});
+
+test('a refused clip (429: another one downloading) is passed on, not saved', async ({ page, context, at }) => {
+	await fakeApi(context);
+	await context.route('**/media/segment/7', (route) => route.fulfill({ status: 429 }));
+	await controlled(page, at('/schools/togakure/shoden/togakure.t'));
+	const statuses = await page.evaluate(
+		(clip) => Promise.all(['bytes=0-', 'bytes=0-1'].map(async (range) => (await fetch(clip, { headers: { Range: range } })).status)),
+		at('/media/segment/7')
+	);
+	expect(statuses).toEqual([429, 429]);
+	expect(await cachedPaths(page, 'media')).not.toContain(at('/media/segment/7'));
+});
+
 test('a re-timed segment: its saved clip and thumbnail are deleted', async ({ page, context, at }) => {
 	await fakeApi(context);
 	await controlled(page, at('/schools/togakure/shoden/togakure.t'));

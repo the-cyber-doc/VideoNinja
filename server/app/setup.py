@@ -6,16 +6,19 @@ import secrets
 import threading
 from collections.abc import Iterator
 
-from fastapi import APIRouter, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
-from . import db, encoder, security, snapshot, tusd
+from . import db, encoder, security, snapshot, throttle, tusd
 from .validation import field
 
 log = logging.getLogger("uvicorn.error")
 router = APIRouter(prefix="/api/setup", tags=["setup"])
+# A wrong setup token (403) counts as a credential failure.
+token_guard = Depends(throttle.credential_guard(403))
 _setup_lock = threading.Lock()
+
 
 def new_setup_token() -> str:
     token = secrets.token_urlsafe(24)
@@ -52,19 +55,19 @@ def setup_status() -> dict[str, bool]:
     return {"initialized": db.is_initialized()}
 
 
-@router.post("/verify", status_code=status.HTTP_204_NO_CONTENT)
+@router.post("/verify", status_code=status.HTTP_204_NO_CONTENT, dependencies=[token_guard])
 def verify_token(body: TokenIn, request: Request) -> None:
     _check_token(request, body.token)
 
 
-@router.post("/totp")
+@router.post("/totp", dependencies=[token_guard])
 def new_totp(body: TotpIn, request: Request) -> dict[str, str]:
     """A fresh TOTP secret and its QR code. Nothing is stored until /complete."""
     _check_token(request, body.token)
     return security.totp_enrollment(body.username)
 
 
-@router.post("/complete")
+@router.post("/complete", dependencies=[token_guard])
 def complete(body: CompleteIn, request: Request) -> StreamingResponse:
     """Create the database and the admin user. Streams one JSON line per completed step."""
     _check_token(request, body.token)

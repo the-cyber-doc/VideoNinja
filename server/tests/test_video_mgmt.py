@@ -156,7 +156,8 @@ def test_another_videos_segment_refused(admin):
 def test_whole_video_by_nginx(admin, monkeypatch):
     monkeypatch.setenv("VIDEONINJA_X_ACCEL", "1")
     r = admin.get("/media/video/1")
-    assert r.headers["x-accel-redirect"] == f"/protected/ab/{SHA}/video.mp4"  # no start/end: the whole file
+    # No start/end: the whole file. /protected-video/<user id>/…: three transfers per user.
+    assert r.headers["x-accel-redirect"] == f"/protected-video/1/ab/{SHA}/video.mp4"
     assert admin.get("/media/video/1/thumbnail").headers["x-accel-redirect"] == f"/protected/ab/{SHA}/thumb.jpg"
     assert admin.get("/media/video/99").status_code == 404
 

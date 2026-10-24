@@ -76,6 +76,72 @@ test('Videos: in the menu after Upload, only with the video_mgmt access', async 
 	await expect(page.getByRole('heading', { name: 'Videos', level: 1 })).toBeVisible();
 });
 
+test('header on a desktop: the icon left of the name, the entries side by side', async ({ page }) => {
+	await setup(page);
+	await page.goto('/schools');
+	const brand = page.getByRole('link', { name: 'Video Ninja' });
+	const [icon, name] = [brand.locator('img'), brand.getByText('Video Ninja')];
+	await expect(icon).toBeVisible();
+	await expect(name).toBeVisible();
+	expect((await icon.boundingBox())!.x).toBeLessThan((await name.boundingBox())!.x);
+	const nav = page.getByRole('navigation', { name: 'Main navigation' });
+	await expect(nav.getByRole('link')).toHaveText(['Schools', 'Upload', 'Videos']);
+	await expect(nav.getByRole('button')).toHaveCount(0);
+});
+
+test.describe('header on a phone', () => {
+	test.use({ viewport: { width: 360, height: 740 }, hasTouch: true, isMobile: true });
+
+	test('the icon only; the entries in a drop-down named after the current page', async ({ page }) => {
+		await setup(page);
+		await page.goto('/schools');
+		const brand = page.getByRole('link', { name: 'Video Ninja' }); // still its name, for screen readers
+		await expect(brand.locator('img')).toBeVisible();
+		expect((await brand.boundingBox())!.width).toBeLessThan(40);
+
+		const nav = page.getByRole('navigation', { name: 'Main navigation' });
+		await expect(nav.getByRole('link')).toHaveCount(0); // folded
+		const menu = nav.getByRole('button', { name: 'Schools' });
+		await expect(menu).toHaveAttribute('aria-expanded', 'false');
+		await menu.click();
+		await expect(nav.getByRole('link')).toHaveText(['Schools', 'Upload', 'Videos']);
+		await expect(nav.getByRole('link', { name: 'Schools' })).toHaveAttribute('aria-current', 'page');
+		await nav.getByRole('link', { name: 'Videos' }).click();
+		await expect(page).toHaveURL('/videos');
+		await expect(nav.getByRole('link')).toHaveCount(0); // closed on navigation
+		await expect(nav.getByRole('button', { name: 'Videos' })).toBeVisible();
+
+		// Not on a page of the menu: "Menu". Escape and a click outside close it.
+		await page.goto('/profile');
+		await nav.getByRole('button', { name: 'Menu' }).click();
+		await page.keyboard.press('Escape');
+		await expect(nav.getByRole('link')).toHaveCount(0);
+		await nav.getByRole('button', { name: 'Menu' }).click();
+		await page.locator('.content').click({ position: { x: 5, y: 200 } });
+		await expect(nav.getByRole('link')).toHaveCount(0);
+
+		// Everything fits: no sideways scrolling.
+		expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(360);
+	});
+
+	test('a single entry stays a plain link', async ({ page }) => {
+		await setup(page, ['segment']);
+		await page.goto('/');
+		const nav = page.getByRole('navigation', { name: 'Main navigation' });
+		await expect(nav.getByRole('link')).toHaveText(['Schools']);
+		await expect(nav.getByRole('button')).toHaveCount(0);
+	});
+
+	test('in French', async ({ page }) => {
+		await page.addInitScript(() => localStorage.setItem('lang', 'fr'));
+		await setup(page);
+		await page.goto('/profile');
+		await expect(page.getByRole('navigation', { name: 'Navigation principale' }).getByRole('button')).toHaveText('Menu');
+		await page.goto('/videos');
+		await expect(page.getByRole('navigation', { name: 'Navigation principale' }).getByRole('button')).toHaveText('Vidéos');
+	});
+});
+
 test('without the access: no entry, page not reachable', async ({ page }) => {
 	await setup(page, ['segment', 'upload']);
 	await page.goto('/');

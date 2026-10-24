@@ -1,0 +1,37 @@
+# Development: the production image, built from this checkout, run locally
+# with the production settings (read-only, no capabilities, nginx in front),
+# on the development backend's data in server/ (dev.db, dev.key, catalog/,
+# media/, uploads/). Started by tools/docker-dev.sh, which runs it as the owner
+# of server/ (the files stay yours). Stop the development backend first: both
+# would encode the same queue.
+# Open http://localhost:8080/videoninja/ (localhost: browsers accept the
+# session's Secure cookie there without https).
+name: videoninja-dev
+
+services:
+  server:
+    build:
+      context: .
+      dockerfile: server/Dockerfile
+      args:
+        BASE_PATH: /videoninja
+    image: videoninja:dev
+    user: "${VIDEONINJA_UID:?start with tools/docker-dev.sh}:${VIDEONINJA_GID:?start with tools/docker-dev.sh}"
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    tmpfs: [/tmp]
+    environment:
+      VIDEONINJA_DB: /data/dev.db
+      VIDEONINJA_X265_PRESET: ultrafast   # short encodings while testing
+    volumes:
+      # server/ as a whole: SQLite writes dev.db-wal and dev.db-shm next to dev.db.
+      - ./server:/data
+      # The key at the app's default path, like the production secret.
+      - ./server/dev.key:/run/secrets/videoninja_key:ro
+      # The image's folders (VIDEONINJA_CATALOG_DIR, _MEDIA_DIR, _UPLOAD_DIR).
+      - ./server/catalog:/srv/catalog
+      - ./server/media:/srv/media
+      - ./server/uploads:/srv/uploads
+    ports:
+      - "127.0.0.1:8080:8080"

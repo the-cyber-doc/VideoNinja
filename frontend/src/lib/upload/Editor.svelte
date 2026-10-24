@@ -185,20 +185,26 @@
 		return measured;
 	}
 
-	/** Film strip: frames grabbed by a second, hidden video element. */
+	/** Film strip: frames grabbed by a second, hidden video element. Stops at an
+	 * error (e.g. the server's limit of parallel requests for one video: 429). */
 	async function makeStrip(url: string, total: number) {
 		const probe = document.createElement('video');
 		probe.muted = true;
 		probe.preload = 'auto';
 		probe.src = url;
-		await new Promise((resolve) => probe.addEventListener('loadeddata', resolve, { once: true }));
+		const next = (event: string) =>
+			new Promise<boolean>((resolve) => {
+				probe.addEventListener(event, () => resolve(true), { once: true });
+				probe.addEventListener('error', () => resolve(false), { once: true });
+			});
+		if (!(await next('loadeddata'))) return;
 		const canvas = document.createElement('canvas');
 		canvas.height = 54;
 		canvas.width = Math.max(1, Math.round((54 * probe.videoWidth) / (probe.videoHeight || 1)));
 		const images: string[] = [];
 		for (let i = 0; i < STRIP_IMAGES && url === src; i++) {
 			probe.currentTime = ((i + 0.5) * total) / STRIP_IMAGES;
-			await new Promise((resolve) => probe.addEventListener('seeked', resolve, { once: true }));
+			if (!(await next('seeked'))) break;
 			canvas.getContext('2d')!.drawImage(probe, 0, 0, canvas.width, canvas.height);
 			images.push(canvas.toDataURL('image/jpeg', 0.6));
 			strip = [...images];

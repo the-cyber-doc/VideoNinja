@@ -6,7 +6,7 @@ import pyotp
 import pytest
 from fastapi.testclient import TestClient
 
-from app import clock
+from app import clock, throttle
 from app.main import app
 
 PASSWORD = "correct horse battery"
@@ -25,6 +25,14 @@ def server_zone_utc(monkeypatch):
     """The server's timezone (dates written without a browser request), whatever the host's.
     Not by setting TZ: the process keeps its own (pyotp's TOTP codes would be off)."""
     monkeypatch.setattr(clock, "server_zone", lambda: UTC)
+
+
+@pytest.fixture(autouse=True)
+def no_throttle_carried_over():
+    """Credential failures are counted in memory, per address: each test starts at zero."""
+    throttle.reset()
+    yield
+    throttle.reset()
 
 
 @pytest.fixture(autouse=True)

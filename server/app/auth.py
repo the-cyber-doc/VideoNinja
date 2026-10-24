@@ -7,7 +7,7 @@ from cryptography.exceptions import InvalidTag
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from pydantic import BaseModel
 
-from . import clock, crypto, db, i18n, queries, security
+from . import clock, crypto, db, i18n, queries, security, throttle
 from .validation import field
 
 log = logging.getLogger("uvicorn.error")
@@ -92,7 +92,7 @@ def user_out(con: sqlite3.Connection, row: sqlite3.Row, lang: str) -> UserOut:
     )
 
 
-@router.post("/login")
+@router.post("/login", dependencies=[Depends(throttle.credential_guard(401))])
 def login(
     body: LoginIn,
     response: Response,

@@ -42,6 +42,24 @@ test('a refused login shows the server message and clears the code', async ({ pa
 	await expect(page.getByLabel('Authenticator code')).toHaveValue('');
 });
 
+test('too many failed attempts (429): the wait, in the user\'s language', async ({ page }) => {
+	await page.route('/api/auth/login', (r) =>
+		r.fulfill({ status: 429, json: { detail: 'Too many failed attempts' }, headers: { 'Retry-After': '601' } })
+	);
+	const logIn = async (button: string) => {
+		await page.getByLabel(/Username|Nom d'utilisateur/).fill('admin');
+		await page.getByLabel(/Password|Mot de passe/).fill('x'.repeat(rules.password.min_length));
+		await page.getByLabel(/Authenticator code|Code/).fill('123456');
+		await page.getByRole('button', { name: button }).click();
+	};
+	await logIn('Log in');
+	await expect(page.getByRole('alert')).toHaveText('Too many failed attempts. Try again in 11 min.');
+	await page.evaluate(() => localStorage.setItem('lang', 'fr'));
+	await page.reload();
+	await logIn('Se connecter');
+	await expect(page.getByRole('alert')).toHaveText('Trop de tentatives échouées. Réessayez dans 11 min.');
+});
+
 test('not set up yet: redirects to the setup wizard', async ({ page }) => {
 	await page.route('/api/setup/status', (r) => r.fulfill({ json: { initialized: false } }));
 	await page.goto('/login');

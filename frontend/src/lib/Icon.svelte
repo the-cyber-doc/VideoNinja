@@ -11,7 +11,8 @@
 		pause: 'M8 5v14M16 5v14',
 		stop: 'M6 6h12v12H6z',
 		'frame-back': 'M17 6v12l-9-6zM7 6v12',
-		'frame-forward': 'M7 6v12l9-6zM17 6v12'
+		'frame-forward': 'M7 6v12l9-6zM17 6v12',
+		'chevron-down': 'M6 9l6 6 6-6'
 	};
 
 	let { name, size = 20 }: { name: keyof typeof PATHS; size?: number } = $props();

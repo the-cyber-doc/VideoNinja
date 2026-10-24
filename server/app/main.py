@@ -12,6 +12,7 @@ from . import (
 async def lifespan(app: FastAPI):
     crypto.load_key()  # refuse to start without the encryption key
     paths.base_path()  # refuse to start with an invalid VIDEONINJA_BASE_PATH
+    encoder.x265_preset()  # nor with an invalid VIDEONINJA_X265_PRESET
     nginx.start()  # also before the setup: it serves the setup wizard
     if db.is_initialized():
         app.state.setup_token = None

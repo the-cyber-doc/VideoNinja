@@ -250,6 +250,22 @@ test('a clip that cannot be played says so', async ({ page }) => {
 	await expect(page.getByRole('dialog')).toContainText('This clip cannot be played.');
 });
 
+test('another clip still downloading (429): says so, Try again plays it', async ({ page }) => {
+	await loggedIn(page);
+	let busy = true; // the server sends one clip per user at a time
+	await page.route('/media/segment/*', (r) => (busy ? r.fulfill({ status: 429 }) : fulfillClip(r)));
+	await page.goto('/schools/gyokko/shoden/gyokko.koku');
+	await page.getByRole('button', { name: 'Play the segment (0:15)' }).first().click();
+	const player = page.getByRole('dialog');
+	await expect(player.getByRole('alert')).toHaveText(
+		'Another video is still downloading. Try again when it has finished.'
+	);
+	busy = false;
+	await player.getByRole('button', { name: 'Try again' }).click();
+	await expect.poll(() => player.locator('video').evaluate((v: HTMLVideoElement) => v.currentTime)).toBeGreaterThan(0);
+	await expect(player.getByRole('alert')).toHaveCount(0);
+});
+
 test('technique without videos or comments', async ({ page }) => {
 	await loggedIn(page);
 	await page.route('/media/segment/*/thumbnail', (r) => r.fulfill({ status: 404 })); // newest route wins

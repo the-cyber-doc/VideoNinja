@@ -1,4 +1,4 @@
-import { i18n } from './i18n.svelte';
+import { i18n, t } from './i18n.svelte';
 import { url } from './base';
 
 export class ApiError extends Error {
@@ -21,6 +21,12 @@ export interface User {
 }
 
 async function errorMessage(res: Response): Promise<string> {
+	// Too many failed credentials from this address (login, profile, setup,
+	// registration): the server's wait, in the user's language.
+	if (res.status === 429) {
+		const minutes = Math.max(1, Math.ceil(Number(res.headers.get('Retry-After') ?? 60) / 60));
+		return t('error.throttled', { minutes });
+	}
 	try {
 		const detail = (await res.json()).detail;
 		if (typeof detail === 'string') return detail;

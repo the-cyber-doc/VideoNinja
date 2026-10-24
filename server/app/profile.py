@@ -10,12 +10,14 @@ import sqlite3
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 
-from . import crypto, db, i18n, queries, security
+from . import crypto, db, i18n, queries, security, throttle
 from .auth import UserOut, current_user, session_token, user_out
 from .validation import field
 
 log = logging.getLogger("uvicorn.error")
 router = APIRouter(prefix="/api/profile", tags=["profile"])
+# A wrong current password (403) counts as a credential failure.
+password_guard = Depends(throttle.credential_guard(403))
 
 
 class NameIn(BaseModel):
@@ -53,7 +55,7 @@ def set_name(
     return user_out(con, {**user, "name": name}, lang)
 
 
-@router.post("/password", status_code=status.HTTP_204_NO_CONTENT)
+@router.post("/password", status_code=status.HTTP_204_NO_CONTENT, dependencies=[password_guard])
 def set_password(
     body: PasswordIn,
     user: sqlite3.Row = Depends(current_user),
@@ -73,7 +75,7 @@ def new_totp(user: sqlite3.Row = Depends(current_user)) -> dict[str, str]:
     return security.totp_enrollment(user["username"])
 
 
-@router.post("/totp/confirm", status_code=status.HTTP_204_NO_CONTENT)
+@router.post("/totp/confirm", status_code=status.HTTP_204_NO_CONTENT, dependencies=[password_guard])
 def confirm_totp(
     body: TotpConfirmIn,
     user: sqlite3.Row = Depends(current_user),

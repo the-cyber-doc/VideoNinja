@@ -11,7 +11,8 @@
 // - /media/segment/<id>: the segment's clip, kept for offline use. A segment's
 //   clip does not change: cache first, with Range requests answered from it
 //   (range.ts). Not saved yet: downloaded once, for the player and the cache at
-//   the same time (see clip()).
+//   the same time (see clip()). Never two requests for one clip: the server
+//   sends one clip per user at a time and answers 429 to a second.
 // - /media/segment/<id>/thumbnail: cache first, checked in the background.
 // - Anything else (other API calls): network only, never cached.
 // DATA and MEDIA hold user data: deleted on logout and login (clearUserData in $lib/pwa.ts).
@@ -147,16 +148,23 @@ async function networkFirst(request: Request): Promise<Response> {
 	}
 }
 
-// Clips being saved (URL → done), so that one is downloaded once, not per request.
+// Clips being downloaded and saved (URL → settled once saved, or not), so that
+// one is downloaded once, not per request.
 const saving = new Map<string, Promise<void>>();
 
-function save(event: FetchEvent, key: string, response: Response, cache: Cache) {
-	const done = cache
-		.put(key, response)
-		.catch(() => {}) // storage full, or the download cut: saved next time
+/** The whole clip, downloaded once: the response, also saved as it arrives.
+ * Registered before the request is sent, so that a request arriving meanwhile
+ * waits for it instead of downloading the clip again. */
+function download(event: FetchEvent, key: string, cache: Cache) {
+	const response = fetch(key, { credentials: 'same-origin' }); // without Range
+	// Cloned in the first callback of `response`: before the caller can read its body.
+	const saved = response
+		.then((whole) => (whole.status === 200 ? cache.put(key, whole.clone()) : undefined))
+		.catch(() => {}) // offline, storage full, or the download cut: saved next time
 		.finally(() => saving.delete(key));
-	saving.set(key, done);
-	event.waitUntil(done);
+	saving.set(key, saved);
+	event.waitUntil(saved);
+	return { response, saved };
 }
 
 async function clip(event: FetchEvent): Promise<Response> {
@@ -166,24 +174,34 @@ async function clip(event: FetchEvent): Promise<Response> {
 	const cache = await caches.open(MEDIA);
 	const cached = await cache.match(key);
 	if (cached) return rangeResponse(cached, range);
-	if (saving.has(key)) return fetch(request); // being saved: this part from the network
+	// Never two requests for one clip: the server sends one clip per user at a
+	// time, and answers 429 to a second one.
+	const pending = saving.get(key);
+	if (pending) {
+		// Being downloaded (Chrome seeking, Safari's next part): from the saved clip.
+		await pending;
+		return fromSaved(cache, key, request);
+	}
 
 	// The whole clip asked for (Chrome, Firefox: "bytes=0-"): one download, split
 	// between the player (it plays as the bytes arrive) and the cache. A 200 answer
 	// to such a request is valid HTTP: the browser takes the whole file.
-	if (!range || /^bytes=0-$/.test(range.trim())) {
-		const response = await fetch(key, { credentials: 'same-origin' }); // without Range
-		if (response.status === 200) save(event, key, response.clone(), cache);
-		return response;
-	}
-	// A part (Safari's first request "bytes=0-1", a seek): from the network, and
-	// the whole clip saved in the background, once.
-	event.waitUntil(
-		fetch(key, { credentials: 'same-origin' })
-			.then((whole) => (whole.status === 200 ? save(event, key, whole, cache) : undefined))
-			.catch(() => {})
-	);
-	return fetch(request);
+	const { response, saved } = download(event, key, cache);
+	if (!range || /^bytes=0-$/.test(range.trim())) return response;
+	// A part (Safari's first request "bytes=0-1", a seek): the whole clip saved
+	// first, then the part from it.
+	const whole = await response;
+	if (whole.status !== 200) return whole; // e.g. 429: another clip is downloading
+	await saved;
+	whole.body?.cancel().catch(() => {}); // the cache's copy is the one read
+	return fromSaved(cache, key, request);
+}
+
+/** The part asked for, from the saved clip; from the network if it could not be
+ * saved (storage full, download cut): alone by then. */
+async function fromSaved(cache: Cache, key: string, request: Request): Promise<Response> {
+	const saved = await cache.match(key);
+	return saved ? rangeResponse(saved, request.headers.get('Range')) : fetch(request);
 }
 
 async function thumbnail(event: FetchEvent): Promise<Response> {

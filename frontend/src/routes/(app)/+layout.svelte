@@ -66,7 +66,11 @@
 {#if session.user}
 	<div class="app">
 		<header>
-			<a class="brand" href={url('/')}>Video Ninja</a>
+			<!-- Phones: the icon only (the name stays the link's accessible name). -->
+			<a class="brand" href={url('/')}>
+				<img src={url('/favicon.svg')} alt="" width="32" height="32" />
+				<span class="name">Video Ninja</span>
+			</a>
 			<MainNav />
 			<div class="tools">
 				<LanguageMenu />
@@ -120,10 +124,32 @@
 		border-bottom: 1px solid var(--border);
 	}
 	.brand {
+		justify-self: start;
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
 		font-weight: 700;
 		color: var(--text);
 		text-decoration: none;
 		white-space: nowrap;
+	}
+	.brand img {
+		display: block;
+	}
+	@media (max-width: 40rem) {
+		header {
+			gap: 0.5rem;
+			padding: 0.5rem 0.75rem;
+		}
+		/* Hidden but still read: the link keeps "Video Ninja" as its name. */
+		.brand .name {
+			position: absolute;
+			width: 1px;
+			height: 1px;
+			overflow: hidden;
+			clip-path: inset(50%);
+			white-space: nowrap;
+		}
 	}
 	.content {
 		min-width: 0;

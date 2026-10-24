@@ -25,6 +25,8 @@ Self-hosted on a Raspberry Pi 5 with Docker behind nginx.
 | `server/app/validation.json` | Input rules (lengths, patterns) shared by backend and frontend |
 | `nginx/nginx.conf` | nginx inside the app's container (see [6. Reverse proxy and nginx](#6-reverse-proxy-and-nginx)) |
 | `tools/encode-videos/` | `encode-videos.sh` (ffmpeg H.265 encoding) + NNEDI3 weights, used by the server's encoding queue |
+| `docker-compose.dev.yaml`, `tools/docker-dev.sh` | The production image built from the checkout and run locally on the development data (see [9. Docker image](#9-docker-image)) |
+| `tools/make-dev-db.py` | A development database with a fixed test admin (see [Test admin without the wizard](#test-admin-without-the-wizard)) |
 | `.github/workflows/ci-cd.yml` | CI: tests + builds on every push; images published only for `v*` tags |
 
 ## Development
@@ -109,7 +111,7 @@ catalogue snapshots in `catalog/` are ignored by git.
 | `VIDEONINJA_MEDIA_DIR` | `media/` next to the database (image: `/srv/media`) | Encoded videos and thumbnails (`video/<h2>/<sha256>/…`), written by the encoding queue. Without nginx the app serves the thumbnails from here. |
 | `VIDEONINJA_UPLOAD_DIR` | `uploads/` next to the database (image: `/srv/uploads`) | tusd's folder: originals waiting to be encoded. |
 | `VIDEONINJA_MAX_UPLOAD_GB` | `20` | Largest upload accepted (tusd and the app). |
-| `VIDEONINJA_X265_PRESET` | `medium` | libx265 preset of the encoding queue (`ultrafast` … `veryslow`; slower = smaller files). |
+| `VIDEONINJA_X265_PRESET` | `medium` | libx265 preset of the encoding queue (`ultrafast` … `veryslow`; slower = smaller files). Case, spaces and quotes are ignored; any other value stops the app at start, naming the value received. |
 | `TZ` | system timezone (image: UTC) | Server's timezone (IANA name, e.g. `Europe/Zurich`), for dates written without a user: invitations. Users' dates are in their browser's timezone. |
 | `VIDEONINJA_BASE_PATH` | `''` (image: `/videoninja`) | Where the browser sees the app (a subfolder of the domain). The session cookie's name and path and tusd's upload URLs follow it; the frontend is built with the same value (`BASE_PATH`). |
 | `VIDEONINJA_NGINX_CONF` | unset (image: `/app/nginx/nginx.conf`) | The app starts nginx with this configuration (and restarts it). Unset: no nginx (development: Vite serves the frontend). `VIDEONINJA_NGINX=0`: never; `VIDEONINJA_NGINX_BIN`: another binary. |
@@ -155,6 +157,46 @@ The app opens the setup wizard: enter the token, create the admin account
 
 To start over, stop the backend and delete `server/dev.db` (and
 `dev.db-wal` / `dev.db-shm` if present) and `server/catalog/`.
+
+#### Test admin without the wizard
+
+`tools/make-dev-db.py` builds the database outside the app, like the wizard
+does (the latest `db_vN.sql` + `db_vN_init.sql`), with an admin whose
+credentials are fixed in the script: add its TOTP secret to your
+authenticator once, and every rebuilt database logs in the same way.
+
+```bash
+# From the repository root, the backend stopped. Key: server/dev.key (required).
+server/.venv/bin/python tools/make-dev-db.py            # creates server/dev.db
+server/.venv/bin/python tools/make-dev-db.py --force    # replaces it (and its -wal/-shm)
+```
+
+| Variable in the script | Value |
+|---|---|
+| `USERNAME` | `admin` |
+| `PASSWORD` | `XhvqKL3zKA7S` |
+| `TOTP_SECRET` | `J3BFCBSLVAZSG3M7POCBI235XUL35XUQ` (base32; `oathtool --totp -b <secret>` prints the current code) |
+
+Change them in the script; it checks them against `server/app/validation.json`.
+These credentials are public: use such a database for development and test
+instances only, never in production. The catalogue snapshot is rebuilt at the
+backend's next start. `--db` and `--key` choose other files.
+
+For a test instance on the Raspberry Pi (fresh install, before its first
+start), build the database on your machine with the Pi's key, then copy it
+into the container's `data` volume, owned by the container's user:
+
+```bash
+# On your machine: the Pi's key (from /opt/videoninja/.env) in a temporary file
+umask 077; echo '<the base64 key>' > pi.key
+server/.venv/bin/python tools/make-dev-db.py --db videoninja.db --key pi.key
+rm pi.key
+# On the Pi, in /opt/videoninja, with videoninja.db copied there:
+sudo chown 10001:10001 videoninja.db
+sudo docker compose create
+sudo docker compose cp -a videoninja.db server:/data/videoninja.db
+sudo docker compose up -d && sudo rm videoninja.db
+```
 
 ### 5. Checks (same as CI)
 
@@ -261,9 +303,11 @@ What the service worker does:
   `Range` requests of `<video>` (seeking; Safari plays nothing without `206`)
   are answered from the saved file (`src/service-worker/range.ts`). A clip not
   saved yet is downloaded once, for the player and the cache at the same time,
-  and plays while it downloads. Safari first asks for 2 bytes: that request
-  goes to the network and the whole clip is saved in the background, so on
-  the first viewing in Safari part of it may be downloaded twice.
+  and plays while it downloads. Never two requests for one clip (the server
+  sends one clip per user at a time): Safari first asks for 2 bytes, so the
+  whole clip is downloaded and saved first, then every part is answered from
+  it (in Safari a clip starts once it is saved); a seek during the download
+  waits for it.
 - **Segment thumbnails** (`/media/segment/<id>/thumbnail`): cache first,
   checked in the background (a `404`, segment removed, deletes it).
 - **Everything else** (other API calls): network only, never cached.
@@ -333,6 +377,57 @@ VIDEONINJA_DB=dev.db VIDEONINJA_DB_KEY_FILE=dev.key VIDEONINJA_X265_PRESET=ultra
 In development `/files` reaches tusd without nginx's per-request check (see
 [How uploads work](#how-uploads-work)); tusd's pre-create hook still checks the
 session.
+
+### 9. Docker image
+
+To test the production image itself (nginx in front, the base path
+`/videoninja`, the read-only container, the download limits), build it from
+your checkout and run it with Docker and its Compose plugin, on the same data
+as the development backend (step 2): `server/dev.db`, `server/dev.key` and the
+folders `server/catalog/`, `server/media/`, `server/uploads/`.
+
+Stop the development backend (uvicorn) first: both would encode the same
+upload queue. Then:
+
+```bash
+tools/docker-dev.sh                       # build, then run (Ctrl+C stops)
+# (sudo tools/docker-dev.sh if your user is not in the docker group)
+```
+
+Then open <http://localhost:8080/videoninja/> and log in with your development
+users. `localhost` matters: browsers accept the session's `Secure` cookie over
+plain http there only. Without `server/dev.db` (see
+[Test admin without the wizard](#test-admin-without-the-wizard)) the container starts in setup
+mode: the setup token is in the log (or, from another terminal:
+`tools/docker-dev.sh logs server | grep "Setup token"`), and the wizard creates
+`server/dev.db`, which the development backend then uses too.
+
+What `docker-compose.dev.yaml` mounts:
+
+| Host | Container | Used as |
+|---|---|---|
+| `server/` | `/data` | `VIDEONINJA_DB=/data/dev.db` (the folder, not the file: SQLite writes `dev.db-wal` and `dev.db-shm` next to it) |
+| `server/dev.key` | `/run/secrets/videoninja_key` (read-only) | The encryption key, at the app's default path, like the production secret |
+| `server/catalog/` | `/srv/catalog` | Catalogue snapshots (`VIDEONINJA_CATALOG_DIR`) |
+| `server/media/` | `/srv/media` | Encoded videos and thumbnails (`VIDEONINJA_MEDIA_DIR`) |
+| `server/uploads/` | `/srv/uploads` | tusd's uploads waiting to be encoded (`VIDEONINJA_UPLOAD_DIR`) |
+
+- The container runs as the owner of `server/` instead of the image's UID
+  10001: it can read `dev.key` (not world-readable) and the files it writes
+  stay yours. The script creates the missing folders first (Docker would create
+  them owned by root).
+- Otherwise the production settings: read-only root filesystem, no
+  capabilities, nginx on port 8080 (localhost only). Encoding uses the
+  `ultrafast` preset.
+- The catalogue snapshot's `current` link is relative: snapshots written by
+  either side work in both.
+- Any `docker compose` arguments pass through: `tools/docker-dev.sh up -d`,
+  `logs -f`, `down` (stops and removes the container; the data in `server/`
+  stays).
+- The build uses `server/Dockerfile.dockerignore`: only the files the image
+  needs are sent to Docker (no `node_modules`, databases or keys).
+
+CI builds the same image on every push (not published).
 
 ### Database schema
 
@@ -470,6 +565,13 @@ services:
       # nginx, plain HTTP: only your TLS proxy, on this host, may reach it.
       # (Proxy in another container: put both on a Docker network instead.)
       - "127.0.0.1:8080:8080"
+    # nginx and the app must both answer. The URL includes the base path.
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/videoninja/health')"]
+      interval: 30s
+      timeout: 3s
+      start_period: 10s
+      retries: 3
     logging:
       driver: journald   # rotated by journald; journalctl -t docker-videoninja
       options:
@@ -499,6 +601,10 @@ sudo sh -c 'umask 077; openssl rand -base64 32 > secrets/videoninja_key'
 sudo chown 10001 secrets/videoninja_key
 sudo chmod 400 secrets/videoninja_key
 ```
+
+Compose mounts the secret with the host file's owner and mode (its `uid:` and
+`mode:` options only apply to Swarm): without the `chown`, the app stops at
+start with "Encryption key file not readable by this user (UID 10001)".
 
 Set only one of `VIDEONINJA_DB_KEY` and `VIDEONINJA_DB_KEY_FILE`: with both,
 the app refuses to start. Moving an existing installation from one to the
@@ -530,6 +636,17 @@ wizard is then disabled. The app must be served over HTTPS: the session cookie
 is `Secure`.
 
 ### Users
+
+**Failed logins** are throttled per client address: after 10 failed
+credentials in 15 minutes (wrong password or authenticator code at login, wrong
+current password in the profile, wrong setup or invitation token), that
+address gets `429` on those forms until the oldest failure is 15 minutes old;
+the page shows how long to wait. Other refusals (expired session, missing
+access) never count. The count is in memory: restarting the container resets
+it. Users sharing one address (a club's Wi-Fi) share the count; an attack from
+many addresses is not stopped by it, the authenticator code still is. The
+address is your proxy's `X-Forwarded-For`: if the proxy does not set it, every
+client looks the same and one attacker throttles everybody.
 
 Users are added by invitation, from **User Management** in the user menu
 (top right; only for roles with the `user_mgmt` access, i.e. admins):
@@ -733,7 +850,15 @@ and logs through the app (`docker compose logs`). It:
   (`127.0.0.1:1080`) gets it;
 - sends the security headers (CSP, `Referrer-Policy: no-referrer`, …) and
   takes the client's address from `X-Forwarded-For`, trusted only from
-  private addresses (your proxy).
+  private addresses (your proxy);
+- sends **one clip per user at a time** (whole videos on the Videos page: three
+  transfers per user, its own count). The app puts the user's ID in the
+  internal redirect (`/protected-clip/<user id>/…`, `/protected-video/<user id>/…`)
+  and nginx counts the transfers in progress (`limit_conn`): a second one gets
+  `429`, and the player says that another video is still downloading (a clip
+  being saved for offline use counts too). A transfer ends when the file is
+  sent or the browser goes away. Thumbnails are not limited. Without nginx
+  (development) there is no limit.
 
 The app and tusd listen on the container's loopback only: nginx is the only
 way in. The modules come from Debian's `nginx` package (`mp4`,

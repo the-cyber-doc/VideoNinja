@@ -71,12 +71,29 @@ class JobError(Exception):
         self.retryable = retryable
 
 
+X265_PRESETS = ("ultrafast", "superfast", "veryfast", "faster", "fast", "medium", "slow", "slower", "veryslow",
+                "placebo")
+
+
+def x265_preset() -> str:
+    """VIDEONINJA_X265_PRESET (default medium), case and spaces ignored. RuntimeError if it
+    is not a libx265 preset: checked at startup, not at the first encoding."""
+    value = os.environ.get("VIDEONINJA_X265_PRESET", "medium")
+    preset = value.strip().strip("\"'").strip().lower()
+    if preset not in X265_PRESETS:
+        raise RuntimeError(f"VIDEONINJA_X265_PRESET={value!r}: must be one of {', '.join(X265_PRESETS)}")
+    return preset
+
+
 class Encoder:
     def __init__(self) -> None:
         self.uploads = paths.upload_dir()
         self.videos = paths.video_dir()
         self.work = self.videos / ".work"  # same filesystem as video/: moves are renames
-        self.preset = os.environ.get("VIDEONINJA_X265_PRESET", "medium")
+        try:
+            self.preset = x265_preset()
+        except RuntimeError:
+            self.preset = ""  # the app refuses to start with it (main.lifespan): never used
         self.script = os.environ.get("VIDEONINJA_ENCODE_SCRIPT", str(DEFAULT_SCRIPT))
         self.stopping = threading.Event()
         self.process: subprocess.Popen | None = None

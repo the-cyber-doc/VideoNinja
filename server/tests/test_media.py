@@ -84,8 +84,11 @@ def test_clip_cut_by_nginx(client, admin_secret, monkeypatch):
     # The app sets the times from the database; nginx's mp4 module cuts the clip.
     r = client.get("/media/segment/1")
     assert r.status_code == 200 and r.content == b""
-    assert r.headers["x-accel-redirect"] == f"{THUMBS}/video.mp4?start=12&end=27"
+    # /protected-clip/<user id>/…: nginx allows one clip transfer per user at a time.
+    assert r.headers["x-accel-redirect"] == f"/protected-clip/1/ab/{SHA}/video.mp4?start=12&end=27"
     assert client.get("/media/segment/2").headers["x-accel-redirect"].endswith("?start=40&end=55")
+    # HEAD as well (the player's check after a failed load): through nginx's limit too.
+    assert client.head("/media/segment/1").headers["x-accel-redirect"].startswith("/protected-clip/1/")
 
 
 def test_clip_not_published_or_unknown(client, admin_secret, monkeypatch):

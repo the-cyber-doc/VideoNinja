@@ -5,6 +5,9 @@
 	// on phones), frame by frame (buttons, ← →) and slow motion (½, ¼, ⅛); the
 	// browser's controls stay for seeking, volume and full screen. Closes with
 	// Escape, the button or a click outside; closing stops it.
+	// The server sends one clip per user at a time: while another one downloads
+	// (e.g. still being saved for offline use), it refuses this one (429). The
+	// player says so and offers to try again.
 	import Icon from '../Icon.svelte';
 	import type { Segment } from '../catalog.svelte';
 	import { i18n, t } from '../i18n.svelte';
@@ -15,7 +18,7 @@
 
 	let dialog = $state<HTMLDialogElement>();
 	let video = $state<HTMLVideoElement>();
-	let failed = $state(false);
+	let failed = $state<'' | 'busy' | 'error'>('');
 	let speed = $state(1);
 	let paused = $state(true);
 	const SPEEDS = [1, 0.5, 0.25, 0.125];
@@ -42,6 +45,17 @@
 		if (!video) return;
 		video.pause();
 		video.currentTime = Math.min(Math.max(video.currentTime + frames * frame, 0), video.duration || 0);
+	}
+
+	/** Why the clip did not load: a HEAD (not answered by the service worker) asks the server. */
+	async function loadFailed() {
+		let busy = false;
+		try {
+			busy = (await fetch(clipUrl(segment), { method: 'HEAD', credentials: 'same-origin' })).status === 429;
+		} catch {
+			// offline
+		}
+		failed = busy ? 'busy' : 'error';
 	}
 
 	const toggle = () => (video?.paused ? video.play() : video?.pause());
@@ -80,7 +94,10 @@
 		</button>
 	</header>
 	{#if failed}
-		<p class="error">{t('player.error')}</p>
+		<div class="failed">
+			<p class="error" role="alert">{t(failed === 'busy' ? 'player.busy' : 'player.error')}</p>
+			<button type="button" class="secondary" onclick={() => (failed = '')}>{t('player.retry')}</button>
+		</div>
 	{:else}
 		<!-- svelte-ignore a11y_media_has_caption: no captions yet (notes.<lang>.vtt later) -->
 		<video
@@ -93,7 +110,7 @@
 			playsinline
 			preload="auto"
 			onloadeddata={(e) => measureFrame(e.currentTarget)}
-			onerror={() => (failed = true)}
+			onerror={loadFailed}
 		></video>
 		<div class="tools">
 			<button type="button" class="icon" title={t('player.back_frame')} aria-label={t('player.back_frame')} onclick={() => step(-1)}>
@@ -131,6 +148,12 @@
 		background: var(--surface);
 		border: 1px solid var(--border);
 		border-radius: var(--radius);
+	}
+	.failed {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 0.75rem;
 	}
 	dialog::backdrop {
 		background: rgb(0 0 0 / 0.7);

@@ -1,4 +1,8 @@
 {
+	"error.throttled": {
+		"en": "Too many failed attempts. Try again in {minutes} min.",
+		"fr": "Trop de tentatives échouées. Réessayez dans {minutes} min."
+	},
 	"common.username": { "en": "Username", "fr": "Nom d'utilisateur" },
 	"common.username_label": { "en": "Username:", "fr": "Nom d'utilisateur :" },
 	"common.username_hint": {
@@ -34,6 +38,7 @@
 
 	"language.current": { "en": "Language: {name}", "fr": "Langue : {name}" },
 
+	"nav.menu": { "en": "Menu", "fr": "Menu" },
 	"nav.main": { "en": "Main navigation", "fr": "Navigation principale" },
 	"nav.schools": { "en": "Schools", "fr": "Écoles" },
 	"nav.breadcrumbs": { "en": "Breadcrumb", "fr": "Fil d'Ariane" },
@@ -74,6 +79,11 @@
 	"player.close": { "en": "Close", "fr": "Fermer" },
 	"player.speed": { "en": "Speed", "fr": "Vitesse" },
 	"player.speed_value": { "en": "{speed}×", "fr": "{speed}×" },
+	"player.busy": {
+		"en": "Another video is still downloading. Try again when it has finished.",
+		"fr": "Une autre vidéo est encore en cours de téléchargement. Réessayez quand elle sera terminée."
+	},
+	"player.retry": { "en": "Try again", "fr": "Réessayer" },
 	"player.error": {
 		"en": "This clip cannot be played. Offline, only the clips already watched are available.",
 		"fr": "Ce clip ne peut pas être lu. Hors ligne, seuls les clips déjà regardés sont disponibles."

@@ -63,6 +63,13 @@ def test_bad_key_file_refuses_start(key_file, tmp_path, monkeypatch, content, me
             pass
 
 
+@pytest.mark.skipif(os.getuid() == 0, reason="root reads any file")
+def test_unreadable_key_file_says_how_to_fix(key_file):
+    key_file.chmod(0)
+    with pytest.raises(RuntimeError, match=rf"not readable by this user \(UID {os.getuid()}\).*chown {os.getuid()}"):
+        crypto.load_key()
+
+
 def test_key_from_environment(key_file, monkeypatch):
     """VIDEONINJA_DB_KEY instead of the file; removed from the environment the children inherit."""
     crypto.load_key()

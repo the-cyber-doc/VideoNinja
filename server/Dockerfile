@@ -111,8 +111,6 @@ USER 10001
 # the container's loopback only: nginx is the way in.
 EXPOSE 8080
 
-# Through nginx: both must answer.
-HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
-    CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080${BASE_PATH}/health')" || exit 1
+# No HEALTHCHECK: the compose file sets it (README, docker-compose.yaml).
 
 CMD ["uvicorn", "app.main:app", "--host", "127.0.0.1", "--port", "8000"]

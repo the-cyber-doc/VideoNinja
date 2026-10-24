@@ -40,6 +40,12 @@ def _read_key() -> tuple[str, str]:
         raise RuntimeError(
             f"Encryption key file not found: {path} (README: Development step 2, Production step 1)"
         ) from None
+    except PermissionError:
+        # A Docker secret keeps the host file's owner and mode (Compose ignores uid/mode).
+        raise RuntimeError(
+            f"Encryption key file not readable by this user (UID {os.getuid()}): {path}. "
+            f"On the host: chown {os.getuid()} <key file> && chmod 400 <key file>"
+        ) from None
 
 
 def load_key() -> None:
