@@ -5,7 +5,8 @@
 	// service worker for offline use.
 	import type { Segment } from '../catalog.svelte';
 	import { t } from '../i18n.svelte';
-	import { segmentDuration, thumbnailUrl } from '../media';
+	import { clipUrl, segmentDuration, thumbnailUrl } from '../media';
+	import SavedBadge from '../SavedBadge.svelte';
 	import { formatTime } from '../time';
 	import SegmentPlayer from './SegmentPlayer.svelte';
 
@@ -20,11 +21,14 @@
 			{@const duration = formatTime(segmentDuration(segment))}
 			<li data-id={segment.id}>
 				<button type="button" aria-label={t('technique.play', { duration })} onclick={() => (playing = segment)}>
-					{#if failed[segment.id]}
-						<div class="placeholder"></div>
-					{:else}
-						<img src={thumbnailUrl(segment)} alt="" loading="lazy" onerror={() => (failed[segment.id] = true)} />
-					{/if}
+					<span class="picture">
+						{#if failed[segment.id]}
+							<span class="placeholder"></span>
+						{:else}
+							<img src={thumbnailUrl(segment)} alt="" loading="lazy" onerror={() => (failed[segment.id] = true)} />
+						{/if}
+						<span class="corner"><SavedBadge path={clipUrl(segment)} /></span>
+					</span>
 					<span class="duration">{duration}</span>
 				</button>
 			</li>
@@ -63,8 +67,18 @@
 		outline: 2px solid var(--accent);
 		outline-offset: 2px;
 	}
+	.picture {
+		position: relative;
+		display: block;
+	}
+	.corner {
+		position: absolute;
+		right: 0.3rem;
+		bottom: 0.3rem;
+	}
 	img,
 	.placeholder {
+		display: block;
 		width: 100%;
 		aspect-ratio: 16 / 9;
 		object-fit: cover;

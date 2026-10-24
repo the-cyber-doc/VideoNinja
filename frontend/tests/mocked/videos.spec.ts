@@ -174,7 +174,7 @@ test('four sections in order, the first open, each scrolling by itself', async (
 	expect((await grid.boundingBox())!.height).toBeLessThan(page.viewportSize()!.height);
 });
 
-test('thumbnail: the duration in the bottom right corner', async ({ page }) => {
+test('thumbnail: bottom right, the duration then whether the video is on the device', async ({ page }) => {
 	await setup(page);
 	await page.goto('/videos');
 	const link = section(page, 'In progress').getByRole('link');
@@ -182,9 +182,15 @@ test('thumbnail: the duration in the bottom right corner', async ({ page }) => {
 	const picture = (await link.locator('img').boundingBox())!;
 	const duration = link.locator('.duration');
 	await expect(duration).toHaveText('1:05');
+	// No service worker here: not downloaded.
+	const badge = link.getByRole('img', { name: 'Not downloaded' });
+	await expect(badge).toHaveAttribute('title', 'Not downloaded');
+	const icon = (await badge.boundingBox())!;
 	const box = (await duration.boundingBox())!;
-	expect(picture.x + picture.width - (box.x + box.width)).toBeLessThan(12); // right
-	expect(picture.y + picture.height - (box.y + box.height)).toBeLessThan(12); // bottom
+	expect(picture.x + picture.width - (icon.x + icon.width)).toBeLessThan(12); // right
+	expect(picture.y + picture.height - (icon.y + icon.height)).toBeLessThan(12); // bottom
+	expect(box.x + box.width).toBeLessThanOrEqual(icon.x); // the duration left of it
+	expect(picture.y + picture.height - (box.y + box.height)).toBeLessThan(12);
 	await expect(link).toContainText('kata-1.mp4');
 	// Unknown duration: no overlay.
 	await section(page, 'To annotate').locator('summary').click();
@@ -285,6 +291,7 @@ test('in French', async ({ page }) => {
 	await page.goto('/videos');
 	await expect(page.locator('details.section summary .name')).toHaveText(['En cours', 'À annoter', 'Terminées', 'Sans technique']);
 	await expect(page.getByRole('navigation', { name: 'Navigation principale' }).getByRole('link')).toHaveText(['Écoles', 'Téléverser', 'Vidéos']);
+	await expect(section(page, 'En cours').getByRole('img', { name: 'Pas téléchargé' })).toBeVisible();
 	await page.goto('/videos/1');
 	await expect(page.locator('.about .uploader')).toHaveText('Envoyée par Hana');
 	await expect(page.getByRole('article', { name: 'Segment 1' }).locator('header .author')).toHaveText('Créé par Hana');

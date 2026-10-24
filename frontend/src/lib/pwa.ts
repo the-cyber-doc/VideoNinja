@@ -1,6 +1,7 @@
 // The app's side of the PWA (the service worker is src/service-worker/).
 import { dev } from '$app/env';
 import { url } from './base';
+import { reloadSavedMedia } from './offline.svelte';
 import { DATA, MEDIA, UPLOAD_DB } from './pwa-caches';
 
 /** Production build only (SvelteKit's automatic registration is off, see vite.config.ts).
@@ -53,6 +54,7 @@ export async function clearUserData() {
 	try {
 		await caches.delete(DATA);
 		await caches.delete(MEDIA);
+		await reloadSavedMedia(); // thumbnails: nothing saved any more
 	} catch {
 		// no Cache API (insecure context, storage blocked): nothing stored
 	}

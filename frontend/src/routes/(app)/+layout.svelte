@@ -10,6 +10,7 @@
 	import Icon from '#lib/Icon.svelte';
 	import LanguageMenu from '#lib/LanguageMenu.svelte';
 	import MainNav from '#lib/MainNav.svelte';
+	import { watchSavedMedia } from '#lib/offline.svelte.js';
 	import { clearUserData, persistStorage } from '#lib/pwa.js';
 	import { hasAccess, session } from '#lib/session.svelte.js';
 	import type { LayoutProps } from './$types';
@@ -26,6 +27,7 @@
 				session.user = await currentUser();
 				if (!session.user) return goto(url('/login'), { replace: true });
 				persistStorage();
+				watchSavedMedia();
 			} catch (e) {
 				error = (e as Error).message;
 			}

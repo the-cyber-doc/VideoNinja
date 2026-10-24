@@ -122,6 +122,19 @@ test('technique page: segment thumbnails, then comments newest first', async ({ 
 	await expect(page.getByRole('heading', { level: 2 })).toHaveText(['Videos', 'Comments']);
 });
 
+test('segment thumbnail: bottom right, whether the clip is on the device', async ({ page }) => {
+	await loggedIn(page);
+	await page.goto('/schools/gyokko/shoden/gyokko.koku');
+	const first = page.locator('section').first().locator('li').first();
+	// No service worker in these tests: not downloaded (tests/pwa: saved).
+	const badge = first.locator('.badge');
+	await expect(badge).toHaveAttribute('aria-label', 'Not downloaded');
+	await expect(badge).toHaveAttribute('title', 'Not downloaded');
+	const [picture, icon] = await Promise.all([first.locator('img').boundingBox(), badge.boundingBox()]);
+	expect(picture!.x + picture!.width - (icon!.x + icon!.width)).toBeLessThan(12); // right
+	expect(picture!.y + picture!.height - (icon!.y + icon!.height)).toBeLessThan(12); // bottom
+});
+
 test('clicking a segment plays its clip in a dialog', async ({ page }) => {
 	await loggedIn(page);
 	const asked: string[] = [];

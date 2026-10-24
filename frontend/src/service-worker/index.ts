@@ -13,7 +13,16 @@
 //   (range.ts). Not saved yet: downloaded once, for the player and the cache at
 //   the same time (see clip()). Never two requests for one clip: the server
 //   sends one clip per user at a time and answers 429 to a second.
-// - /media/segment/<id>/thumbnail: cache first, checked in the background.
+// - /media/video/<id>: a whole video (Videos page). Saved on the device by the page
+//   itself ($lib/offline.svelte.ts), not here: browsers stop a service worker after
+//   a while (Firefox: about 30 s, whatever waitUntil says), which would cut the
+//   download and every video passing through it (hundreds of MB). Once saved, it
+//   is answered from the saved file (a Blob: it outlives the service worker);
+//   until then its requests are not touched at all: the browser loads it itself.
+// - /media/segment/<id>/thumbnail, /media/video/<id>/thumbnail: cache first,
+//   checked in the background.
+// Saving or deleting a clip or video tells the open pages ({type: 'media-saved' |
+// 'media-deleted', url}): thumbnails show whether it is on the device.
 // - Anything else (other API calls): network only, never cached.
 // DATA and MEDIA hold user data: deleted on logout and login (clearUserData in $lib/pwa.ts).
 // Type-checked with its own tsconfig.json (WebWorker types, no DOM).
@@ -37,7 +46,8 @@ const ASSETS = new Set(
 const OFFLINE_API = [path('/api/setup/status'), path('/api/auth/me'), path('/api/techniques/[^/]+/comments')];
 const CATALOG = `${BASE}/api/catalog`;
 const CLIP = path('/media/segment/\\d+');
-const THUMBNAIL = path('/media/segment/\\d+/thumbnail');
+const THUMBNAIL = path('/media/(segment|video)/\\d+/thumbnail');
+const VIDEO = path('/media/video/\\d+');
 
 sw.addEventListener('install', (event) => {
 	event.waitUntil(
@@ -69,6 +79,9 @@ sw.addEventListener('fetch', (event) => {
 	else if (url.pathname === CATALOG) event.respondWith(catalog(event));
 	else if (OFFLINE_API.some((path) => path.test(url.pathname))) event.respondWith(networkFirst(request));
 	else if (CLIP.test(url.pathname)) event.respondWith(clip(event));
+	else if (VIDEO.test(url.pathname)) {
+		if (savedVideos.has(request.url)) event.respondWith(savedVideo(request));
+	}
 	else if (THUMBNAIL.test(url.pathname)) event.respondWith(thumbnail(event));
 });
 
@@ -131,9 +144,15 @@ async function forgetChangedSegments(before: Response, after: Response) {
 	const media = await caches.open(MEDIA);
 	for (const [id, times] of old) {
 		if (now.get(id) === times) continue;
-		await media.delete(`${BASE}/media/segment/${id}`);
+		const clip = new URL(`${BASE}/media/segment/${id}`, sw.location.href).href;
+		if (await media.delete(clip)) await tell({ type: 'media-deleted', url: clip });
 		await media.delete(`${BASE}/media/segment/${id}/thumbnail`);
 	}
+}
+
+/** Tell the open pages (e.g. a clip or video saved on the device). */
+async function tell(message: { type: 'media-saved' | 'media-deleted'; url: string }) {
+	for (const client of await sw.clients.matchAll()) client.postMessage(message);
 }
 
 async function networkFirst(request: Request): Promise<Response> {
@@ -159,7 +178,9 @@ function download(event: FetchEvent, key: string, cache: Cache) {
 	const response = fetch(key, { credentials: 'same-origin' }); // without Range
 	// Cloned in the first callback of `response`: before the caller can read its body.
 	const saved = response
-		.then((whole) => (whole.status === 200 ? cache.put(key, whole.clone()) : undefined))
+		.then((whole) =>
+			whole.status === 200 ? cache.put(key, whole.clone()).then(() => tell({ type: 'media-saved', url: key })) : undefined
+		)
 		.catch(() => {}) // offline, storage full, or the download cut: saved next time
 		.finally(() => saving.delete(key));
 	saving.set(key, saved);
@@ -195,6 +216,28 @@ async function clip(event: FetchEvent): Promise<Response> {
 	await saved;
 	whole.body?.cancel().catch(() => {}); // the cache's copy is the one read
 	return fromSaved(cache, key, request);
+}
+
+// The whole videos saved on the device: the fetch handler must decide at once
+// (synchronously) whether to answer. Read from the cache when the service worker
+// starts, and again when a page saved or deleted media ('media-changed').
+let savedVideos = new Set<string>();
+loadSavedVideos();
+
+async function loadSavedVideos() {
+	if (!(await caches.has(MEDIA))) return void (savedVideos = new Set()); // open() would create it
+	const keys = await (await caches.open(MEDIA)).keys();
+	savedVideos = new Set(keys.map((r) => r.url).filter((u) => VIDEO.test(new URL(u).pathname)));
+}
+
+sw.addEventListener('message', (event) => {
+	if (event.data?.type === 'media-changed') event.waitUntil(loadSavedVideos());
+});
+
+/** A saved whole video, or the part asked for (seeking). Gone meanwhile (logout): the network. */
+async function savedVideo(request: Request): Promise<Response> {
+	const cached = await (await caches.open(MEDIA)).match(request.url);
+	return cached ? rangeResponse(cached, request.headers.get('Range')) : fetch(request);
 }
 
 /** The part asked for, from the saved clip; from the network if it could not be

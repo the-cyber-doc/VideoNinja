@@ -309,8 +309,22 @@ What the service worker does:
   whole clip is downloaded and saved first, then every part is answered from
   it (in Safari a clip starts once it is saved); a seek during the download
   waits for it.
-- **Segment thumbnails** (`/media/segment/<id>/thumbnail`): cache first,
-  checked in the background (a `404`, segment removed, deletes it).
+- **Whole videos** (`/media/video/<id>`, Videos page): saved on the device by
+  the page itself (`$lib/offline.svelte.ts`), with a download of its own, not by
+  the service worker: browsers stop a service worker after a while (Firefox:
+  about 30 seconds, even with a pending `waitUntil`), which would cut a video of
+  hundreds of MB passing through it. Until it is saved, the service worker
+  doesn't touch its requests at all (the browser loads it as without a service
+  worker); once saved, it answers them from the saved file, which keeps playing
+  after the service worker is stopped. nginx allows four whole-video transfers
+  per user: the editor's three video elements and the save. A video too big for
+  the browser's storage is simply not saved (it stays a cloud).
+- **Thumbnails** (`/media/segment/<id>/thumbnail`, `/media/video/<id>/thumbnail`):
+  cache first, checked in the background (a `404`, segment removed, deletes it).
+- **On the thumbnails**, bottom right: a phone when the clip or video is saved
+  on the device (it plays offline), a cloud when it isn't. The service worker
+  tells the open pages each time it saves or deletes one
+  (`$lib/offline.svelte.ts`).
 - **Everything else** (other API calls): network only, never cached.
 
 **New versions.** The browser looks for a new service worker only when a page
@@ -701,7 +715,9 @@ Roles and what they allow (accesses):
 published video in four collapsible sections: **In progress** (some
 techniques, not all), **To annotate** (none yet), **Complete**, and **No
 technique** (marked as containing none). Each thumbnail shows the video's
-duration. Clicking one opens the same annotation panel as the upload page,
+duration and whether it is saved on this device.
+A video opened here is saved on the device by the PWA, like clips (deleted
+on logout): reopening it doesn't download it again. Clicking one opens the same annotation panel as the upload page,
 with the video from the server and its saved segments and tags: **Proceed**
 saves them (nothing is uploaded). Segments keep their ID; new or re-timed ones
 get a new thumbnail, and the PWA drops saved clips of segments re-timed or
@@ -747,13 +763,23 @@ takes roughly as long as several times its duration with the `medium` preset
 (measure on your Pi; `VIDEONINJA_X265_PRESET=fast` halves it). Interlaced
 sources are deinterlaced (NNEDI3) and HDR ones tone-mapped, as by
 `tools/encode-videos/encode-videos.sh`. A file already in that format (e.g.
-encoded with the script before uploading) is published as it is, same file and
-same SHA-256, without encoding. Only the format counts: MP4 with faststart,
-one H.265 Main 8-bit `hvc1` video, SDR BT.709, progressive, a keyframe every
-second, AAC stereo (one audio stream) or no audio. Its metadata (e.g. a phone's
-GPS location), chapters and other streams are kept as they are; encoded videos
-lose them. The original is deleted once the video is published; an upload
-not submitted within a week is deleted too.
+encoded with the script before uploading) is not encoded: its video and audio
+are copied into a new file (seconds, no quality lost). Only the format counts:
+MP4 with faststart, one H.265 Main 8-bit `hvc1` video, SDR BT.709,
+progressive, a keyframe every second, AAC mono or stereo (one audio stream) or
+no audio.
+
+Published videos never keep their metadata: tags (a phone's GPS location,
+dates, device, title), chapters and other streams (data or GPS tracks,
+timecode, subtitles) are removed, whether the video was encoded or only
+copied. The picture's rotation (portrait videos) is kept. The published file
+is therefore never byte for byte the original: both hashes are kept, and a
+new upload of either is refused. The original is deleted once the video is
+published; an upload not submitted within a week is deleted too.
+
+`encode-videos.sh` used by hand (to encode before uploading) also removes the
+metadata; `-m` keeps it (the server removes it anyway when publishing). Mono
+audio stays mono; more than two channels are mixed down to stereo.
 
 ### 4. Updates
 
@@ -873,8 +899,9 @@ and logs through the app (`docker compose logs`). It:
 - sends the security headers (CSP, `Referrer-Policy: no-referrer`, …) and
   takes the client's address from `X-Forwarded-For`, trusted only from
   private addresses (your proxy);
-- sends **one clip per user at a time** (whole videos on the Videos page: three
-  transfers per user, its own count). The app puts the user's ID in the
+- sends **one clip per user at a time** (whole videos on the Videos page: four
+  transfers per user, its own count: the editor's three video elements and the
+  download that saves the video on the device). The app puts the user's ID in the
   internal redirect (`/protected-clip/<user id>/…`, `/protected-video/<user id>/…`)
   and nginx counts the transfers in progress (`limit_conn`): a second one gets
   `429`, and the player says that another video is still downloading (a clip

@@ -9,7 +9,8 @@
 #      * libplacebo (GPU via Vulkan, best quality) when available
 #      * zscale + tonemap (CPU) as fallback, also used automatically if libplacebo fails
 #  - Keyframe every N seconds (precise cuts / nginx mp4 module)
-#  - hvc1 tag (Safari), faststart, metadata stripped (incl. GPS)
+#  - hvc1 tag (Safari), faststart, metadata stripped (incl. GPS; -m keeps it)
+#  - AAC audio: mono stays mono, more channels are downmixed to stereo
 #  - Writes to a temporary file, then renames: no half-written outputs
 #
 # Usage: encode-videos.sh [options] <file|dir>...
@@ -34,6 +35,7 @@ DRY_RUN=0
 USE_CPU=0             # 1 = libx265 instead of NVENC (testing / no GPU)
 X265_PRESET="medium"  # libx265 preset (-c): ultrafast .. placebo, slower = smaller
 PROGRESS=""           # file for ffmpeg's -progress output (key=value, e.g. out_time_us)
+KEEP_METADATA=0       # 1 = keep tags (GPS location, dates, device…) and chapters
 EXTENSIONS="mov|mp4|m4v|mkv|avi|mts|m2ts|webm|3gp|mpg|mpeg|vob|ts|dv"
 
 usage() {
@@ -55,6 +57,8 @@ Options:
   -c        CPU encoding with libx265 (no NVIDIA GPU needed)
   -x PRESET libx265 preset with -c (default: $X265_PRESET)
   -P FILE   Write ffmpeg's progress (key=value lines, out_time_us…) to FILE
+  -m        Keep the metadata (GPS location, dates, device, title…) and
+            chapters; default: removed. Other streams are dropped either way.
   -h        Help
 EOF
 }
@@ -63,7 +67,7 @@ log()  { printf '%s %s\n' "$(date '+%H:%M:%S')" "$*" >&2; }
 die()  { log "ERROR: $*"; exit 1; }
 
 # ---------- options ----------
-while getopts ":o:q:p:g:t:d:w:x:P:2fnch" opt; do
+while getopts ":o:q:p:g:t:d:w:x:P:2fncmh" opt; do
   case $opt in
     o) OUT_DIR=$OPTARG ;;
     q) CQ=$OPTARG ;;
@@ -78,6 +82,7 @@ while getopts ":o:q:p:g:t:d:w:x:P:2fnch" opt; do
     c) USE_CPU=1 ;;
     x) X265_PRESET=$OPTARG ;;
     P) PROGRESS=$OPTARG ;;
+    m) KEEP_METADATA=1 ;;
     h) usage; exit 0 ;;
     :) die "Option -$OPTARG needs a value" ;;
     *) usage; exit 2 ;;
@@ -214,14 +219,20 @@ run_encode() {   # in out mode tin interlace
   local -a cmd=(ffmpeg -hide_banner -nostdin -loglevel error -stats -y)
   (( USE_CPU )) || cmd+=(-hwaccel cuda)
   [[ -n $PROGRESS ]] && cmd+=(-progress "file:$PROGRESS")
-  cmd+=(-i "file:$in"
-        -map 0:v:0 -map '0:a:0?' -map_metadata -1 -map_chapters -1
-        -vf "$(build_vf "$mode" "$tin" "$il")"
+  cmd+=(-i "file:$in" -map 0:v:0 -map '0:a:0?')
+  if (( KEEP_METADATA )); then
+    cmd+=(-map_metadata 0 -map_chapters 0)
+  else
+    # Global and stream tags, chapters, and ffmpeg's own encoder/handler strings.
+    cmd+=(-map_metadata -1 -map_metadata:s -1 -map_chapters -1
+          -fflags +bitexact -flags:v +bitexact -flags:a +bitexact)
+  fi
+  cmd+=(-vf "$(build_vf "$mode" "$tin" "$il")"
         "${VENC[@]}")
   [[ $mode != sdr ]] && cmd+=(-color_primaries bt709 -color_trc bt709 -colorspace bt709 -color_range tv)
   cmd+=(-force_key_frames "expr:gte(t,n_forced*$GOP_SECONDS)"
         -tag:v hvc1
-        -c:a aac -b:a "$AUDIO_BITRATE" -ac 2
+        -c:a aac -b:a "$AUDIO_BITRATE" -af 'aformat=channel_layouts=mono|stereo'
         -movflags +faststart
         -f mp4 "file:$tmp")
 

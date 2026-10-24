@@ -7,6 +7,7 @@
 	import { url } from '#lib/base.js';
 	import { loadCatalog, type Catalog } from '#lib/catalog.svelte.js';
 	import { i18n, t } from '#lib/i18n.svelte.js';
+	import { saveVideo } from '#lib/offline.svelte.js';
 	import { hasAccess } from '#lib/session.svelte.js';
 	import AnnotationPanel from '#lib/upload/AnnotationPanel.svelte';
 	import { addPerformer, performers as loadPerformers, tags as loadTags, type Performer, type Tag } from '#lib/upload/api.js';
@@ -33,6 +34,7 @@
 			return;
 		}
 		const video = id;
+		saveVideo(videoUrl(video)); // on the device for next time (the editor reads it from the network now)
 		// Untracked: a language change or a newer catalogue must not reload the
 		// video and lose the changes in progress; only another video does.
 		untrack(() =>

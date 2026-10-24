@@ -8,7 +8,8 @@
 	import { t, type MessageKey } from '#lib/i18n.svelte.js';
 	import { hasAccess } from '#lib/session.svelte.js';
 	import { formatTime } from '#lib/time.js';
-	import { listVideos, SECTIONS, videoSection, videoThumbnailUrl, type VideoRow } from '#lib/videos/annotations.js';
+	import SavedBadge from '#lib/SavedBadge.svelte';
+	import { listVideos, SECTIONS, videoSection, videoThumbnailUrl, videoUrl, type VideoRow } from '#lib/videos/annotations.js';
 
 	const allowed = $derived(hasAccess('video_mgmt'));
 	let videos = $state<VideoRow[] | null>(null);
@@ -69,7 +70,10 @@
 													onerror={() => (failed[video.id] = true)}
 												/>
 											{/if}
-											{#if video.duration_s != null}<span class="duration">{duration(video)}</span>{/if}
+											<span class="corner">
+												{#if video.duration_s != null}<span class="duration">{duration(video)}</span>{/if}
+												<SavedBadge path={videoUrl(video.id)} />
+											</span>
 										</span>
 										<span class="file">{video.original_filename}</span>
 									</a>
@@ -167,10 +171,16 @@
 		outline: 2px solid var(--accent);
 		outline-offset: 2px;
 	}
-	.duration {
+	/* Bottom right: the duration, then whether the video is on this device. */
+	.corner {
 		position: absolute;
 		right: 0.35rem;
 		bottom: 0.35rem;
+		display: flex;
+		align-items: center;
+		gap: 0.25rem;
+	}
+	.duration {
 		padding: 0.05rem 0.35rem;
 		font-size: 0.75rem;
 		font-variant-numeric: tabular-nums;

@@ -3,8 +3,9 @@
 Loop: delete the originals no longer needed, claim the oldest queued video,
 check its original (complete, SHA-256 as announced, long enough), encode it
 with tools/encode-videos/encode-videos.sh (libx265, NNEDI3 deinterlacing, HDR
-tone mapping) unless it is already in that format (then it is published as
-it is, same bytes and same SHA-256: see needs_encoding), check the result,
+tone mapping) unless it is already in that format (then its streams are only
+copied into a new MP4 without the metadata: see needs_encoding and
+strip_metadata), check the result,
 store it under video/<h2>/<sha256>/ with its thumbnails, and publish it.
 The CPU work is done by ffmpeg (child process, low priority); this thread only
 waits and reports progress to the database.
@@ -245,10 +246,12 @@ class Encoder:
             log.info("Video %s: encoding (%s)", video, reason)
             encoded = self.encode(video, original, work, duration)
         else:
-            log.info("Video %s: already in the target format, published as it is", video)
+            log.info("Video %s: already in the target format, published without its metadata", video)
             encoded = work / "out" / "video.mp4"
             encoded.parent.mkdir()
-            shutil.copyfile(original, encoded)  # a copy: the original stays until published
+            strip_metadata(original, encoded)  # a new file: the original stays until published
+            if reason := needs_encoding(encoded):
+                raise JobError(f"Removing the metadata changed the format: {reason}")
         check_encoded(encoded)
         sha256 = file_sha256(encoded)
         folder = self.videos / sha256[:2] / sha256
@@ -369,12 +372,12 @@ def check_encoded(path: Path) -> None:
 def needs_encoding(path: Path) -> str | None:
     """Why the original must be encoded, or None if its format is already what
     encode-videos.sh makes: MP4 with faststart, one H.265 Main 8-bit video
-    (hvc1), SDR BT.709, progressive, a keyframe every GOP_S seconds, AAC stereo
-    (or no audio). Only the format counts: metadata (GPS location, dates…),
-    chapters and other streams (data, subtitles) are ignored and stay in the
-    file. Such a file (e.g. encoded with the script before upload) is published
-    as it is: encoding it again would only lose quality and take the Pi minutes
-    to hours. When unsure: encode."""
+    (hvc1), SDR BT.709, progressive, a keyframe every GOP_S seconds, AAC mono or
+    stereo (or no audio). Only the format counts: metadata (GPS location,
+    dates…), chapters and other streams (data, subtitles) are ignored here.
+    Such a file (e.g. a phone's recording, or encoded with the script before
+    upload) is not encoded again, which would only lose quality and take the Pi
+    minutes to hours: strip_metadata copies its streams. When unsure: encode."""
     out = run(["ffprobe", "-v", "error", "-show_entries",
                "format=format_name:stream=codec_type,codec_name,codec_tag_string,profile,pix_fmt,"
                "width,height,field_order,color_transfer,color_primaries,channels,avg_frame_rate"
@@ -406,9 +409,23 @@ def needs_encoding(path: Path) -> str | None:
             return f"{key} {v[key]}, not BT.709 (HDR?)"
     if any("DOVI" in d.get("side_data_type", "") for d in v.get("side_data_list", [])):
         return "Dolby Vision"
-    if a is not None and (a.get("codec_name"), a.get("profile"), a.get("channels")) != ("aac", "LC", 2):
-        return f"audio is {a.get('codec_name')} {a.get('profile')} with {a.get('channels')} channels, not AAC stereo"
+    if a is not None and ((a.get("codec_name"), a.get("profile")) != ("aac", "LC") or a.get("channels") not in (1, 2)):
+        return (f"audio is {a.get('codec_name')} {a.get('profile')} with {a.get('channels')} channels,"
+                " not AAC mono or stereo")
     return keyframe_problem(path, v.get("avg_frame_rate", "0/1"))
+
+
+def strip_metadata(original: Path, out: Path) -> None:
+    """The original's first video and audio streams, copied (no encoding) into a
+    new MP4 without its metadata: no global or stream tags (GPS location, dates,
+    device, encoder), no chapters, no other streams (data or GPS tracks,
+    timecode, subtitles). The picture's rotation is side data, not metadata: it
+    stays. Seconds, even for a long video: only the bytes are copied."""
+    run(["ffmpeg", "-v", "error", "-nostdin", "-y", "-i", f"file:{original}",
+         "-map", "0:v:0", "-map", "0:a:0?", "-c", "copy",
+         "-map_metadata", "-1", "-map_metadata:s", "-1", "-map_chapters", "-1",
+         "-fflags", "+bitexact", "-flags:v", "+bitexact", "-flags:a", "+bitexact",
+         "-tag:v", "hvc1", "-movflags", "+faststart", "-f", "mp4", f"file:{out}"])
 
 
 def keyframe_problem(path: Path, frame_rate: str) -> str | None:

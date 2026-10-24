@@ -271,6 +271,8 @@
 	"upload.deleted_user": { "en": "a deleted user", "fr": "un utilisateur supprimé" },
 	"app.update_available": { "en": "A new version of the app is available.", "fr": "Une nouvelle version de l'application est disponible." },
 	"app.reload": { "en": "Reload", "fr": "Recharger" },
+	"media.saved": { "en": "Saved on this device", "fr": "Enregistré sur cet appareil" },
+	"media.not_saved": { "en": "Not downloaded", "fr": "Pas téléchargé" },
 	"upload.segment.bad_times": {
 		"en": "The segment must end after it begins, inside the video.",
 		"fr": "Le segment doit finir après son début, dans la vidéo."

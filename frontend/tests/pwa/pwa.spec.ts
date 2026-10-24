@@ -107,11 +107,14 @@ test('a clip watched online plays offline, with its thumbnail', async ({ page, c
 		.poll(() => cachedPaths(page, 'media'))
 		.toEqual(expect.arrayContaining([at('/media/segment/7'), at('/media/segment/7/thumbnail')]));
 	await page.keyboard.press('Escape');
+	// Its thumbnail says so at once (the service worker's message), and after a reload.
+	await expect(play.locator('.badge')).toHaveAttribute('aria-label', 'Saved on this device');
 
 	await context.unrouteAll({ behavior: 'ignoreErrors' });
 	await context.setOffline(true);
 	await page.reload();
 	await expect(play.locator('img')).toHaveJSProperty('complete', true); // the cached picture
+	await expect(play.locator('.badge')).toHaveAttribute('aria-label', 'Saved on this device');
 	expect(await play.locator('img').evaluate((img: HTMLImageElement) => img.naturalWidth)).toBe(1);
 	await play.click();
 	await expect.poll(() => video.evaluate((v: HTMLVideoElement) => v.currentTime)).toBeGreaterThan(0);
@@ -213,6 +216,83 @@ test('logout deletes the cached user data', async ({ page, context, at }) => {
 	// The login page caches /api/setup/status again: not user data.
 	expect((await cached()).filter((path) => path !== at('/api/setup/status'))).toEqual([]);
 	expect(await page.evaluate(() => caches.has('media'))).toBe(false); // clips and thumbnails too
+	// Logged in again: the thumbnails no longer show the clip as saved.
+	await page.goto(at('/schools/togakure/shoden/togakure.t'));
+	await expect(page.getByRole('button', { name: 'Play the segment (0:15)' }).locator('.badge')).toHaveAttribute(
+		'aria-label',
+		'Not downloaded'
+	);
+});
+
+test('whole videos: the service worker never stands between the network and the editor', async ({ page, context, at }) => {
+	// A service worker is stopped by the browser after a while (Firefox: about 30 s,
+	// whatever waitUntil says): a video of hundreds of MB passing through it would
+	// be cut. Not saved: its requests are not touched. Saved by the page: answered
+	// from the saved file, which still plays once the service worker is stopped.
+	await fakeApi(context);
+	const MANAGER = { ...USER, role: 'video_mgmt', access: ['segment', 'upload', 'video_mgmt'] };
+	await context.route('**/api/auth/me', (r) => r.fulfill({ json: MANAGER }));
+	const row = { id: 1, original_filename: 'kata.mp4', uploaded_at: '2027-01-15T09:00:00+01:00', duration_s: 4, all_segments_done: false, segment_count: 0 };
+	await context.route('**/api/videos', (r) => r.fulfill({ json: [row] }));
+	await context.route('**/api/videos/1/annotations', (r) =>
+		r.fulfill({ json: { all_segments_done: false, original_filename: 'kata.mp4', uploaded_by: 'Hana', tags: [], segments: [] } })
+	);
+	await context.route('**/api/performers', (r) => r.fulfill({ json: [] }));
+	await context.route('**/api/tags', (r) => r.fulfill({ json: [] }));
+	await context.route('**/media/video/1/thumbnail', (r) => r.fulfill({ contentType: 'image/png', body: PNG }));
+	let saves = 0; // the page's downloads of the whole video (fetch, no Range)
+	let release = () => {};
+	const held = new Promise<void>((resolve) => (release = resolve)); // the page's save, until the editor played
+	await context.route('**/media/video/1', async (route) => {
+		if (!route.request().headers()['range'] && route.request().resourceType() === 'fetch') {
+			saves++;
+			await held;
+		}
+		return fulfillClip(route);
+	});
+	const answers: boolean[] = []; // the editor's video requests: answered by the service worker?
+	page.on('response', (r) => {
+		if (new URL(r.url()).pathname === at('/media/video/1')) answers.push(r.fromServiceWorker());
+	});
+	const editor = page.locator('video').first();
+	const playable = () => editor.evaluate((v: HTMLVideoElement) => v.readyState >= 2 && !v.error);
+
+	await controlled(page, at('/videos'));
+	const link = page.getByRole('link', { name: /kata\.mp4/ });
+	await expect(link.getByRole('img', { name: 'Not downloaded' })).toBeVisible();
+
+	// Not saved yet: straight from the network; the page saves it meanwhile.
+	await link.click();
+	await expect(page.locator('.about .filename')).toHaveText('kata.mp4');
+	await expect.poll(playable).toBe(true);
+	expect(answers.length).toBeGreaterThan(0);
+	expect(answers).not.toContain(true);
+	release();
+	await expect.poll(() => cachedPaths(page, 'media')).toContain(at('/media/video/1'));
+	await page.goto(at('/videos'));
+	await expect(link.getByRole('img', { name: 'Saved on this device' })).toBeVisible();
+
+	// Saved: from the device, also once the service worker is stopped.
+	answers.length = 0;
+	await page.goto(at('/videos/1'));
+	await expect.poll(playable).toBe(true);
+	expect(answers.length).toBeGreaterThan(0);
+	expect(answers).not.toContain(false);
+	const cdp = await context.newCDPSession(page);
+	await cdp.send('ServiceWorker.enable');
+	await cdp.send('ServiceWorker.stopAllWorkers');
+	await editor.evaluate((v: HTMLVideoElement) => (v.currentTime = 3));
+	await expect.poll(() => editor.evaluate((v: HTMLVideoElement) => v.currentTime)).toBe(3);
+	await expect.poll(playable).toBe(true);
+	expect(saves).toBe(1); // saved once, not again when opened from the device
+
+	// Offline: the video and its parts (seeking) from the saved file.
+	await context.setOffline(true);
+	const part = await page.evaluate(async (video) => {
+		const r = await fetch(video, { headers: { Range: 'bytes=0-1' } });
+		return { status: r.status, range: r.headers.get('Content-Range') };
+	}, at('/media/video/1'));
+	expect(part).toEqual({ status: 206, range: `bytes 0-1/${CLIP.length}` });
 });
 
 test('a new version took over: the app offers to reload, never on the first install', async ({ page, context, at }) => {

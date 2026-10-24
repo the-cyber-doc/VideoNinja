@@ -127,9 +127,13 @@ def test_detects_what_needs_encoding():
 @pytest.mark.parametrize("options, reason", [
     (["-movflags", "+faststart"], None),  # same as READY
     ([], "no faststart (index after the media data)"),
-    # Only the format counts: metadata (e.g. a phone's GPS location) stays.
+    # Only the format counts: metadata (e.g. a phone's GPS location) is removed when published.
     (["-movflags", "+faststart", "-metadata", "location=+46.2044+006.1432/", "-metadata", "title=Kata"], None),
     (["-movflags", "+faststart", "-map", "0:v", "-map", "0:a", "-map", "0:a"], "more than one audio stream"),
+    # Mono is fine (a phone's microphone); more than stereo is not.
+    (["-movflags", "+faststart", "-c:a", "aac", "-ac", "1"], None),
+    (["-movflags", "+faststart", "-c:a", "aac", "-ac", "6"],
+     "audio is aac LC with 6 channels, not AAC mono or stereo"),
 ])
 def test_published_as_it_is_when_the_format_is_right(tmp_path, options, reason):
     assert encoder.needs_encoding(remuxed(tmp_path, *options)) == reason
@@ -152,12 +156,44 @@ def test_original_in_the_target_format_is_not_encoded(admin, enc, tmp_path):  # 
     status, error, sha, thumb = row(video)
     assert (status, error, thumb) == ("published", None, "thumb.jpg")
     assert not called.exists()  # the encoding script never ran
-    # Published as it is: the same file, so the same hash as the original.
+    # Its streams copied without the metadata: another file, so another hash.
     original_sha = sqlite3.connect(db.db_path()).execute(
         "SELECT original_sha256 FROM video WHERE id = ?", (video,)).fetchone()[0]
-    assert sha == original_sha == encoder.file_sha256(READY)
+    assert original_sha == encoder.file_sha256(READY) != sha
     published = enc.videos / sha[:2] / sha / "video.mp4"
-    assert published.read_bytes() == READY.read_bytes()
+    assert encoder.file_sha256(published) == sha
+    assert encoder.needs_encoding(published) is None
+    assert "encoder" not in probe(published, "format_tags")  # READY's "Lavf…" is gone
+
+
+def probe(path: Path, entries: str) -> str:
+    return subprocess.run(["ffprobe", "-v", "error", "-show_entries", entries, "-show_chapters", "-of", "compact",
+                           f"file:{path}"], capture_output=True, text=True, check=True).stdout
+
+
+@samples
+def test_metadata_stripped_rotation_kept(tmp_path):
+    """A phone's recording: GPS location, title, device names, chapters (with their data track)
+    and a portrait rotation. Published: only the rotation is left."""
+    (tmp_path / "chapters.txt").write_text(";FFMETADATA1\n[CHAPTER]\nTIMEBASE=1/1\nSTART=0\nEND=10\n"
+                                           "title=Omote\n")
+    phone = tmp_path / "phone.mp4"
+    subprocess.run(["ffmpeg", "-v", "error", "-nostdin", "-y", "-display_rotation", "90", "-i", f"file:{READY}",
+                    "-f", "ffmetadata", "-i", str(tmp_path / "chapters.txt"), "-map", "0", "-map_chapters", "1",
+                    "-c", "copy", "-tag:v", "hvc1", "-movflags", "+faststart",
+                    "-metadata", "location=+46.2044+006.1432/", "-metadata", "title=Kata",
+                    "-metadata:s:v", "handler_name=Kenji's phone", f"file:{phone}"], check=True)
+    before = probe(phone, "format_tags:stream_tags:stream=codec_type")
+    assert all(text in before for text in ("46.2044", "Kata", "Kenji's phone", "Omote", "codec_type=data"))
+
+    out = tmp_path / "out.mp4"
+    encoder.strip_metadata(phone, out)
+    after = probe(out, "format_tags:stream_tags:stream=codec_type:stream_side_data=rotation")
+    assert not any(text in after for text in ("46.2044", "Kata", "Kenji", "Omote", "data", "Lav"))
+    assert [line.split("|")[1] for line in after.splitlines() if line.startswith("stream")] == [
+        "codec_type=video", "codec_type=audio"]
+    assert "rotation=90" in after  # side data, not metadata: the picture stays upright
+    assert encoder.needs_encoding(out) is None
 
 
 def copying_script(tmp_path, result: Path) -> str:
@@ -314,3 +350,18 @@ def test_invalid_x265_preset_refuses_start(tmp_path, monkeypatch, value):
     with pytest.raises(RuntimeError, match=rf"VIDEONINJA_X265_PRESET={value!r}: must be one of ultrafast"):
         with TestClient(app):
             pass
+
+
+@pytest.mark.parametrize("keep, present, absent", [
+    (False, ["-map_metadata -1", "-map_chapters -1", "+bitexact"], ["-map_metadata 0"]),
+    (True, ["-map_metadata 0", "-map_chapters 0"], ["-map_metadata -1", "+bitexact"]),
+])
+def test_script_strips_metadata_unless_asked(tmp_path, keep, present, absent):
+    """encode-videos.sh: metadata removed by default, kept with -m (dry run: the ffmpeg command)."""
+    clip = tmp_path / "clip.mp4"
+    subprocess.run(["ffmpeg", "-v", "error", "-y", "-f", "lavfi", "-i", "testsrc=size=160x120:rate=25:d=1",
+                    "-c:v", "libx264", f"file:{clip}"], check=True)
+    out = subprocess.run([str(encoder.DEFAULT_SCRIPT), "-c", "-n", *(["-m"] if keep else []), "-o",
+                          str(tmp_path / "out"), str(clip)], capture_output=True, text=True, check=True).stdout
+    assert all(option in out for option in present), out
+    assert not any(option in out for option in absent), out
