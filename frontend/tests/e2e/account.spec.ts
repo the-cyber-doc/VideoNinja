@@ -68,7 +68,8 @@ test('setup wizard creates the admin account', async ({ page }) => {
 	await page.getByRole('button', { name: 'Continue' }).click();
 	admin.totpSecret = await createAccount(page, admin.password);
 
-	await expect(page.getByText('Video Ninja is ready')).toBeVisible();
+	// Builds the whole database (schema, catalogue, admin): more than 5 s on a busy CI runner.
+	await expect(page.getByText('Video Ninja is ready')).toBeVisible({ timeout: 30_000 });
 });
 
 test('setup is closed afterwards', async ({ request }) => {

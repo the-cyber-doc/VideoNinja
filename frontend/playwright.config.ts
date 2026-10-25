@@ -17,6 +17,8 @@ export default defineConfig({
 	testDir: 'tests',
 	forbidOnly: !!process.env.CI,
 	retries: process.env.CI ? 1 : 0,
+	// CI: one test at a time, so a busy runner does not slow the tests down further.
+	workers: process.env.CI ? 1 : undefined,
 	reporter: process.env.CI ? [['list'], ['html', { open: 'never' }]] : 'list',
 	use: {
 		baseURL: `https://localhost:${APP_PORT}`,
@@ -45,7 +47,15 @@ export default defineConfig({
 				launchOptions: { args: ['--ignore-certificate-errors'] }
 			}
 		},
-		{ name: 'e2e', testDir: 'tests/e2e', use: devices['Desktop Chrome'], fullyParallel: false },
+		{
+			name: 'e2e',
+			testDir: 'tests/e2e',
+			use: devices['Desktop Chrome'],
+			fullyParallel: false,
+			// No retry: the first attempt already changed the database (a retried setup
+			// finds it done and fails at /setup, hiding the real error).
+			retries: 0
+		},
 		{
 			// The service worker tests again, and the links and API paths, under a base path.
 			name: 'subpath',
