@@ -4,7 +4,7 @@
 	import Breadcrumbs from '#lib/Breadcrumbs.svelte';
 	import CardPage from '#lib/CardPage.svelte';
 	import CatalogCard from '#lib/cards/CatalogCard.svelte';
-	import { BUKI, catalogCrumbs, catalogHref, weaponsOf } from '#lib/catalog.svelte.js';
+	import { BUKI, catalogCrumbs, catalogHref, segmentsUnder, weaponsOf } from '#lib/catalog.svelte.js';
 	import { t } from '#lib/i18n.svelte.js';
 	import { weaponEmblems } from '#lib/weapons/emblems.js';
 	import type { PageProps } from './$types';
@@ -20,7 +20,12 @@
 				<Breadcrumbs items={catalogCrumbs(c, path)} />
 			{/snippet}
 			{#snippet card(weapon)}
-				<CatalogCard item={weapon} image={weaponEmblems.url(weapon.id)} href={catalogHref({ ...path, weapon: weapon.id })} />
+				<CatalogCard
+					item={weapon}
+					image={weaponEmblems.url(weapon.id)}
+					href={catalogHref({ ...path, weapon: weapon.id })}
+					segments={segmentsUnder(c, { ...path, weapon: weapon.id })}
+				/>
 			{/snippet}
 		</CardPage>
 	{/snippet}

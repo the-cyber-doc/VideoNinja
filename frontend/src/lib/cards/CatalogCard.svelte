@@ -1,38 +1,41 @@
 <script lang="ts">
-	// A school, level or technique: kanji, then romaji, centred, over an optional
-	// background image (emblem). With `href` the whole card is a link.
+	// A school, category, weapon, section or technique: kanji, then romaji, centred,
+	// over an optional background image (emblem). With `href` the card's face is a
+	// link. With `segments` (those of its branch), bottom right: whether they are
+	// saved on this device, and a button to download or remove them (OfflineToggle,
+	// beside the link: a button cannot be inside it).
+	import type { Segment } from '../catalog.svelte';
+	import { offline } from '../offline.svelte';
+	import OfflineToggle from '../OfflineToggle.svelte';
+
 	let {
 		item,
 		image,
-		href
-	}: { item: { id: string; kanji: string; romaji: string }; image?: string; href?: string } =
-		$props();
+		href,
+		segments
+	}: {
+		item: { id: string; kanji: string; romaji: string };
+		image?: string;
+		href?: string;
+		segments?: Segment[];
+	} = $props();
 </script>
 
-<svelte:element
-	this={href ? 'a' : 'div'}
-	{href}
-	class="catalog-card"
-	data-id={item.id}
-	style:background-image={image ? `url("${image}")` : undefined}
->
+<div class="catalog-card" data-id={item.id} style:background-image={image ? `url("${image}")` : undefined}>
 	<!-- Quoted url(): small emblems are inlined as data: URLs, with quotes and parentheses. -->
-	<span class="kanji" lang="ja">{item.kanji}</span>
-	<span class="romaji">{item.romaji}</span>
-</svelte:element>
+	<svelte:element this={href ? 'a' : 'div'} {href} class="face">
+		<span class="kanji" lang="ja">{item.kanji}</span>
+		<span class="romaji">{item.romaji}</span>
+	</svelte:element>
+	{#if segments?.length && offline.available}
+		<span class="corner"><OfflineToggle {segments} /></span>
+	{/if}
+</div>
 
 <style>
 	.catalog-card {
+		position: relative;
 		aspect-ratio: 1;
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		justify-content: center;
-		gap: 0.3rem;
-		padding: 0.5rem;
-		text-align: center;
-		color: var(--text);
-		text-decoration: none;
 		background-color: var(--surface);
 		background-position: center;
 		background-repeat: no-repeat;
@@ -40,10 +43,30 @@
 		border: 1px solid var(--border);
 		border-radius: var(--radius);
 	}
-	a.catalog-card:hover,
-	a.catalog-card:focus-visible {
+	.catalog-card:has(a.face:hover),
+	.catalog-card:has(a.face:focus-visible) {
 		border-color: var(--accent);
+	}
+	.face {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		gap: 0.3rem;
+		height: 100%;
+		padding: 0.5rem;
+		text-align: center;
+		color: var(--text);
+		text-decoration: none;
+		border-radius: inherit;
+	}
+	a.face:focus-visible {
 		outline: none;
+	}
+	.corner {
+		position: absolute;
+		right: 0.4rem;
+		bottom: 0.4rem;
 	}
 	.kanji {
 		font-size: 1.6rem;

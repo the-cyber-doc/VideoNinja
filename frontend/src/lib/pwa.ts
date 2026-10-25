@@ -1,7 +1,7 @@
 // The app's side of the PWA (the service worker is src/service-worker/).
 import { dev } from '$app/env';
 import { url } from './base';
-import { reloadSavedMedia } from './offline.svelte';
+import { reloadSavedMedia, stopDownloads } from './offline.svelte';
 import { DATA, MEDIA, UPLOAD_DB } from './pwa-caches';
 
 /** Production build only (SvelteKit's automatic registration is off, see vite.config.ts).
@@ -51,6 +51,7 @@ export function persistStorage() {
 
 /** Forget the previous user's data: on logout, and after a login. */
 export async function clearUserData() {
+	stopDownloads(); // before the caches go: a clip saved afterwards would come back
 	try {
 		await caches.delete(DATA);
 		await caches.delete(MEDIA);

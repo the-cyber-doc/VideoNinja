@@ -5,7 +5,7 @@
 	import CardPage from '#lib/CardPage.svelte';
 	import CatalogCard from '#lib/cards/CatalogCard.svelte';
 	import { categoryEmblems } from '#lib/categories/emblems.js';
-	import { catalogCrumbs, catalogHref, categoriesOf } from '#lib/catalog.svelte.js';
+	import { catalogCrumbs, catalogHref, categoriesOf, segmentsUnder } from '#lib/catalog.svelte.js';
 	import { t } from '#lib/i18n.svelte.js';
 	import type { PageProps } from './$types';
 
@@ -24,6 +24,7 @@
 					item={category}
 					image={categoryEmblems.url(category.id)}
 					href={catalogHref({ ...path, category: category.id })}
+					segments={segmentsUnder(c, { ...path, category: category.id })}
 				/>
 			{/snippet}
 		</CardPage>

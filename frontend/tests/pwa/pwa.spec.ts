@@ -112,13 +112,14 @@ test('a clip watched online plays offline, with its thumbnail', async ({ page, c
 		.toEqual(expect.arrayContaining([at('/media/segment/7'), at('/media/segment/7/thumbnail')]));
 	await page.keyboard.press('Escape');
 	// Its thumbnail says so at once (the service worker's message), and after a reload.
-	await expect(play.locator('.badge')).toHaveAttribute('aria-label', 'Saved on this device');
+	const offlineToggle = page.locator('li[data-id="7"]').getByRole('button', { name: /this device|offline/ });
+	await expect(offlineToggle).toHaveAccessibleName('Remove from this device (1 video(s))');
 
 	await context.unrouteAll({ behavior: 'ignoreErrors' });
 	await context.setOffline(true);
 	await page.reload();
 	await expect(play.locator('img')).toHaveJSProperty('complete', true); // the cached picture
-	await expect(play.locator('.badge')).toHaveAttribute('aria-label', 'Saved on this device');
+	await expect(offlineToggle).toHaveAccessibleName('Remove from this device (1 video(s))');
 	expect(await play.locator('img').evaluate((img: HTMLImageElement) => img.naturalWidth)).toBe(1);
 	await play.click();
 	await expect.poll(() => video.evaluate((v: HTMLVideoElement) => v.currentTime)).toBeGreaterThan(0);
@@ -222,9 +223,8 @@ test('logout deletes the cached user data', async ({ page, context, at }) => {
 	expect(await page.evaluate(() => caches.has('media'))).toBe(false); // clips and thumbnails too
 	// Logged in again: the thumbnails no longer show the clip as saved.
 	await page.goto(at(TECHNIQUE_PAGE));
-	await expect(page.getByRole('button', { name: 'Play the segment (0:15)' }).locator('.badge')).toHaveAttribute(
-		'aria-label',
-		'Not downloaded'
+	await expect(page.locator('li[data-id="7"]').getByRole('button', { name: /offline/ })).toHaveAccessibleName(
+		'Download for offline use (1 video(s))'
 	);
 });
 
@@ -334,4 +334,106 @@ test('a new version took over: the app offers to reload, never on the first inst
 	await banner.getByRole('button', { name: 'Reload' }).click();
 	await expect(cards(page)).toHaveCount(2);
 	await expect(banner).toHaveCount(0);
+});
+
+// --- Downloading a branch of the catalogue for offline use (the cards' cloud and phone) ---
+
+/** The togakure branch with `count` segments on two techniques; clips answered after
+ * `delay` ms, counting how many are being sent at once (nginx allows one). */
+async function branchApi(context: BrowserContext, count: number, refuse: (id: number, n: number) => boolean = () => false) {
+	await fakeApi(context);
+	const other = { id: 'togakure.taijutsu.kamae.u', kanji: '別', romaji: 'Other', section: SECTION.id };
+	const segments = Array.from({ length: count }, (_, i) => ({
+		id: 100 + i,
+		video: 1,
+		technique: i % 2 ? other.id : technique.id,
+		begin_s: 0,
+		end_s: 4,
+		performer: 'p'
+	}));
+	await context.route('**/api/catalog', (r) =>
+		r.fulfill({ json: { ...catalog(['togakure', 'gyokko']), techniques: [technique, other], segments }, headers: { ETag: `"b${count}"` } })
+	);
+	const stats = { inFlight: 0, maxInFlight: 0, requests: [] as number[] };
+	await context.route(/\/media\/segment\/\d+$/, async (route) => {
+		const id = Number(route.request().url().split('/').pop());
+		stats.requests.push(id);
+		if (refuse(id, stats.requests.filter((r) => r === id).length)) return route.fulfill({ status: 429 });
+		stats.inFlight++;
+		stats.maxInFlight = Math.max(stats.maxInFlight, stats.inFlight);
+		await new Promise((resolve) => setTimeout(resolve, 150));
+		stats.inFlight--;
+		return fulfillClip(route);
+	});
+	await context.route(/\/media\/segment\/\d+\/thumbnail$/, (r) => r.fulfill({ contentType: 'image/png', body: PNG }));
+	return { segments, stats };
+}
+
+const offlineButton = (page: Page, id: string) => page.locator(`[data-id="${id}"]`).getByRole('button');
+const savedClips = async (page: Page) => (await cachedPaths(page, 'media')).filter((p) => /\/media\/segment\/\d+$/.test(p)).length;
+
+test('a card downloads every clip of its branch, one at a time, and removes them', async ({ page, context, at }) => {
+	const { stats } = await branchApi(context, 4);
+	await controlled(page, at('/schools'));
+	const school = offlineButton(page, 'togakure');
+	await expect(school).toHaveAccessibleName('Download for offline use (4 video(s))');
+	await expect(offlineButton(page, 'gyokko')).toHaveCount(0); // no segment under it: no button
+
+	await school.click();
+	await expect(school).toHaveAccessibleName('Remove from this device (4 video(s))');
+	expect(await savedClips(page)).toBe(4);
+	expect(stats.maxInFlight).toBe(1); // never two clips at once (nginx would refuse the second)
+
+	// Deeper cards agree; a technique's own segments too.
+	await page.goto(at('/schools/togakure/taijutsu/kamae'));
+	await expect(offlineButton(page, 'togakure.taijutsu.kamae.t')).toHaveAccessibleName('Remove from this device (2 video(s))');
+
+	// The phone removes them: every card is a cloud again.
+	await offlineButton(page, 'togakure.taijutsu.kamae.u').click();
+	await expect(offlineButton(page, 'togakure.taijutsu.kamae.u')).toHaveAccessibleName('Download for offline use (2 video(s))');
+	expect(await savedClips(page)).toBe(2);
+	await page.goto(at('/schools'));
+	await expect(school).toHaveAccessibleName('Download for offline use (4 video(s))');
+	await school.click(); // only the missing ones are downloaded again
+	await expect(school).toHaveAccessibleName('Remove from this device (4 video(s))');
+	expect(stats.requests).toHaveLength(6);
+});
+
+test('a clip refused because another one is playing is tried again', async ({ page, context, at }) => {
+	await branchApi(context, 2, (id, n) => id === 101 && n === 1); // 429 the first time
+	await controlled(page, at('/schools'));
+	await offlineButton(page, 'togakure').click();
+	await expect(offlineButton(page, 'togakure')).toHaveAccessibleName('Remove from this device (2 video(s))', { timeout: 10_000 });
+});
+
+test('many clips: asked first; the ring shows the progress and stops the download', async ({ page, context, at }) => {
+	await branchApi(context, 21);
+	await controlled(page, at('/schools'));
+	const school = offlineButton(page, 'togakure');
+	const asked: string[] = [];
+	let answer = false;
+	page.on('dialog', (d) => (asked.push(d.message()), answer ? d.accept() : d.dismiss()));
+	await school.click();
+	expect(asked).toEqual(['Download 21 videos for offline use? They take space on this device.']);
+	await expect(school).toHaveAccessibleName('Download for offline use (21 video(s))'); // declined: nothing
+	answer = true;
+	await school.click();
+	await expect(school).toHaveAccessibleName(/^Downloading: [0-9]+ of 21\. Click to stop$/);
+	await expect(school).toContainText('/21');
+	await school.click(); // stop
+	await expect(school).toHaveAccessibleName(/^Download for offline use/);
+	const kept = await savedClips(page);
+	expect(kept).toBeLessThan(21);
+});
+
+test('logout stops the downloads and forgets the clips', async ({ page, context, at }) => {
+	await branchApi(context, 6);
+	await controlled(page, at('/schools'));
+	await offlineButton(page, 'togakure').click();
+	await expect(offlineButton(page, 'togakure')).toHaveAccessibleName(/^Downloading/);
+	await page.getByRole('button', { name: 'User menu' }).click();
+	await page.getByRole('menuitem', { name: 'Log out' }).click();
+	await expect(page).toHaveURL(at('/login'));
+	await page.waitForTimeout(1000); // the clip that was downloading would have been saved by now
+	expect(await page.evaluate(() => caches.has('media'))).toBe(false);
 });

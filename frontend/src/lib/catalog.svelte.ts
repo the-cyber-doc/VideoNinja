@@ -172,6 +172,25 @@ export const techniquesOf = (catalog: Catalog, section: string) =>
 export const segmentsOf = (catalog: Catalog, technique: string) =>
 	(catalog.segments ?? []).filter((s) => s.technique === technique);
 
+/** Every segment under a place of the catalogue: a school, category, weapon,
+ * section or technique (as far as the path goes). */
+export function segmentsUnder(catalog: Catalog, p: CatalogPath): Segment[] {
+	if (p.technique) return segmentsOf(catalog, techniqueId(p));
+	const sections = new Set(
+		catalog.sections
+			.filter(
+				(s) =>
+					s.ryu === p.ryu &&
+					(!p.category || s.category === p.category) &&
+					(!p.weapon || s.weapon === p.weapon) &&
+					(!p.section || s.id === sectionId(p))
+			)
+			.map((s) => s.id)
+	);
+	const techniques = new Set(catalog.techniques.filter((t) => sections.has(t.section)).map((t) => t.id));
+	return (catalog.segments ?? []).filter((s) => techniques.has(s.technique));
+}
+
 /** Everything a path names, each step only if it exists below the previous one;
  * `found`: the whole path exists. */
 export function resolvePath(catalog: Catalog, p: CatalogPath) {

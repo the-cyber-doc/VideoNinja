@@ -153,17 +153,14 @@ test('technique page: segment thumbnails, then comments newest first', async ({ 
 	await expect(page.getByRole('heading', { level: 2 })).toHaveText(['Videos', 'Comments']);
 });
 
-test('segment thumbnail: bottom right, whether the clip is on the device', async ({ page }) => {
+test('without a service worker, nothing can be kept offline: no download buttons', async ({ page }) => {
 	await loggedIn(page);
+	await page.goto('/schools');
+	await expect(cards(page)).toHaveCount(5);
+	await expect(page.getByRole('button', { name: /offline|this device/ })).toHaveCount(0);
 	await page.goto(KOKU_PAGE);
-	const first = page.locator('section').first().locator('li').first();
-	// No service worker in these tests: not downloaded (tests/pwa: saved).
-	const badge = first.locator('.badge');
-	await expect(badge).toHaveAttribute('aria-label', 'Not downloaded');
-	await expect(badge).toHaveAttribute('title', 'Not downloaded');
-	const [picture, icon] = await Promise.all([first.locator('img').boundingBox(), badge.boundingBox()]);
-	expect(picture!.x + picture!.width - (icon!.x + icon!.width)).toBeLessThan(12); // right
-	expect(picture!.y + picture!.height - (icon!.y + icon!.height)).toBeLessThan(12); // bottom
+	await expect(page.getByRole('button', { name: /Play the segment/ })).toHaveCount(2);
+	await expect(page.getByRole('button', { name: /offline|this device/ })).toHaveCount(0);
 });
 
 test('clicking a segment plays its clip in a dialog', async ({ page }) => {

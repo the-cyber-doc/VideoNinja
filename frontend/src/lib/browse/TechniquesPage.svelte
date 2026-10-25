@@ -3,7 +3,7 @@
 	import Breadcrumbs from '../Breadcrumbs.svelte';
 	import CardPage from '../CardPage.svelte';
 	import CatalogCard from '../cards/CatalogCard.svelte';
-	import { catalogCrumbs, catalogHref, lastPart, techniquesOf, type CatalogPath } from '../catalog.svelte';
+	import { catalogCrumbs, catalogHref, lastPart, segmentsOf, techniquesOf, type CatalogPath } from '../catalog.svelte';
 	import { t } from '../i18n.svelte';
 	import CatalogView from './CatalogView.svelte';
 
@@ -17,7 +17,11 @@
 				<Breadcrumbs items={catalogCrumbs(c, path)} />
 			{/snippet}
 			{#snippet card(technique)}
-				<CatalogCard item={technique} href={catalogHref({ ...path, technique: lastPart(technique.id) })} />
+				<CatalogCard
+					item={technique}
+					href={catalogHref({ ...path, technique: lastPart(technique.id) })}
+					segments={segmentsOf(c, technique.id)}
+				/>
 			{/snippet}
 		</CardPage>
 	{/snippet}

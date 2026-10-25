@@ -3,7 +3,7 @@
 	import Breadcrumbs from '../Breadcrumbs.svelte';
 	import CardPage from '../CardPage.svelte';
 	import CatalogCard from '../cards/CatalogCard.svelte';
-	import { catalogCrumbs, catalogHref, lastPart, sectionsOf, type CatalogPath } from '../catalog.svelte';
+	import { catalogCrumbs, catalogHref, lastPart, sectionsOf, segmentsUnder, type CatalogPath } from '../catalog.svelte';
 	import { t } from '../i18n.svelte';
 	import { sectionEmblems } from '../sections/emblems';
 	import CatalogView from './CatalogView.svelte';
@@ -22,6 +22,7 @@
 					item={section}
 					image={sectionEmblems.url(lastPart(section.id))}
 					href={catalogHref({ ...path, section: lastPart(section.id) })}
+					segments={segmentsUnder(c, { ...path, section: lastPart(section.id) })}
 				/>
 			{/snippet}
 		</CardPage>

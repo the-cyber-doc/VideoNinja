@@ -6,6 +6,7 @@ import {
 	pathOf,
 	resolvePath,
 	sectionsOf,
+	segmentsUnder,
 	techniquesOf,
 	weaponsOf,
 	type Catalog
@@ -25,7 +26,11 @@ const catalog: Catalog = {
 		{ ...named('gyokko.taijutsu.jo_ryaku.koku', 'Koku'), section: 'gyokko.taijutsu.jo_ryaku' },
 		{ ...named('kukishinden.buki.rokushakubo.shoden.chudan_kangi', 'Chudan Kangi'), section: 'kukishinden.buki.rokushakubo.shoden' }
 	],
-	segments: []
+	segments: [
+		{ id: 1, video: 1, technique: 'gyokko.taijutsu.jo_ryaku.koku', begin_s: 0, end_s: 5, performer: 'p' },
+		{ id: 2, video: 1, technique: 'kukishinden.buki.rokushakubo.shoden.chudan_kangi', begin_s: 0, end_s: 5, performer: 'p' },
+		{ id: 3, video: 2, technique: 'kukishinden.buki.rokushakubo.shoden.chudan_kangi', begin_s: 5, end_s: 9, performer: 'p' }
+	]
 };
 const staff = { ryu: 'kukishinden', category: 'buki', weapon: 'rokushakubo', section: 'shoden', technique: 'chudan_kangi' };
 
@@ -75,5 +80,19 @@ describe('catalogue paths', () => {
 			'/schools/gyokko',
 			'/schools/gyokko/taijutsu'
 		]);
+	});
+});
+
+describe('segments under a place (offline download)', () => {
+	const ids = (p: Parameters<typeof segmentsUnder>[1]) => segmentsUnder(catalog, p).map((s) => s.id);
+	it('as far as the path goes', () => {
+		expect(ids({ ryu: 'gyokko' })).toEqual([1]);
+		expect(ids({ ryu: 'kukishinden' })).toEqual([2, 3]);
+		expect(ids({ ryu: 'kukishinden', category: 'taijutsu' })).toEqual([]);
+		expect(ids({ ryu: 'kukishinden', category: 'buki', weapon: 'rokushakubo' })).toEqual([2, 3]);
+		expect(ids({ ryu: 'kukishinden', category: 'buki', weapon: 'hanbo' })).toEqual([]);
+		expect(ids({ ...staff, technique: undefined })).toEqual([2, 3]);
+		expect(ids(staff)).toEqual([2, 3]);
+		expect(ids({ ryu: 'gyokushin' })).toEqual([]);
 	});
 });

@@ -276,6 +276,16 @@
 	"app.reload": { "en": "Reload", "fr": "Recharger" },
 	"media.saved": { "en": "Saved on this device", "fr": "Enregistré sur cet appareil" },
 	"media.not_saved": { "en": "Not downloaded", "fr": "Pas téléchargé" },
+	"offline.download": { "en": "Download for offline use ({n} video(s))", "fr": "Télécharger pour l'usage hors ligne ({n} vidéo(s))" },
+	"offline.remove": { "en": "Remove from this device ({n} video(s))", "fr": "Supprimer de cet appareil ({n} vidéo(s))" },
+	"offline.progress": {
+		"en": "Downloading: {done} of {total}. Click to stop",
+		"fr": "Téléchargement : {done} sur {total}. Cliquer pour arrêter"
+	},
+	"offline.confirm": {
+		"en": "Download {n} videos for offline use? They take space on this device.",
+		"fr": "Télécharger {n} vidéos pour l'usage hors ligne ? Elles prennent de la place sur cet appareil."
+	},
 	"upload.segment.bad_times": {
 		"en": "The segment must end after it begins, inside the video.",
 		"fr": "Le segment doit finir après son début, dans la vidéo."

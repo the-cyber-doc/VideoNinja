@@ -324,10 +324,18 @@ What the service worker does:
   the browser's storage is simply not saved (it stays a cloud).
 - **Thumbnails** (`/media/segment/<id>/thumbnail`, `/media/video/<id>/thumbnail`):
   cache first, checked in the background (a `404`, segment removed, deletes it).
-- **On the thumbnails**, bottom right: a phone when the clip or video is saved
-  on the device (it plays offline), a cloud when it isn't. The service worker
-  tells the open pages each time it saves or deletes one
-  (`$lib/offline.svelte.ts`).
+- **On the cards and thumbnails**, bottom right: a phone when every clip of
+  that branch of the catalogue (a school, category, weapon, section, technique,
+  or one segment) is saved on the device, a cloud when one is missing. Click
+  the cloud to download them all for offline use, the phone to remove them;
+  during a download a ring shows the progress (click to stop). Above 20 missing
+  clips the app asks first. The clips are downloaded one at a time, through the
+  service worker which saves them, as nginx sends one clip per user at a time (a
+  clip refused because another one is playing is tried again). Logout stops the
+  downloads. The buttons only show when a service worker controls the page (not
+  in development). The service worker tells the open pages each time it saves
+  or deletes a clip (`$lib/offline.svelte.ts`). Whole videos (Videos page)
+  show the same badge, saved by opening them.
 - **Everything else** (other API calls): network only, never cached.
 
 **New versions.** The browser looks for a new service worker only when a page

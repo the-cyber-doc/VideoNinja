@@ -1,12 +1,13 @@
 <script lang="ts">
 	// The thumbnails of a technique's video segments, with their duration. Clicking
-	// one plays its clip (SegmentPlayer). Pictures and clips are served by
-	// /media/segment/<id>… (session + access checked by the app), and kept by the
-	// service worker for offline use.
+	// one plays its clip (SegmentPlayer). Bottom right of each: whether its clip is
+	// on this device, and a button to download or remove it (OfflineToggle).
+	// Pictures and clips are served by /media/segment/<id>… (session + access
+	// checked by the app), and kept by the service worker for offline use.
 	import type { Segment } from '../catalog.svelte';
 	import { t } from '../i18n.svelte';
-	import { clipUrl, segmentDuration, thumbnailUrl } from '../media';
-	import SavedBadge from '../SavedBadge.svelte';
+	import { segmentDuration, thumbnailUrl } from '../media';
+	import OfflineToggle from '../OfflineToggle.svelte';
 	import { formatTime } from '../time';
 	import SegmentPlayer from './SegmentPlayer.svelte';
 
@@ -21,16 +22,15 @@
 			{@const duration = formatTime(segmentDuration(segment))}
 			<li data-id={segment.id}>
 				<button type="button" aria-label={t('technique.play', { duration })} onclick={() => (playing = segment)}>
-					<span class="picture">
-						{#if failed[segment.id]}
-							<span class="placeholder"></span>
-						{:else}
-							<img src={thumbnailUrl(segment)} alt="" loading="lazy" onerror={() => (failed[segment.id] = true)} />
-						{/if}
-						<span class="corner"><SavedBadge path={clipUrl(segment)} /></span>
-					</span>
+					{#if failed[segment.id]}
+						<span class="placeholder"></span>
+					{:else}
+						<img src={thumbnailUrl(segment)} alt="" loading="lazy" onerror={() => (failed[segment.id] = true)} />
+					{/if}
 					<span class="duration">{duration}</span>
 				</button>
+				<!-- Over the picture's bottom right, beside the play button (not inside it). -->
+				<span class="corner"><OfflineToggle segments={[segment]} /></span>
 			</li>
 		{/each}
 	</ul>
@@ -67,14 +67,22 @@
 		outline: 2px solid var(--accent);
 		outline-offset: 2px;
 	}
-	.picture {
+	li {
 		position: relative;
-		display: block;
 	}
+	/* The picture's area (same width and ratio), its content at the bottom right. */
 	.corner {
 		position: absolute;
-		right: 0.3rem;
-		bottom: 0.3rem;
+		inset: 0 0 auto 0;
+		aspect-ratio: 16 / 9;
+		display: flex;
+		align-items: flex-end;
+		justify-content: flex-end;
+		padding: 0.3rem;
+		pointer-events: none;
+	}
+	.corner :global(button) {
+		pointer-events: auto;
 	}
 	img,
 	.placeholder {
