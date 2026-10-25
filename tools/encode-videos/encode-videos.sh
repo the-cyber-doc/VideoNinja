@@ -8,7 +8,7 @@
 #  - Detects HDR (HLG, PQ/HDR10, Dolby Vision) and tone-maps to SDR BT.709
 #      * libplacebo (GPU via Vulkan, best quality) when available
 #      * zscale + tonemap (CPU) as fallback, also used automatically if libplacebo fails
-#  - Keyframe every N seconds (precise cuts / nginx mp4 module)
+#  - Keyframe every second, every 0.5 s above 30 fps (precise cuts / nginx mp4 module, smooth seeking)
 #  - hvc1 tag (Safari), faststart, metadata stripped (incl. GPS; -m keeps it)
 #  - AAC audio: mono stays mono, more channels are downmixed to stereo
 #  - Writes to a temporary file, then renames: no half-written outputs
@@ -24,7 +24,7 @@ OUT_DIR="./out"
 CQ=26                 # quality: lower = better/bigger (NVENC -cq, x265 -crf)
 PRESET="p6"           # NVENC preset p1 (fast) .. p7 (best)
 AUDIO_BITRATE="128k"
-GOP_SECONDS=1
+GOP_SECONDS=auto       # keyframe interval: auto = 1 s up to 30 fps, 0.5 s above
 TONEMAP="auto"        # auto | libplacebo | zscale
 DEINT="auto"          # auto | on | off
 DOUBLE_RATE=0         # 1 = one output frame per field (50/60p from 25/30i)
@@ -46,7 +46,9 @@ Options:
   -o DIR    Output directory (default: $OUT_DIR)
   -q N      Quality, lower = better (default: $CQ)
   -p PRESET NVENC preset p1..p7 (default: $PRESET)
-  -g SEC    Keyframe interval in seconds (default: $GOP_SECONDS)
+  -g SEC    Keyframe interval in seconds, or auto: 1 s up to 30 fps, 0.5 s
+            above (of the output: double-rate deinterlacing doubles it)
+            (default: $GOP_SECONDS)
   -t MODE   HDR tone mapper: auto|libplacebo|zscale (default: $TONEMAP)
   -d MODE   Deinterlacing: auto|on|off (default: $DEINT)
   -2        Double-rate deinterlacing (one frame per field, smoother motion)
@@ -92,7 +94,7 @@ shift $((OPTIND - 1))
 (( $# > 0 )) || { usage; exit 2; }
 
 [[ $CQ =~ ^[0-9]+$ ]]           || die "-q must be an integer"
-[[ $GOP_SECONDS =~ ^[0-9.]+$ ]] || die "-g must be a number"
+[[ $GOP_SECONDS == auto || $GOP_SECONDS =~ ^[0-9.]+$ ]] || die "-g must be a number or auto"
 [[ $TONEMAP =~ ^(auto|libplacebo|zscale)$ ]] || die "-t must be auto, libplacebo or zscale"
 [[ $DEINT =~ ^(auto|on|off)$ ]]              || die "-d must be auto, on or off"
 [[ $X265_PRESET =~ ^(ultrafast|superfast|veryfast|faster|fast|medium|slow|slower|veryslow|placebo)$ ]] \
@@ -230,7 +232,7 @@ run_encode() {   # in out mode tin interlace
   cmd+=(-vf "$(build_vf "$mode" "$tin" "$il")"
         "${VENC[@]}")
   [[ $mode != sdr ]] && cmd+=(-color_primaries bt709 -color_trc bt709 -colorspace bt709 -color_range tv)
-  cmd+=(-force_key_frames "expr:gte(t,n_forced*$GOP_SECONDS)"
+  cmd+=(-force_key_frames "expr:gte(t,n_forced*$gop)"
         -tag:v hvc1
         -c:a aac -b:a "$AUDIO_BITRATE" -af 'aformat=channel_layouts=mono|stereo'
         -movflags +faststart
@@ -268,6 +270,8 @@ process_file() {   # in relative_path
   trc=$(sed -n 's/^color_transfer=//p' <<<"$info" | head -n1)
   pixfmt=$(sed -n 's/^pix_fmt=//p' <<<"$info" | head -n1)
   fo=$(sed -n 's/^field_order=//p' <<<"$info" | head -n1)
+  local rate; rate=$(sed -n 's/^avg_frame_rate=//p' <<<"$info" | head -n1)
+  [[ $rate =~ ^[1-9][0-9]*/[1-9][0-9]*$ ]] || rate=$(sed -n 's/^r_frame_rate=//p' <<<"$info" | head -n1)
 
   # --- interlacing ---
   case $DEINT in
@@ -282,6 +286,16 @@ process_file() {   # in relative_path
   fi
   local il_msg="progressive"
   [[ $il != progressive ]] && il_msg="interlaced $il -> nnedi$DR_SUFFIX"
+
+  # --- keyframe interval (used by run_encode) ---
+  local fps gop=$GOP_SECONDS
+  fps=$(awk -F/ '{ printf "%.3f", ($2 > 0 ? $1 / $2 : 0) }' <<<"${rate:-0/0}")
+  [[ $il != progressive && $DOUBLE_RATE -eq 1 ]] && fps=$(awk '{ printf "%.3f", $1 * 2 }' <<<"$fps")
+  if [[ $gop == auto ]]; then
+    gop=1
+    awk '{ exit !($1 > 30) }' <<<"$fps" && gop=0.5
+  fi
+  il_msg+=", ${fps%.000} fps, keyframe every ${gop} s"
 
   # --- HDR ---
   case $trc in
@@ -323,7 +337,7 @@ process_file() {   # in relative_path
 }
 
 # ---------- main ----------
-log "Encoder: $([[ $USE_CPU -eq 1 ]] && echo "libx265 $X265_PRESET" || echo "hevc_nvenc $PRESET") | CQ $CQ | original size | GOP ${GOP_SECONDS}s"
+log "Encoder: $([[ $USE_CPU -eq 1 ]] && echo "libx265 $X265_PRESET" || echo "hevc_nvenc $PRESET") | CQ $CQ | original size | keyframes ${GOP_SECONDS}$([[ $GOP_SECONDS == auto ]] && echo " (1 s up to 30 fps, 0.5 s above)" || echo " s")"
 log "Tone mappers: libplacebo=$HAS_LIBPLACEBO zscale=$HAS_ZSCALE (mode: $TONEMAP)"
 if [[ $DEINT == off ]]; then
   log "Deinterlacing: off"

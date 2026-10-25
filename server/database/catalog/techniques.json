@@ -1,0 +1,5635 @@
+{
+	"_about": [
+		"Catalogue of techniques per school, the source of the generated block of db_v1_init.sql",
+		"(tools/catalog-sql.py; a test checks they match). Collected from public web pages on 2026-10-25",
+		"(each section's sources). Meanings (en/fr) are rough glosses, to be reviewed by a teacher.",
+		"Gyokushin and Kumogakure: no public source names their techniques yet."
+	],
+	"categories": [
+		{
+			"id": "taijutsu",
+			"kanji": "体術",
+			"romaji": "Taijutsu",
+			"en": "Unarmed techniques",
+			"fr": "Techniques à mains nues"
+		},
+		{
+			"id": "muto_dori",
+			"kanji": "無刀捕",
+			"romaji": "Muto Dori",
+			"en": "Unarmed against the sword",
+			"fr": "Mains nues contre le sabre"
+		},
+		{
+			"id": "buki",
+			"kanji": "武器",
+			"romaji": "Buki",
+			"en": "Weapons",
+			"fr": "Armes"
+		}
+	],
+	"weapons": [
+		{
+			"id": "rokushakubo",
+			"kanji": "六尺棒",
+			"romaji": "Rokushakubo",
+			"en": "Six-foot staff",
+			"fr": "Bâton de six pieds"
+		},
+		{
+			"id": "hanbo",
+			"kanji": "半棒",
+			"romaji": "Hanbo",
+			"en": "Half staff",
+			"fr": "Demi-bâton"
+		},
+		{
+			"id": "jo",
+			"kanji": "杖",
+			"romaji": "Jo",
+			"en": "Four-foot staff",
+			"fr": "Bâton de quatre pieds"
+		},
+		{
+			"id": "yari",
+			"kanji": "槍",
+			"romaji": "Yari",
+			"en": "Spear",
+			"fr": "Lance"
+		},
+		{
+			"id": "naginata",
+			"kanji": "薙刀",
+			"romaji": "Naginata",
+			"en": "Halberd",
+			"fr": "Hallebarde"
+		},
+		{
+			"id": "bisento",
+			"kanji": "眉尖刀",
+			"romaji": "Bisento",
+			"en": "Broad-bladed halberd",
+			"fr": "Hallebarde à large lame"
+		},
+		{
+			"id": "jutte",
+			"kanji": "十手",
+			"romaji": "Jutte",
+			"en": "Truncheon with a hook",
+			"fr": "Matraque à crochet"
+		},
+		{
+			"id": "kodachi",
+			"kanji": "小太刀",
+			"romaji": "Kodachi",
+			"en": "Short sword",
+			"fr": "Sabre court"
+		},
+		{
+			"id": "biken",
+			"kanji": "秘剣",
+			"romaji": "Biken",
+			"en": "Sword",
+			"fr": "Sabre"
+		},
+		{
+			"id": "ninjato",
+			"kanji": "忍者刀",
+			"romaji": "Ninjato",
+			"en": "Ninja sword",
+			"fr": "Sabre du ninja"
+		},
+		{
+			"id": "shuriken",
+			"kanji": "手裏剣",
+			"romaji": "Shuriken",
+			"en": "Throwing blades",
+			"fr": "Lames de jet"
+		}
+	],
+	"schools": [
+		{
+			"ryu": "togakure",
+			"sections": [
+				{
+					"id": "kamae",
+					"category": "taijutsu",
+					"weapon": null,
+					"kanji": "構",
+					"romaji": "Kamae",
+					"en": "Postures",
+					"fr": "Postures",
+					"sources": [
+						"https://toryu.se/bujinkan-dojo-the-9-schools/togakure-ryu/togakure-ryu-ninpo-taijutsu/"
+					],
+					"techniques": [
+						{
+							"id": "ichi_no_kamae",
+							"kanji": "一之構",
+							"romaji": "Ichi no Kamae",
+							"en": "First posture",
+							"fr": "Première posture"
+						},
+						{
+							"id": "hira_ichimonji_no_kamae",
+							"kanji": "平一文字之構",
+							"romaji": "Hira Ichimonji no Kamae",
+							"en": "Flat line posture",
+							"fr": "Posture de la ligne plate"
+						},
+						{
+							"id": "hachimonji_no_kamae",
+							"kanji": "八文字之構",
+							"romaji": "Hachimonji no Kamae",
+							"en": "Figure-eight posture",
+							"fr": "Posture en huit"
+						},
+						{
+							"id": "happo_gakure_no_kamae",
+							"kanji": "八方隠之構",
+							"romaji": "Happo Gakure no Kamae",
+							"en": "Hiding in eight directions",
+							"fr": "Se cacher dans les huit directions"
+						},
+						{
+							"id": "tonso_no_kamae",
+							"kanji": "遁走之構",
+							"romaji": "Tonso no Kamae",
+							"en": "Escape posture",
+							"fr": "Posture de fuite"
+						}
+					]
+				},
+				{
+					"id": "ukemi",
+					"category": "taijutsu",
+					"weapon": null,
+					"kanji": "体術受身型",
+					"romaji": "Taijutsu Ukemi Gata",
+					"en": "Receiving forms",
+					"fr": "Formes de réception",
+					"sources": [
+						"https://toryu.se/bujinkan-dojo-the-9-schools/togakure-ryu/togakure-ryu-ninpo-taijutsu/",
+						"https://www.queststation.com/products/DVD/SPD-7033.html"
+					],
+					"techniques": [
+						{
+							"id": "kaeshi_dori",
+							"kanji": "返し鳥",
+							"romaji": "Kaeshi Dori",
+							"en": "Returning bird",
+							"fr": "L'oiseau qui revient"
+						},
+						{
+							"id": "ken_nagare",
+							"kanji": "拳流",
+							"romaji": "Ken Nagare",
+							"en": "Fist flow",
+							"fr": "Le poing qui coule"
+						},
+						{
+							"id": "ichi_no_kamae",
+							"kanji": "一之構",
+							"romaji": "Ichi no Kamae",
+							"en": "First posture",
+							"fr": "Première posture"
+						},
+						{
+							"id": "itto_dori",
+							"kanji": "一刀捕",
+							"romaji": "Itto Dori",
+							"en": "Capturing the sword",
+							"fr": "Saisir le sabre"
+						},
+						{
+							"id": "yoko_geri",
+							"kanji": "横蹴",
+							"romaji": "Yoko Geri",
+							"en": "Side kick",
+							"fr": "Coup de pied de côté"
+						},
+						{
+							"id": "itto_giri",
+							"kanji": "一刀斬",
+							"romaji": "Itto Giri",
+							"en": "Single cut",
+							"fr": "Coupe unique"
+						}
+					]
+				},
+				{
+					"id": "shinobi_gaeshi",
+					"category": "taijutsu",
+					"weapon": null,
+					"kanji": "忍返型",
+					"romaji": "Shinobi Gaeshi Gata",
+					"en": "Stealth return forms",
+					"fr": "Formes du retour furtif",
+					"sources": [
+						"https://toryu.se/bujinkan-dojo-the-9-schools/togakure-ryu/togakure-ryu-ninpo-taijutsu/",
+						"https://www.queststation.com/products/DVD/SPD-7033.html"
+					],
+					"techniques": [
+						{
+							"id": "shige_gaeshi",
+							"kanji": "重返",
+							"romaji": "Shige Gaeshi",
+							"en": "Double return",
+							"fr": "Double retour"
+						},
+						{
+							"id": "shige_dori",
+							"kanji": "重捕",
+							"romaji": "Shige Dori",
+							"en": "Double capture",
+							"fr": "Double saisie"
+						},
+						{
+							"id": "sora_tobi",
+							"kanji": "空飛",
+							"romaji": "Sora Tobi",
+							"en": "Leap into the air",
+							"fr": "Bond dans les airs"
+						},
+						{
+							"id": "yoko_nagare",
+							"kanji": "横流",
+							"romaji": "Yoko Nagare",
+							"en": "Side flow",
+							"fr": "Glissement de côté"
+						},
+						{
+							"id": "ushiro_nagare",
+							"kanji": "後流",
+							"romaji": "Ushiro Nagare",
+							"en": "Rear flow",
+							"fr": "Glissement vers l'arrière"
+						}
+					]
+				},
+				{
+					"id": "hiden",
+					"category": "taijutsu",
+					"weapon": null,
+					"kanji": "秘伝型",
+					"romaji": "Hiden Gata",
+					"en": "Secret transmission forms",
+					"fr": "Formes de la transmission secrète",
+					"sources": [
+						"https://toryu.se/bujinkan-dojo-the-9-schools/togakure-ryu/togakure-ryu-ninpo-taijutsu/"
+					],
+					"techniques": [
+						{
+							"id": "chugaeri",
+							"kanji": "中返",
+							"romaji": "Chugaeri",
+							"en": "Somersault",
+							"fr": "Saut périlleux"
+						},
+						{
+							"id": "yokogaeri",
+							"kanji": "横返",
+							"romaji": "Yokogaeri",
+							"en": "Sideways roll",
+							"fr": "Roulade de côté"
+						},
+						{
+							"id": "tobichigai",
+							"kanji": "飛違",
+							"romaji": "Tobichigai",
+							"en": "Leaping past",
+							"fr": "Bondir en croisant"
+						},
+						{
+							"id": "itto_nage",
+							"kanji": "一刀投",
+							"romaji": "Itto Nage",
+							"en": "Sword throw",
+							"fr": "Lancer du sabre"
+						},
+						{
+							"id": "teppan_nage",
+							"kanji": "鉄盤投",
+							"romaji": "Teppan Nage",
+							"en": "Throwing the iron plate",
+							"fr": "Lancer de la plaque de fer"
+						},
+						{
+							"id": "kirikaeshi",
+							"kanji": "切返",
+							"romaji": "Kirikaeshi",
+							"en": "Cutting return",
+							"fr": "Retour en coupant"
+						},
+						{
+							"id": "sutemi",
+							"kanji": "捨身",
+							"romaji": "Sutemi",
+							"en": "Sacrifice",
+							"fr": "Sacrifice"
+						}
+					]
+				},
+				{
+					"id": "santo_tonko",
+					"category": "taijutsu",
+					"weapon": null,
+					"kanji": "竄逃遁甲之型",
+					"romaji": "Santo Tonko no Kata",
+					"en": "Escaping and vanishing forms",
+					"fr": "Formes de fuite et de disparition",
+					"sources": [
+						"https://toryu.se/bujinkan-dojo-the-9-schools/togakure-ryu/togakure-ryu-ninpo-taijutsu/",
+						"https://www.queststation.com/products/DVD/SPD-7033.html"
+					],
+					"techniques": [
+						{
+							"id": "kataude_tonso_gata",
+							"kanji": "片腕遁走型",
+							"romaji": "Kataude Tonso Gata",
+							"en": "Escape from a one-arm hold",
+							"fr": "Fuite d'une saisie à un bras"
+						},
+						{
+							"id": "sayu_tonso_gata",
+							"kanji": "左右遁走型",
+							"romaji": "Sayu Tonso Gata",
+							"en": "Escape left and right",
+							"fr": "Fuite à gauche et à droite"
+						},
+						{
+							"id": "kubisuji_tonso_gata",
+							"kanji": "首筋遁走型",
+							"romaji": "Kubisuji Tonso Gata",
+							"en": "Escape from a neck hold",
+							"fr": "Fuite d'une saisie au cou"
+						},
+						{
+							"id": "atekomi_tonso_gata",
+							"kanji": "当込遁走型",
+							"romaji": "Atekomi Tonso Gata",
+							"en": "Escape from a strike",
+							"fr": "Fuite après une frappe"
+						},
+						{
+							"id": "kote_uchi_tonso_gata",
+							"kanji": "小手打遁走型",
+							"romaji": "Kote Uchi Tonso Gata",
+							"en": "Escape from a wrist strike",
+							"fr": "Fuite après une frappe au poignet"
+						},
+						{
+							"id": "migi_uchi_tonso_gata",
+							"kanji": "右打遁走型",
+							"romaji": "Migi Uchi Tonso Gata",
+							"en": "Escape from a right strike",
+							"fr": "Fuite après une frappe à droite"
+						},
+						{
+							"id": "sayu_kumogakure_no_kata",
+							"kanji": "左右雲隠之型",
+							"romaji": "Sayu Kumogakure no Kata",
+							"en": "Vanishing into clouds, left and right",
+							"fr": "Disparaître dans les nuages, à gauche et à droite"
+						},
+						{
+							"id": "kosei_kirigakure_gata",
+							"kanji": "攻勢霧隠型",
+							"romaji": "Kosei Kirigakure Gata",
+							"en": "Vanishing into mist from an attack",
+							"fr": "Disparaître dans la brume depuis une attaque"
+						},
+						{
+							"id": "happo_kirigakure_gata",
+							"kanji": "八方霧隠型",
+							"romaji": "Happo Kirigakure Gata",
+							"en": "Vanishing into mist in eight directions",
+							"fr": "Disparaître dans la brume dans les huit directions"
+						}
+					]
+				},
+				{
+					"id": "kamae",
+					"category": "buki",
+					"weapon": "ninjato",
+					"kanji": "構",
+					"romaji": "Kamae",
+					"en": "Postures",
+					"fr": "Postures",
+					"sources": [
+						"https://bujinshugyo.wordpress.com/bujinkan-ryuha/togakure-ryu-ninpo-taijutsu/biken/",
+						"https://toryu.se/bujinkan-dojo-the-9-schools/buki-the-bujinkan-weapons/ninja-to/"
+					],
+					"techniques": [
+						{
+							"id": "ichi_no_kamae",
+							"kanji": "一之構",
+							"romaji": "Ichi no Kamae",
+							"en": "First posture",
+							"fr": "Première posture"
+						},
+						{
+							"id": "seigan_no_kamae",
+							"kanji": "正眼之構",
+							"romaji": "Seigan no Kamae",
+							"en": "True eye posture",
+							"fr": "Posture de l'œil juste"
+						},
+						{
+							"id": "chudan_no_kamae",
+							"kanji": "中段之構",
+							"romaji": "Chudan no Kamae",
+							"en": "Middle level posture",
+							"fr": "Posture moyenne"
+						},
+						{
+							"id": "gedan_no_kamae",
+							"kanji": "下段之構",
+							"romaji": "Gedan no Kamae",
+							"en": "Lower level posture",
+							"fr": "Posture basse"
+						},
+						{
+							"id": "tosui_no_kamae",
+							"kanji": "棟水之構",
+							"romaji": "Tosui no Kamae",
+							"en": "Ridge water posture",
+							"fr": "Posture de l'eau sur le faîte"
+						},
+						{
+							"id": "hasso_no_kamae",
+							"kanji": "八相之構",
+							"romaji": "Hasso no Kamae",
+							"en": "Eight aspects posture",
+							"fr": "Posture des huit aspects"
+						},
+						{
+							"id": "kasumi_no_kamae",
+							"kanji": "霞之構",
+							"romaji": "Kasumi no Kamae",
+							"en": "Mist posture",
+							"fr": "Posture de la brume"
+						},
+						{
+							"id": "totoku_hyoshi",
+							"kanji": "刀匿礮姿",
+							"romaji": "Totoku Hyoshi",
+							"en": "Hidden sword posture",
+							"fr": "Posture du sabre caché"
+						}
+					]
+				},
+				{
+					"id": "iai",
+					"category": "buki",
+					"weapon": "ninjato",
+					"kanji": "居合",
+					"romaji": "Iai",
+					"en": "Drawing the sword",
+					"fr": "Dégainer le sabre",
+					"sources": [
+						"https://bujinshugyo.wordpress.com/bujinkan-ryuha/togakure-ryu-ninpo-taijutsu/biken/",
+						"https://toryu.se/bujinkan-dojo-the-9-schools/buki-the-bujinkan-weapons/ninja-to/"
+					],
+					"techniques": [
+						{
+							"id": "metsubushi",
+							"kanji": "目潰し",
+							"romaji": "Metsubushi",
+							"en": "Blinding",
+							"fr": "Aveugler"
+						},
+						{
+							"id": "katate_nuki",
+							"kanji": "片手抜",
+							"romaji": "Katate Nuki",
+							"en": "One-hand draw",
+							"fr": "Dégainer à une main"
+						},
+						{
+							"id": "koiguchi_kiri",
+							"kanji": "鯉口切",
+							"romaji": "Koiguchi Kiri",
+							"en": "Freeing the scabbard mouth",
+							"fr": "Libérer l'ouverture du fourreau"
+						},
+						{
+							"id": "iai_maai",
+							"kanji": "居合間合",
+							"romaji": "Iai Maai",
+							"en": "Drawing distance",
+							"fr": "Distance pour dégainer"
+						},
+						{
+							"id": "kage_no_itto",
+							"kanji": "影之一刀",
+							"romaji": "Kage no Itto",
+							"en": "Shadow single cut",
+							"fr": "Coupe unique de l'ombre"
+						}
+					]
+				},
+				{
+					"id": "waza",
+					"category": "buki",
+					"weapon": "ninjato",
+					"kanji": "技",
+					"romaji": "Waza",
+					"en": "Techniques",
+					"fr": "Techniques",
+					"sources": [
+						"https://bujinshugyo.wordpress.com/bujinkan-ryuha/togakure-ryu-ninpo-taijutsu/biken/",
+						"https://toryu.se/bujinkan-dojo-the-9-schools/buki-the-bujinkan-weapons/ninja-to/"
+					],
+					"techniques": [
+						{
+							"id": "itto_nage",
+							"kanji": "一刀投",
+							"romaji": "Itto Nage",
+							"en": "Blade throw",
+							"fr": "Lancer de la lame"
+						},
+						{
+							"id": "itto_ryudan",
+							"kanji": "一刀榴弾",
+							"romaji": "Itto Ryudan",
+							"en": "Blade grenade",
+							"fr": "Grenade de la lame"
+						},
+						{
+							"id": "itto_giri",
+							"kanji": "一刀斬",
+							"romaji": "Itto Giri",
+							"en": "Single cut",
+							"fr": "Coupe unique"
+						}
+					]
+				},
+				{
+					"id": "happo_biken",
+					"category": "buki",
+					"weapon": "ninjato",
+					"kanji": "八方秘剣",
+					"romaji": "Happo Biken",
+					"en": "Secret sword in eight directions",
+					"fr": "Sabre secret des huit directions",
+					"sources": [
+						"https://bujinshugyo.wordpress.com/bujinkan-ryuha/togakure-ryu-ninpo-taijutsu/biken/",
+						"https://toryu.se/bujinkan-dojo-the-9-schools/buki-the-bujinkan-weapons/ninja-to/"
+					],
+					"techniques": [
+						{
+							"id": "hiryu_no_ken",
+							"kanji": "飛龍之剣",
+							"romaji": "Hiryu no Ken",
+							"en": "Flying dragon sword",
+							"fr": "Sabre du dragon volant"
+						},
+						{
+							"id": "kasumi_no_ken",
+							"kanji": "霞之剣",
+							"romaji": "Kasumi no Ken",
+							"en": "Mist sword",
+							"fr": "Sabre de la brume"
+						},
+						{
+							"id": "muso_ken_uranami",
+							"kanji": "無想剣浦波",
+							"romaji": "Muso Ken Uranami",
+							"en": "Peerless sword, inlet waves",
+							"fr": "Sabre sans égal, vagues de la crique"
+						},
+						{
+							"id": "dato_no_ken",
+							"kanji": "打倒之剣",
+							"romaji": "Dato no Ken",
+							"en": "Striking-down sword",
+							"fr": "Sabre qui abat"
+						},
+						{
+							"id": "issen_ken",
+							"kanji": "一閃剣",
+							"romaji": "Issen Ken",
+							"en": "Flash sword",
+							"fr": "Sabre éclair"
+						},
+						{
+							"id": "raiko_no_ken",
+							"kanji": "雷光之剣",
+							"romaji": "Raiko no Ken",
+							"en": "Lightning sword",
+							"fr": "Sabre de la foudre"
+						}
+					]
+				},
+				{
+					"id": "daho",
+					"category": "buki",
+					"weapon": "shuriken",
+					"kanji": "打法",
+					"romaji": "Daho",
+					"en": "Throwing paths",
+					"fr": "Trajectoires de lancer",
+					"sources": [
+						"https://toryu.se/bujinkan-dojo-the-9-schools/buki-the-bujinkan-weapons/%e6%89%8b%e8%a3%8f%e5%89%a3-shurikenjutsu/",
+						"https://www.queststation.com/products/DVD/SPD-7033.html"
+					],
+					"techniques": [
+						{
+							"id": "choku_daho",
+							"kanji": "直打法",
+							"romaji": "Choku Daho",
+							"en": "Straight path",
+							"fr": "Trajectoire droite"
+						},
+						{
+							"id": "kaiten_daho",
+							"kanji": "回転打法",
+							"romaji": "Kaiten Daho",
+							"en": "Rotating path",
+							"fr": "Trajectoire en rotation"
+						}
+					]
+				},
+				{
+					"id": "uchi",
+					"category": "buki",
+					"weapon": "shuriken",
+					"kanji": "打ち方",
+					"romaji": "Uchikata",
+					"en": "Throws",
+					"fr": "Lancers",
+					"sources": [
+						"https://toryu.se/bujinkan-dojo-the-9-schools/buki-the-bujinkan-weapons/%e6%89%8b%e8%a3%8f%e5%89%a3-shurikenjutsu/"
+					],
+					"techniques": [
+						{
+							"id": "jun_uchi",
+							"kanji": "順打",
+							"romaji": "Jun Uchi",
+							"en": "Forward throw",
+							"fr": "Lancer direct"
+						},
+						{
+							"id": "manji_tomoe_no_kata",
+							"kanji": "卍巴之型",
+							"romaji": "Manji Tomoe no Kata",
+							"en": "Swastika whirl form",
+							"fr": "Forme du tourbillon en svastika"
+						},
+						{
+							"id": "gyaku_uchi",
+							"kanji": "逆打",
+							"romaji": "Gyaku Uchi",
+							"en": "Reverse throw",
+							"fr": "Lancer inversé"
+						},
+						{
+							"id": "shita_uchi",
+							"kanji": "下打",
+							"romaji": "Shita Uchi",
+							"en": "Low throw",
+							"fr": "Lancer par en dessous"
+						},
+						{
+							"id": "gyaku_kesa_uchi",
+							"kanji": "逆袈裟打",
+							"romaji": "Gyaku Kesa Uchi",
+							"en": "Reverse diagonal throw",
+							"fr": "Lancer en diagonale inversée"
+						},
+						{
+							"id": "za_uchi",
+							"kanji": "座打",
+							"romaji": "Za Uchi",
+							"en": "Seated throw",
+							"fr": "Lancer assis"
+						},
+						{
+							"id": "ne_uchi",
+							"kanji": "寝打",
+							"romaji": "Ne Uchi",
+							"en": "Lying throw",
+							"fr": "Lancer couché"
+						},
+						{
+							"id": "ku_uchi",
+							"kanji": "空打",
+							"romaji": "Ku Uchi",
+							"en": "Feint throw",
+							"fr": "Lancer à vide"
+						},
+						{
+							"id": "otori_uchi",
+							"kanji": "囮打",
+							"romaji": "Otori Uchi",
+							"en": "Decoy throw",
+							"fr": "Lancer leurre"
+						},
+						{
+							"id": "tahon_uchi",
+							"kanji": "多本打",
+							"romaji": "Tahon Uchi",
+							"en": "Throwing several",
+							"fr": "Lancer multiple"
+						},
+						{
+							"id": "jun_gyaku_no_daken",
+							"kanji": "順逆之打剣",
+							"romaji": "Jun Gyaku no Daken",
+							"en": "Forward and reverse throws",
+							"fr": "Lancers direct et inversé"
+						},
+						{
+							"id": "zenshin_uchi",
+							"kanji": "前進打",
+							"romaji": "Zenshin Uchi",
+							"en": "Throwing while advancing",
+							"fr": "Lancer en avançant"
+						},
+						{
+							"id": "kotai_uchi",
+							"kanji": "後退打",
+							"romaji": "Kotai Uchi",
+							"en": "Throwing while retreating",
+							"fr": "Lancer en reculant"
+						},
+						{
+							"id": "hoko_uchi",
+							"kanji": "歩行打",
+							"romaji": "Hoko Uchi",
+							"en": "Throwing while walking",
+							"fr": "Lancer en marchant"
+						},
+						{
+							"id": "sayu_uchi",
+							"kanji": "左右打",
+							"romaji": "Sayu Uchi",
+							"en": "Throwing left and right",
+							"fr": "Lancer à gauche et à droite"
+						},
+						{
+							"id": "kaiten_uchi",
+							"kanji": "回天打",
+							"romaji": "Kaiten Uchi",
+							"en": "Turning throw",
+							"fr": "Lancer en pivotant"
+						}
+					]
+				}
+			]
+		},
+		{
+			"ryu": "gyokko",
+			"sections": [
+				{
+					"id": "sanshin",
+					"category": "taijutsu",
+					"weapon": null,
+					"kanji": "三心之型",
+					"romaji": "Sanshin no Kata",
+					"en": "Three hearts forms",
+					"fr": "Formes des trois cœurs",
+					"sources": [
+						"https://bujinshugyo.wordpress.com/bujinkan-ryuha/gyokko-ryu-kosshijutsu/",
+						"https://www.queststation.com/products/DVD/SPD-7029.html"
+					],
+					"techniques": [
+						{
+							"id": "chi_no_kata",
+							"kanji": "地之型",
+							"romaji": "Chi no Kata",
+							"en": "Earth form",
+							"fr": "Forme de la terre"
+						},
+						{
+							"id": "sui_no_kata",
+							"kanji": "水之型",
+							"romaji": "Sui no Kata",
+							"en": "Water form",
+							"fr": "Forme de l'eau"
+						},
+						{
+							"id": "ka_no_kata",
+							"kanji": "火之型",
+							"romaji": "Ka no Kata",
+							"en": "Fire form",
+							"fr": "Forme du feu"
+						},
+						{
+							"id": "fu_no_kata",
+							"kanji": "風之型",
+							"romaji": "Fu no Kata",
+							"en": "Wind form",
+							"fr": "Forme du vent"
+						},
+						{
+							"id": "ku_no_kata",
+							"kanji": "空之型",
+							"romaji": "Ku no Kata",
+							"en": "Void form",
+							"fr": "Forme du vide"
+						}
+					]
+				},
+				{
+					"id": "torite_kihon",
+					"category": "taijutsu",
+					"weapon": null,
+					"kanji": "捕手基本型",
+					"romaji": "Torite Kihon Gata",
+					"en": "Basic capture forms",
+					"fr": "Formes de base de saisie",
+					"sources": [
+						"https://bujinshugyo.wordpress.com/bujinkan-ryuha/gyokko-ryu-kosshijutsu/"
+					],
+					"techniques": [
+						{
+							"id": "omote_gyaku",
+							"kanji": "表逆",
+							"romaji": "Omote Gyaku",
+							"en": "Outside reversal",
+							"fr": "Clé extérieure"
+						},
+						{
+							"id": "omote_gyaku_tsuki",
+							"kanji": "表逆突",
+							"romaji": "Omote Gyaku Tsuki",
+							"en": "Outside reversal from a punch",
+							"fr": "Clé extérieure sur un coup de poing"
+						},
+						{
+							"id": "ura_gyaku",
+							"kanji": "裏逆",
+							"romaji": "Ura Gyaku",
+							"en": "Inside reversal",
+							"fr": "Clé intérieure"
+						},
+						{
+							"id": "musha_dori",
+							"kanji": "武者捕",
+							"romaji": "Musha Dori",
+							"en": "Warrior capture",
+							"fr": "Saisie du guerrier"
+						},
+						{
+							"id": "jigoku_dori",
+							"kanji": "地獄捕",
+							"romaji": "Jigoku Dori",
+							"en": "Hell capture",
+							"fr": "Saisie de l'enfer"
+						}
+					]
+				},
+				{
+					"id": "jo_ryaku",
+					"category": "taijutsu",
+					"weapon": null,
+					"kanji": "上略之巻",
+					"romaji": "Jo Ryaku no Maki",
+					"en": "Upper strategy scroll",
+					"fr": "Rouleau de la stratégie supérieure",
+					"sources": [
+						"https://bujinshugyo.wordpress.com/bujinkan-ryuha/gyokko-ryu-kosshijutsu/",
+						"https://www.akban.org/wiki/Category:Jo_Ryaku_no_Maki,_first_level_kata_-_Gyokko_ryu_-_Ninjutsu",
+						"https://www.queststation.com/products/DVD/SPD-7029.html"
+					],
+					"techniques": [
+						{
+							"id": "koku",
+							"kanji": "虚空",
+							"romaji": "Koku",
+							"en": "Empty space",
+							"fr": "Espace vide"
+						},
+						{
+							"id": "renyo",
+							"kanji": "輦輿",
+							"romaji": "Renyo",
+							"en": "Imperial palanquin",
+							"fr": "Palanquin impérial"
+						},
+						{
+							"id": "danshu",
+							"kanji": "彈手",
+							"romaji": "Danshu",
+							"en": "Projectile hand",
+							"fr": "Main projectile"
+						},
+						{
+							"id": "danshi",
+							"kanji": "彈指",
+							"romaji": "Danshi",
+							"en": "Projectile finger",
+							"fr": "Doigt projectile"
+						},
+						{
+							"id": "sakanagare",
+							"kanji": "逆流",
+							"romaji": "Sakanagare",
+							"en": "Reverse flow",
+							"fr": "Courant inversé"
+						},
+						{
+							"id": "keo",
+							"kanji": "梟鷗",
+							"romaji": "Keo",
+							"en": "Treacherous seabird",
+							"fr": "Oiseau de mer perfide"
+						},
+						{
+							"id": "hanebi",
+							"kanji": "跳火",
+							"romaji": "Hanebi",
+							"en": "Leaping flame",
+							"fr": "Flamme bondissante"
+						},
+						{
+							"id": "keto",
+							"kanji": "闕倒",
+							"romaji": "Keto",
+							"en": "Imperial felling",
+							"fr": "Renversement impérial"
+						},
+						{
+							"id": "yubi_kudaki",
+							"kanji": "指砕",
+							"romaji": "Yubi Kudaki",
+							"en": "Finger breaking",
+							"fr": "Brise-doigts"
+						},
+						{
+							"id": "ketsumyaku",
+							"kanji": "締脈",
+							"romaji": "Ketsumyaku",
+							"en": "Squeezing the pulse",
+							"fr": "Serrer le pouls"
+						},
+						{
+							"id": "sakketsu",
+							"kanji": "殺締",
+							"romaji": "Sakketsu",
+							"en": "Killing squeeze",
+							"fr": "Étreinte mortelle"
+						},
+						{
+							"id": "teiken",
+							"kanji": "蹄拳",
+							"romaji": "Teiken",
+							"en": "Hoof fist",
+							"fr": "Poing en sabot"
+						}
+					]
+				},
+				{
+					"id": "chu_ryaku",
+					"category": "taijutsu",
+					"weapon": null,
+					"kanji": "中略之巻",
+					"romaji": "Chu Ryaku no Maki",
+					"en": "Middle strategy scroll",
+					"fr": "Rouleau de la stratégie médiane",
+					"sources": [
+						"https://bujinshugyo.wordpress.com/bujinkan-ryuha/gyokko-ryu-kosshijutsu/",
+						"https://www.akban.org/wiki/Category:Chu_Ryaku_no_Maki,_second_level_kata_-_Gyokko_ryu_-_Ninjutsu"
+					],
+					"techniques": [
+						{
+							"id": "ujaku",
+							"kanji": "烏鵲",
+							"romaji": "Ujaku",
+							"en": "Black magpie",
+							"fr": "Pie noire"
+						},
+						{
+							"id": "seito",
+							"kanji": "鯖倒",
+							"romaji": "Seito",
+							"en": "Mackerel felling",
+							"fr": "Renversement du maquereau"
+						},
+						{
+							"id": "dashin",
+							"kanji": "拏振",
+							"romaji": "Dashin",
+							"en": "Catch and shake",
+							"fr": "Saisir et secouer"
+						},
+						{
+							"id": "koraku",
+							"kanji": "虎落",
+							"romaji": "Koraku",
+							"en": "Tiger knock-down",
+							"fr": "Le tigre renversé"
+						},
+						{
+							"id": "hosen",
+							"kanji": "蜂先",
+							"romaji": "Hosen",
+							"en": "Bee sting",
+							"fr": "Dard d'abeille"
+						},
+						{
+							"id": "ko",
+							"kanji": "橰",
+							"romaji": "Ko",
+							"en": "Well sweep",
+							"fr": "Balancier de puits"
+						},
+						{
+							"id": "hanetsurube",
+							"kanji": "撥釣瓶",
+							"romaji": "Hanetsurube",
+							"en": "Swinging well bucket",
+							"fr": "Seau de puits basculant"
+						},
+						{
+							"id": "shien",
+							"kanji": "獅猿",
+							"romaji": "Shien",
+							"en": "Lion and monkey",
+							"fr": "Le lion et le singe"
+						},
+						{
+							"id": "horaku",
+							"kanji": "崩落",
+							"romaji": "Horaku",
+							"en": "Landslide",
+							"fr": "Éboulement"
+						}
+					]
+				},
+				{
+					"id": "ge_ryaku",
+					"category": "taijutsu",
+					"weapon": null,
+					"kanji": "下略之巻",
+					"romaji": "Ge Ryaku no Maki",
+					"en": "Lower strategy scroll",
+					"fr": "Rouleau de la stratégie inférieure",
+					"sources": [
+						"https://bujinshugyo.wordpress.com/bujinkan-ryuha/gyokko-ryu-kosshijutsu/",
+						"https://www.akban.org/wiki/Category:Ge-Ryaku_no_Maki,_Gyokko_ryu"
+					],
+					"techniques": [
+						{
+							"id": "shunu",
+							"kanji": "隼雄",
+							"romaji": "Shunu",
+							"en": "Falcon hero",
+							"fr": "Héros faucon"
+						},
+						{
+							"id": "shunsoku",
+							"kanji": "隼足",
+							"romaji": "Shunsoku",
+							"en": "Falcon leg",
+							"fr": "Patte du faucon"
+						},
+						{
+							"id": "ichigeki",
+							"kanji": "一撃",
+							"romaji": "Ichigeki",
+							"en": "Single strike",
+							"fr": "Coup unique"
+						},
+						{
+							"id": "kaisoku",
+							"kanji": "魁足",
+							"romaji": "Kaisoku",
+							"en": "Vanguard leg",
+							"fr": "Jambe d'avant-garde"
+						},
+						{
+							"id": "koryaku",
+							"kanji": "掬掠",
+							"romaji": "Koryaku",
+							"en": "Scoop and sweep",
+							"fr": "Cueillir et balayer"
+						},
+						{
+							"id": "iaifu",
+							"kanji": "意合封",
+							"romaji": "Iaifu",
+							"en": "Sealing the will to fight",
+							"fr": "Sceller la volonté de combattre"
+						},
+						{
+							"id": "chingan",
+							"kanji": "沈雁",
+							"romaji": "Chingan",
+							"en": "Sinking wild goose",
+							"fr": "L'oie sauvage qui plonge"
+						},
+						{
+							"id": "fuu",
+							"kanji": "風盂",
+							"romaji": "Fuu",
+							"en": "Wind bowl",
+							"fr": "Bol de vent"
+						}
+					]
+				}
+			]
+		},
+		{
+			"ryu": "kukishinden",
+			"sections": [
+				{
+					"id": "kamae",
+					"category": "taijutsu",
+					"weapon": null,
+					"kanji": "五法之構",
+					"romaji": "Goho no Kamae",
+					"en": "Five postures",
+					"fr": "Cinq postures",
+					"sources": [
+						"https://bujinshugyo.wordpress.com/bujinkan-ryuha/kukishin-ryu-dakentaijutsu/"
+					],
+					"techniques": [
+						{
+							"id": "hira_no_kamae",
+							"kanji": "平之構",
+							"romaji": "Hira no Kamae",
+							"en": "Flat posture",
+							"fr": "Posture plate"
+						},
+						{
+							"id": "hira_ichimonji_no_kamae",
+							"kanji": "平一文字之構",
+							"romaji": "Hira Ichimonji no Kamae",
+							"en": "Flat line posture",
+							"fr": "Posture de la ligne plate"
+						},
+						{
+							"id": "seigan_no_kamae",
+							"kanji": "青眼之構",
+							"romaji": "Seigan no Kamae",
+							"en": "Aiming at the eyes",
+							"fr": "Posture qui vise les yeux"
+						},
+						{
+							"id": "katate_hicho_no_kamae",
+							"kanji": "片手飛鳥之構",
+							"romaji": "Katate Hicho no Kamae",
+							"en": "One-hand flying bird posture",
+							"fr": "Posture de l'oiseau en vol, une main"
+						},
+						{
+							"id": "kosei_no_kamae",
+							"kanji": "攻勢之構",
+							"romaji": "Kosei no Kamae",
+							"en": "Attacking posture",
+							"fr": "Posture d'attaque"
+						}
+					]
+				},
+				{
+					"id": "shoden",
+					"category": "taijutsu",
+					"weapon": null,
+					"kanji": "初伝型",
+					"romaji": "Shoden Gata",
+					"en": "Initial transmission forms",
+					"fr": "Formes de la transmission initiale",
+					"sources": [
+						"https://bujinshugyo.wordpress.com/bujinkan-ryuha/kukishin-ryu-dakentaijutsu/",
+						"https://www.akban.org/wiki/Kukishin_Ryu"
+					],
+					"techniques": [
+						{
+							"id": "seion",
+							"kanji": "生音",
+							"romaji": "Seion",
+							"en": "Living sound",
+							"fr": "Son vivant"
+						},
+						{
+							"id": "uyoku",
+							"kanji": "烏翼",
+							"romaji": "Uyoku",
+							"en": "Crow wing",
+							"fr": "Aile du corbeau"
+						},
+						{
+							"id": "yume_otoshi",
+							"kanji": "夢落",
+							"romaji": "Yume Otoshi",
+							"en": "Dream drop",
+							"fr": "Chute du rêve"
+						},
+						{
+							"id": "suiyoku",
+							"kanji": "水翼",
+							"romaji": "Suiyoku",
+							"en": "Water wing",
+							"fr": "Aile d'eau"
+						},
+						{
+							"id": "suisha",
+							"kanji": "水車",
+							"romaji": "Suisha",
+							"en": "Water wheel",
+							"fr": "Roue à eau"
+						},
+						{
+							"id": "kubiwa",
+							"kanji": "首輪",
+							"romaji": "Kubiwa",
+							"en": "Necklace",
+							"fr": "Collier"
+						},
+						{
+							"id": "hosetsu",
+							"kanji": "崩雪",
+							"romaji": "Hosetsu",
+							"en": "Collapsing snow",
+							"fr": "Neige qui s'effondre"
+						},
+						{
+							"id": "iso_arashi",
+							"kanji": "磯嵐",
+							"romaji": "Iso Arashi",
+							"en": "Storm on the shore",
+							"fr": "Tempête sur le rivage"
+						},
+						{
+							"id": "yanagi_ore",
+							"kanji": "柳折",
+							"romaji": "Yanagi Ore",
+							"en": "Willow break",
+							"fr": "Le saule qui rompt"
+						},
+						{
+							"id": "fubuki",
+							"kanji": "吹雪",
+							"romaji": "Fubuki",
+							"en": "Snowstorm",
+							"fr": "Tempête de neige"
+						},
+						{
+							"id": "kataho",
+							"kanji": "片帆",
+							"romaji": "Kataho",
+							"en": "One-sided sail",
+							"fr": "Voile d'un côté"
+						},
+						{
+							"id": "tatsumaki",
+							"kanji": "竜巻",
+							"romaji": "Tatsumaki",
+							"en": "Tornado",
+							"fr": "Tornade"
+						}
+					]
+				},
+				{
+					"id": "chuden",
+					"category": "taijutsu",
+					"weapon": null,
+					"kanji": "中伝型",
+					"romaji": "Chuden Gata",
+					"en": "Middle transmission forms",
+					"fr": "Formes de la transmission intermédiaire",
+					"sources": [
+						"https://bujinshugyo.wordpress.com/bujinkan-ryuha/kukishin-ryu-dakentaijutsu/",
+						"https://www.akban.org/wiki/Kukishin_Ryu"
+					],
+					"techniques": [
+						{
+							"id": "uranami",
+							"kanji": "浦波",
+							"romaji": "Uranami",
+							"en": "Inlet waves",
+							"fr": "Vagues de la crique"
+						},
+						{
+							"id": "tenchi",
+							"kanji": "天地",
+							"romaji": "Tenchi",
+							"en": "Heaven and earth",
+							"fr": "Ciel et terre"
+						},
+						{
+							"id": "katanami",
+							"kanji": "方波",
+							"romaji": "Katanami",
+							"en": "Directional wave",
+							"fr": "Vague dirigée"
+						},
+						{
+							"id": "kasumi_gake",
+							"kanji": "霞掛",
+							"romaji": "Kasumi Gake",
+							"en": "Mist hook",
+							"fr": "Crochet de brume"
+						},
+						{
+							"id": "taki_no_se",
+							"kanji": "瀧之瀬",
+							"romaji": "Taki no Se",
+							"en": "Waterfall current",
+							"fr": "Courant de la cascade"
+						},
+						{
+							"id": "shio_kaze",
+							"kanji": "塩風",
+							"romaji": "Shio Kaze",
+							"en": "Salt wind",
+							"fr": "Vent salé"
+						},
+						{
+							"id": "yama_arashi",
+							"kanji": "山嵐",
+							"romaji": "Yama Arashi",
+							"en": "Mountain storm",
+							"fr": "Tempête de montagne"
+						},
+						{
+							"id": "ryufu",
+							"kanji": "柳風",
+							"romaji": "Ryufu",
+							"en": "Willow wind",
+							"fr": "Vent dans les saules"
+						},
+						{
+							"id": "tatsunami",
+							"kanji": "龍波",
+							"romaji": "Tatsunami",
+							"en": "Dragon wave",
+							"fr": "Vague du dragon"
+						},
+						{
+							"id": "tora_o",
+							"kanji": "虎尾",
+							"romaji": "Tora-o",
+							"en": "Tiger tail",
+							"fr": "Queue du tigre"
+						},
+						{
+							"id": "jugan",
+							"kanji": "重岩",
+							"romaji": "Jugan",
+							"en": "Heavy rock",
+							"fr": "Rocher lourd"
+						},
+						{
+							"id": "shiho_dori",
+							"kanji": "四方捕",
+							"romaji": "Shiho Dori",
+							"en": "Four-direction capture",
+							"fr": "Saisie des quatre directions"
+						}
+					]
+				},
+				{
+					"id": "sabaki",
+					"category": "taijutsu",
+					"weapon": null,
+					"kanji": "捌型",
+					"romaji": "Sabaki Gata",
+					"en": "Handling forms",
+					"fr": "Formes d'esquive",
+					"sources": [
+						"https://bujinshugyo.wordpress.com/bujinkan-ryuha/kukishin-ryu-dakentaijutsu/",
+						"https://www.akban.org/wiki/Kukishin_Ryu"
+					],
+					"techniques": [
+						{
+							"id": "arakoma",
+							"kanji": "荒駒",
+							"romaji": "Arakoma",
+							"en": "Wild horse",
+							"fr": "Cheval sauvage"
+						},
+						{
+							"id": "kasoku",
+							"kanji": "鹿足",
+							"romaji": "Kasoku",
+							"en": "Deer leg",
+							"fr": "Patte de cerf"
+						},
+						{
+							"id": "chikusei",
+							"kanji": "竹声",
+							"romaji": "Chikusei",
+							"en": "Bamboo voice",
+							"fr": "Voix du bambou"
+						},
+						{
+							"id": "yume_makura",
+							"kanji": "夢枕",
+							"romaji": "Yume Makura",
+							"en": "Dream pillow",
+							"fr": "Oreiller de rêve"
+						},
+						{
+							"id": "suso_sabaki",
+							"kanji": "裾捌",
+							"romaji": "Suso Sabaki",
+							"en": "Handling the hem",
+							"fr": "Maîtriser l'ourlet"
+						},
+						{
+							"id": "iso_gaeshi",
+							"kanji": "磯返",
+							"romaji": "Iso Gaeshi",
+							"en": "Shore return",
+							"fr": "Retour du rivage"
+						},
+						{
+							"id": "kaze_harai",
+							"kanji": "風払",
+							"romaji": "Kaze Harai",
+							"en": "Wind sweep",
+							"fr": "Balayage du vent"
+						},
+						{
+							"id": "kuruma_dori",
+							"kanji": "車捕",
+							"romaji": "Kuruma Dori",
+							"en": "Wheel capture",
+							"fr": "Saisie de la roue"
+						},
+						{
+							"id": "kimon",
+							"kanji": "鬼門",
+							"romaji": "Kimon",
+							"en": "Demon gate",
+							"fr": "Porte du démon"
+						},
+						{
+							"id": "ura_kimon",
+							"kanji": "裏鬼門",
+							"romaji": "Ura Kimon",
+							"en": "Back demon gate",
+							"fr": "Porte arrière du démon"
+						},
+						{
+							"id": "ukimo",
+							"kanji": "浮藻",
+							"romaji": "Ukimo",
+							"en": "Floating seaweed",
+							"fr": "Algue flottante"
+						},
+						{
+							"id": "ranfu",
+							"kanji": "乱風",
+							"romaji": "Ranfu",
+							"en": "Wild wind",
+							"fr": "Vent en désordre"
+						}
+					]
+				},
+				{
+					"id": "okuden",
+					"category": "taijutsu",
+					"weapon": null,
+					"kanji": "奥伝型",
+					"romaji": "Okuden Gata",
+					"en": "Inner transmission forms",
+					"fr": "Formes de la transmission profonde",
+					"sources": [
+						"https://bujinshugyo.wordpress.com/bujinkan-ryuha/kukishin-ryu-dakentaijutsu/",
+						"https://www.akban.org/wiki/Kukishin_Ryu"
+					],
+					"techniques": [
+						{
+							"id": "fuun",
+							"kanji": "風雲",
+							"romaji": "Fuun",
+							"en": "Wind and clouds",
+							"fr": "Vent et nuages"
+						},
+						{
+							"id": "sagi",
+							"kanji": "扠技",
+							"romaji": "Sagi",
+							"en": "Thrusting technique",
+							"fr": "Technique de poussée"
+						},
+						{
+							"id": "kaeshi_waza",
+							"kanji": "返技",
+							"romaji": "Kaeshi Waza",
+							"en": "Returning technique",
+							"fr": "Technique de renvoi"
+						},
+						{
+							"id": "oni_otoshi",
+							"kanji": "鬼落",
+							"romaji": "Oni Otoshi",
+							"en": "Demon drop",
+							"fr": "Chute du démon"
+						},
+						{
+							"id": "iwa_kudaki",
+							"kanji": "岩砕",
+							"romaji": "Iwa Kudaki",
+							"en": "Rock crushing",
+							"fr": "Broyer le rocher"
+						},
+						{
+							"id": "yuki_taoshi",
+							"kanji": "雪倒",
+							"romaji": "Yuki Taoshi",
+							"en": "Snow topple",
+							"fr": "Renversement de neige"
+						},
+						{
+							"id": "go_taoshi",
+							"kanji": "剛倒",
+							"romaji": "Go Taoshi",
+							"en": "Strong topple",
+							"fr": "Renversement puissant"
+						},
+						{
+							"id": "dofu",
+							"kanji": "挐風",
+							"romaji": "Dofu",
+							"en": "Seizing wind",
+							"fr": "Vent qui saisit"
+						},
+						{
+							"id": "oni_kudaki",
+							"kanji": "鬼砕",
+							"romaji": "Oni Kudaki",
+							"en": "Demon crusher",
+							"fr": "Broyeur de démon"
+						},
+						{
+							"id": "ryufu",
+							"kanji": "柳風",
+							"romaji": "Ryufu",
+							"en": "Willow wind",
+							"fr": "Vent dans les saules"
+						},
+						{
+							"id": "tachi_uchi",
+							"kanji": "太刀打",
+							"romaji": "Tachi Uchi",
+							"en": "Sword strike",
+							"fr": "Frappe au sabre"
+						},
+						{
+							"id": "hane_taoshi",
+							"kanji": "撥倒",
+							"romaji": "Hane Taoshi",
+							"en": "Sweeping topple",
+							"fr": "Renversement en balayant"
+						}
+					]
+				},
+				{
+					"id": "shirabe_moguri",
+					"category": "taijutsu",
+					"weapon": null,
+					"kanji": "調潜型",
+					"romaji": "Shirabe Moguri Gata",
+					"en": "Investigating and submerging forms",
+					"fr": "Formes d'examen et de plongée",
+					"sources": [
+						"https://bujinshugyo.wordpress.com/bujinkan-ryuha/kukishin-ryu-dakentaijutsu/",
+						"https://www.akban.org/wiki/Kukishin_Ryu"
+					],
+					"techniques": [
+						{
+							"id": "moguri_dori",
+							"kanji": "潜捕",
+							"romaji": "Moguri Dori",
+							"en": "Submerged capture",
+							"fr": "Saisie en plongée"
+						},
+						{
+							"id": "sharin",
+							"kanji": "車輪",
+							"romaji": "Sharin",
+							"en": "Wheel",
+							"fr": "Roue"
+						},
+						{
+							"id": "torafushi",
+							"kanji": "虎伏",
+							"romaji": "Torafushi",
+							"en": "Tiger lying down",
+							"fr": "Le tigre couché"
+						},
+						{
+							"id": "ryufuku",
+							"kanji": "龍伏",
+							"romaji": "Ryufuku",
+							"en": "Dragon lying down",
+							"fr": "Le dragon couché"
+						},
+						{
+							"id": "tobi_chigai",
+							"kanji": "飛違",
+							"romaji": "Tobi Chigai",
+							"en": "Leaping past",
+							"fr": "Bondir en croisant"
+						},
+						{
+							"id": "yama_otoshi",
+							"kanji": "山落",
+							"romaji": "Yama Otoshi",
+							"en": "Mountain drop",
+							"fr": "Chute de la montagne"
+						},
+						{
+							"id": "tekiraku",
+							"kanji": "擲落",
+							"romaji": "Tekiraku",
+							"en": "Throw down",
+							"fr": "Projeter au sol"
+						},
+						{
+							"id": "heito",
+							"kanji": "敝当",
+							"romaji": "Heito",
+							"en": "Defeating strike",
+							"fr": "Frappe qui défait"
+						},
+						{
+							"id": "musasabi",
+							"kanji": "鼯",
+							"romaji": "Musasabi",
+							"en": "Flying squirrel",
+							"fr": "Écureuil volant"
+						},
+						{
+							"id": "gyoku_nage",
+							"kanji": "玉投",
+							"romaji": "Gyoku Nage",
+							"en": "Jewel throw",
+							"fr": "Projection du joyau"
+						},
+						{
+							"id": "gyaku_nage",
+							"kanji": "投逆",
+							"romaji": "Gyaku Nage",
+							"en": "Reverse throw",
+							"fr": "Projection inversée"
+						},
+						{
+							"id": "uchi_harai",
+							"kanji": "打払",
+							"romaji": "Uchi Harai",
+							"en": "Strike and sweep",
+							"fr": "Frapper et balayer"
+						}
+					]
+				},
+				{
+					"id": "kamae",
+					"category": "buki",
+					"weapon": "rokushakubo",
+					"kanji": "構",
+					"romaji": "Kamae",
+					"en": "Postures",
+					"fr": "Postures",
+					"sources": [
+						"https://bujinshugyo.wordpress.com/bujinkan-ryuha/kukishin-ryu-dakentaijutsu/rokushakubo/"
+					],
+					"techniques": [
+						{
+							"id": "jodan_no_kamae",
+							"kanji": "上段之構",
+							"romaji": "Jodan no Kamae",
+							"en": "Upper level posture",
+							"fr": "Posture haute"
+						},
+						{
+							"id": "chudan_no_kamae",
+							"kanji": "中段之構",
+							"romaji": "Chudan no Kamae",
+							"en": "Middle level posture",
+							"fr": "Posture moyenne"
+						},
+						{
+							"id": "gedan_no_kamae",
+							"kanji": "下段之構",
+							"romaji": "Gedan no Kamae",
+							"en": "Lower level posture",
+							"fr": "Posture basse"
+						},
+						{
+							"id": "ichimonji_no_kamae",
+							"kanji": "一文字之構",
+							"romaji": "Ichimonji no Kamae",
+							"en": "Straight line posture",
+							"fr": "Posture de la ligne droite"
+						},
+						{
+							"id": "hira_ichimonji_no_kamae",
+							"kanji": "平一文字之構",
+							"romaji": "Hira Ichimonji no Kamae",
+							"en": "Flat line posture",
+							"fr": "Posture de la ligne plate"
+						},
+						{
+							"id": "ihen_no_kamae",
+							"kanji": "詒変之構",
+							"romaji": "Ihen no Kamae",
+							"en": "Deceiving change posture",
+							"fr": "Posture du changement trompeur"
+						},
+						{
+							"id": "seigan_no_kamae",
+							"kanji": "青眼之構",
+							"romaji": "Seigan no Kamae",
+							"en": "Aiming at the eyes",
+							"fr": "Posture qui vise les yeux"
+						},
+						{
+							"id": "tenchijin_no_kamae",
+							"kanji": "天地人之構",
+							"romaji": "Tenchijin no Kamae",
+							"en": "Heaven, earth and man posture",
+							"fr": "Posture du ciel, de la terre et de l'homme"
+						},
+						{
+							"id": "heito_no_kamae",
+							"kanji": "撆倒之構",
+							"romaji": "Heito no Kamae",
+							"en": "Knocking-down posture",
+							"fr": "Posture qui renverse"
+						},
+						{
+							"id": "ukiwatari_no_kamae",
+							"kanji": "浮渡之構",
+							"romaji": "Ukiwatari no Kamae",
+							"en": "Floating across",
+							"fr": "Traversée flottante"
+						},
+						{
+							"id": "koteki_ryoda_no_kamae",
+							"kanji": "虎擲龍拏之構",
+							"romaji": "Koteki Ryoda no Kamae",
+							"en": "The tiger strikes, the dragon seizes",
+							"fr": "Le tigre frappe, le dragon saisit"
+						},
+						{
+							"id": "shigin_in_yo_no_kamae",
+							"kanji": "詞韻陰陽之構",
+							"romaji": "Shigin In-Yo no Kamae",
+							"en": "Poetry of yin and yang",
+							"fr": "Poésie du yin et du yang"
+						},
+						{
+							"id": "kami_shin_no_kamae",
+							"kanji": "神心之構",
+							"romaji": "Kami Shin no Kamae",
+							"en": "Divine mind",
+							"fr": "Esprit divin"
+						},
+						{
+							"id": "san_ryaku_no_kamae",
+							"kanji": "三略之構",
+							"romaji": "San Ryaku no Kamae",
+							"en": "Three strategies",
+							"fr": "Trois stratégies"
+						},
+						{
+							"id": "hanno_banetsu_no_kamae",
+							"kanji": "反応汎溢之構",
+							"romaji": "Hanno Banetsu no Kamae",
+							"en": "Power of the flood",
+							"fr": "Puissance du flot"
+						},
+						{
+							"id": "hokoya_no_kamae",
+							"kanji": "鉾矢之構",
+							"romaji": "Hokoya no Kamae",
+							"en": "Arrowhead",
+							"fr": "Pointe de flèche"
+						},
+						{
+							"id": "wangetsu_no_kamae",
+							"kanji": "弯月之構",
+							"romaji": "Wangetsu no Kamae",
+							"en": "Crescent moon",
+							"fr": "Croissant de lune"
+						},
+						{
+							"id": "jocho_no_kamae",
+							"kanji": "上蛇之構",
+							"romaji": "Jocho no Kamae",
+							"en": "Riding a snake",
+							"fr": "Chevaucher le serpent"
+						}
+					]
+				},
+				{
+					"id": "kihon",
+					"category": "buki",
+					"weapon": "rokushakubo",
+					"kanji": "基本型",
+					"romaji": "Kihon Gata",
+					"en": "Basic forms",
+					"fr": "Formes de base",
+					"sources": [
+						"https://bujinshugyo.wordpress.com/bujinkan-ryuha/kukishin-ryu-dakentaijutsu/rokushakubo/"
+					],
+					"techniques": [
+						{
+							"id": "ukemi",
+							"kanji": "受身",
+							"romaji": "Ukemi",
+							"en": "Receiving",
+							"fr": "Réception"
+						},
+						{
+							"id": "ashi_barai",
+							"kanji": "足払",
+							"romaji": "Ashi Barai",
+							"en": "Leg sweep",
+							"fr": "Balayage de jambe"
+						},
+						{
+							"id": "shiho_bofuri_gata",
+							"kanji": "四方棒振型",
+							"romaji": "Shiho Bofuri Gata",
+							"en": "Spinning the staff in four directions",
+							"fr": "Faire tourner le bâton dans les quatre directions"
+						},
+						{
+							"id": "men_uchi_harai_gata",
+							"kanji": "面打払型",
+							"romaji": "Men Uchi Harai Gata",
+							"en": "Head strike and sweep",
+							"fr": "Frappe à la tête et balayage"
+						}
+					]
+				},
+				{
+					"id": "keiko_sabaki",
+					"category": "buki",
+					"weapon": "rokushakubo",
+					"kanji": "稽古捌型",
+					"romaji": "Keiko Sabaki Gata",
+					"en": "Practice handling forms",
+					"fr": "Formes d'esquive d'entraînement",
+					"sources": [
+						"https://bujinshugyo.wordpress.com/bujinkan-ryuha/kukishin-ryu-dakentaijutsu/rokushakubo/"
+					],
+					"techniques": [
+						{
+							"id": "gokyo_gokai_ihen_sabaki_gata",
+							"kanji": "五境五界詒変捌型",
+							"romaji": "Gokyo Gokai Ihen Sabaki Gata",
+							"en": "Five borders, five worlds, deceiving change",
+							"fr": "Cinq frontières, cinq mondes, changement trompeur"
+						},
+						{
+							"id": "kasumi_no_ho",
+							"kanji": "霞之法",
+							"romaji": "Kasumi no Ho",
+							"en": "Mist methods",
+							"fr": "Méthodes de la brume"
+						},
+						{
+							"id": "kasumi_no_bo",
+							"kanji": "霞之棒",
+							"romaji": "Kasumi no Bo",
+							"en": "Staff of mist",
+							"fr": "Bâton de la brume"
+						}
+					]
+				},
+				{
+					"id": "waza",
+					"category": "buki",
+					"weapon": "rokushakubo",
+					"kanji": "技",
+					"romaji": "Waza",
+					"en": "Techniques",
+					"fr": "Techniques",
+					"sources": [
+						"https://bujinshugyo.wordpress.com/bujinkan-ryuha/kukishin-ryu-dakentaijutsu/rokushakubo/",
+						"https://www.akban.org/wiki/Category:Kukishin_Ryu_Rokushaku_bojutsu_-_six-foot_staff"
+					],
+					"techniques": [
+						{
+							"id": "goho",
+							"kanji": "五法",
+							"romaji": "Goho",
+							"en": "Five methods",
+							"fr": "Cinq méthodes"
+						},
+						{
+							"id": "ura_goho",
+							"kanji": "裏五法",
+							"romaji": "Ura Goho",
+							"en": "Reverse five methods",
+							"fr": "Cinq méthodes inversées"
+						},
+						{
+							"id": "sashi_ai",
+							"kanji": "差合",
+							"romaji": "Sashi Ai",
+							"en": "Meeting thrusts",
+							"fr": "Estocades croisées"
+						},
+						{
+							"id": "funa_bari",
+							"kanji": "船張",
+							"romaji": "Funa Bari",
+							"en": "Boat brace",
+							"fr": "Étai de bateau"
+						},
+						{
+							"id": "tsuru_no_issoku",
+							"kanji": "鶴の一足",
+							"romaji": "Tsuru no Issoku",
+							"en": "One step of the crane",
+							"fr": "Un pas de la grue"
+						},
+						{
+							"id": "ura_issoku",
+							"kanji": "裏一足",
+							"romaji": "Ura Issoku",
+							"en": "Reverse step",
+							"fr": "Pas inversé"
+						},
+						{
+							"id": "suso_otoshi",
+							"kanji": "裾落",
+							"romaji": "Suso Otoshi",
+							"en": "Hem drop",
+							"fr": "Chute par l'ourlet"
+						},
+						{
+							"id": "ura_suso_otoshi",
+							"kanji": "裏裾落",
+							"romaji": "Ura Suso Otoshi",
+							"en": "Reverse hem drop",
+							"fr": "Chute par l'ourlet inversée"
+						},
+						{
+							"id": "ippon_sugi",
+							"kanji": "一本杉",
+							"romaji": "Ippon Sugi",
+							"en": "Lone cedar",
+							"fr": "Cèdre solitaire"
+						},
+						{
+							"id": "taki_otoshi",
+							"kanji": "瀧落",
+							"romaji": "Taki Otoshi",
+							"en": "Waterfall drop",
+							"fr": "Chute de la cascade"
+						},
+						{
+							"id": "koku",
+							"kanji": "虚空",
+							"romaji": "Koku",
+							"en": "Empty space",
+							"fr": "Espace vide"
+						},
+						{
+							"id": "kasa_no_uchi",
+							"kanji": "笠之内",
+							"romaji": "Kasa no Uchi",
+							"en": "Inside the hat",
+							"fr": "Sous le chapeau"
+						},
+						{
+							"id": "tachi_otoshi",
+							"kanji": "太刀落",
+							"romaji": "Tachi Otoshi",
+							"en": "Sword drop",
+							"fr": "Faire tomber le sabre"
+						},
+						{
+							"id": "harai",
+							"kanji": "払",
+							"romaji": "Harai",
+							"en": "Sweep",
+							"fr": "Balayage"
+						},
+						{
+							"id": "kote_tsuki",
+							"kanji": "小手附",
+							"romaji": "Kote Tsuki",
+							"en": "Striking the forearms",
+							"fr": "Frappe aux avant-bras"
+						},
+						{
+							"id": "mukozume",
+							"kanji": "向詰",
+							"romaji": "Mukozume",
+							"en": "Pressing forward",
+							"fr": "Presser vers l'avant"
+						},
+						{
+							"id": "keri_age",
+							"kanji": "蹴拳",
+							"romaji": "Keri Age",
+							"en": "Kicking up",
+							"fr": "Coup de pied montant"
+						},
+						{
+							"id": "gekiryu",
+							"kanji": "撃留",
+							"romaji": "Gekiryu",
+							"en": "Strike and halt",
+							"fr": "Frapper et arrêter"
+						},
+						{
+							"id": "tsukeiri",
+							"kanji": "附入",
+							"romaji": "Tsukeiri",
+							"en": "Follow and enter",
+							"fr": "Suivre et entrer"
+						},
+						{
+							"id": "gorin_kudaki",
+							"kanji": "五輪碎",
+							"romaji": "Gorin Kudaki",
+							"en": "Five rings crush",
+							"fr": "Broyer les cinq anneaux"
+						},
+						{
+							"id": "tenchijin",
+							"kanji": "天地人",
+							"romaji": "Tenchijin",
+							"en": "Heaven, earth and man",
+							"fr": "Ciel, terre et homme"
+						},
+						{
+							"id": "maehiro",
+							"kanji": "前広",
+							"romaji": "Maehiro",
+							"en": "Wide front",
+							"fr": "Large devant"
+						},
+						{
+							"id": "ryo_kote",
+							"kanji": "両小手",
+							"romaji": "Ryo Kote",
+							"en": "Both forearms",
+							"fr": "Les deux avant-bras"
+						},
+						{
+							"id": "uranami",
+							"kanji": "浦波",
+							"romaji": "Uranami",
+							"en": "Inlet waves",
+							"fr": "Vagues de la crique"
+						},
+						{
+							"id": "tama_gaeshi",
+							"kanji": "玉返",
+							"romaji": "Tama Gaeshi",
+							"en": "Ball counter",
+							"fr": "Renvoi de la balle"
+						}
+					]
+				},
+				{
+					"id": "shoden",
+					"category": "buki",
+					"weapon": "rokushakubo",
+					"kanji": "初伝型",
+					"romaji": "Shoden Gata",
+					"en": "Initial transmission forms",
+					"fr": "Formes de la transmission initiale",
+					"sources": [
+						"https://bujinshugyo.wordpress.com/bujinkan-ryuha/kukishin-ryu-dakentaijutsu/rokushakubo/"
+					],
+					"techniques": [
+						{
+							"id": "chudan_kangi",
+							"kanji": "中段扞打",
+							"romaji": "Chudan Kangi",
+							"en": "Middle restraining technique",
+							"fr": "Technique d'arrêt, niveau moyen"
+						},
+						{
+							"id": "gedan_kangi",
+							"kanji": "下段扞打",
+							"romaji": "Gedan Kangi",
+							"en": "Low restraining technique",
+							"fr": "Technique d'arrêt, niveau bas"
+						},
+						{
+							"id": "ihen_kangi",
+							"kanji": "詒変扞打",
+							"romaji": "Ihen Kangi",
+							"en": "Deceiving restraining technique",
+							"fr": "Technique d'arrêt trompeuse"
+						},
+						{
+							"id": "jodan_gogi",
+							"kanji": "上段護技",
+							"romaji": "Jodan Gogi",
+							"en": "High defending technique",
+							"fr": "Technique de défense, niveau haut"
+						},
+						{
+							"id": "ichimonji_gogi",
+							"kanji": "一文字護技",
+							"romaji": "Ichimonji Gogi",
+							"en": "Straight line defending technique",
+							"fr": "Technique de défense en ligne droite"
+						},
+						{
+							"id": "hira_ichimonji_gogi",
+							"kanji": "平一文字護技",
+							"romaji": "Hira Ichimonji Gogi",
+							"en": "Flat line defending technique",
+							"fr": "Technique de défense en ligne plate"
+						},
+						{
+							"id": "ichimonji_kogi",
+							"kanji": "一文字抛技",
+							"romaji": "Ichimonji Kogi",
+							"en": "Straight line hurling technique",
+							"fr": "Technique de projection en ligne droite"
+						},
+						{
+							"id": "seigan_kogi",
+							"kanji": "青眼抛技",
+							"romaji": "Seigan Kogi",
+							"en": "Hurling technique from Seigan",
+							"fr": "Technique de projection depuis Seigan"
+						},
+						{
+							"id": "tenchijin_kogi",
+							"kanji": "天地人抛技",
+							"romaji": "Tenchijin Kogi",
+							"en": "Hurling technique from Tenchijin",
+							"fr": "Technique de projection depuis Tenchijin"
+						}
+					]
+				},
+				{
+					"id": "chuden",
+					"category": "buki",
+					"weapon": "rokushakubo",
+					"kanji": "中伝型",
+					"romaji": "Chuden Gata",
+					"en": "Middle transmission forms",
+					"fr": "Formes de la transmission intermédiaire",
+					"sources": [
+						"https://bujinshugyo.wordpress.com/bujinkan-ryuha/kukishin-ryu-dakentaijutsu/rokushakubo/"
+					],
+					"techniques": [
+						{
+							"id": "jodan_naigi",
+							"kanji": "上段挨技",
+							"romaji": "Jodan Naigi",
+							"en": "High driving technique",
+							"fr": "Technique de poussée, niveau haut"
+						},
+						{
+							"id": "gedan_naigi",
+							"kanji": "下段挨技",
+							"romaji": "Gedan Naigi",
+							"en": "Low driving technique",
+							"fr": "Technique de poussée, niveau bas"
+						},
+						{
+							"id": "hira_ichimonji_naigi",
+							"kanji": "平一文字挨技",
+							"romaji": "Hira Ichimonji Naigi",
+							"en": "Flat line driving technique",
+							"fr": "Technique de poussée en ligne plate"
+						},
+						{
+							"id": "chudan_chugi",
+							"kanji": "中段擣技",
+							"romaji": "Chudan Chugi",
+							"en": "Middle pounding technique",
+							"fr": "Technique de pilonnage, niveau moyen"
+						},
+						{
+							"id": "ichimonji_chugi",
+							"kanji": "一文字擣技",
+							"romaji": "Ichimonji Chugi",
+							"en": "Straight line pounding technique",
+							"fr": "Technique de pilonnage en ligne droite"
+						},
+						{
+							"id": "ihen_chugi",
+							"kanji": "詒変擣技",
+							"romaji": "Ihen Chugi",
+							"en": "Deceiving pounding technique",
+							"fr": "Technique de pilonnage trompeuse"
+						},
+						{
+							"id": "seigan_saigi",
+							"kanji": "青眼摧技",
+							"romaji": "Seigan Saigi",
+							"en": "Crushing technique from Seigan",
+							"fr": "Technique d'écrasement depuis Seigan"
+						},
+						{
+							"id": "tenchijin_saigi",
+							"kanji": "天地人摧技",
+							"romaji": "Tenchijin Saigi",
+							"en": "Crushing technique from Tenchijin",
+							"fr": "Technique d'écrasement depuis Tenchijin"
+						},
+						{
+							"id": "ichimonji_saigi",
+							"kanji": "一文字摧技",
+							"romaji": "Ichimonji Saigi",
+							"en": "Straight line crushing technique",
+							"fr": "Technique d'écrasement en ligne droite"
+						}
+					]
+				},
+				{
+					"id": "okuden",
+					"category": "buki",
+					"weapon": "rokushakubo",
+					"kanji": "奥伝型",
+					"romaji": "Okuden Gata",
+					"en": "Inner transmission forms",
+					"fr": "Formes de la transmission profonde",
+					"sources": [
+						"https://bujinshugyo.wordpress.com/bujinkan-ryuha/kukishin-ryu-dakentaijutsu/rokushakubo/"
+					],
+					"techniques": [
+						{
+							"id": "jodan_sogi",
+							"kanji": "上段搶技",
+							"romaji": "Jodan Sogi",
+							"en": "High thrusting technique",
+							"fr": "Technique d'estoc, niveau haut"
+						},
+						{
+							"id": "gedan_sogi",
+							"kanji": "下段搶技",
+							"romaji": "Gedan Sogi",
+							"en": "Low thrusting technique",
+							"fr": "Technique d'estoc, niveau bas"
+						},
+						{
+							"id": "hira_ichimonji_sogi",
+							"kanji": "平一文字搶技",
+							"romaji": "Hira Ichimonji Sogi",
+							"en": "Flat line thrusting technique",
+							"fr": "Technique d'estoc en ligne plate"
+						},
+						{
+							"id": "chudan_kakugi",
+							"kanji": "中段搉技",
+							"romaji": "Chudan Kakugi",
+							"en": "Middle thrashing technique",
+							"fr": "Technique de frappe, niveau moyen"
+						},
+						{
+							"id": "ichimonji_kakugi",
+							"kanji": "一文字搉技",
+							"romaji": "Ichimonji Kakugi",
+							"en": "Straight line thrashing technique",
+							"fr": "Technique de frappe en ligne droite"
+						},
+						{
+							"id": "ihen_kakugi",
+							"kanji": "詒変搉技",
+							"romaji": "Ihen Kakugi",
+							"en": "Deceiving thrashing technique",
+							"fr": "Technique de frappe trompeuse"
+						},
+						{
+							"id": "seigan_yakugi",
+							"kanji": "青眼拒技",
+							"romaji": "Seigan Yakugi",
+							"en": "Repelling technique from Seigan",
+							"fr": "Technique de repoussement depuis Seigan"
+						},
+						{
+							"id": "tenchijin_yakugi",
+							"kanji": "天地人拒技",
+							"romaji": "Tenchijin Yakugi",
+							"en": "Repelling technique from Tenchijin",
+							"fr": "Technique de repoussement depuis Tenchijin"
+						},
+						{
+							"id": "heito_yakugi",
+							"kanji": "撆倒拒技",
+							"romaji": "Heito Yakugi",
+							"en": "Repelling technique from Heito",
+							"fr": "Technique de repoussement depuis Heito"
+						}
+					]
+				},
+				{
+					"id": "kamae",
+					"category": "buki",
+					"weapon": "hanbo",
+					"kanji": "三心之構",
+					"romaji": "Sanshin no Kamae",
+					"en": "Postures",
+					"fr": "Postures",
+					"sources": [
+						"https://bujinshugyo.wordpress.com/bujinkan-ryuha/kukishin-ryu-dakentaijutsu/hanbo/"
+					],
+					"techniques": [
+						{
+							"id": "kata_yaburi_no_kamae",
+							"kanji": "型破之構",
+							"romaji": "Kata Yaburi no Kamae",
+							"en": "Form-breaking posture",
+							"fr": "Posture qui brise la forme"
+						},
+						{
+							"id": "hira_ichimonji_no_kamae",
+							"kanji": "平一文字之構",
+							"romaji": "Hira Ichimonji no Kamae",
+							"en": "Flat line posture",
+							"fr": "Posture de la ligne plate"
+						},
+						{
+							"id": "munen_muso_no_kamae",
+							"kanji": "無念無想之構",
+							"romaji": "Munen Muso no Kamae",
+							"en": "No intention, no thought",
+							"fr": "Sans intention, sans pensée"
+						},
+						{
+							"id": "tate_no_kamae",
+							"kanji": "楯之構",
+							"romaji": "Tate no Kamae",
+							"en": "Shield posture",
+							"fr": "Posture du bouclier"
+						},
+						{
+							"id": "otonashi_no_kamae",
+							"kanji": "音無之構",
+							"romaji": "Otonashi no Kamae",
+							"en": "Soundless posture",
+							"fr": "Posture silencieuse"
+						}
+					]
+				},
+				{
+					"id": "shoden",
+					"category": "buki",
+					"weapon": "hanbo",
+					"kanji": "初伝之型",
+					"romaji": "Shoden no Kata",
+					"en": "Initial transmission forms",
+					"fr": "Formes de la transmission initiale",
+					"sources": [
+						"https://bujinshugyo.wordpress.com/bujinkan-ryuha/kukishin-ryu-dakentaijutsu/hanbo/"
+					],
+					"techniques": [
+						{
+							"id": "katate_uchi",
+							"kanji": "片手打",
+							"romaji": "Katate Uchi",
+							"en": "One-hand strike",
+							"fr": "Frappe à une main"
+						},
+						{
+							"id": "tsuki_otoshi",
+							"kanji": "突落",
+							"romaji": "Tsuki Otoshi",
+							"en": "Thrust and drop",
+							"fr": "Estoc et chute"
+						},
+						{
+							"id": "uchi_waza",
+							"kanji": "打技",
+							"romaji": "Uchi Waza",
+							"en": "Striking technique",
+							"fr": "Technique de frappe"
+						},
+						{
+							"id": "nagare_dori",
+							"kanji": "流捕",
+							"romaji": "Nagare Dori",
+							"en": "Flowing capture",
+							"fr": "Saisie qui coule"
+						},
+						{
+							"id": "kasumi_gake",
+							"kanji": "霞掛",
+							"romaji": "Kasumi Gake",
+							"en": "Mist hook",
+							"fr": "Crochet de brume"
+						},
+						{
+							"id": "iki_chigai",
+							"kanji": "行違",
+							"romaji": "Iki Chigai",
+							"en": "In passing",
+							"fr": "En se croisant"
+						},
+						{
+							"id": "kao_kudaki",
+							"kanji": "顔碎",
+							"romaji": "Kao Kudaki",
+							"en": "Face crush",
+							"fr": "Broyer le visage"
+						},
+						{
+							"id": "ate_kaeshi",
+							"kanji": "当返",
+							"romaji": "Ate Kaeshi",
+							"en": "Striking counter",
+							"fr": "Contre en frappant"
+						},
+						{
+							"id": "saka_otoshi",
+							"kanji": "逆落",
+							"romaji": "Saka Otoshi",
+							"en": "Reverse drop",
+							"fr": "Chute inversée"
+						}
+					]
+				},
+				{
+					"id": "chuden",
+					"category": "buki",
+					"weapon": "hanbo",
+					"kanji": "中伝之型",
+					"romaji": "Chuden no Kata",
+					"en": "Middle transmission forms",
+					"fr": "Formes de la transmission intermédiaire",
+					"sources": [
+						"https://bujinshugyo.wordpress.com/bujinkan-ryuha/kukishin-ryu-dakentaijutsu/hanbo/"
+					],
+					"techniques": [
+						{
+							"id": "kote_gaeshi",
+							"kanji": "小手返",
+							"romaji": "Kote Gaeshi",
+							"en": "Forearm counter",
+							"fr": "Retournement du poignet"
+						},
+						{
+							"id": "saka_otoshi",
+							"kanji": "逆落",
+							"romaji": "Saka Otoshi",
+							"en": "Reverse drop",
+							"fr": "Chute inversée"
+						},
+						{
+							"id": "harai_waza",
+							"kanji": "払技",
+							"romaji": "Harai Waza",
+							"en": "Sweeping technique",
+							"fr": "Technique de balayage"
+						},
+						{
+							"id": "soto_waza",
+							"kanji": "外技",
+							"romaji": "Soto Waza",
+							"en": "Outside technique",
+							"fr": "Technique extérieure"
+						}
+					]
+				},
+				{
+					"id": "okuden",
+					"category": "buki",
+					"weapon": "hanbo",
+					"kanji": "奥伝之型",
+					"romaji": "Okuden no Kata",
+					"en": "Inner transmission forms",
+					"fr": "Formes de la transmission profonde",
+					"sources": [
+						"https://bujinshugyo.wordpress.com/bujinkan-ryuha/kukishin-ryu-dakentaijutsu/hanbo/"
+					],
+					"techniques": [
+						{
+							"id": "hane_otoshi",
+							"kanji": "跳落",
+							"romaji": "Hane Otoshi",
+							"en": "Leap and drop",
+							"fr": "Bondir et faire tomber"
+						},
+						{
+							"id": "mata_gake",
+							"kanji": "股掛",
+							"romaji": "Mata Gake",
+							"en": "Thigh hook",
+							"fr": "Crochet à la cuisse"
+						},
+						{
+							"id": "kote_harai",
+							"kanji": "小手払",
+							"romaji": "Kote Harai",
+							"en": "Forearm sweep",
+							"fr": "Balayage de l'avant-bras"
+						}
+					]
+				},
+				{
+					"id": "kata",
+					"category": "buki",
+					"weapon": "jo",
+					"kanji": "杖術",
+					"romaji": "Jojutsu",
+					"en": "Staff forms",
+					"fr": "Formes au bâton",
+					"sources": [
+						"https://bujinshugyo.wordpress.com/bujinkan-ryuha/kukishin-ryu-dakentaijutsu/jo/",
+						"https://toryu.se/bujinkan-dojo-the-9-schools/buki-the-bujinkan-weapons/kukishin-ryu-jo-jutsu/"
+					],
+					"techniques": [
+						{
+							"id": "jumonji",
+							"kanji": "十文字",
+							"romaji": "Jumonji",
+							"en": "Cross form",
+							"fr": "Forme en croix"
+						},
+						{
+							"id": "roppo",
+							"kanji": "六法",
+							"romaji": "Roppo",
+							"en": "Six methods",
+							"fr": "Six méthodes"
+						},
+						{
+							"id": "kyuho",
+							"kanji": "九法",
+							"romaji": "Kyuho",
+							"en": "Nine methods",
+							"fr": "Neuf méthodes"
+						},
+						{
+							"id": "hiryu",
+							"kanji": "龍飛",
+							"romaji": "Hiryu",
+							"en": "Flying dragon",
+							"fr": "Dragon volant"
+						},
+						{
+							"id": "tsukeiri",
+							"kanji": "附入",
+							"romaji": "Tsukeiri",
+							"en": "Follow and enter",
+							"fr": "Suivre et entrer"
+						},
+						{
+							"id": "ude_kake",
+							"kanji": "腕掛",
+							"romaji": "Ude Kake",
+							"en": "Arm hook",
+							"fr": "Crochet au bras"
+						},
+						{
+							"id": "kote_gaeshi",
+							"kanji": "小手返",
+							"romaji": "Kote Gaeshi",
+							"en": "Forearm counter",
+							"fr": "Retournement du poignet"
+						},
+						{
+							"id": "tachi_otoshi",
+							"kanji": "太刀落",
+							"romaji": "Tachi Otoshi",
+							"en": "Sword drop",
+							"fr": "Faire tomber le sabre"
+						}
+					]
+				},
+				{
+					"id": "kamae",
+					"category": "buki",
+					"weapon": "yari",
+					"kanji": "構",
+					"romaji": "Kamae",
+					"en": "Postures",
+					"fr": "Postures",
+					"sources": [
+						"https://bujinshugyo.wordpress.com/bujinkan-ryuha/kukishin-ryu-dakentaijutsu/sojutsu/"
+					],
+					"techniques": [
+						{
+							"id": "seigan_no_kamae",
+							"kanji": "征眼之構",
+							"romaji": "Seigan no Kamae",
+							"en": "Subjugating eye posture",
+							"fr": "Posture de l'œil qui soumet"
+						},
+						{
+							"id": "ryusui_no_kamae",
+							"kanji": "流水之構",
+							"romaji": "Ryusui no Kamae",
+							"en": "Flowing water posture",
+							"fr": "Posture de l'eau qui coule"
+						},
+						{
+							"id": "chudan_no_kamae",
+							"kanji": "中段之構",
+							"romaji": "Chudan no Kamae",
+							"en": "Middle level posture",
+							"fr": "Posture moyenne"
+						},
+						{
+							"id": "jodan_no_kamae",
+							"kanji": "上段之構",
+							"romaji": "Jodan no Kamae",
+							"en": "Upper level posture",
+							"fr": "Posture haute"
+						},
+						{
+							"id": "ihen_no_kamae",
+							"kanji": "詒変之構",
+							"romaji": "Ihen no Kamae",
+							"en": "Deceiving change posture",
+							"fr": "Posture du changement trompeur"
+						},
+						{
+							"id": "gedan_no_kamae",
+							"kanji": "下段之構",
+							"romaji": "Gedan no Kamae",
+							"en": "Lower level posture",
+							"fr": "Posture basse"
+						}
+					]
+				},
+				{
+					"id": "kaisetsu",
+					"category": "buki",
+					"weapon": "yari",
+					"kanji": "快拙型",
+					"romaji": "Kaisetsu Gata",
+					"en": "Forms learnt with joy",
+					"fr": "Formes apprises avec plaisir",
+					"sources": [
+						"https://bujinshugyo.wordpress.com/bujinkan-ryuha/kukishin-ryu-dakentaijutsu/sojutsu/"
+					],
+					"techniques": [
+						{
+							"id": "kanpo",
+							"kanji": "扞法",
+							"romaji": "Kanpo",
+							"en": "Warding method",
+							"fr": "Méthode de parade"
+						},
+						{
+							"id": "shiho_waza",
+							"kanji": "四方技",
+							"romaji": "Shiho Waza",
+							"en": "Four-direction technique",
+							"fr": "Technique des quatre directions"
+						},
+						{
+							"id": "hicho_kaku",
+							"kanji": "飛鳥抛",
+							"romaji": "Hicho Kaku",
+							"en": "Flying bird hurl",
+							"fr": "Projection de l'oiseau en vol"
+						},
+						{
+							"id": "hitotsuki_aiho",
+							"kanji": "一突挨法",
+							"romaji": "Hitotsuki Aiho",
+							"en": "Single thrust opening method",
+							"fr": "Méthode d'ouverture d'un seul estoc"
+						},
+						{
+							"id": "itto_santo",
+							"kanji": "一擣三當",
+							"romaji": "Itto Santo",
+							"en": "One blow, three strikes",
+							"fr": "Un coup, trois frappes"
+						},
+						{
+							"id": "hassai",
+							"kanji": "撥摧",
+							"romaji": "Hassai",
+							"en": "Brush up and smash",
+							"fr": "Relever et écraser"
+						},
+						{
+							"id": "hiso",
+							"kanji": "秘槍",
+							"romaji": "Hiso",
+							"en": "Secret spear",
+							"fr": "Lance secrète"
+						},
+						{
+							"id": "tenchi_kaku",
+							"kanji": "天地摧",
+							"romaji": "Tenchi Kaku",
+							"en": "Heaven and earth thrash",
+							"fr": "Frappe du ciel et de la terre"
+						},
+						{
+							"id": "happo_yaku",
+							"kanji": "撥捕扼",
+							"romaji": "Happo Yaku",
+							"en": "Flick up, catch, dominate",
+							"fr": "Relever, saisir, dominer"
+						}
+					]
+				},
+				{
+					"id": "gokui",
+					"category": "buki",
+					"weapon": "yari",
+					"kanji": "極意型",
+					"romaji": "Gokui Gata",
+					"en": "Quintessence forms (Kasumi Gata)",
+					"fr": "Formes de la quintessence (Kasumi Gata)",
+					"sources": [
+						"https://bujinshugyo.wordpress.com/bujinkan-ryuha/kukishin-ryu-dakentaijutsu/sojutsu/"
+					],
+					"techniques": [
+						{
+							"id": "ichimonji",
+							"kanji": "一文字",
+							"romaji": "Ichimonji",
+							"en": "Straight line",
+							"fr": "Ligne droite"
+						},
+						{
+							"id": "kikusui",
+							"kanji": "菊水",
+							"romaji": "Kikusui",
+							"en": "Floating chrysanthemum",
+							"fr": "Chrysanthème flottant"
+						},
+						{
+							"id": "kancho",
+							"kanji": "巻蔦",
+							"romaji": "Kancho",
+							"en": "Twisting ivy",
+							"fr": "Lierre enroulé"
+						},
+						{
+							"id": "kisasu",
+							"kanji": "鬼刺",
+							"romaji": "Kisasu",
+							"en": "Demon stab",
+							"fr": "Coup du démon"
+						},
+						{
+							"id": "hiryu",
+							"kanji": "飛龍",
+							"romaji": "Hiryu",
+							"en": "Flying dragon",
+							"fr": "Dragon volant"
+						},
+						{
+							"id": "tsuki_buse",
+							"kanji": "突伏",
+							"romaji": "Tsuki Buse",
+							"en": "Thrust down",
+							"fr": "Estoc qui couche"
+						},
+						{
+							"id": "kage_cho",
+							"kanji": "蔭蝶",
+							"romaji": "Kage Cho",
+							"en": "Shadow butterfly",
+							"fr": "Papillon d'ombre"
+						},
+						{
+							"id": "mitsu_dama",
+							"kanji": "三ツ玉",
+							"romaji": "Mitsu Dama",
+							"en": "Three jewels",
+							"fr": "Trois joyaux"
+						},
+						{
+							"id": "shichimai_ha",
+							"kanji": "七枚葉",
+							"romaji": "Shichimai Ha",
+							"en": "Seven leaves",
+							"fr": "Sept feuilles"
+						}
+					]
+				},
+				{
+					"id": "hencho",
+					"category": "buki",
+					"weapon": "yari",
+					"kanji": "変蝶型",
+					"romaji": "Hencho Gata",
+					"en": "Butterfly change forms (Menkyo Kaiden)",
+					"fr": "Formes du papillon changeant (Menkyo Kaiden)",
+					"sources": [
+						"https://bujinshugyo.wordpress.com/bujinkan-ryuha/kukishin-ryu-dakentaijutsu/sojutsu/"
+					],
+					"techniques": [
+						{
+							"id": "oto",
+							"kanji": "横倒",
+							"romaji": "Oto",
+							"en": "Side felling",
+							"fr": "Renversement de côté"
+						},
+						{
+							"id": "ryuzu",
+							"kanji": "龍頭",
+							"romaji": "Ryuzu",
+							"en": "Dragon head",
+							"fr": "Tête de dragon"
+						},
+						{
+							"id": "tomoe",
+							"kanji": "巴",
+							"romaji": "Tomoe",
+							"en": "Whirl",
+							"fr": "Tourbillon"
+						},
+						{
+							"id": "kuginuki",
+							"kanji": "釘抜",
+							"romaji": "Kuginuki",
+							"en": "Nail puller",
+							"fr": "Arrache-clou"
+						},
+						{
+							"id": "arashi",
+							"kanji": "嵐",
+							"romaji": "Arashi",
+							"en": "Storm",
+							"fr": "Tempête"
+						},
+						{
+							"id": "shinmyo",
+							"kanji": "心明",
+							"romaji": "Shinmyo",
+							"en": "Light of the heart",
+							"fr": "Lumière du cœur"
+						},
+						{
+							"id": "taki_otoshi",
+							"kanji": "瀧落",
+							"romaji": "Taki Otoshi",
+							"en": "Waterfall drop",
+							"fr": "Chute de la cascade"
+						},
+						{
+							"id": "yoko_nage",
+							"kanji": "横投",
+							"romaji": "Yoko Nage",
+							"en": "Side throw",
+							"fr": "Projection de côté"
+						},
+						{
+							"id": "tate_nage",
+							"kanji": "立投",
+							"romaji": "Tate Nage",
+							"en": "Standing throw",
+							"fr": "Projection debout"
+						},
+						{
+							"id": "nichigetsu",
+							"kanji": "日月",
+							"romaji": "Nichigetsu",
+							"en": "Sun and moon",
+							"fr": "Soleil et lune"
+						}
+					]
+				},
+				{
+					"id": "kamae",
+					"category": "buki",
+					"weapon": "naginata",
+					"kanji": "構",
+					"romaji": "Kamae",
+					"en": "Postures",
+					"fr": "Postures",
+					"sources": [
+						"https://bujinshugyo.wordpress.com/bujinkan-ryuha/kukishin-ryu-dakentaijutsu/naginata-bisento/"
+					],
+					"techniques": [
+						{
+							"id": "hasso_no_kamae",
+							"kanji": "八相之構",
+							"romaji": "Hasso no Kamae",
+							"en": "Eight aspects posture",
+							"fr": "Posture des huit aspects"
+						},
+						{
+							"id": "seigan_no_kamae",
+							"kanji": "青眼之構",
+							"romaji": "Seigan no Kamae",
+							"en": "Aiming at the eyes",
+							"fr": "Posture qui vise les yeux"
+						},
+						{
+							"id": "yoko_ichimonji_no_kamae",
+							"kanji": "横一文字之構",
+							"romaji": "Yoko Ichimonji no Kamae",
+							"en": "Side line posture",
+							"fr": "Posture de la ligne de côté"
+						},
+						{
+							"id": "hira_ichimonji_no_kamae",
+							"kanji": "平一文字之構",
+							"romaji": "Hira Ichimonji no Kamae",
+							"en": "Flat line posture",
+							"fr": "Posture de la ligne plate"
+						},
+						{
+							"id": "naka_seigan_no_kamae",
+							"kanji": "中青眼之構",
+							"romaji": "Naka Seigan no Kamae",
+							"en": "Middle Seigan posture",
+							"fr": "Posture Seigan médiane"
+						}
+					]
+				},
+				{
+					"id": "kata",
+					"category": "buki",
+					"weapon": "naginata",
+					"kanji": "型",
+					"romaji": "Kata",
+					"en": "Forms",
+					"fr": "Formes",
+					"sources": [
+						"https://bujinshugyo.wordpress.com/bujinkan-ryuha/kukishin-ryu-dakentaijutsu/naginata-bisento/"
+					],
+					"techniques": [
+						{
+							"id": "nagi_taoshi",
+							"kanji": "薙倒",
+							"romaji": "Nagi Taoshi",
+							"en": "Mowing topple",
+							"fr": "Faucher et renverser"
+						},
+						{
+							"id": "sukui_age",
+							"kanji": "掬上",
+							"romaji": "Sukui Age",
+							"en": "Scoop up",
+							"fr": "Cueillir vers le haut"
+						},
+						{
+							"id": "hataki_taoshi",
+							"kanji": "拔倒",
+							"romaji": "Hataki Taoshi",
+							"en": "Draw and topple",
+							"fr": "Dégager et renverser"
+						},
+						{
+							"id": "ashi_barai",
+							"kanji": "足拂",
+							"romaji": "Ashi Barai",
+							"en": "Leg sweep",
+							"fr": "Balayage de jambe"
+						},
+						{
+							"id": "hane_taoshi",
+							"kanji": "撥倒",
+							"romaji": "Hane Taoshi",
+							"en": "Brush up and fell",
+							"fr": "Relever et abattre"
+						},
+						{
+							"id": "kuri_dashi",
+							"kanji": "繰出",
+							"romaji": "Kuri Dashi",
+							"en": "Turning lunge",
+							"fr": "Fente en tournant"
+						},
+						{
+							"id": "zengo_nagi",
+							"kanji": "前後薙",
+							"romaji": "Zengo Nagi",
+							"en": "Mowing front and rear",
+							"fr": "Faucher devant et derrière"
+						},
+						{
+							"id": "sashi_chigai",
+							"kanji": "差違",
+							"romaji": "Sashi Chigai",
+							"en": "Exchanging thrusts",
+							"fr": "Estocs croisés"
+						},
+						{
+							"id": "tobi_kiri",
+							"kanji": "飛切",
+							"romaji": "Tobi Kiri",
+							"en": "Leaping cut",
+							"fr": "Coupe en bondissant"
+						}
+					]
+				},
+				{
+					"id": "kata",
+					"category": "buki",
+					"weapon": "bisento",
+					"kanji": "型",
+					"romaji": "Kata",
+					"en": "Forms",
+					"fr": "Formes",
+					"sources": [
+						"https://bujinshugyo.wordpress.com/bujinkan-ryuha/kukishin-ryu-dakentaijutsu/naginata-bisento/"
+					],
+					"techniques": [
+						{
+							"id": "oshin",
+							"kanji": "汪振",
+							"romaji": "Oshin",
+							"en": "Deep swing",
+							"fr": "Balancement profond"
+						},
+						{
+							"id": "kakugyaku",
+							"kanji": "鬲逆",
+							"romaji": "Kakugyaku",
+							"en": "Tripod reverse",
+							"fr": "Trépied inversé"
+						},
+						{
+							"id": "chikusha",
+							"kanji": "竹斜",
+							"romaji": "Chikusha",
+							"en": "Cutting bamboo on the slant",
+							"fr": "Couper le bambou en biais"
+						},
+						{
+							"id": "namiba",
+							"kanji": "波刃",
+							"romaji": "Namiba",
+							"en": "Wave edge",
+							"fr": "Tranchant de vague"
+						},
+						{
+							"id": "batto",
+							"kanji": "抜刀",
+							"romaji": "Batto",
+							"en": "Drawing the blade",
+							"fr": "Dégainer"
+						},
+						{
+							"id": "gisen",
+							"kanji": "曦先",
+							"romaji": "Gisen",
+							"en": "Before dawn",
+							"fr": "Avant l'aube"
+						},
+						{
+							"id": "shinto",
+							"kanji": "伸刀",
+							"romaji": "Shinto",
+							"en": "Stretching blade",
+							"fr": "Lame qui s'allonge"
+						},
+						{
+							"id": "seito",
+							"kanji": "惺刀",
+							"romaji": "Seito",
+							"en": "Awakened blade",
+							"fr": "Lame éveillée"
+						},
+						{
+							"id": "miken",
+							"kanji": "魅剣",
+							"romaji": "Miken",
+							"en": "Bewitching blade",
+							"fr": "Lame ensorcelante"
+						}
+					]
+				},
+				{
+					"id": "kamae",
+					"category": "buki",
+					"weapon": "jutte",
+					"kanji": "構",
+					"romaji": "Kamae",
+					"en": "Postures",
+					"fr": "Postures",
+					"sources": [
+						"https://toryu.se/bujinkan-dojo-the-9-schools/buki-the-bujinkan-weapons/jutte-the-baton-fighting-art-of-bujinkan/",
+						"https://bujinshugyo.wordpress.com/bujinkan-ryuha/kukishin-ryu-dakentaijutsu/jutte-tessen-kodachi/"
+					],
+					"techniques": [
+						{
+							"id": "muso_no_kamae",
+							"kanji": "無想之構",
+							"romaji": "Muso no Kamae",
+							"en": "Clear mind posture",
+							"fr": "Posture de l'esprit clair"
+						},
+						{
+							"id": "mizudori_no_kamae",
+							"kanji": "水鳥之構",
+							"romaji": "Mizudori no Kamae",
+							"en": "Water bird posture",
+							"fr": "Posture de l'oiseau d'eau"
+						},
+						{
+							"id": "ichi_no_kamae",
+							"kanji": "一之構",
+							"romaji": "Ichi no Kamae",
+							"en": "First posture",
+							"fr": "Première posture"
+						},
+						{
+							"id": "seigan_no_kamae",
+							"kanji": "青眼之構",
+							"romaji": "Seigan no Kamae",
+							"en": "Aiming at the eyes",
+							"fr": "Posture qui vise les yeux"
+						},
+						{
+							"id": "ten_no_kamae",
+							"kanji": "天之構",
+							"romaji": "Ten no Kamae",
+							"en": "Heaven posture",
+							"fr": "Posture du ciel"
+						},
+						{
+							"id": "ipponmatsu_no_kamae",
+							"kanji": "一本松之構",
+							"romaji": "Ipponmatsu no Kamae",
+							"en": "Lone pine posture",
+							"fr": "Posture du pin solitaire"
+						},
+						{
+							"id": "tachi_gedan_no_kamae",
+							"kanji": "立下段之構",
+							"romaji": "Tachi Gedan no Kamae",
+							"en": "Standing low posture",
+							"fr": "Posture basse debout"
+						}
+					]
+				},
+				{
+					"id": "roppo",
+					"category": "buki",
+					"weapon": "jutte",
+					"kanji": "六方型",
+					"romaji": "Roppo Gata",
+					"en": "Six directions forms",
+					"fr": "Formes des six directions",
+					"sources": [
+						"https://toryu.se/bujinkan-dojo-the-9-schools/buki-the-bujinkan-weapons/jutte-the-baton-fighting-art-of-bujinkan/",
+						"https://bujinshugyo.wordpress.com/bujinkan-ryuha/kukishin-ryu-dakentaijutsu/jutte-tessen-kodachi/"
+					],
+					"techniques": [
+						{
+							"id": "kiri_no_hitoha",
+							"kanji": "桐之一葉",
+							"romaji": "Kiri no Hitoha",
+							"en": "Falling paulownia leaf",
+							"fr": "Feuille de paulownia qui tombe"
+						},
+						{
+							"id": "rakka",
+							"kanji": "落花",
+							"romaji": "Rakka",
+							"en": "Falling blossoms",
+							"fr": "Fleurs qui tombent"
+						},
+						{
+							"id": "mizudori",
+							"kanji": "水鳥",
+							"romaji": "Mizudori",
+							"en": "Water bird",
+							"fr": "Oiseau d'eau"
+						},
+						{
+							"id": "gorin_kudaki",
+							"kanji": "五輪碎",
+							"romaji": "Gorin Kudaki",
+							"en": "Five rings crush",
+							"fr": "Broyer les cinq anneaux"
+						},
+						{
+							"id": "raisen",
+							"kanji": "雷閃",
+							"romaji": "Raisen",
+							"en": "Flash of lightning",
+							"fr": "Éclair"
+						},
+						{
+							"id": "tatsuge",
+							"kanji": "竜下",
+							"romaji": "Tatsuge",
+							"en": "Descending dragon",
+							"fr": "Dragon qui descend"
+						},
+						{
+							"id": "mawari_dori",
+							"kanji": "廻捕",
+							"romaji": "Mawari Dori",
+							"en": "Turning capture",
+							"fr": "Saisie en tournant"
+						}
+					]
+				},
+				{
+					"id": "kamae",
+					"category": "buki",
+					"weapon": "kodachi",
+					"kanji": "三心之構",
+					"romaji": "Sanshin no Kamae",
+					"en": "Postures",
+					"fr": "Postures",
+					"sources": [
+						"https://toryu.se/bujinkan-dojo-the-9-schools/buki-the-bujinkan-weapons/kodachi-the-short-sword-of-the-samurai/",
+						"https://bujinshugyo.wordpress.com/bujinkan-ryuha/kukishin-ryu-dakentaijutsu/jutte-tessen-kodachi/"
+					],
+					"techniques": [
+						{
+							"id": "seigan_no_kamae",
+							"kanji": "青眼之構",
+							"romaji": "Seigan no Kamae",
+							"en": "Aiming at the eyes",
+							"fr": "Posture qui vise les yeux"
+						},
+						{
+							"id": "naka_seigan_no_kamae",
+							"kanji": "中青眼之構",
+							"romaji": "Naka Seigan no Kamae",
+							"en": "Middle Seigan posture",
+							"fr": "Posture Seigan médiane"
+						},
+						{
+							"id": "otonashi_no_kamae",
+							"kanji": "音無之構",
+							"romaji": "Otonashi no Kamae",
+							"en": "Soundless posture",
+							"fr": "Posture silencieuse"
+						}
+					]
+				},
+				{
+					"id": "kata",
+					"category": "buki",
+					"weapon": "kodachi",
+					"kanji": "型",
+					"romaji": "Kata",
+					"en": "Forms",
+					"fr": "Formes",
+					"sources": [
+						"https://toryu.se/bujinkan-dojo-the-9-schools/buki-the-bujinkan-weapons/kodachi-the-short-sword-of-the-samurai/",
+						"https://bujinshugyo.wordpress.com/bujinkan-ryuha/kukishin-ryu-dakentaijutsu/jutte-tessen-kodachi/"
+					],
+					"techniques": [
+						{
+							"id": "hicho_no_ken",
+							"kanji": "飛鳥之剣",
+							"romaji": "Hicho no Ken",
+							"en": "Flying bird sword",
+							"fr": "Sabre de l'oiseau en vol"
+						},
+						{
+							"id": "shishi_geki",
+							"kanji": "獅子撃",
+							"romaji": "Shishi Geki",
+							"en": "Guardian lion strike",
+							"fr": "Frappe du lion gardien"
+						},
+						{
+							"id": "juji_ken",
+							"kanji": "十字剣",
+							"romaji": "Juji Ken",
+							"en": "Cross sword",
+							"fr": "Sabre en croix"
+						}
+					]
+				},
+				{
+					"id": "kamae",
+					"category": "buki",
+					"weapon": "biken",
+					"kanji": "構",
+					"romaji": "Kamae",
+					"en": "Postures",
+					"fr": "Postures",
+					"sources": [
+						"https://bujinshugyo.wordpress.com/bujinkan-ryuha/kukishin-ryu-dakentaijutsu/biken/"
+					],
+					"techniques": [
+						{
+							"id": "ichi_no_kamae",
+							"kanji": "一之構",
+							"romaji": "Ichi no Kamae",
+							"en": "First posture",
+							"fr": "Première posture"
+						},
+						{
+							"id": "daijodan_no_kamae",
+							"kanji": "大上段之構",
+							"romaji": "Daijodan no Kamae",
+							"en": "Great upper posture",
+							"fr": "Grande posture haute"
+						},
+						{
+							"id": "chudan_no_kamae",
+							"kanji": "中段之構",
+							"romaji": "Chudan no Kamae",
+							"en": "Middle level posture",
+							"fr": "Posture moyenne"
+						},
+						{
+							"id": "gedan_no_kamae",
+							"kanji": "下段之構",
+							"romaji": "Gedan no Kamae",
+							"en": "Lower level posture",
+							"fr": "Posture basse"
+						},
+						{
+							"id": "chosui_no_kamae",
+							"kanji": "澄水之構",
+							"romaji": "Chosui no Kamae",
+							"en": "Clear water posture",
+							"fr": "Posture de l'eau claire"
+						},
+						{
+							"id": "tenchi_no_kamae",
+							"kanji": "天地之構",
+							"romaji": "Tenchi no Kamae",
+							"en": "Heaven and earth posture",
+							"fr": "Posture du ciel et de la terre"
+						},
+						{
+							"id": "hasso_no_kamae",
+							"kanji": "八相之構",
+							"romaji": "Hasso no Kamae",
+							"en": "Eight aspects posture",
+							"fr": "Posture des huit aspects"
+						},
+						{
+							"id": "seigan_no_kamae",
+							"kanji": "正眼之構",
+							"romaji": "Seigan no Kamae",
+							"en": "True eye posture",
+							"fr": "Posture de l'œil juste"
+						},
+						{
+							"id": "kasumi_no_kamae",
+							"kanji": "霞之構",
+							"romaji": "Kasumi no Kamae",
+							"en": "Mist posture",
+							"fr": "Posture de la brume"
+						}
+					]
+				},
+				{
+					"id": "kata",
+					"category": "buki",
+					"weapon": "biken",
+					"kanji": "型",
+					"romaji": "Kata",
+					"en": "Forms",
+					"fr": "Formes",
+					"sources": [
+						"https://bujinshugyo.wordpress.com/bujinkan-ryuha/kukishin-ryu-dakentaijutsu/biken/",
+						"https://toryu.se/bujinkan-dojo-the-9-schools/buki-the-bujinkan-weapons/kukishin-ryu-biken-jutsu-bujinkan-sword/"
+					],
+					"techniques": [
+						{
+							"id": "tsukekomi",
+							"kanji": "附込",
+							"romaji": "Tsukekomi",
+							"en": "Follow and push in",
+							"fr": "Suivre et pousser"
+						},
+						{
+							"id": "tsukigake",
+							"kanji": "突掛",
+							"romaji": "Tsukigake",
+							"en": "Thrust and hook",
+							"fr": "Estoc et crochet"
+						},
+						{
+							"id": "kiriage",
+							"kanji": "斬上",
+							"romaji": "Kiriage",
+							"en": "Rising cut",
+							"fr": "Coupe montante"
+						},
+						{
+							"id": "kirisage",
+							"kanji": "斬下",
+							"romaji": "Kirisage",
+							"en": "Descending cut",
+							"fr": "Coupe descendante"
+						},
+						{
+							"id": "kasugai_dome",
+							"kanji": "鎹止",
+							"romaji": "Kasugai Dome",
+							"en": "Bind and stop",
+							"fr": "Lier et arrêter"
+						},
+						{
+							"id": "kocho_gaeshi",
+							"kanji": "小蝶返",
+							"romaji": "Kocho Gaeshi",
+							"en": "Little butterfly counter",
+							"fr": "Contre du petit papillon"
+						},
+						{
+							"id": "shiho_giri",
+							"kanji": "四方斬",
+							"romaji": "Shiho Giri",
+							"en": "Cutting in four directions",
+							"fr": "Couper dans les quatre directions"
+						},
+						{
+							"id": "happo_giri",
+							"kanji": "八方斬",
+							"romaji": "Happo Giri",
+							"en": "Cutting in eight directions",
+							"fr": "Couper dans les huit directions"
+						},
+						{
+							"id": "tsuki_no_wa",
+							"kanji": "月之輪",
+							"romaji": "Tsuki no Wa",
+							"en": "Ring of the moon",
+							"fr": "Anneau de la lune"
+						}
+					]
+				}
+			]
+		},
+		{
+			"ryu": "koto",
+			"sections": [
+				{
+					"id": "kurai_dori",
+					"category": "taijutsu",
+					"weapon": null,
+					"kanji": "位取",
+					"romaji": "Kurai Dori",
+					"en": "Five postures",
+					"fr": "Cinq postures",
+					"sources": [
+						"https://bujinshugyo.wordpress.com/bujinkan-ryuha/koto-ryu-koppojutsu/",
+						"https://www.akban.org/wiki/Category:Techniques_-_Koto_Ryu"
+					],
+					"techniques": [
+						{
+							"id": "migi_seigan_no_kamae",
+							"kanji": "右正眼之構",
+							"romaji": "Migi Seigan no Kamae",
+							"en": "Right true-eye posture",
+							"fr": "Posture de l'œil juste, à droite"
+						},
+						{
+							"id": "hidari_seigan_no_kamae",
+							"kanji": "左正眼之構",
+							"romaji": "Hidari Seigan no Kamae",
+							"en": "Left true-eye posture",
+							"fr": "Posture de l'œil juste, à gauche"
+						},
+						{
+							"id": "hira_ichimonji_no_kamae",
+							"kanji": "平一文字之構",
+							"romaji": "Hira Ichimonji no Kamae",
+							"en": "Flat line posture",
+							"fr": "Posture de la ligne plate"
+						},
+						{
+							"id": "hoko_no_kamae",
+							"kanji": "抱囲之構",
+							"romaji": "Hoko no Kamae",
+							"en": "Encircling posture",
+							"fr": "Posture qui enveloppe"
+						},
+						{
+							"id": "bobi_no_kamae",
+							"kanji": "防備之構",
+							"romaji": "Bobi no Kamae",
+							"en": "Defensive posture",
+							"fr": "Posture défensive"
+						}
+					]
+				},
+				{
+					"id": "shoden",
+					"category": "taijutsu",
+					"weapon": null,
+					"kanji": "初伝型",
+					"romaji": "Shoden Gata",
+					"en": "Initial transmission forms",
+					"fr": "Formes de la transmission initiale",
+					"sources": [
+						"https://bujinshugyo.wordpress.com/bujinkan-ryuha/koto-ryu-koppojutsu/",
+						"https://www.akban.org/wiki/Koto_ryu"
+					],
+					"techniques": [
+						{
+							"id": "yokuto",
+							"kanji": "抒投",
+							"romaji": "Yokuto",
+							"en": "Scoop and throw",
+							"fr": "Cueillir et projeter"
+						},
+						{
+							"id": "ogyaku",
+							"kanji": "押虚",
+							"romaji": "Ogyaku",
+							"en": "Push into the gap",
+							"fr": "Pousser dans le vide"
+						},
+						{
+							"id": "koyoku",
+							"kanji": "抗抒",
+							"romaji": "Koyoku",
+							"en": "Resist and clear away",
+							"fr": "Résister et écarter"
+						},
+						{
+							"id": "shito",
+							"kanji": "拡倒",
+							"romaji": "Shito",
+							"en": "Spread and topple",
+							"fr": "Étendre et renverser"
+						},
+						{
+							"id": "hosoku",
+							"kanji": "捕捉",
+							"romaji": "Hosoku",
+							"en": "Capture",
+							"fr": "Capture"
+						},
+						{
+							"id": "hoteki",
+							"kanji": "放擲",
+							"romaji": "Hoteki",
+							"en": "Release and throw",
+							"fr": "Lâcher et projeter"
+						},
+						{
+							"id": "shato",
+							"kanji": "斜倒",
+							"romaji": "Shato",
+							"en": "Diagonal topple",
+							"fr": "Renversement en diagonale"
+						},
+						{
+							"id": "keto",
+							"kanji": "掛倒",
+							"romaji": "Keto",
+							"en": "Hook and topple",
+							"fr": "Accrocher et renverser"
+						},
+						{
+							"id": "sakugeki",
+							"kanji": "搾撃",
+							"romaji": "Sakugeki",
+							"en": "Squeeze and strike",
+							"fr": "Serrer et frapper"
+						},
+						{
+							"id": "tangeki",
+							"kanji": "擔撃",
+							"romaji": "Tangeki",
+							"en": "Shoulder and strike",
+							"fr": "Charger et frapper"
+						},
+						{
+							"id": "batsugi",
+							"kanji": "拔技",
+							"romaji": "Batsugi",
+							"en": "Drawing technique",
+							"fr": "Technique d'extraction"
+						},
+						{
+							"id": "setto",
+							"kanji": "折倒",
+							"romaji": "Setto",
+							"en": "Fold and topple",
+							"fr": "Plier et renverser"
+						},
+						{
+							"id": "shihaku",
+							"kanji": "指拍",
+							"romaji": "Shihaku",
+							"en": "Finger rhythm",
+							"fr": "Rythme des doigts"
+						},
+						{
+							"id": "kyogi",
+							"kanji": "拒技",
+							"romaji": "Kyogi",
+							"en": "Refusing technique",
+							"fr": "Technique du refus"
+						},
+						{
+							"id": "kakko",
+							"kanji": "括拷",
+							"romaji": "Kakko",
+							"en": "Arrest and restrain",
+							"fr": "Arrêter et contenir"
+						},
+						{
+							"id": "uranami",
+							"kanji": "浦波",
+							"romaji": "Uranami",
+							"en": "Inlet waves",
+							"fr": "Vagues de la crique"
+						},
+						{
+							"id": "tenchi",
+							"kanji": "天地",
+							"romaji": "Tenchi",
+							"en": "Heaven and earth",
+							"fr": "Ciel et terre"
+						},
+						{
+							"id": "katamaki",
+							"kanji": "片巻",
+							"romaji": "Katamaki",
+							"en": "One-sided wrap",
+							"fr": "Enroulement d'un côté"
+						}
+					]
+				},
+				{
+					"id": "chuden",
+					"category": "taijutsu",
+					"weapon": null,
+					"kanji": "中伝型",
+					"romaji": "Chuden Gata",
+					"en": "Middle transmission forms",
+					"fr": "Formes de la transmission intermédiaire",
+					"sources": [
+						"https://bujinshugyo.wordpress.com/bujinkan-ryuha/koto-ryu-koppojutsu/",
+						"https://www.akban.org/wiki/Koto_ryu"
+					],
+					"techniques": [
+						{
+							"id": "hida",
+							"kanji": "飛打",
+							"romaji": "Hida",
+							"en": "Leaping strike",
+							"fr": "Frappe en bondissant"
+						},
+						{
+							"id": "hisaku",
+							"kanji": "飛搾",
+							"romaji": "Hisaku",
+							"en": "Leaping squeeze",
+							"fr": "Étreinte en bondissant"
+						},
+						{
+							"id": "hicho",
+							"kanji": "飛鳥",
+							"romaji": "Hicho",
+							"en": "Flying bird",
+							"fr": "Oiseau en vol"
+						},
+						{
+							"id": "hito",
+							"kanji": "飛倒",
+							"romaji": "Hito",
+							"en": "Leaping topple",
+							"fr": "Renversement en bondissant"
+						},
+						{
+							"id": "kappi",
+							"kanji": "括飛",
+							"romaji": "Kappi",
+							"en": "Arresting leap",
+							"fr": "Bond qui arrête"
+						},
+						{
+							"id": "monpi",
+							"kanji": "捫飛",
+							"romaji": "Monpi",
+							"en": "Groping leap",
+							"fr": "Bond à tâtons"
+						},
+						{
+							"id": "suito",
+							"kanji": "夊倒",
+							"romaji": "Suito",
+							"en": "Winter topple",
+							"fr": "Renversement d'hiver"
+						},
+						{
+							"id": "gohi",
+							"kanji": "鼠飛",
+							"romaji": "Gohi",
+							"en": "Rat leap",
+							"fr": "Bond du rat"
+						},
+						{
+							"id": "hetsubi",
+							"kanji": "蔽飛",
+							"romaji": "Hetsubi",
+							"en": "Covering leap",
+							"fr": "Bond qui couvre"
+						},
+						{
+							"id": "teki_gaeshi",
+							"kanji": "擲返",
+							"romaji": "Teki Gaeshi",
+							"en": "Throwing return",
+							"fr": "Renvoi par projection"
+						},
+						{
+							"id": "koto",
+							"kanji": "喉倒",
+							"romaji": "Koto",
+							"en": "Throat topple",
+							"fr": "Renversement par la gorge"
+						},
+						{
+							"id": "kakuhi",
+							"kanji": "攫飛",
+							"romaji": "Kakuhi",
+							"en": "Snatching leap",
+							"fr": "Bond qui arrache"
+						}
+					]
+				},
+				{
+					"id": "okuden",
+					"category": "taijutsu",
+					"weapon": null,
+					"kanji": "奥伝型",
+					"romaji": "Okuden Gata",
+					"en": "Inner transmission forms",
+					"fr": "Formes de la transmission profonde",
+					"sources": [
+						"https://bujinshugyo.wordpress.com/bujinkan-ryuha/koto-ryu-koppojutsu/",
+						"https://www.akban.org/wiki/Koto_ryu"
+					],
+					"techniques": [
+						{
+							"id": "santo_ate",
+							"kanji": "攅当",
+							"romaji": "Santo (Ate)",
+							"en": "Meeting strike",
+							"fr": "Frappe de rencontre"
+						},
+						{
+							"id": "santo_taoshi",
+							"kanji": "攅倒",
+							"romaji": "Santo (Taoshi)",
+							"en": "Meeting topple",
+							"fr": "Renversement de rencontre"
+						},
+						{
+							"id": "koto",
+							"kanji": "虎倒",
+							"romaji": "Koto",
+							"en": "Tiger topple",
+							"fr": "Renversement du tigre"
+						},
+						{
+							"id": "shinsen",
+							"kanji": "神剪",
+							"romaji": "Shinsen",
+							"en": "Divine cut",
+							"fr": "Coupe divine"
+						},
+						{
+							"id": "konpi",
+							"kanji": "梱飛",
+							"romaji": "Konpi",
+							"en": "Binding leap",
+							"fr": "Bond qui ligote"
+						},
+						{
+							"id": "josetsu",
+							"kanji": "挐摺",
+							"romaji": "Josetsu",
+							"en": "Seize and fold",
+							"fr": "Saisir et plier"
+						},
+						{
+							"id": "sosetsu",
+							"kanji": "抓摺",
+							"romaji": "Sosetsu",
+							"en": "Pinch and fold",
+							"fr": "Pincer et plier"
+						},
+						{
+							"id": "soto",
+							"kanji": "抓倒",
+							"romaji": "Soto",
+							"en": "Pinch and topple",
+							"fr": "Pincer et renverser"
+						},
+						{
+							"id": "koki",
+							"kanji": "扣鬼",
+							"romaji": "Koki",
+							"en": "Striking demon",
+							"fr": "Le démon qui frappe"
+						},
+						{
+							"id": "kimon",
+							"kanji": "鬼門",
+							"romaji": "Kimon",
+							"en": "Demon gate",
+							"fr": "Porte du démon"
+						},
+						{
+							"id": "ransetsu",
+							"kanji": "乱雪",
+							"romaji": "Ransetsu",
+							"en": "Wild snow",
+							"fr": "Neige en désordre"
+						},
+						{
+							"id": "ura_kimon",
+							"kanji": "裏鬼門",
+							"romaji": "Ura Kimon",
+							"en": "Back demon gate",
+							"fr": "Porte arrière du démon"
+						}
+					]
+				},
+				{
+					"id": "kaiden",
+					"category": "taijutsu",
+					"weapon": null,
+					"kanji": "皆伝型",
+					"romaji": "Kaiden Gata",
+					"en": "Complete transmission forms",
+					"fr": "Formes de la transmission complète",
+					"sources": [
+						"https://bujinshugyo.wordpress.com/bujinkan-ryuha/koto-ryu-koppojutsu/"
+					],
+					"techniques": [
+						{
+							"id": "goshin",
+							"kanji": "悟心",
+							"romaji": "Goshin",
+							"en": "Perceptive spirit",
+							"fr": "Esprit qui perçoit"
+						},
+						{
+							"id": "ichinen",
+							"kanji": "一念",
+							"romaji": "Ichinen",
+							"en": "Single intention",
+							"fr": "Intention unique"
+						},
+						{
+							"id": "katsugan",
+							"kanji": "活眼",
+							"romaji": "Katsugan",
+							"en": "Living eye",
+							"fr": "Œil vivant"
+						}
+					]
+				},
+				{
+					"id": "hekito",
+					"category": "muto_dori",
+					"weapon": null,
+					"kanji": "劈刀型",
+					"romaji": "Hekito Gata",
+					"en": "Sword-breaking forms",
+					"fr": "Formes qui brisent le sabre",
+					"sources": [
+						"https://bujinshugyo.wordpress.com/bujinkan-ryuha/koto-ryu-koppojutsu/",
+						"https://www.akban.org/wiki/Koto_ryu"
+					],
+					"techniques": [
+						{
+							"id": "sokuboku",
+							"kanji": "蹴朴",
+							"romaji": "Sokuboku",
+							"en": "Simple kick",
+							"fr": "Coup de pied simple"
+						},
+						{
+							"id": "bokuhen",
+							"kanji": "朴返",
+							"romaji": "Bokuhen",
+							"en": "Simple return",
+							"fr": "Retour simple"
+						},
+						{
+							"id": "dako",
+							"kanji": "打扣",
+							"romaji": "Dako",
+							"en": "Strike",
+							"fr": "Frappe"
+						},
+						{
+							"id": "shuriki",
+							"kanji": "手力",
+							"romaji": "Shuriki",
+							"en": "Hand power",
+							"fr": "Force de la main"
+						},
+						{
+							"id": "kibo",
+							"kanji": "跂望",
+							"romaji": "Kibo",
+							"en": "Hope on tiptoe",
+							"fr": "Espoir sur la pointe des pieds"
+						},
+						{
+							"id": "bakko",
+							"kanji": "跋扈",
+							"romaji": "Bakko",
+							"en": "Overrun and dominate",
+							"fr": "Déborder et dominer"
+						},
+						{
+							"id": "sekiryoku",
+							"kanji": "跖力",
+							"romaji": "Sekiryoku",
+							"en": "Sole power",
+							"fr": "Force de la plante du pied"
+						},
+						{
+							"id": "kahi",
+							"kanji": "跨飛",
+							"romaji": "Kahi",
+							"en": "Straddling leap",
+							"fr": "Bond à califourchon"
+						}
+					]
+				}
+			]
+		},
+		{
+			"ryu": "shinden",
+			"sections": [
+				{
+					"id": "daken_ten",
+					"category": "taijutsu",
+					"weapon": null,
+					"kanji": "打拳体術 天之型",
+					"romaji": "Dakentaijutsu Ten no Kata",
+					"en": "Striking: heaven forms (Ikken Hasso)",
+					"fr": "Frappes : formes du ciel (Ikken Hasso)",
+					"sources": [
+						"https://bujinshugyo.wordpress.com/bujinkan-ryuha/shinden-fudo-ryu-dakentaijutsu/",
+						"https://www.akban.org/wiki/Fudo_Ryu"
+					],
+					"techniques": [
+						{
+							"id": "nichigeki",
+							"kanji": "日撃",
+							"romaji": "Nichigeki",
+							"en": "Sun strike",
+							"fr": "Frappe du soleil"
+						},
+						{
+							"id": "gekkan",
+							"kanji": "月肝",
+							"romaji": "Gekkan",
+							"en": "Moon liver",
+							"fr": "Foie de la lune"
+						},
+						{
+							"id": "fubi",
+							"kanji": "風靡",
+							"romaji": "Fubi",
+							"en": "Sweeping wind",
+							"fr": "Le vent qui balaie"
+						},
+						{
+							"id": "uryu",
+							"kanji": "雨龍",
+							"romaji": "Uryu",
+							"en": "Rain dragon",
+							"fr": "Dragon de pluie"
+						},
+						{
+							"id": "hibari",
+							"kanji": "雲雀",
+							"romaji": "Hibari",
+							"en": "Skylark",
+							"fr": "Alouette"
+						},
+						{
+							"id": "setsuyaku",
+							"kanji": "雪耀",
+							"romaji": "Setsuyaku",
+							"en": "Glittering snow",
+							"fr": "Neige scintillante"
+						},
+						{
+							"id": "musan",
+							"kanji": "霧散",
+							"romaji": "Musan",
+							"en": "Scattering fog",
+							"fr": "Brouillard qui se dissipe"
+						},
+						{
+							"id": "karai",
+							"kanji": "霞雷",
+							"romaji": "Karai",
+							"en": "Thunder in the mist",
+							"fr": "Tonnerre dans la brume"
+						}
+					]
+				},
+				{
+					"id": "daken_chi",
+					"category": "taijutsu",
+					"weapon": null,
+					"kanji": "打拳体術 地之型",
+					"romaji": "Dakentaijutsu Chi no Kata",
+					"en": "Striking: earth forms (Biken Isshun)",
+					"fr": "Frappes : formes de la terre (Biken Isshun)",
+					"sources": [
+						"https://bujinshugyo.wordpress.com/bujinkan-ryuha/shinden-fudo-ryu-dakentaijutsu/",
+						"https://www.akban.org/wiki/Fudo_Ryu"
+					],
+					"techniques": [
+						{
+							"id": "riken",
+							"kanji": "理拳",
+							"romaji": "Riken",
+							"en": "Reason fist",
+							"fr": "Poing de la raison"
+						},
+						{
+							"id": "shinken",
+							"kanji": "心拳",
+							"romaji": "Shinken",
+							"en": "Heart fist",
+							"fr": "Poing du cœur"
+						},
+						{
+							"id": "raiken",
+							"kanji": "雷拳",
+							"romaji": "Raiken",
+							"en": "Thunder fist",
+							"fr": "Poing du tonnerre"
+						},
+						{
+							"id": "henkyo",
+							"kanji": "変虚",
+							"romaji": "Henkyo",
+							"en": "Changing emptiness",
+							"fr": "Vide changeant"
+						},
+						{
+							"id": "issen",
+							"kanji": "一閃",
+							"romaji": "Issen",
+							"en": "One flash",
+							"fr": "Un éclair"
+						},
+						{
+							"id": "haken",
+							"kanji": "把拳",
+							"romaji": "Haken",
+							"en": "Gripping fist",
+							"fr": "Poing qui saisit"
+						},
+						{
+							"id": "kenkon",
+							"kanji": "乾坤",
+							"romaji": "Kenkon",
+							"en": "Heaven and earth",
+							"fr": "Ciel et terre"
+						},
+						{
+							"id": "suiryu",
+							"kanji": "垂柳",
+							"romaji": "Suiryu",
+							"en": "Weeping willow",
+							"fr": "Saule pleureur"
+						}
+					]
+				},
+				{
+					"id": "daken_shizen",
+					"category": "taijutsu",
+					"weapon": null,
+					"kanji": "打拳体術 自然至極之型",
+					"romaji": "Dakentaijutsu Shizen Shigoku no Kata",
+					"en": "Striking: forms of utmost nature",
+					"fr": "Frappes : formes de la nature absolue",
+					"sources": [
+						"https://bujinshugyo.wordpress.com/bujinkan-ryuha/shinden-fudo-ryu-dakentaijutsu/",
+						"https://www.akban.org/wiki/Fudo_Ryu"
+					],
+					"techniques": [
+						{
+							"id": "tai_nagashi",
+							"kanji": "体流",
+							"romaji": "Tai Nagashi",
+							"en": "Flowing body",
+							"fr": "Corps qui coule"
+						},
+						{
+							"id": "kobushi_nagashi",
+							"kanji": "拳流",
+							"romaji": "Kobushi Nagashi",
+							"en": "Flowing fist",
+							"fr": "Poing qui coule"
+						},
+						{
+							"id": "fubatsu",
+							"kanji": "不抜",
+							"romaji": "Fubatsu",
+							"en": "Unshakeable",
+							"fr": "Inébranlable"
+						},
+						{
+							"id": "ryote_gake",
+							"kanji": "両手掛",
+							"romaji": "Ryote Gake",
+							"en": "Two-hand hook",
+							"fr": "Crochet à deux mains"
+						},
+						{
+							"id": "kasasagi",
+							"kanji": "鵲",
+							"romaji": "Kasasagi",
+							"en": "Magpie",
+							"fr": "Pie"
+						},
+						{
+							"id": "suzu_otoshi",
+							"kanji": "鈴落",
+							"romaji": "Suzu Otoshi",
+							"en": "Falling bell",
+							"fr": "La cloche qui tombe"
+						},
+						{
+							"id": "kasumi_otoshi",
+							"kanji": "霞落",
+							"romaji": "Kasumi Otoshi",
+							"en": "Falling mist",
+							"fr": "La brume qui tombe"
+						},
+						{
+							"id": "roto",
+							"kanji": "狼倒",
+							"romaji": "Roto",
+							"en": "Wolf topple",
+							"fr": "Renversement du loup"
+						},
+						{
+							"id": "fudo",
+							"kanji": "不動",
+							"romaji": "Fudo",
+							"en": "Immovable",
+							"fr": "Immobile"
+						},
+						{
+							"id": "ugari",
+							"kanji": "鶉刈",
+							"romaji": "Ugari",
+							"en": "Quail reaping",
+							"fr": "Fauchage de la caille"
+						},
+						{
+							"id": "fukan",
+							"kanji": "不諱",
+							"romaji": "Fukan",
+							"en": "Without restraint",
+							"fr": "Sans retenue"
+						},
+						{
+							"id": "shizen",
+							"kanji": "自然",
+							"romaji": "Shizen",
+							"en": "Nature",
+							"fr": "Nature"
+						}
+					]
+				},
+				{
+					"id": "jutai_kamae",
+					"category": "taijutsu",
+					"weapon": null,
+					"kanji": "柔体術 構",
+					"romaji": "Jutaijutsu Kamae",
+					"en": "Grappling: postures",
+					"fr": "Saisies : postures",
+					"sources": [
+						"https://bujinshugyo.wordpress.com/shinden-fudo-ryu-jutaijutsu/"
+					],
+					"techniques": [
+						{
+							"id": "fudoza",
+							"kanji": "不動坐",
+							"romaji": "Fudoza",
+							"en": "Immovable seat",
+							"fr": "Assise immobile"
+						},
+						{
+							"id": "hira_ichimonji_no_kamae",
+							"kanji": "平一文字之構",
+							"romaji": "Hira Ichimonji no Kamae",
+							"en": "Flat line posture",
+							"fr": "Posture de la ligne plate"
+						},
+						{
+							"id": "seigan_no_kamae",
+							"kanji": "青眼之構",
+							"romaji": "Seigan no Kamae",
+							"en": "Aiming at the eyes",
+							"fr": "Posture qui vise les yeux"
+						},
+						{
+							"id": "katate_seigan_no_kamae",
+							"kanji": "片手青眼之構",
+							"romaji": "Katate Seigan no Kamae",
+							"en": "One-hand Seigan posture",
+							"fr": "Posture Seigan à une main"
+						},
+						{
+							"id": "shizen_no_kamae",
+							"kanji": "自然之構",
+							"romaji": "Shizen no Kamae",
+							"en": "Natural posture",
+							"fr": "Posture naturelle"
+						}
+					]
+				},
+				{
+					"id": "jutai_shoden",
+					"category": "taijutsu",
+					"weapon": null,
+					"kanji": "柔体術 初伝型",
+					"romaji": "Jutaijutsu Shoden Gata",
+					"en": "Grappling: initial transmission forms",
+					"fr": "Saisies : formes de la transmission initiale",
+					"sources": [
+						"https://bujinshugyo.wordpress.com/shinden-fudo-ryu-jutaijutsu/"
+					],
+					"techniques": [
+						{
+							"id": "kata_mune_dori",
+							"kanji": "片胸捕",
+							"romaji": "Kata Mune Dori",
+							"en": "Single lapel capture",
+							"fr": "Saisie d'un revers"
+						},
+						{
+							"id": "gyaku_kata_mune_dori",
+							"kanji": "逆片胸捕",
+							"romaji": "Gyaku Kata Mune Dori",
+							"en": "Reverse single lapel capture",
+							"fr": "Saisie inversée d'un revers"
+						},
+						{
+							"id": "gyaku_kata_mune_dori_ude_ori",
+							"kanji": "逆片胸捕腕折",
+							"romaji": "Gyaku Kata Mune Dori Ude Ori",
+							"en": "Reverse single lapel capture, arm break",
+							"fr": "Saisie inversée d'un revers, bras brisé"
+						},
+						{
+							"id": "matsukaze",
+							"kanji": "松風",
+							"romaji": "Matsukaze",
+							"en": "Wind in the pines",
+							"fr": "Vent dans les pins"
+						},
+						{
+							"id": "matsukaze_ryote",
+							"kanji": "松風両手",
+							"romaji": "Matsukaze Ryote",
+							"en": "Wind in the pines, both hands",
+							"fr": "Vent dans les pins, deux mains"
+						},
+						{
+							"id": "ryuko",
+							"kanji": "龍虎",
+							"romaji": "Ryuko",
+							"en": "Dragon and tiger",
+							"fr": "Le dragon et le tigre"
+						},
+						{
+							"id": "ryuko_ashi_gata",
+							"kanji": "龍虎足型",
+							"romaji": "Ryuko Ashi Gata",
+							"en": "Dragon and tiger, leg form",
+							"fr": "Le dragon et le tigre, forme des jambes"
+						},
+						{
+							"id": "gedan_gake",
+							"kanji": "下段掛",
+							"romaji": "Gedan Gake",
+							"en": "Low hook",
+							"fr": "Crochet bas"
+						},
+						{
+							"id": "gedan_harai_goshi",
+							"kanji": "下段払腰",
+							"romaji": "Gedan Harai Goshi",
+							"en": "Low hip sweep",
+							"fr": "Balayage bas de la hanche"
+						},
+						{
+							"id": "ude_ori",
+							"kanji": "腕折",
+							"romaji": "Ude Ori",
+							"en": "Arm break",
+							"fr": "Bras brisé"
+						},
+						{
+							"id": "kyuin",
+							"kanji": "久陰",
+							"romaji": "Kyuin",
+							"en": "Long-held secret",
+							"fr": "Secret longtemps gardé"
+						},
+						{
+							"id": "kimon_dori",
+							"kanji": "鬼門捕",
+							"romaji": "Kimon Dori",
+							"en": "Demon gate capture",
+							"fr": "Saisie de la porte du démon"
+						},
+						{
+							"id": "kimon_koshi_nage",
+							"kanji": "鬼門腰投",
+							"romaji": "Kimon Koshi Nage",
+							"en": "Demon gate hip throw",
+							"fr": "Projection de hanche de la porte du démon"
+						},
+						{
+							"id": "jinchu_nage",
+							"kanji": "人中投",
+							"romaji": "Jinchu Nage",
+							"en": "Throw through the crowd",
+							"fr": "Projection dans la foule"
+						},
+						{
+							"id": "jinchu_koshi_otoshi",
+							"kanji": "人中腰落",
+							"romaji": "Jinchu Koshi Otoshi",
+							"en": "Hip drop in the crowd",
+							"fr": "Chute de hanche dans la foule"
+						},
+						{
+							"id": "koromo_gaeshi",
+							"kanji": "衣返",
+							"romaji": "Koromo Gaeshi",
+							"en": "Turning the clothes",
+							"fr": "Retourner les vêtements"
+						},
+						{
+							"id": "koromo_gaeshi_osaekomi",
+							"kanji": "衣返押込",
+							"romaji": "Koromo Gaeshi Osaekomi",
+							"en": "Turning the clothes, pin",
+							"fr": "Retourner les vêtements, immobilisation"
+						},
+						{
+							"id": "saka_otoshi",
+							"kanji": "阪落",
+							"romaji": "Saka Otoshi",
+							"en": "Slope drop",
+							"fr": "Chute de la pente"
+						},
+						{
+							"id": "saka_otoshi_kasumi",
+							"kanji": "阪落霞",
+							"romaji": "Saka Otoshi Kasumi",
+							"en": "Slope drop, mist",
+							"fr": "Chute de la pente, brume"
+						},
+						{
+							"id": "satani_nage",
+							"kanji": "佐谷投",
+							"romaji": "Satani Nage",
+							"en": "Satani throw",
+							"fr": "Projection Satani"
+						},
+						{
+							"id": "satani_nage_gyaku",
+							"kanji": "佐谷投逆",
+							"romaji": "Satani Nage Gyaku",
+							"en": "Satani throw, reverse",
+							"fr": "Projection Satani inversée"
+						},
+						{
+							"id": "katate_otoshi",
+							"kanji": "片手落",
+							"romaji": "Katate Otoshi",
+							"en": "One-hand drop",
+							"fr": "Chute à une main"
+						},
+						{
+							"id": "katate_otoshi_osaekomi",
+							"kanji": "片手落押込",
+							"romaji": "Katate Otoshi Osaekomi",
+							"en": "One-hand drop, pin",
+							"fr": "Chute à une main, immobilisation"
+						},
+						{
+							"id": "gyaku_nage",
+							"kanji": "逆投",
+							"romaji": "Gyaku Nage",
+							"en": "Reverse throw",
+							"fr": "Projection inversée"
+						},
+						{
+							"id": "gyaku_nage_osaekomi",
+							"kanji": "逆投押込",
+							"romaji": "Gyaku Nage Osaekomi",
+							"en": "Reverse throw, pin",
+							"fr": "Projection inversée, immobilisation"
+						},
+						{
+							"id": "gokuraku_otoshi",
+							"kanji": "極楽落",
+							"romaji": "Gokuraku Otoshi",
+							"en": "Paradise drop",
+							"fr": "Chute du paradis"
+						},
+						{
+							"id": "gokuraku_otoshi_ude_ori",
+							"kanji": "極楽落腕折",
+							"romaji": "Gokuraku Otoshi Ude Ori",
+							"en": "Paradise drop, arm break",
+							"fr": "Chute du paradis, bras brisé"
+						}
+					]
+				},
+				{
+					"id": "jutai_chuden",
+					"category": "taijutsu",
+					"weapon": null,
+					"kanji": "柔体術 中伝型",
+					"romaji": "Jutaijutsu Chuden Gata",
+					"en": "Grappling: middle transmission forms",
+					"fr": "Saisies : formes de la transmission intermédiaire",
+					"sources": [
+						"https://bujinshugyo.wordpress.com/shinden-fudo-ryu-jutaijutsu/"
+					],
+					"techniques": [
+						{
+							"id": "fusetsu",
+							"kanji": "風雪",
+							"romaji": "Fusetsu",
+							"en": "Wind and snow",
+							"fr": "Vent et neige"
+						},
+						{
+							"id": "tama_otoshi",
+							"kanji": "魂落",
+							"romaji": "Tama Otoshi",
+							"en": "Spirit drop",
+							"fr": "Chute de l'esprit"
+						},
+						{
+							"id": "ugo",
+							"kanji": "雨後",
+							"romaji": "Ugo",
+							"en": "After the rain",
+							"fr": "Après la pluie"
+						},
+						{
+							"id": "midare_dori",
+							"kanji": "乱捕",
+							"romaji": "Midare Dori",
+							"en": "Disorderly capture",
+							"fr": "Saisie dans le désordre"
+						},
+						{
+							"id": "tsuki_no_wa",
+							"kanji": "月之輪",
+							"romaji": "Tsuki no Wa",
+							"en": "Ring of the moon",
+							"fr": "Anneau de la lune"
+						},
+						{
+							"id": "kocho_dori",
+							"kanji": "蝴蝶捕",
+							"romaji": "Kocho Dori",
+							"en": "Butterfly capture",
+							"fr": "Saisie du papillon"
+						},
+						{
+							"id": "kasa_harai",
+							"kanji": "笠払",
+							"romaji": "Kasa Harai",
+							"en": "Hat sweep",
+							"fr": "Balayage du chapeau"
+						},
+						{
+							"id": "kakusei",
+							"kanji": "鶴声",
+							"romaji": "Kakusei",
+							"en": "Crane's call",
+							"fr": "Le cri de la grue"
+						},
+						{
+							"id": "kasumi_gake",
+							"kanji": "霞掛",
+							"romaji": "Kasumi Gake",
+							"en": "Mist hook",
+							"fr": "Crochet de brume"
+						},
+						{
+							"id": "ryoyoku",
+							"kanji": "両翼",
+							"romaji": "Ryoyoku",
+							"en": "Both wings",
+							"fr": "Les deux ailes"
+						},
+						{
+							"id": "utsushi_dori",
+							"kanji": "写鳥",
+							"romaji": "Utsushi Dori",
+							"en": "Mirroring bird",
+							"fr": "L'oiseau en miroir"
+						}
+					]
+				},
+				{
+					"id": "jutai_okuden",
+					"category": "taijutsu",
+					"weapon": null,
+					"kanji": "柔体術 奥伝型",
+					"romaji": "Jutaijutsu Okuden Gata",
+					"en": "Grappling: inner transmission forms",
+					"fr": "Saisies : formes de la transmission profonde",
+					"sources": [
+						"https://bujinshugyo.wordpress.com/shinden-fudo-ryu-jutaijutsu/"
+					],
+					"techniques": [
+						{
+							"id": "hyofu",
+							"kanji": "標風",
+							"romaji": "Hyofu",
+							"en": "Wind marker",
+							"fr": "Le vent qui marque"
+						},
+						{
+							"id": "goja_dori",
+							"kanji": "剛者捕",
+							"romaji": "Goja Dori",
+							"en": "Capturing a strong man",
+							"fr": "Saisir un homme fort"
+						},
+						{
+							"id": "teate",
+							"kanji": "手当",
+							"romaji": "Teate",
+							"en": "Hand strike",
+							"fr": "Frappe de la main"
+						},
+						{
+							"id": "karishimo",
+							"kanji": "雁下",
+							"romaji": "Karishimo",
+							"en": "Descending wild goose",
+							"fr": "L'oie sauvage qui descend"
+						},
+						{
+							"id": "tatsumaki",
+							"kanji": "龍巻",
+							"romaji": "Tatsumaki",
+							"en": "Tornado",
+							"fr": "Tornade"
+						},
+						{
+							"id": "furoya_nage",
+							"kanji": "風呂屋投",
+							"romaji": "Furoya Nage",
+							"en": "Bathhouse throw",
+							"fr": "Projection des bains"
+						},
+						{
+							"id": "suichu_shiai_no_waza",
+							"kanji": "水中試合之技",
+							"romaji": "Suichu Shiai no Waza",
+							"en": "Fighting in water",
+							"fr": "Combat dans l'eau"
+						},
+						{
+							"id": "yama_arashi",
+							"kanji": "山嵐",
+							"romaji": "Yama Arashi",
+							"en": "Mountain storm",
+							"fr": "Tempête de montagne"
+						},
+						{
+							"id": "baisetsu",
+							"kanji": "梅雪",
+							"romaji": "Baisetsu",
+							"en": "Plum and snow",
+							"fr": "Prunier et neige"
+						}
+					]
+				}
+			]
+		},
+		{
+			"ryu": "takagi",
+			"sections": [
+				{
+					"id": "shoden_omote",
+					"category": "taijutsu",
+					"weapon": null,
+					"kanji": "初伝表型",
+					"romaji": "Shoden Omote Gata",
+					"en": "Initial forms, outer",
+					"fr": "Formes initiales, extérieures",
+					"sources": [
+						"https://bujinshugyo.wordpress.com/bujinkan-ryuha/takagi-yoshin-ryu-jutaijutsu/",
+						"https://www.akban.org/wiki/Takagi_Yoshin_Ryu"
+					],
+					"techniques": [
+						{
+							"id": "kasumi_dori",
+							"kanji": "霞捕",
+							"romaji": "Kasumi Dori",
+							"en": "Mist capture",
+							"fr": "Saisie de brume"
+						},
+						{
+							"id": "do_gaeshi",
+							"kanji": "洞返",
+							"romaji": "Do Gaeshi",
+							"en": "Body overturn",
+							"fr": "Renversement du corps"
+						},
+						{
+							"id": "karame_dori",
+							"kanji": "搦捕",
+							"romaji": "Karame Dori",
+							"en": "Entangling capture",
+							"fr": "Saisie qui enlace"
+						},
+						{
+							"id": "kyoto",
+							"kanji": "虚倒",
+							"romaji": "Kyoto",
+							"en": "Topple through emptiness",
+							"fr": "Renversement par le vide"
+						},
+						{
+							"id": "katamune_dori",
+							"kanji": "片胸捕",
+							"romaji": "Katamune Dori",
+							"en": "Single lapel capture",
+							"fr": "Saisie d'un revers"
+						},
+						{
+							"id": "ryomune_dori",
+							"kanji": "両胸捕",
+							"romaji": "Ryomune Dori",
+							"en": "Double lapel capture",
+							"fr": "Saisie des deux revers"
+						},
+						{
+							"id": "oikake_dori",
+							"kanji": "追掛捕",
+							"romaji": "Oikake Dori",
+							"en": "Chasing capture",
+							"fr": "Saisie en poursuite"
+						},
+						{
+							"id": "kaigo_kudaki",
+							"kanji": "戒後砕",
+							"romaji": "Kaigo Kudaki",
+							"en": "Rear crush",
+							"fr": "Broyage par l'arrière"
+						},
+						{
+							"id": "yuki_chigai",
+							"kanji": "行違",
+							"romaji": "Yuki Chigai",
+							"en": "Passing each other",
+							"fr": "En se croisant"
+						},
+						{
+							"id": "yui_gyaku",
+							"kanji": "唯逆",
+							"romaji": "Yui Gyaku",
+							"en": "Simple reversal",
+							"fr": "Clé simple"
+						},
+						{
+							"id": "ransho",
+							"kanji": "乱勝",
+							"romaji": "Ransho",
+							"en": "Victory in chaos",
+							"fr": "Victoire dans le chaos"
+						},
+						{
+							"id": "ken_nagare",
+							"kanji": "拳流",
+							"romaji": "Ken Nagare",
+							"en": "Fist flow",
+							"fr": "Le poing qui coule"
+						},
+						{
+							"id": "hiza_guruma",
+							"kanji": "膝車",
+							"romaji": "Hiza Guruma",
+							"en": "Knee wheel",
+							"fr": "Roue du genou"
+						}
+					]
+				},
+				{
+					"id": "shoden_ura",
+					"category": "taijutsu",
+					"weapon": null,
+					"kanji": "初伝裏型",
+					"romaji": "Shoden Ura Gata",
+					"en": "Initial forms, inner",
+					"fr": "Formes initiales, intérieures",
+					"sources": [
+						"https://bujinshugyo.wordpress.com/bujinkan-ryuha/takagi-yoshin-ryu-jutaijutsu/"
+					],
+					"techniques": [
+						{
+							"id": "atekomi",
+							"kanji": "当込",
+							"romaji": "Atekomi",
+							"en": "Strike in",
+							"fr": "Frapper en entrant"
+						},
+						{
+							"id": "gyaku_dori_1",
+							"kanji": "逆捕一",
+							"romaji": "Gyaku Dori 1",
+							"en": "Reverse capture 1",
+							"fr": "Saisie inversée 1"
+						},
+						{
+							"id": "menbu_1",
+							"kanji": "面部一",
+							"romaji": "Menbu 1",
+							"en": "Face 1",
+							"fr": "Visage 1"
+						},
+						{
+							"id": "gyaku_dori_2",
+							"kanji": "逆捕二",
+							"romaji": "Gyaku Dori 2",
+							"en": "Reverse capture 2",
+							"fr": "Saisie inversée 2"
+						},
+						{
+							"id": "ryo_ashi_dori_1",
+							"kanji": "両足捕一",
+							"romaji": "Ryo Ashi Dori 1",
+							"en": "Two-leg capture 1",
+							"fr": "Saisie des deux jambes 1"
+						},
+						{
+							"id": "menbu_2",
+							"kanji": "面部二",
+							"romaji": "Menbu 2",
+							"en": "Face 2",
+							"fr": "Visage 2"
+						},
+						{
+							"id": "kerikomi_1",
+							"kanji": "蹴込一",
+							"romaji": "Kerikomi 1",
+							"en": "Kick in 1",
+							"fr": "Coup de pied en entrant 1"
+						},
+						{
+							"id": "katamune_dori",
+							"kanji": "片胸捕",
+							"romaji": "Katamune Dori",
+							"en": "Single lapel capture",
+							"fr": "Saisie d'un revers"
+						},
+						{
+							"id": "ryomune_dori",
+							"kanji": "両胸捕",
+							"romaji": "Ryomune Dori",
+							"en": "Double lapel capture",
+							"fr": "Saisie des deux revers"
+						},
+						{
+							"id": "ryo_ashi_dori_2",
+							"kanji": "両足捕二",
+							"romaji": "Ryo Ashi Dori 2",
+							"en": "Two-leg capture 2",
+							"fr": "Saisie des deux jambes 2"
+						},
+						{
+							"id": "tengu_dori",
+							"kanji": "天狗捕",
+							"romaji": "Tengu Dori",
+							"en": "Tengu capture",
+							"fr": "Saisie du tengu"
+						},
+						{
+							"id": "kaigo_kudaki",
+							"kanji": "戒後砕",
+							"romaji": "Kaigo Kudaki",
+							"en": "Rear crush",
+							"fr": "Broyage par l'arrière"
+						},
+						{
+							"id": "hiki_taoshi",
+							"kanji": "引倒",
+							"romaji": "Hiki Taoshi",
+							"en": "Pull and topple",
+							"fr": "Tirer et renverser"
+						},
+						{
+							"id": "tsuki_taoshi",
+							"kanji": "突倒",
+							"romaji": "Tsuki Taoshi",
+							"en": "Thrust and topple",
+							"fr": "Pousser et renverser"
+						},
+						{
+							"id": "ude_ori_1",
+							"kanji": "腕折一",
+							"romaji": "Ude Ori 1",
+							"en": "Arm break 1",
+							"fr": "Bras brisé 1"
+						},
+						{
+							"id": "hikikomi",
+							"kanji": "引込",
+							"romaji": "Hikikomi",
+							"en": "Pull in",
+							"fr": "Tirer à soi"
+						},
+						{
+							"id": "nagashi",
+							"kanji": "流し",
+							"romaji": "Nagashi",
+							"en": "Flowing",
+							"fr": "Laisser couler"
+						},
+						{
+							"id": "kerikomi_2",
+							"kanji": "蹴込二",
+							"romaji": "Kerikomi 2",
+							"en": "Kick in 2",
+							"fr": "Coup de pied en entrant 2"
+						},
+						{
+							"id": "ude_ori_2",
+							"kanji": "腕折二",
+							"romaji": "Ude Ori 2",
+							"en": "Arm break 2",
+							"fr": "Bras brisé 2"
+						},
+						{
+							"id": "eri_jime",
+							"kanji": "襟締",
+							"romaji": "Eri Jime",
+							"en": "Collar choke",
+							"fr": "Étranglement par le col"
+						}
+					]
+				},
+				{
+					"id": "eri_jime",
+					"category": "taijutsu",
+					"weapon": null,
+					"kanji": "襟締型",
+					"romaji": "Eri Jime Gata",
+					"en": "Collar choke forms",
+					"fr": "Formes d'étranglement par le col",
+					"sources": [
+						"https://bujinshugyo.wordpress.com/bujinkan-ryuha/takagi-yoshin-ryu-jutaijutsu/"
+					],
+					"techniques": [
+						{
+							"id": "hon_jime",
+							"kanji": "本締",
+							"romaji": "Hon Jime",
+							"en": "Main choke",
+							"fr": "Étranglement principal"
+						},
+						{
+							"id": "gyaku_jime",
+							"kanji": "逆締",
+							"romaji": "Gyaku Jime",
+							"en": "Reverse choke",
+							"fr": "Étranglement inversé"
+						},
+						{
+							"id": "ude_jime",
+							"kanji": "腕締",
+							"romaji": "Ude Jime",
+							"en": "Arm choke",
+							"fr": "Étranglement au bras"
+						},
+						{
+							"id": "itteki_jime",
+							"kanji": "一摘締",
+							"romaji": "Itteki Jime",
+							"en": "Pinching choke",
+							"fr": "Étranglement en pinçant"
+						},
+						{
+							"id": "itami_jime",
+							"kanji": "痛締",
+							"romaji": "Itami Jime",
+							"en": "Painful choke",
+							"fr": "Étranglement douloureux"
+						},
+						{
+							"id": "oshi_jime",
+							"kanji": "押締",
+							"romaji": "Oshi Jime",
+							"en": "Pressing choke",
+							"fr": "Étranglement en pressant"
+						},
+						{
+							"id": "gyaku_oshi_jime",
+							"kanji": "逆押締",
+							"romaji": "Gyaku Oshi Jime",
+							"en": "Reverse pressing choke",
+							"fr": "Étranglement en pressant inversé"
+						},
+						{
+							"id": "suwari_jime",
+							"kanji": "坐締",
+							"romaji": "Suwari Jime",
+							"en": "Seated choke",
+							"fr": "Étranglement assis"
+						}
+					]
+				},
+				{
+					"id": "chuden_sabaki",
+					"category": "taijutsu",
+					"weapon": null,
+					"kanji": "中伝之捌型",
+					"romaji": "Chuden no Sabaki Gata",
+					"en": "Middle transmission, handling forms",
+					"fr": "Transmission intermédiaire, formes d'esquive",
+					"sources": [
+						"https://bujinshugyo.wordpress.com/bujinkan-ryuha/takagi-yoshin-ryu-jutaijutsu/"
+					],
+					"techniques": [
+						{
+							"id": "katamune_dori",
+							"kanji": "片胸捕",
+							"romaji": "Katamune Dori",
+							"en": "Single lapel capture",
+							"fr": "Saisie d'un revers"
+						},
+						{
+							"id": "ryomune_dori",
+							"kanji": "両胸捕",
+							"romaji": "Ryomune Dori",
+							"en": "Double lapel capture",
+							"fr": "Saisie des deux revers"
+						},
+						{
+							"id": "oni_kudaki",
+							"kanji": "鬼砕",
+							"romaji": "Oni Kudaki",
+							"en": "Demon crusher",
+							"fr": "Broyeur de démon"
+						},
+						{
+							"id": "seoi_gakari",
+							"kanji": "背負鎌",
+							"romaji": "Seoi Gakari",
+							"en": "Shoulder sickle",
+							"fr": "Faucille sur l'épaule"
+						},
+						{
+							"id": "koshi_nage_gakari",
+							"kanji": "腰投鎌",
+							"romaji": "Koshi Nage Gakari",
+							"en": "Hip throw sickle",
+							"fr": "Faucille de la projection de hanche"
+						},
+						{
+							"id": "ude_ori",
+							"kanji": "腕折",
+							"romaji": "Ude Ori",
+							"en": "Arm break",
+							"fr": "Bras brisé"
+						},
+						{
+							"id": "gyakute_nage",
+							"kanji": "逆手投",
+							"romaji": "Gyakute Nage",
+							"en": "Reverse hand throw",
+							"fr": "Projection main inversée"
+						},
+						{
+							"id": "kimon_nage",
+							"kanji": "鬼門投",
+							"romaji": "Kimon Nage",
+							"en": "Demon gate throw",
+							"fr": "Projection de la porte du démon"
+						},
+						{
+							"id": "ate_nage",
+							"kanji": "当投",
+							"romaji": "Ate Nage",
+							"en": "Striking throw",
+							"fr": "Projection en frappant"
+						},
+						{
+							"id": "kocho_dori",
+							"kanji": "小蝶捕",
+							"romaji": "Kocho Dori",
+							"en": "Little butterfly capture",
+							"fr": "Saisie du petit papillon"
+						}
+					]
+				},
+				{
+					"id": "chuden_tai",
+					"category": "taijutsu",
+					"weapon": null,
+					"kanji": "中伝之体之型",
+					"romaji": "Chuden no Tai no Kata",
+					"en": "Middle transmission, body forms",
+					"fr": "Transmission intermédiaire, formes du corps",
+					"sources": [
+						"https://bujinshugyo.wordpress.com/bujinkan-ryuha/takagi-yoshin-ryu-jutaijutsu/"
+					],
+					"techniques": [
+						{
+							"id": "koshi_guruma",
+							"kanji": "腰車",
+							"romaji": "Koshi Guruma",
+							"en": "Hip wheel",
+							"fr": "Roue de hanche"
+						},
+						{
+							"id": "yotsude",
+							"kanji": "四ツ手",
+							"romaji": "Yotsude",
+							"en": "Four hands",
+							"fr": "Quatre mains"
+						},
+						{
+							"id": "yotsude_kuzushi",
+							"kanji": "四ツ手崩",
+							"romaji": "Yotsude Kuzushi",
+							"en": "Four hands, breaking",
+							"fr": "Quatre mains, déséquilibre"
+						},
+						{
+							"id": "keito",
+							"kanji": "刑頭",
+							"romaji": "Keito",
+							"en": "Punishing the head",
+							"fr": "Punir la tête"
+						},
+						{
+							"id": "koshi_ore",
+							"kanji": "腰折",
+							"romaji": "Koshi Ore",
+							"en": "Hip break",
+							"fr": "Hanche brisée"
+						},
+						{
+							"id": "koshi_nagare",
+							"kanji": "腰流",
+							"romaji": "Koshi Nagare",
+							"en": "Hip flow",
+							"fr": "Hanche qui coule"
+						},
+						{
+							"id": "kumoi_gaeshi",
+							"kanji": "雲井返",
+							"romaji": "Kumoi Gaeshi",
+							"en": "Return from the clouds",
+							"fr": "Retour des nuages"
+						},
+						{
+							"id": "ryote_gake",
+							"kanji": "両手掛",
+							"romaji": "Ryote Gake",
+							"en": "Two-hand hook",
+							"fr": "Crochet à deux mains"
+						},
+						{
+							"id": "mizu_nagare",
+							"kanji": "水流",
+							"romaji": "Mizu Nagare",
+							"en": "Flowing water",
+							"fr": "Eau qui coule"
+						},
+						{
+							"id": "ryusetsu",
+							"kanji": "柳雪",
+							"romaji": "Ryusetsu",
+							"en": "Willow and snow",
+							"fr": "Saule et neige"
+						},
+						{
+							"id": "echigo_kuzushi",
+							"kanji": "越後崩",
+							"romaji": "Echigo Kuzushi",
+							"en": "Echigo breaking",
+							"fr": "Déséquilibre d'Echigo"
+						},
+						{
+							"id": "kasasagi",
+							"kanji": "鵲",
+							"romaji": "Kasasagi",
+							"en": "Magpie",
+							"fr": "Pie"
+						},
+						{
+							"id": "hyotsui",
+							"kanji": "票墜",
+							"romaji": "Hyotsui",
+							"en": "Marked fall",
+							"fr": "Chute marquée"
+						},
+						{
+							"id": "tsuta_garami",
+							"kanji": "蔦搦",
+							"romaji": "Tsuta Garami",
+							"en": "Ivy entanglement",
+							"fr": "Enlacement du lierre"
+						},
+						{
+							"id": "taki_otoshi",
+							"kanji": "瀧落",
+							"romaji": "Taki Otoshi",
+							"en": "Waterfall drop",
+							"fr": "Chute de la cascade"
+						}
+					]
+				},
+				{
+					"id": "okuden_shirabe",
+					"category": "taijutsu",
+					"weapon": null,
+					"kanji": "奥伝調型",
+					"romaji": "Okuden Shirabe Gata",
+					"en": "Inner transmission, investigating forms",
+					"fr": "Transmission profonde, formes d'examen",
+					"sources": [
+						"https://bujinshugyo.wordpress.com/bujinkan-ryuha/takagi-yoshin-ryu-jutaijutsu/"
+					],
+					"techniques": [
+						{
+							"id": "ume_haki",
+							"kanji": "梅吐",
+							"romaji": "Ume Haki",
+							"en": "Spitting a plum",
+							"fr": "Cracher la prune"
+						},
+						{
+							"id": "kuruma_gaeshi",
+							"kanji": "車返",
+							"romaji": "Kuruma Gaeshi",
+							"en": "Wheel return",
+							"fr": "Retour de la roue"
+						},
+						{
+							"id": "ten_gaeshi",
+							"kanji": "天返",
+							"romaji": "Ten Gaeshi",
+							"en": "Heaven return",
+							"fr": "Retour du ciel"
+						},
+						{
+							"id": "nagare_dori",
+							"kanji": "流捕",
+							"romaji": "Nagare Dori",
+							"en": "Flowing capture",
+							"fr": "Saisie qui coule"
+						},
+						{
+							"id": "yama_otoshi",
+							"kanji": "山落",
+							"romaji": "Yama Otoshi",
+							"en": "Mountain drop",
+							"fr": "Chute de la montagne"
+						},
+						{
+							"id": "tomo_arashi",
+							"kanji": "鞆嵐",
+							"romaji": "Tomo Arashi",
+							"en": "Bracer storm",
+							"fr": "Tempête du protège-bras"
+						},
+						{
+							"id": "sode_guruma",
+							"kanji": "袖車",
+							"romaji": "Sode Guruma",
+							"en": "Sleeve wheel",
+							"fr": "Roue de la manche"
+						},
+						{
+							"id": "ryote_gake",
+							"kanji": "両手掛",
+							"romaji": "Ryote Gake",
+							"en": "Two-hand hook",
+							"fr": "Crochet à deux mains"
+						},
+						{
+							"id": "kimo_kudaki",
+							"kanji": "肝砕",
+							"romaji": "Kimo Kudaki",
+							"en": "Liver crush",
+							"fr": "Broyer le foie"
+						},
+						{
+							"id": "rai_otoshi",
+							"kanji": "雷落",
+							"romaji": "Rai Otoshi",
+							"en": "Thunder drop",
+							"fr": "Chute du tonnerre"
+						},
+						{
+							"id": "tai_kudaki",
+							"kanji": "体砕",
+							"romaji": "Tai Kudaki",
+							"en": "Body crush",
+							"fr": "Broyer le corps"
+						},
+						{
+							"id": "sofu",
+							"kanji": "想風",
+							"romaji": "Sofu",
+							"en": "Imagined wind",
+							"fr": "Vent imaginé"
+						},
+						{
+							"id": "gyaku_dori",
+							"kanji": "逆捕",
+							"romaji": "Gyaku Dori",
+							"en": "Reverse capture",
+							"fr": "Saisie inversée"
+						},
+						{
+							"id": "ranpu",
+							"kanji": "乱風",
+							"romaji": "Ranpu",
+							"en": "Wild wind",
+							"fr": "Vent en désordre"
+						},
+						{
+							"id": "fusetsu",
+							"kanji": "風雪",
+							"romaji": "Fusetsu",
+							"en": "Wind and snow",
+							"fr": "Vent et neige"
+						}
+					]
+				},
+				{
+					"id": "okuden_moguri",
+					"category": "taijutsu",
+					"weapon": null,
+					"kanji": "奥伝潜型",
+					"romaji": "Okuden Moguri Gata",
+					"en": "Inner transmission, submerging forms",
+					"fr": "Transmission profonde, formes de plongée",
+					"sources": [
+						"https://bujinshugyo.wordpress.com/bujinkan-ryuha/takagi-yoshin-ryu-jutaijutsu/"
+					],
+					"techniques": [
+						{
+							"id": "gokuraku_otoshi",
+							"kanji": "極楽落",
+							"romaji": "Gokuraku Otoshi",
+							"en": "Paradise drop",
+							"fr": "Chute du paradis"
+						},
+						{
+							"id": "jigoku_dori",
+							"kanji": "地獄捕",
+							"romaji": "Jigoku Dori",
+							"en": "Hell capture",
+							"fr": "Saisie de l'enfer"
+						},
+						{
+							"id": "tama_kudaki",
+							"kanji": "玉砕",
+							"romaji": "Tama Kudaki",
+							"en": "Shattering jewel",
+							"fr": "Le joyau brisé"
+						},
+						{
+							"id": "hicho_dori",
+							"kanji": "飛鳥捕",
+							"romaji": "Hicho Dori",
+							"en": "Flying bird capture",
+							"fr": "Saisie de l'oiseau en vol"
+						},
+						{
+							"id": "oni_buse",
+							"kanji": "鬼伏",
+							"romaji": "Oni Buse",
+							"en": "Subduing the demon",
+							"fr": "Soumettre le démon"
+						},
+						{
+							"id": "inazuma_dori",
+							"kanji": "稲妻捕",
+							"romaji": "Inazuma Dori",
+							"en": "Lightning capture",
+							"fr": "Saisie de l'éclair"
+						},
+						{
+							"id": "mizu_tori",
+							"kanji": "水鳥",
+							"romaji": "Mizu Tori",
+							"en": "Water bird",
+							"fr": "Oiseau d'eau"
+						},
+						{
+							"id": "kuru_yuki",
+							"kanji": "来雪",
+							"romaji": "Kuru Yuki",
+							"en": "Coming snow",
+							"fr": "La neige qui vient"
+						},
+						{
+							"id": "tai_otoshi",
+							"kanji": "体落",
+							"romaji": "Tai Otoshi",
+							"en": "Body drop",
+							"fr": "Chute du corps"
+						},
+						{
+							"id": "moguri_dori",
+							"kanji": "潜捕",
+							"romaji": "Moguri Dori",
+							"en": "Submerged capture",
+							"fr": "Saisie en plongée"
+						},
+						{
+							"id": "moguri_nage",
+							"kanji": "潜投",
+							"romaji": "Moguri Nage",
+							"en": "Submerged throw",
+							"fr": "Projection en plongée"
+						}
+					]
+				},
+				{
+					"id": "daisho_sabaki",
+					"category": "taijutsu",
+					"weapon": null,
+					"kanji": "大小捌型",
+					"romaji": "Daisho Sabaki Gata",
+					"en": "Forms wearing the long and short swords",
+					"fr": "Formes en portant le grand et le petit sabre",
+					"sources": [
+						"https://bujinshugyo.wordpress.com/bujinkan-ryuha/takagi-yoshin-ryu-jutaijutsu/"
+					],
+					"techniques": [
+						{
+							"id": "tsuka_kudaki",
+							"kanji": "柄砕",
+							"romaji": "Tsuka Kudaki",
+							"en": "Hilt crush",
+							"fr": "Broyer la poignée"
+						},
+						{
+							"id": "hiki_dori",
+							"kanji": "引捕",
+							"romaji": "Hiki Dori",
+							"en": "Pulling capture",
+							"fr": "Saisie en tirant"
+						},
+						{
+							"id": "iri_dori",
+							"kanji": "入捕",
+							"romaji": "Iri Dori",
+							"en": "Entering capture",
+							"fr": "Saisie en entrant"
+						},
+						{
+							"id": "rangaku",
+							"kanji": "乱岳",
+							"romaji": "Rangaku",
+							"en": "Wild peaks",
+							"fr": "Sommets en désordre"
+						},
+						{
+							"id": "sukui_dori",
+							"kanji": "掬捕",
+							"romaji": "Sukui Dori",
+							"en": "Scooping capture",
+							"fr": "Saisie en cueillant"
+						},
+						{
+							"id": "masubone",
+							"kanji": "桝骨",
+							"romaji": "Masubone",
+							"en": "Frame bone",
+							"fr": "Os de la charpente"
+						},
+						{
+							"id": "ushio_gaeshi",
+							"kanji": "潮返",
+							"romaji": "Ushio Gaeshi",
+							"en": "Turning tide",
+							"fr": "La marée qui tourne"
+						},
+						{
+							"id": "kake_otoshi",
+							"kanji": "掛落",
+							"romaji": "Kake Otoshi",
+							"en": "Hooking drop",
+							"fr": "Chute en accrochant"
+						},
+						{
+							"id": "kote_dome",
+							"kanji": "小手止",
+							"romaji": "Kote Dome",
+							"en": "Wrist stop",
+							"fr": "Arrêt du poignet"
+						},
+						{
+							"id": "yoko_gatana",
+							"kanji": "横刀",
+							"romaji": "Yoko Gatana",
+							"en": "Side sword",
+							"fr": "Sabre de côté"
+						},
+						{
+							"id": "kuruma_nage",
+							"kanji": "車投",
+							"romaji": "Kuruma Nage",
+							"en": "Wheel throw",
+							"fr": "Projection de la roue"
+						},
+						{
+							"id": "yotsude_gatana",
+							"kanji": "四ツ手刀",
+							"romaji": "Yotsude Gatana",
+							"en": "Four-hand sword",
+							"fr": "Sabre à quatre mains"
+						},
+						{
+							"id": "yaiba_musubi",
+							"kanji": "刃結",
+							"romaji": "Yaiba Musubi",
+							"en": "Tying the blade",
+							"fr": "Lier la lame"
+						},
+						{
+							"id": "sukashi_dori",
+							"kanji": "透捕",
+							"romaji": "Sukashi Dori",
+							"en": "Slipping capture",
+							"fr": "Saisie en se glissant"
+						}
+					]
+				},
+				{
+					"id": "muto_dori",
+					"category": "muto_dori",
+					"weapon": null,
+					"kanji": "無刀捕型",
+					"romaji": "Muto Dori Gata",
+					"en": "Unarmed against the sword",
+					"fr": "Mains nues contre le sabre",
+					"sources": [
+						"https://bujinshugyo.wordpress.com/bujinkan-ryuha/takagi-yoshin-ryu-jutaijutsu/"
+					],
+					"techniques": [
+						{
+							"id": "kenja_dori",
+							"kanji": "拳者捕",
+							"romaji": "Kenja Dori",
+							"en": "Capturing a skilled fighter",
+							"fr": "Saisir un combattant habile"
+						},
+						{
+							"id": "ichimonji",
+							"kanji": "一文字",
+							"romaji": "Ichimonji",
+							"en": "Straight line",
+							"fr": "Ligne droite"
+						},
+						{
+							"id": "tsuka_otoshi",
+							"kanji": "柄落",
+							"romaji": "Tsuka Otoshi",
+							"en": "Hilt drop",
+							"fr": "Chute par la poignée"
+						},
+						{
+							"id": "muko_dori",
+							"kanji": "向捕",
+							"romaji": "Muko Dori",
+							"en": "Facing capture",
+							"fr": "Saisie de face"
+						},
+						{
+							"id": "mawashi_dori",
+							"kanji": "廻捕",
+							"romaji": "Mawashi Dori",
+							"en": "Turning capture",
+							"fr": "Saisie en tournant"
+						},
+						{
+							"id": "ushiro_dori",
+							"kanji": "後捕",
+							"romaji": "Ushiro Dori",
+							"en": "Rear capture",
+							"fr": "Saisie par l'arrière"
+						},
+						{
+							"id": "shizumi_dori",
+							"kanji": "沈捕",
+							"romaji": "Shizumi Dori",
+							"en": "Sinking capture",
+							"fr": "Saisie en s'abaissant"
+						}
+					]
+				}
+			]
+		},
+		{
+			"ryu": "gikan",
+			"sections": [
+				{
+					"id": "kata",
+					"category": "taijutsu",
+					"weapon": null,
+					"kanji": "型",
+					"romaji": "Kata",
+					"en": "Ten forms, unnamed by the school",
+					"fr": "Dix formes, sans nom dans l'école",
+					"sources": [
+						"https://toryu.se/bujinkan-dojo-the-9-schools/the-9-bujinkan-ryu-ha/gikan-ryu/gikan-ryu-koppojutsu/"
+					],
+					"techniques": [
+						{
+							"id": "ipponme",
+							"kanji": "一本目",
+							"romaji": "Ipponme",
+							"en": "First form",
+							"fr": "Première forme"
+						},
+						{
+							"id": "nihonme",
+							"kanji": "二本目",
+							"romaji": "Nihonme",
+							"en": "Second form",
+							"fr": "Deuxième forme"
+						},
+						{
+							"id": "sanbonme",
+							"kanji": "三本目",
+							"romaji": "Sanbonme",
+							"en": "Third form",
+							"fr": "Troisième forme"
+						},
+						{
+							"id": "yonhonme",
+							"kanji": "四本目",
+							"romaji": "Yonhonme",
+							"en": "Fourth form",
+							"fr": "Quatrième forme"
+						},
+						{
+							"id": "gohonme",
+							"kanji": "五本目",
+							"romaji": "Gohonme",
+							"en": "Fifth form",
+							"fr": "Cinquième forme"
+						},
+						{
+							"id": "ropponme",
+							"kanji": "六本目",
+							"romaji": "Ropponme",
+							"en": "Sixth form",
+							"fr": "Sixième forme"
+						},
+						{
+							"id": "nanahonme",
+							"kanji": "七本目",
+							"romaji": "Nanahonme",
+							"en": "Seventh form",
+							"fr": "Septième forme"
+						},
+						{
+							"id": "happonme",
+							"kanji": "八本目",
+							"romaji": "Happonme",
+							"en": "Eighth form",
+							"fr": "Huitième forme"
+						},
+						{
+							"id": "kyuhonme",
+							"kanji": "九本目",
+							"romaji": "Kyuhonme",
+							"en": "Ninth form",
+							"fr": "Neuvième forme"
+						},
+						{
+							"id": "jupponme",
+							"kanji": "十本目",
+							"romaji": "Jupponme",
+							"en": "Tenth form",
+							"fr": "Dixième forme"
+						}
+					]
+				}
+			]
+		},
+		{
+			"ryu": "gyokushin",
+			"sections": []
+		},
+		{
+			"ryu": "kumogakure",
+			"sections": []
+		}
+	]
+}

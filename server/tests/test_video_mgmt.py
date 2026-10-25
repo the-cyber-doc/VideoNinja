@@ -12,6 +12,7 @@ from app import db, snapshot
 from .test_auth import login
 from .test_catalog import SHA, add_segments
 from .test_users import USER_PASSWORD, create, register, user_login
+from .test_catalog import KETO, KOKU
 
 READY = Path(__file__).parent / "video_test_noneed_encoding.mp4"  # 20 s
 
@@ -87,9 +88,9 @@ def test_get_annotations(admin):
         "uploaded_by": "Admin",
         "tags": [{"id": "place", "value": "dojo"}],
         "segments": [
-            {"id": 1, "begin_s": 12, "end_s": 27, "technique": "gyokko.koku", "performer": "hatsumi", "tags": [],
+            {"id": 1, "begin_s": 12, "end_s": 27, "technique": KOKU, "performer": "hatsumi", "tags": [],
              "created_by": "Admin"},
-            {"id": 2, "begin_s": 40, "end_s": 55, "technique": "gyokko.koku", "performer": "hatsumi",
+            {"id": 2, "begin_s": 40, "end_s": 55, "technique": KOKU, "performer": "hatsumi",
              "tags": [{"id": "place", "value": "outdoor"}], "created_by": None},
         ],
     }
@@ -105,9 +106,9 @@ def test_authors_by_display_name(admin, tmp_path, monkeypatch):
     secret = register(create(admin, role="video_mgmt"))  # kenji, display name "Kenji"
     kenji = user_login("kenji", USER_PASSWORD, pyotp.TOTP(secret).now())
     body = {"all_segments_done": False, "segments": [
-        {"id": 1, "begin_s": 12, "end_s": 28, "technique": "gyokko.koku", "performer": "hatsumi",
+        {"id": 1, "begin_s": 12, "end_s": 28, "technique": KOKU, "performer": "hatsumi",
          "created_by": "Kenji"},  # read only: ignored
-        {"begin_s": 30, "end_s": 35, "technique": "gyokko.koku", "performer": "hatsumi", "created_by": "admin"},
+        {"begin_s": 30, "end_s": 35, "technique": KOKU, "performer": "hatsumi", "created_by": "admin"},
     ]}
     r = kenji.put("/api/videos/1/annotations", json=body)
     assert r.status_code == 200, r.text
@@ -122,15 +123,15 @@ def test_save_keeps_ids_adds_and_removes(admin, tmp_path, monkeypatch):
     made = []
     monkeypatch.setattr("app.encoder.thumbnail", lambda video, at, out: (made.append(at), out.write_bytes(b"jpg")))
     body = {"all_segments_done": True, "tags": [{"id": "place", "value": "outdoor"}], "segments": [
-        {"id": 1, "begin_s": 12, "end_s": 27, "technique": "gyokko.keto", "performer": "masaaki-hatsumi",
+        {"id": 1, "begin_s": 12, "end_s": 27, "technique": KETO, "performer": "masaaki-hatsumi",
          "tags": [{"id": "place", "value": "dojo"}]},  # same times: same thumbnail
-        {"begin_s": 30, "end_s": 40, "technique": "gyokko.koku", "performer": "hatsumi"},  # new
+        {"begin_s": 30, "end_s": 40, "technique": KOKU, "performer": "hatsumi"},  # new
     ]}  # segment 2: removed
     r = admin.put("/api/videos/1/annotations", json=body)
     assert r.status_code == 200, r.text
     saved = r.json()
     assert [(s["id"], s["technique"], s["begin_s"]) for s in saved["segments"]] == [
-        (1, "gyokko.keto", 12), (3, "gyokko.koku", 30)]
+        (1, KETO, 12), (3, KOKU, 30)]
     assert saved["segments"][0]["tags"] == [{"id": "place", "value": "dojo"}]
     assert saved["all_segments_done"] is True and saved["tags"] == [{"id": "place", "value": "outdoor"}]
     assert sql("SELECT count(*) FROM segment_has_tags WHERE segment = 2") == [(0,)]
@@ -149,12 +150,12 @@ def test_save_keeps_ids_adds_and_removes(admin, tmp_path, monkeypatch):
 
 
 @pytest.mark.parametrize("segment, error", [
-    ({"id": 99, "begin_s": 1, "end_s": 2, "technique": "gyokko.koku", "performer": "hatsumi"}, "Unknown segment"),
+    ({"id": 99, "begin_s": 1, "end_s": 2, "technique": KOKU, "performer": "hatsumi"}, "Unknown segment"),
     ({"begin_s": 1, "end_s": 2, "technique": "nope", "performer": "hatsumi"}, "Unknown technique"),
-    ({"begin_s": 1, "end_s": 2, "technique": "gyokko.koku", "performer": "nope"}, "Unknown performer"),
-    ({"begin_s": 50, "end_s": 70, "technique": "gyokko.koku", "performer": "hatsumi"}, "after the end"),
-    ({"begin_s": 5, "end_s": 5, "technique": "gyokko.koku", "performer": "hatsumi"}, "end after it begins"),
-    ({"begin_s": 1, "end_s": 2, "technique": "gyokko.koku", "performer": "hatsumi",
+    ({"begin_s": 1, "end_s": 2, "technique": KOKU, "performer": "nope"}, "Unknown performer"),
+    ({"begin_s": 50, "end_s": 70, "technique": KOKU, "performer": "hatsumi"}, "after the end"),
+    ({"begin_s": 5, "end_s": 5, "technique": KOKU, "performer": "hatsumi"}, "end after it begins"),
+    ({"begin_s": 1, "end_s": 2, "technique": KOKU, "performer": "hatsumi",
       "tags": [{"id": "nope"}]}, "Unknown tag"),
 ])
 def test_save_validation(admin, segment, error):
@@ -164,15 +165,15 @@ def test_save_validation(admin, segment, error):
 
 
 def test_same_segment_twice(admin):
-    seg = {"id": 1, "begin_s": 1, "end_s": 2, "technique": "gyokko.koku", "performer": "hatsumi"}
+    seg = {"id": 1, "begin_s": 1, "end_s": 2, "technique": KOKU, "performer": "hatsumi"}
     r = admin.put("/api/videos/1/annotations", json={"all_segments_done": False, "segments": [seg, seg]})
     assert r.status_code == 422
 
 
 def test_another_videos_segment_refused(admin):
     add_video(2)
-    sql("INSERT INTO segment (video, technique, begin_s, end_s, performer) VALUES (2, 'gyokko.koku', 1, 2, 'hatsumi')")
-    seg = {"id": 3, "begin_s": 1, "end_s": 2, "technique": "gyokko.koku", "performer": "hatsumi"}
+    sql("INSERT INTO segment (video, technique, begin_s, end_s, performer) VALUES (2, ?, 1, 2, 'hatsumi')", KOKU)
+    seg = {"id": 3, "begin_s": 1, "end_s": 2, "technique": KOKU, "performer": "hatsumi"}
     r = admin.put("/api/videos/1/annotations", json={"all_segments_done": False, "segments": [seg]})
     assert r.status_code == 422
 
@@ -195,7 +196,7 @@ def test_real_thumbnails_and_video(admin, tmp_path, monkeypatch):
     sql("UPDATE video SET duration_s = 20.05")
     sql("DELETE FROM segment")
     body = {"all_segments_done": False, "segments": [
-        {"begin_s": 4, "end_s": 10, "technique": "gyokko.koku", "performer": "hatsumi"}]}
+        {"begin_s": 4, "end_s": 10, "technique": KOKU, "performer": "hatsumi"}]}
     assert admin.put("/api/videos/1/annotations", json=body).status_code == 200
     thumb = next(folder.glob("segment-*.jpg"))
     assert thumb.read_bytes()[:2] == b"\xff\xd8"  # a JPEG

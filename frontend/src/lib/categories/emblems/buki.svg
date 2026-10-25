@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" fill="none" stroke="#b3261e" stroke-opacity="0.4" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">
+	<!-- Buki, weapons: a staff crossed with a sword -->
+	<path d="M36 164L164 36"/>
+	<path d="M30 170l12-12M158 42l12-12"/>
+	<path d="M44 40c40 30 80 70 112 116l-6 6C116 118 78 80 38 46z" fill="#b3261e" fill-opacity="0.12"/>
+	<path d="M58 78l20-20M52 58l18 18"/>
+</svg>

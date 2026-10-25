@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" fill="none" stroke="#b3261e" stroke-opacity="0.4" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">
+	<!-- Waza, techniques: two crossing strikes -->
+	<path d="M40 40l120 120M160 40L40 160"/>
+	<circle cx="100" cy="100" r="22" fill="#b3261e" fill-opacity="0.12"/>
+</svg>

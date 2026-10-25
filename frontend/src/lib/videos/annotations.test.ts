@@ -4,8 +4,10 @@ import { toAnnotation, toAnnotations, videoSection, type AnnotationsOut } from '
 
 const catalog = {
 	schools: [],
-	levels: [],
-	techniques: [{ id: 'gyokko.koku', kanji: '虚空', romaji: 'Koku', ryu: 'gyokko', level: 'shoden' }],
+	categories: [],
+	weapons: [],
+	sections: [{ id: 'gyokko.taijutsu.jo_ryaku', kanji: '上略之巻', romaji: 'Jo Ryaku no Maki', ryu: 'gyokko', category: 'taijutsu' }],
+	techniques: [{ id: 'gyokko.taijutsu.jo_ryaku.koku', kanji: '虚空', romaji: 'Koku', section: 'gyokko.taijutsu.jo_ryaku' }],
 	segments: []
 } as Catalog;
 
@@ -26,16 +28,16 @@ describe('annotations <-> the panel', () => {
 		original_filename: 'kata.mov',
 		uploaded_by: 'Hana',
 		tags: [{ id: 'note', value: null as unknown as string }, { id: 'place', value: 'dojo' }],
-		segments: [{ id: 4, begin_s: 12, end_s: 27, technique: 'gyokko.koku', performer: 'hatsumi', tags: [], created_by: 'Hana' }]
+		segments: [{ id: 4, begin_s: 12, end_s: 27, technique: 'gyokko.taijutsu.jo_ryaku.koku', performer: 'hatsumi', tags: [], created_by: 'Hana' }]
 	};
 
-	it('school and level from the catalogue, the ID and author kept, empty values dropped', () => {
+	it('the path from the catalogue, the ID and author kept, empty values dropped', () => {
 		expect(toAnnotation(saved, catalog)).toEqual({
 			mode: null,
 			allSegmentsDone: false,
 			tags: [{ id: 'note' }, { id: 'place', value: 'dojo' }],
 			segments: [
-				{ key: 1, id: 4, createdBy: 'Hana', begin: 12, end: 27, school: 'gyokko', level: 'shoden', technique: 'gyokko.koku', performer: 'hatsumi', tags: [] }
+				{ key: 1, id: 4, createdBy: 'Hana', begin: 12, end: 27, school: 'gyokko', category: 'taijutsu', weapon: '', section: 'gyokko.taijutsu.jo_ryaku', technique: 'gyokko.taijutsu.jo_ryaku.koku', performer: 'hatsumi', tags: [] }
 			]
 		});
 	});
@@ -53,8 +55,8 @@ describe('annotations <-> the panel', () => {
 			all_segments_done: true,
 			tags: [{ id: 'note' }, { id: 'place', value: 'dojo' }],
 			segments: [
-				{ id: 4, begin_s: 12, end_s: 27, technique: 'gyokko.koku', performer: 'hatsumi', tags: [] },
-				{ begin_s: 30, end_s: 41, technique: 'gyokko.koku', performer: 'hatsumi', tags: [] }
+				{ id: 4, begin_s: 12, end_s: 27, technique: 'gyokko.taijutsu.jo_ryaku.koku', performer: 'hatsumi', tags: [] },
+				{ begin_s: 30, end_s: 41, technique: 'gyokko.taijutsu.jo_ryaku.koku', performer: 'hatsumi', tags: [] }
 			]
 		});
 	});

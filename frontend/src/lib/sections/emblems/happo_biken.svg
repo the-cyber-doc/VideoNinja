@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" fill="none" stroke="#b3261e" stroke-opacity="0.4" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">
+	<!-- Happo Biken, the secret sword in eight directions -->
+	<path d="M100 20v160M20 100h160M44 44l112 112M156 44L44 156"/>
+	<circle cx="100" cy="100" r="26" fill="#b3261e" fill-opacity="0.12"/>
+</svg>

@@ -233,7 +233,7 @@ test('user management: reset a registered account', async ({ page }) => {
 test('comments: add, edit and delete my own, saved in the database', async ({ page }) => {
 	page.on('dialog', (d) => d.accept());
 	await logIn(page);
-	await page.goto('/schools/gyokko/shoden/gyokko.koku');
+	await page.goto('/schools/gyokko/taijutsu/jo_ryaku/koku');
 	const comments = page.locator('.comment');
 	await expect(page.getByText('No comments yet.')).toBeVisible();
 

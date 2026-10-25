@@ -16,16 +16,20 @@ const school = (id: string) => ({ id, kanji: `${id}流`, romaji: `${id} Ryu` });
 const COMMENTS = [
 	{ id: 1, user: 'Hana', created_at: '2027-01-15T09:00:00+01:00', modified_at: '2027-01-15T09:00:00+01:00', lang: 'fr', text: 'Très bien', mine: false }
 ];
-const LEVEL = { id: 'shoden', kanji: '初伝', romaji: 'Shoden' };
-const technique = { id: 'togakure.t', kanji: '技', romaji: 'Waza', ryu: 'togakure', level: 'shoden' };
-const SEGMENT = { id: 7, video: 1, technique: 'togakure.t', begin_s: 12, end_s: 27, performer: 'p' };
+const CATEGORY = { id: 'taijutsu', kanji: '体術', romaji: 'Taijutsu' };
+const SECTION = { id: 'togakure.taijutsu.kamae', kanji: '構', romaji: 'Kamae', ryu: 'togakure', category: 'taijutsu' };
+const technique = { id: 'togakure.taijutsu.kamae.t', kanji: '技', romaji: 'Waza', section: SECTION.id };
+const TECHNIQUE_PAGE = '/schools/togakure/taijutsu/kamae/t';
+const SEGMENT = { id: 7, video: 1, technique: technique.id, begin_s: 12, end_s: 27, performer: 'p' };
 const PNG = Buffer.from(
 	'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=',
 	'base64'
 );
 const catalog = (ids: string[], segment = SEGMENT) => ({
 	schools: ids.map(school),
-	levels: [LEVEL],
+	categories: [CATEGORY],
+	weapons: [],
+	sections: [SECTION],
 	techniques: [technique],
 	segments: [segment]
 });
@@ -86,7 +90,7 @@ test('works offline with the last catalogue seen', async ({ page, context, at })
 
 test('comments seen online are shown offline', async ({ page, context, at }) => {
 	await fakeApi(context);
-	await controlled(page, at('/schools/togakure/shoden/togakure.t'));
+	await controlled(page, at(TECHNIQUE_PAGE));
 	await expect(page.locator('.comment')).toHaveText([/Hana.*Très bien/]);
 
 	await context.unrouteAll({ behavior: 'ignoreErrors' });
@@ -97,7 +101,7 @@ test('comments seen online are shown offline', async ({ page, context, at }) => 
 
 test('a clip watched online plays offline, with its thumbnail', async ({ page, context, at }) => {
 	await fakeApi(context);
-	await controlled(page, at('/schools/togakure/shoden/togakure.t'));
+	await controlled(page, at(TECHNIQUE_PAGE));
 	const play = page.getByRole('button', { name: 'Play the segment (0:15)' });
 	await play.click();
 	const video = page.locator('dialog video');
@@ -137,7 +141,7 @@ test("Safari's range requests: one download of the whole clip, the parts from it
 		network.push(route.request().headers()['range'] ?? null);
 		return fulfillClip(route);
 	});
-	await controlled(page, at('/schools/togakure/shoden/togakure.t'));
+	await controlled(page, at(TECHNIQUE_PAGE));
 	// Safari's first request, then a seek while the clip is still being saved.
 	const parts = await page.evaluate(async (clip) => {
 		const part = async (range: string) => {
@@ -158,7 +162,7 @@ test("Safari's range requests: one download of the whole clip, the parts from it
 test('a refused clip (429: another one downloading) is passed on, not saved', async ({ page, context, at }) => {
 	await fakeApi(context);
 	await context.route('**/media/segment/7', (route) => route.fulfill({ status: 429 }));
-	await controlled(page, at('/schools/togakure/shoden/togakure.t'));
+	await controlled(page, at(TECHNIQUE_PAGE));
 	const statuses = await page.evaluate(
 		(clip) => Promise.all(['bytes=0-', 'bytes=0-1'].map(async (range) => (await fetch(clip, { headers: { Range: range } })).status)),
 		at('/media/segment/7')
@@ -169,7 +173,7 @@ test('a refused clip (429: another one downloading) is passed on, not saved', as
 
 test('a re-timed segment: its saved clip and thumbnail are deleted', async ({ page, context, at }) => {
 	await fakeApi(context);
-	await controlled(page, at('/schools/togakure/shoden/togakure.t'));
+	await controlled(page, at(TECHNIQUE_PAGE));
 	await page.getByRole('button', { name: 'Play the segment (0:15)' }).click();
 	const saved = [at('/media/segment/7'), at('/media/segment/7/thumbnail')];
 	await expect.poll(() => cachedPaths(page, 'media')).toEqual(expect.arrayContaining(saved));
@@ -217,7 +221,7 @@ test('logout deletes the cached user data', async ({ page, context, at }) => {
 	expect((await cached()).filter((path) => path !== at('/api/setup/status'))).toEqual([]);
 	expect(await page.evaluate(() => caches.has('media'))).toBe(false); // clips and thumbnails too
 	// Logged in again: the thumbnails no longer show the clip as saved.
-	await page.goto(at('/schools/togakure/shoden/togakure.t'));
+	await page.goto(at(TECHNIQUE_PAGE));
 	await expect(page.getByRole('button', { name: 'Play the segment (0:15)' }).locator('.badge')).toHaveAttribute(
 		'aria-label',
 		'Not downloaded'

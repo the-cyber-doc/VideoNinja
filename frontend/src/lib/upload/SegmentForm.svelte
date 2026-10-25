@@ -1,7 +1,16 @@
 <script lang="ts">
-	// One segment: its times, school › level › technique (each choice narrows the
-	// next), performer (or a new one), tags. All but tags are mandatory.
-	import { techniquesOf, type Catalog } from '../catalog.svelte';
+	// One segment: its times, school › category › weapon (under Buki only) › section ›
+	// technique (each choice narrows the next and resets those after it; a step with
+	// a single choice is filled in), performer (or a new one), tags. All but tags are
+	// mandatory.
+	import {
+		BUKI,
+		categoriesOf,
+		sectionsOf,
+		techniquesOf,
+		weaponsOf,
+		type Catalog
+	} from '../catalog.svelte';
 	import Icon from '../Icon.svelte';
 	import { t } from '../i18n.svelte';
 	import { displayName } from '../session.svelte';
@@ -39,17 +48,32 @@
 	let adding = $state(false);
 	let newName = $state('');
 	let addError = $state('');
-	const techniques = $derived(
-		segment.school && segment.level ? techniquesOf(catalog, segment.school, segment.level) : []
+	const categories = $derived(segment.school ? categoriesOf(catalog, segment.school) : []);
+	const weapons = $derived(segment.category === BUKI ? weaponsOf(catalog, segment.school) : []);
+	const sections = $derived(
+		segment.category && (segment.category !== BUKI || segment.weapon)
+			? sectionsOf(catalog, segment.school, segment.category, segment.weapon || undefined)
+			: []
 	);
+	const techniques = $derived(segment.section ? techniquesOf(catalog, segment.section) : []);
 	const missing = (field: SegmentField) => problems.includes(field);
 	// Not set: a new segment, mine. null: its author is unknown.
 	const author = $derived(segment.createdBy === undefined ? displayName() : segment.createdBy);
 	const time = (seconds: number) => `${formatTime(Math.floor(seconds))}.${Math.floor((seconds % 1) * 10)}`;
 
-	function schoolChanged() {
-		segment.level = '';
-		segment.technique = '';
+	const STEPS = ['school', 'category', 'weapon', 'section', 'technique'] as const;
+	type Step = (typeof STEPS)[number];
+
+	/** `step` was chosen: the steps after it start again, filled in when there is a single choice. */
+	function changed(step: Step) {
+		for (const next of STEPS.slice(STEPS.indexOf(step) + 1)) segment[next] = '';
+		const only = <T extends { id: string }>(list: T[]) => (list.length === 1 ? list[0].id : '');
+		if (!segment.category) segment.category = only(categoriesOf(catalog, segment.school));
+		if (segment.category === BUKI && !segment.weapon) segment.weapon = only(weaponsOf(catalog, segment.school));
+		if (!segment.section && segment.category && (segment.category !== BUKI || segment.weapon)) {
+			segment.section = only(sectionsOf(catalog, segment.school, segment.category, segment.weapon || undefined));
+		}
+		if (!segment.technique && segment.section) segment.technique = only(techniquesOf(catalog, segment.section));
 	}
 
 	function performerChanged() {
@@ -96,19 +120,39 @@
 	<div class="fields">
 		<label class:invalid={missing('school')}>
 			{t('upload.segment.school')}
-			<select bind:value={segment.school} onchange={schoolChanged} required>
+			<select bind:value={segment.school} onchange={() => changed('school')} required>
 				<option value="">{t('upload.segment.choose')}</option>
 				{#each catalog.schools as school (school.id)}
 					<option value={school.id}>{school.romaji}</option>
 				{/each}
 			</select>
 		</label>
-		<label class:invalid={missing('level')}>
-			{t('upload.segment.level')}
-			<select bind:value={segment.level} onchange={() => (segment.technique = '')} disabled={!segment.school} required>
+		<label class:invalid={missing('category')}>
+			{t('upload.segment.category')}
+			<select bind:value={segment.category} onchange={() => changed('category')} disabled={!categories.length} required>
 				<option value="">{t('upload.segment.choose')}</option>
-				{#each catalog.levels as level (level.id)}
-					<option value={level.id}>{level.romaji}</option>
+				{#each categories as category (category.id)}
+					<option value={category.id}>{category.romaji}</option>
+				{/each}
+			</select>
+		</label>
+		{#if segment.category === BUKI}
+			<label class:invalid={missing('weapon')}>
+				{t('upload.segment.weapon')}
+				<select bind:value={segment.weapon} onchange={() => changed('weapon')} required>
+					<option value="">{t('upload.segment.choose')}</option>
+					{#each weapons as weapon (weapon.id)}
+						<option value={weapon.id}>{weapon.romaji}</option>
+					{/each}
+				</select>
+			</label>
+		{/if}
+		<label class:invalid={missing('section')}>
+			{t('upload.segment.section')}
+			<select bind:value={segment.section} onchange={() => changed('section')} disabled={!sections.length} required>
+				<option value="">{t('upload.segment.choose')}</option>
+				{#each sections as section (section.id)}
+					<option value={section.id}>{section.romaji}</option>
 				{/each}
 			</select>
 		</label>

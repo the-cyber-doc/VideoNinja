@@ -94,6 +94,7 @@ def test_old_versions_pruned(logged_in):
 
 @pytest.mark.skipif(not (shutil.which("brotli") and shutil.which("zopfli")),
                     reason="brotli/zopfli command-line tools not installed")
+@pytest.mark.compress
 def test_precompressed(logged_in):
     version, manifest = snapshot.current()
     path = snapshot.catalog_dir() / "versions" / version / manifest["catalog"]["en"]

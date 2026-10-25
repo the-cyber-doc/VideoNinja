@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" fill="none" stroke="#b3261e" stroke-opacity="0.4" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">
+	<!-- Muto Dori, unarmed against the sword: a hand stopping a blade -->
+	<path d="M30 40l110 110M140 150l18 18M146 136l-20 20"/>
+	<path d="M30 40l14 4 104 104-4 4L40 48z" fill="#b3261e" fill-opacity="0.12"/>
+	<path d="M70 178c-6-16-8-32-6-48l4-22c2-8 13-6 12 2l-2 20M80 130l8-42c2-8 13-6 12 2l-6 34M96 124l8-34c2-8 13-6 12 2l-8 34"/>
+	<path d="M108 128l8-20c3-8 14-4 12 4l-8 30c-4 16-14 30-28 36"/>
+</svg>

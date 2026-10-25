@@ -3,6 +3,7 @@
 import hashlib
 import json
 import os
+import re
 import shutil
 import sqlite3
 import subprocess
@@ -17,6 +18,7 @@ from app import db, encoder
 from app.main import app
 
 from .test_upload import admin, hook, session, submit, uploaded  # noqa: F401 (fixture)
+from .test_catalog import KOKU
 
 pytestmark = pytest.mark.skipif(not (shutil.which("ffmpeg") and shutil.which("ffprobe")),
                                 reason="ffmpeg not installed")
@@ -52,7 +54,7 @@ def queue(admin, enc, data: bytes | None = None, seconds=3, interlaced=False, co
     tus_id = uploaded(admin, sha=sha, size=len(data))
     (enc.uploads / tus_id).write_bytes(data if complete else data[:-10])
     (enc.uploads / f"{tus_id}.info").write_text(json.dumps({"Size": len(data), "Offset": 0}))  # as tusd
-    full = [{**s, "technique": "gyokko.koku", "performer": "hatsumi", "tags": []} for s in segments]
+    full = [{**s, "technique": KOKU, "performer": "hatsumi", "tags": []} for s in segments]
     return submit(admin, tus_id, segments=full).json()["id"]
 
 
@@ -100,7 +102,7 @@ def queue_sample(admin, enc, sample: Path) -> int:  # noqa: F811
     tus_id = uploaded(admin, sha=encoder.file_sha256(sample), size=sample.stat().st_size)
     (enc.uploads / tus_id).symlink_to(sample)
     (enc.uploads / f"{tus_id}.info").write_text(json.dumps({"Size": sample.stat().st_size, "Offset": 0}))
-    segment = {"begin_s": 5, "end_s": 15, "technique": "gyokko.koku", "performer": "hatsumi", "tags": []}
+    segment = {"begin_s": 5, "end_s": 15, "technique": KOKU, "performer": "hatsumi", "tags": []}
     return submit(admin, tus_id, segments=[segment]).json()["id"]
 
 
@@ -365,3 +367,19 @@ def test_script_strips_metadata_unless_asked(tmp_path, keep, present, absent):
                           str(tmp_path / "out"), str(clip)], capture_output=True, text=True, check=True).stdout
     assert all(option in out for option in present), out
     assert not any(option in out for option in absent), out
+
+
+@pytest.mark.parametrize("rate, options, every", [
+    (25, [], "1"), (30, [], "1"), (60, [], "0.5"),  # auto: 1 s up to 30 fps, 0.5 s above
+    (60, ["-g", "2"], "2"),  # -g sets it
+])
+def test_script_keyframe_interval(tmp_path, rate, options, every):
+    """encode-videos.sh: a keyframe every second, every half second above 30 fps (dry run)."""
+    clip = tmp_path / "clip.mp4"
+    subprocess.run(["ffmpeg", "-v", "error", "-y", "-f", "lavfi", "-i", f"testsrc=size=160x120:rate={rate}:d=1",
+                    "-c:v", "libx264", f"file:{clip}"], check=True)
+    result = subprocess.run([str(encoder.DEFAULT_SCRIPT), "-c", "-n", *options, "-o", str(tmp_path / "out"),
+                             str(clip)], capture_output=True, text=True, check=True)
+    assert f"{rate} fps, keyframe every {every} s" in result.stderr
+    # The dry run prints the ffmpeg command shell-escaped: expr:gte\(t\,n_forced\*1\)
+    assert re.search(rf"n_forced\\?\*{re.escape(every)}\\?\)", result.stdout), result.stdout

@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" fill="none" stroke="#b3261e" stroke-opacity="0.4" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">
+	<!-- Moguri, submerging: diving under the wave -->
+	<path d="M20 70c20-16 40-16 60 0s40 16 60 0 40-16 40-16"/>
+	<path d="M60 96c30 60 70 70 100 40" />
+	<path d="M150 124l12 14-18 4z" fill="#b3261e" fill-opacity="0.12"/>
+	<circle cx="54" cy="88" r="8"/>
+</svg>

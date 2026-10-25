@@ -11,6 +11,7 @@ from app import clock, db, encoder, i18n, security, snapshot
 
 from .test_auth import login
 from .test_users import USER_PASSWORD, create, register, user_login
+from .test_catalog import KOKU
 
 ORIGINAL = "1" * 64
 ENCODED = "e" * 64
@@ -91,7 +92,7 @@ def uploaded(client, sha=ORIGINAL, size=1000) -> str:
     return tus_id
 
 
-SEGMENT = {"begin_s": 12, "end_s": 27, "technique": "gyokko.koku", "performer": "hatsumi",
+SEGMENT = {"begin_s": 12, "end_s": 27, "technique": KOKU, "performer": "hatsumi",
            "tags": [{"id": "place", "value": "dojo"}]}
 
 
@@ -140,9 +141,9 @@ def test_tags_translated(admin):
 
 def test_seeded_tags(admin, monkeypatch):
     monkeypatch.setattr(clock, "now", lambda: datetime(2026, 10, 23, tzinfo=UTC))
-    seeded = ("location", "event", "year", "country")
-    for lang, names in [("en", ["Country", "Event", "Location", "Year"]),
-                        ("fr", ["Année", "Événement", "Lieu", "Pays"])]:
+    seeded = ("location", "event", "year", "country", "source")
+    for lang, names in [("en", ["Country", "Event", "Location", "Source", "Year"]),
+                        ("fr", ["Année", "Événement", "Lieu", "Pays", "Source"])]:
         tags = {t["id"]: t for t in admin.get("/api/tags", headers={"Accept-Language": lang}).json()
                 if t["id"] in seeded}
         assert [t["name"] for t in sorted(tags.values(), key=lambda t: i18n.sort_key(t["name"]))] == names
@@ -156,6 +157,9 @@ def test_seeded_tags(admin, monkeypatch):
     assert fr["location"]["values"] == [{"id": "dojo", "name": "Dojo"}, {"id": "outdoor", "name": "Extérieur"}]
     assert fr["event"]["values"] == [{"id": "class", "name": "Cours"}, {"id": "demo", "name": "Démonstration"},
                                      {"id": "seminar", "name": "Stage"}]
+    assert fr["source"]["values"] == [{"id": "kanninkan", "name": "Kanninkan"},
+                                      {"id": "onmitsukage", "name": "Onmitsukage"},
+                                      {"id": "youtube", "name": "YouTube"}]
     country = {c["id"]: c["name"] for c in fr["country"]["values"]}
     assert (country["CHE"], country["JPN"], country["RUS"]) == ("Suisse", "Japon", "Russie")
     # Every country has its own French name (the same as English only where it really is).

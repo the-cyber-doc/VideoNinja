@@ -21,7 +21,7 @@ async function loggedIn(page: Page, schools = SCHOOLS) {
 		})
 	);
 	await page.route('/api/catalog', (r) =>
-		r.fulfill({ json: { schools, levels: [], techniques: [], segments: [] } })
+		r.fulfill({ json: { schools, categories: [], weapons: [], sections: [], techniques: [], segments: [] } })
 	);
 }
 

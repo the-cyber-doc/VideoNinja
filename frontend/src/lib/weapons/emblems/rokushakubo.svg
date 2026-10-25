@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" fill="none" stroke="#b3261e" stroke-opacity="0.4" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">
+	<!-- Rokushakubo: the six-foot staff -->
+	<path d="M22 170L170 22l8 8L30 178z" fill="#b3261e" fill-opacity="0.12"/>
+	<path d="M22 170l8 8M170 22l8 8"/>
+</svg>

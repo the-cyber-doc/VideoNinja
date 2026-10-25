@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" fill="none" stroke="#b3261e" stroke-opacity="0.4" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">
+	<!-- Ninjato: the straight sword with a square guard -->
+	<path d="M78 112l78-78 10 10-78 78z" fill="#b3261e" fill-opacity="0.12"/>
+	<path d="M60 108h28v28H60z"/>
+	<path d="M70 126l-40 40M26 170l-6 6"/>
+</svg>

@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" fill="none" stroke="#b3261e" stroke-opacity="0.4" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">
+	<!-- Taijutsu, unarmed: an open hand -->
+	<path d="M64 176c-6-22-10-44-10-70V84c0-8 12-8 12 0v26" fill="#b3261e" fill-opacity="0.12"/>
+	<path d="M66 110V48c0-9 13-9 13 0v56M79 104V36c0-9 13-9 13 0v68M92 104V42c0-9 13-9 13 0v64M105 106V58c0-9 13-9 13 0v62"/>
+	<path d="M118 120l22-26c6-7 17 0 12 8l-24 40c-6 18-16 30-30 34H64"/>
+</svg>

@@ -1,5 +1,6 @@
 import { expect, test, type Page, type Request } from '@playwright/test';
 import { readFileSync } from 'node:fs';
+import { CATALOG as FULL, KOKU, STAFF } from '../catalog';
 
 // The upload page with the API and tusd faked. The video is a real 4 s clip
 // (VP9: Playwright's Chromium has no H.264), opened locally by the page.
@@ -14,12 +15,7 @@ const UPLOADER = {
 	role_name: 'Uploader',
 	access: ['annotate', 'segment', 'upload']
 };
-const CATALOG = {
-	schools: [{ id: 'gyokko', kanji: '玉虎流', romaji: 'Gyokko Ryu' }],
-	levels: [{ id: 'shoden', kanji: '初伝', romaji: 'Shoden' }],
-	techniques: [{ id: 'gyokko.koku', kanji: '虚空', romaji: 'Koku', ryu: 'gyokko', level: 'shoden' }],
-	segments: []
-};
+const CATALOG = { ...FULL, segments: [] };
 
 interface Fake {
 	exists: boolean;
@@ -99,15 +95,15 @@ async function openClip(page: Page) {
 }
 
 /** The timeline's box, scrolled into view (raw mouse events don't scroll). */
-async function timeline(page: Page) {
-	const slider = page.getByRole('slider', { name: 'Timeline' });
+async function timeline(page: Page, name = 'Timeline') {
+	const slider = page.getByRole('slider', { name });
 	await slider.scrollIntoViewIfNeeded();
 	return (await slider.boundingBox())!;
 }
 
 /** Drag on the timeline between two fractions of its width. */
-async function drag(page: Page, from: number, to: number) {
-	const box = await timeline(page);
+async function drag(page: Page, from: number, to: number, name = 'Timeline') {
+	const box = await timeline(page, name);
 	const y = box.y + box.height / 2;
 	await page.mouse.move(box.x + box.width * from, y);
 	await page.mouse.down();
@@ -187,8 +183,9 @@ test('segments by drag and by I/O, complete them, proceed: upload then submit', 
 	await expect(first).toBeVisible();
 	await expect(proceed(page)).toBeDisabled(); // incomplete
 	await first.getByLabel('School').selectOption('gyokko');
-	await first.getByLabel('Level').selectOption('shoden');
-	await first.getByLabel('Technique').selectOption('gyokko.koku');
+	await expect(first.getByLabel('Category')).toHaveValue('taijutsu'); // the only one: filled in
+	await first.getByLabel('Scroll or form').selectOption('gyokko.taijutsu.jo_ryaku');
+	await first.getByLabel('Technique').selectOption(KOKU);
 	await first.getByLabel('Performer').selectOption({ label: 'Add a performer…' });
 	await first.getByPlaceholder("Performer's name").fill('Noguchi');
 	await first.getByRole('button', { name: 'Add' }).first().click();
@@ -208,10 +205,12 @@ test('segments by drag and by I/O, complete them, proceed: upload then submit', 
 	await page.locator('body').press('o');
 	const second = page.getByRole('article', { name: 'Segment 2' });
 	await expect(second).toBeVisible();
-	// The new segment starts with the previous one's school, level and performer.
+	// The new segment starts with the previous one's place in the catalogue and performer.
 	await expect(second.getByLabel('School')).toHaveValue('gyokko');
+	await expect(second.getByLabel('Scroll or form')).toHaveValue('gyokko.taijutsu.jo_ryaku');
+	await expect(second.getByLabel('Technique')).toHaveValue('');
 	await expect(second.getByLabel('Performer')).toHaveValue('noguchi');
-	await second.getByLabel('Technique').selectOption('gyokko.koku');
+	await second.getByLabel('Technique').selectOption(KOKU);
 
 	await allDone(page).check();
 	await proceed(page).click();
@@ -223,13 +222,63 @@ test('segments by drag and by I/O, complete them, proceed: upload then submit', 
 	expect(body).toMatchObject({ original_filename: 'clip.webm', all_segments_done: true, tags: [] });
 	const segments = body.segments as { begin_s: number; end_s: number }[];
 	expect(segments).toHaveLength(2);
-	expect(segments[0]).toMatchObject({ technique: 'gyokko.koku', performer: 'noguchi', tags: [{ id: 'place', value: 'outdoor' }] }); // the ID, not the name
+	expect(segments[0]).toMatchObject({ technique: KOKU, performer: 'noguchi', tags: [{ id: 'place', value: 'outdoor' }] }); // the ID, not the name
 	// Whole seconds, begin down, end up; drag 10–40 % of 4 s ≈ 0.4–1.6 s.
 	expect(segments[0].begin_s).toBe(0);
 	expect(segments[0].end_s).toBe(2);
 	expect(segments[1].begin_s).toBeGreaterThanOrEqual(2);
 	expect(segments[1].end_s).toBe(4);
 	await expect(page.locator('video')).toHaveCount(0); // page reset
+});
+
+test('choosing a technique: one select per step, a weapon only under Buki', async ({ page }) => {
+	await setup(page);
+	await openClip(page);
+	await drag(page, 0.1, 0.4);
+	const segment = page.getByRole('article', { name: 'Segment 1' });
+	const select = (label: string) => segment.getByLabel(label);
+	const options = (label: string) => select(label).locator('option').allTextContents();
+
+	await select('School').selectOption('kukishinden');
+	expect(await options('Category')).toEqual(['Choose…', 'Taijutsu', 'Buki']);
+	await expect(select('Weapon')).toHaveCount(0);
+	await expect(select('Scroll or form')).toBeDisabled();
+
+	await select('Category').selectOption('buki');
+	expect(await options('Weapon')).toEqual(['Choose…', 'Rokushakubo', 'Hanbo']);
+	await select('Weapon').selectOption('rokushakubo');
+	// A single section and a single technique: filled in.
+	await expect(select('Scroll or form')).toHaveValue('kukishinden.buki.rokushakubo.shoden');
+	await expect(select('Technique')).toHaveValue(STAFF);
+
+	// Another weapon: the steps after it start again.
+	await select('Weapon').selectOption('hanbo');
+	await expect(select('Scroll or form')).toHaveValue('kukishinden.buki.hanbo.okuden');
+	await expect(select('Technique')).toHaveValue('kukishinden.buki.hanbo.okuden.hane_otoshi');
+
+	// Back to Taijutsu: no weapon select any more.
+	await select('Category').selectOption('taijutsu');
+	await expect(select('Weapon')).toHaveCount(0);
+	await expect(select('Technique')).toHaveValue('kukishinden.taijutsu.shoden.seion');
+
+	// Another school: everything after it again.
+	await select('School').selectOption('gyokko');
+	await expect(select('Category')).toHaveValue('taijutsu');
+	await expect(select('Scroll or form')).toHaveValue('');
+	await expect(select('Technique')).toBeDisabled();
+});
+
+test('in French: the steps of the technique', async ({ page }) => {
+	await page.addInitScript(() => localStorage.setItem('lang', 'fr'));
+	await setup(page);
+	await page.goto('/upload');
+	await page.getByLabel('Fichier vidéo').setInputFiles(CLIP);
+	await drag(page, 0.1, 0.4, 'Chronologie');
+	const segment = page.getByRole('article', { name: 'Segment 1' });
+	await segment.getByLabel('École').selectOption('kukishinden');
+	await segment.getByLabel('Catégorie').selectOption('buki');
+	await expect(segment.getByLabel('Arme')).toBeVisible();
+	await expect(segment.getByLabel('Rouleau ou forme')).toBeVisible();
 });
 
 test('server cannot receive uploads: warned at once, annotating still possible', async ({ page }) => {

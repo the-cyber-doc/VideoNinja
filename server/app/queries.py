@@ -202,32 +202,38 @@ def delete_invite(con: sqlite3.Connection, user_id: int) -> bool:
 
 
 # --- catalogue ---
-# rowid order = insertion order (the seed lists schools and levels in their traditional order).
+# rowid order = insertion order (the seed lists everything in its traditional order).
+# Each row with its description in each language ("description_en", "description_fr").
+
+
+def _named(con: sqlite3.Connection, table: str, *columns: str) -> list[sqlite3.Row]:
+    extra = "".join(f', x."{c}"' for c in columns)
+    return con.execute(
+        f'SELECT x."id", x."kanji", x."romaji"{extra}, t."en" AS "description_en", t."fr" AS "description_fr"'
+        f' FROM "{table}" x LEFT JOIN "translation" t ON t."id" = x."description" ORDER BY x.rowid'
+    ).fetchall()
 
 
 def schools(con: sqlite3.Connection) -> list[sqlite3.Row]:
-    """Every school, with its description in each language ("description_en", "description_fr")."""
-    return con.execute(
-        'SELECT r."id", r."kanji", r."romaji", t."en" AS "description_en", t."fr" AS "description_fr"'
-        ' FROM "ryu" r LEFT JOIN "translation" t ON t."id" = r."description" ORDER BY r.rowid'
-    ).fetchall()
+    return _named(con, "ryu")
 
 
-def levels(con: sqlite3.Connection) -> list[sqlite3.Row]:
-    """Every level, with its description in each language ("description_en", "description_fr")."""
-    return con.execute(
-        'SELECT l."id", l."kanji", l."romaji", t."en" AS "description_en", t."fr" AS "description_fr"'
-        ' FROM "level" l LEFT JOIN "translation" t ON t."id" = l."description" ORDER BY l.rowid'
-    ).fetchall()
+def categories(con: sqlite3.Connection) -> list[sqlite3.Row]:
+    """Taijutsu, Muto Dori, Buki (weapons)."""
+    return _named(con, "category")
+
+
+def weapons(con: sqlite3.Connection) -> list[sqlite3.Row]:
+    return _named(con, "weapon")
+
+
+def sections(con: sqlite3.Connection) -> list[sqlite3.Row]:
+    """A school's scrolls and groups: "ryu", "category", "weapon" (None but under Buki)."""
+    return _named(con, "section", "ryu", "category", "weapon")
 
 
 def techniques(con: sqlite3.Connection) -> list[sqlite3.Row]:
-    """Every technique, with its description in each language ("description_en", "description_fr")."""
-    return con.execute(
-        'SELECT te."id", te."kanji", te."romaji", te."ryu", te."level",'
-        ' t."en" AS "description_en", t."fr" AS "description_fr"'
-        ' FROM "technique" te LEFT JOIN "translation" t ON t."id" = te."description" ORDER BY te.rowid'
-    ).fetchall()
+    return _named(con, "technique", "section")
 
 
 def technique_exists(con: sqlite3.Connection, technique_id: str) -> bool:

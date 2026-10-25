@@ -1,4 +1,5 @@
 // Rules of the upload page, kept out of the components (unit-tested).
+import { BUKI } from '../catalog.svelte';
 import type { Submit } from './api';
 import type { Annotation, Draft, DraftSegment, Mode } from './draft.svelte';
 
@@ -11,7 +12,7 @@ export function allSegmentsDone(mode: Mode, checked: boolean): boolean {
 
 export const checkboxLocked = (mode: Mode) => mode !== null;
 
-export type SegmentField = 'times' | 'school' | 'level' | 'technique' | 'performer';
+export type SegmentField = 'times' | 'school' | 'category' | 'weapon' | 'section' | 'technique' | 'performer';
 
 /** What is missing or wrong in a segment (empty = complete). */
 export function segmentProblems(segment: DraftSegment, duration: number): SegmentField[] {
@@ -21,7 +22,9 @@ export function segmentProblems(segment: DraftSegment, duration: number): Segmen
 		problems.push('times');
 	}
 	if (!segment.school) problems.push('school');
-	if (!segment.level) problems.push('level');
+	if (!segment.category) problems.push('category');
+	if (segment.category === BUKI && !segment.weapon) problems.push('weapon');
+	if (!segment.section) problems.push('section');
 	if (!segment.technique) problems.push('technique');
 	if (!segment.performer) problems.push('performer');
 	return problems;

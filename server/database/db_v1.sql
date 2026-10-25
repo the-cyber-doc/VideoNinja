@@ -20,7 +20,11 @@ CREATE TABLE IF NOT EXISTS "ryu" (
 	ON UPDATE NO ACTION ON DELETE NO ACTION
 );
 
-CREATE TABLE IF NOT EXISTS "level" (
+-- The catalogue: school (ryu) → category → (weapon, only under Buki) → section
+-- (a school's scroll or group, e.g. Jo Ryaku no Maki) → technique. Fixed: each
+-- school's organisation is known; the seed lists sections and techniques in
+-- their traditional order (rowid order).
+CREATE TABLE IF NOT EXISTS "category" (
 	"id" VARCHAR NOT NULL UNIQUE,
 	"kanji" VARCHAR NOT NULL,
 	"romaji" VARCHAR NOT NULL,
@@ -30,17 +34,44 @@ CREATE TABLE IF NOT EXISTS "level" (
 	ON UPDATE NO ACTION ON DELETE NO ACTION
 );
 
+CREATE TABLE IF NOT EXISTS "weapon" (
+	"id" VARCHAR NOT NULL UNIQUE,
+	"kanji" VARCHAR NOT NULL,
+	"romaji" VARCHAR NOT NULL,
+	"description" VARCHAR,
+	PRIMARY KEY("id"),
+	FOREIGN KEY ("description") REFERENCES "translation"("id")
+	ON UPDATE NO ACTION ON DELETE NO ACTION
+);
+
+CREATE TABLE IF NOT EXISTS "section" (
+	"id" VARCHAR NOT NULL UNIQUE,
+	"ryu" VARCHAR NOT NULL,
+	"category" VARCHAR NOT NULL,
+	-- Only (and always) under the weapons category.
+	"weapon" VARCHAR CHECK (("category" = 'buki') = ("weapon" IS NOT NULL)),
+	"kanji" VARCHAR NOT NULL,
+	"romaji" VARCHAR NOT NULL,
+	"description" VARCHAR,
+	PRIMARY KEY("id"),
+	FOREIGN KEY ("ryu") REFERENCES "ryu"("id")
+	ON UPDATE NO ACTION ON DELETE NO ACTION,
+	FOREIGN KEY ("category") REFERENCES "category"("id")
+	ON UPDATE NO ACTION ON DELETE NO ACTION,
+	FOREIGN KEY ("weapon") REFERENCES "weapon"("id")
+	ON UPDATE NO ACTION ON DELETE NO ACTION,
+	FOREIGN KEY ("description") REFERENCES "translation"("id")
+	ON UPDATE NO ACTION ON DELETE NO ACTION
+);
+
 CREATE TABLE IF NOT EXISTS "technique" (
 	"id" VARCHAR NOT NULL UNIQUE,
 	"kanji" VARCHAR NOT NULL,
 	"romaji" VARCHAR NOT NULL,
-	"ryu" VARCHAR NOT NULL,
-	"level" VARCHAR NOT NULL,
+	"section" VARCHAR NOT NULL,
 	"description" VARCHAR,
 	PRIMARY KEY("id"),
-	FOREIGN KEY ("level") REFERENCES "level"("id")
-	ON UPDATE NO ACTION ON DELETE NO ACTION,
-	FOREIGN KEY ("ryu") REFERENCES "ryu"("id")
+	FOREIGN KEY ("section") REFERENCES "section"("id")
 	ON UPDATE NO ACTION ON DELETE NO ACTION,
 	FOREIGN KEY ("description") REFERENCES "translation"("id")
 	ON UPDATE NO ACTION ON DELETE NO ACTION

@@ -18,8 +18,13 @@ export interface DraftSegment {
 	/** Seconds, frame-accurate on the page; rounded to whole seconds when sent. */
 	begin: number;
 	end: number;
+	/** The technique's path in the catalogue: each choice narrows the next one.
+	 * IDs: school, category and weapon (only under Buki, else '') as in the catalogue;
+	 * section and technique: full IDs. */
 	school: string;
-	level: string;
+	category: string;
+	weapon: string;
+	section: string;
 	technique: string;
 	performer: string;
 	tags: TagValue[];
@@ -68,10 +73,17 @@ async function run<T>(mode: IDBTransactionMode, action: (store: IDBObjectStore) 
 	}
 }
 
-/** Drafts saved before the rename filename → originalFilename keep their name. */
+/** Drafts saved by earlier versions, brought up to date: filename → originalFilename;
+ * segments placed by school › level (before categories and sections) keep their
+ * school, times and tags, and get their technique chosen again (its ID changed). */
 function upgrade(draft: Draft & { filename?: string }): Draft {
 	if (!draft.originalFilename && draft.filename) draft.originalFilename = draft.filename;
 	delete draft.filename;
+	for (const segment of draft.segments as (DraftSegment & { level?: string })[]) {
+		if (segment.section !== undefined) continue;
+		delete segment.level;
+		Object.assign(segment, { category: '', weapon: '', section: '', technique: '' });
+	}
 	return draft;
 }
 

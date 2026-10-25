@@ -1,38 +1,31 @@
 <script lang="ts">
-	// The levels of a school.
+	// A school's categories: Taijutsu, Muto Dori, Buki (those it has).
+	import CatalogView from '#lib/browse/CatalogView.svelte';
 	import Breadcrumbs from '#lib/Breadcrumbs.svelte';
 	import CardPage from '#lib/CardPage.svelte';
 	import CatalogCard from '#lib/cards/CatalogCard.svelte';
-	import { catalogCrumbs, findSchool, levelHref, loadCatalog } from '#lib/catalog.svelte.js';
+	import { categoryEmblems } from '#lib/categories/emblems.js';
+	import { catalogCrumbs, catalogHref, categoriesOf } from '#lib/catalog.svelte.js';
 	import { t } from '#lib/i18n.svelte.js';
-	import { levelEmblems } from '#lib/levels/emblems.js';
 	import type { PageProps } from './$types';
 
 	let { params }: PageProps = $props();
-	const catalog = $derived(loadCatalog()); // reads i18n.lang
+	const path = $derived({ ryu: params.ryu });
 </script>
 
-{#await catalog}
-	<p class="hint centered">{t('common.loading')}</p>
-{:then c}
-	{@const school = findSchool(c, params.ryu)}
-	{#if school}
-		<CardPage title={t('levels.title')} items={c.levels}>
+<CatalogView {path}>
+	{#snippet children(c)}
+		<CardPage title={t('categories.title')} items={categoriesOf(c, path.ryu)} empty={t('categories.none')}>
 			{#snippet top()}
-				<Breadcrumbs items={catalogCrumbs(school)} />
+				<Breadcrumbs items={catalogCrumbs(c, path)} />
 			{/snippet}
-			{#snippet card(level)}
+			{#snippet card(category)}
 				<CatalogCard
-					item={level}
-					image={levelEmblems.url(level.id)}
-					href={levelHref(school.id, level.id)}
+					item={category}
+					image={categoryEmblems.url(category.id)}
+					href={catalogHref({ ...path, category: category.id })}
 				/>
 			{/snippet}
 		</CardPage>
-	{:else}
-		<Breadcrumbs items={catalogCrumbs()} current={false} />
-		<p class="error centered">{t('common.not_found')}</p>
-	{/if}
-{:catch e}
-	<p class="error centered">{e.message}</p>
-{/await}
+	{/snippet}
+</CatalogView>

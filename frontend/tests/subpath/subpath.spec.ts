@@ -1,15 +1,11 @@
 import { expect, test } from '@playwright/test';
+import { CATALOG as FULL } from '../catalog';
 
 // The app built under /videoninja (BASE_PATH), as served at https://example.org/videoninja/:
 // every request and link stays under it. The API is faked with context.route.
 const BASE = '/videoninja';
 const USER = { username: 'kenji', name: null, role: 'admin', role_name: 'Admin', access: ['segment', 'upload', 'user_mgmt'] };
-const CATALOG = {
-	schools: [{ id: 'gyokko', kanji: '玉虎流', romaji: 'Gyokko Ryu' }],
-	levels: [{ id: 'shoden', kanji: '初伝', romaji: 'Shoden' }],
-	techniques: [{ id: 'gyokko.koku', kanji: '虚空', romaji: 'Koku', ryu: 'gyokko', level: 'shoden' }],
-	segments: [{ id: 7, video: 1, technique: 'gyokko.koku', begin_s: 12, end_s: 27, performer: 'p' }]
-};
+const CATALOG = { ...FULL, segments: FULL.segments.filter((s) => s.id === 7) };
 
 test('every request, link and the service worker stay under the base path', async ({ page, context }) => {
 	const requested: string[] = [];
@@ -33,9 +29,10 @@ test('every request, link and the service worker stay under the base path', asyn
 	await expect(page.getByRole('link', { name: 'Schools' })).toHaveAttribute('aria-current', 'page');
 
 	await page.getByRole('link', { name: /Gyokko Ryu/ }).click();
-	await page.getByRole('link', { name: /Shoden/ }).last().click();
+	await page.getByRole('link', { name: /Taijutsu/ }).last().click();
+	await page.getByRole('link', { name: /Jo Ryaku no Maki/ }).last().click();
 	await page.getByRole('link', { name: /Koku/ }).click();
-	await expect(page).toHaveURL(`${BASE}/schools/gyokko/shoden/gyokko.koku`);
+	await expect(page).toHaveURL(`${BASE}/schools/gyokko/taijutsu/jo_ryaku/koku`);
 	const clip = page.waitForRequest((r) => new URL(r.url()).pathname === `${BASE}/media/segment/7`);
 	await page.getByRole('button', { name: 'Play the segment (0:15)' }).click();
 	await clip;

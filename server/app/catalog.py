@@ -1,4 +1,5 @@
-"""The catalogue's content: schools, levels, techniques and segments, in one language.
+"""The catalogue's content, in one language: schools, categories (Taijutsu, Muto Dori,
+Buki), weapons, sections (a school's scrolls and groups), techniques and segments.
 
 Written to static files by `snapshot`, which also serves it. Same IDs as the
 database, nulls omitted, names stored once and referenced by ID.
@@ -21,9 +22,13 @@ def _named(row: sqlite3.Row, lang: str) -> dict[str, Any]:
 def build(con: sqlite3.Connection, lang: str) -> dict[str, Any]:
     return {
         "schools": [_named(r, lang) for r in queries.schools(con)],
-        "levels": [_named(r, lang) for r in queries.levels(con)],
-        "techniques": [
-            {**_named(r, lang), "ryu": r["ryu"], "level": r["level"]} for r in queries.techniques(con)
+        "categories": [_named(r, lang) for r in queries.categories(con)],
+        "weapons": [_named(r, lang) for r in queries.weapons(con)],
+        "sections": [
+            {**_named(r, lang), "ryu": r["ryu"], "category": r["category"],
+             **({"weapon": r["weapon"]} if r["weapon"] else {})}
+            for r in queries.sections(con)
         ],
+        "techniques": [{**_named(r, lang), "section": r["section"]} for r in queries.techniques(con)],
         "segments": [dict(r) for r in queries.segments(con)],
     }

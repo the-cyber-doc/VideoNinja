@@ -6,7 +6,7 @@ import pyotp
 import pytest
 from fastapi.testclient import TestClient
 
-from app import clock, throttle
+from app import clock, snapshot, throttle
 from app.main import app
 
 PASSWORD = "correct horse battery"
@@ -25,6 +25,14 @@ def server_zone_utc(monkeypatch):
     """The server's timezone (dates written without a browser request), whatever the host's.
     Not by setting TZ: the process keeps its own (pyotp's TOTP codes would be off)."""
     monkeypatch.setattr(clock, "server_zone", lambda: UTC)
+
+
+@pytest.fixture(autouse=True)
+def no_precompression(request, monkeypatch):
+    """Brotli + Zopfli of the whole catalogue take about a second per snapshot: only
+    the tests marked `compress` precompress (production always does)."""
+    if not request.node.get_closest_marker("compress"):
+        monkeypatch.setattr(snapshot, "_compress", lambda path: None)
 
 
 @pytest.fixture(autouse=True)

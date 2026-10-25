@@ -43,7 +43,9 @@ POLL_S = 10
 PROGRESS_EVERY_S = 5
 HASH_SHARE = 5  # % of the progress bar for checking the original; encoding gets the rest up to 95
 THUMB_WIDTH = 320
-GOP_S = 1  # encode-videos.sh's keyframe interval (-g), needed by the nginx mp4 module's cuts
+# Longest keyframe interval accepted without encoding, needed by the nginx mp4 module's cuts.
+# encode-videos.sh makes 1 s up to 30 fps, 0.5 s above (smoother seeking at high frame rates).
+GOP_S = 1
 DEFAULT_SCRIPT = Path(__file__).resolve().parents[2] / "tools" / "encode-videos" / "encode-videos.sh"
 
 

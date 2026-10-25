@@ -1,7 +1,9 @@
 # Video Ninja
 
-Installable web app (PWA) for Ninjutsu technique videos, organised by
-school (ryu) → level → technique → video segments, with annotations.
+Installable web app (PWA) for Ninjutsu technique videos, organised as each
+school teaches them: school (ryu) → category (Taijutsu, Muto Dori, Buki) →
+weapon (under Buki) → scroll or form (e.g. Jo Ryaku no Maki) → technique →
+video segments, with annotations.
 Self-hosted on a Raspberry Pi 5 with Docker behind nginx.
 
 - [Layout](#layout)
@@ -17,6 +19,7 @@ Self-hosted on a Raspberry Pi 5 with Docker behind nginx.
 | `server/app/` | Backend: Python 3.15 + FastAPI |
 | `server/tests/` | Backend tests (pytest) |
 | `server/database/` | `db_vN.sql` (schema) + `db_vN_init.sql` (initial data) |
+| `server/database/catalog/techniques.json`, `tools/catalog-sql.py` | The schools' techniques (source) and the generator of their block in `db_v1_init.sql` (see [The catalogue of techniques](#the-catalogue-of-techniques)) |
 | `frontend/` | SvelteKit PWA (`adapter-static`, Svelte 5, TypeScript) |
 | `frontend/src/**/*.test.ts` | Frontend unit tests (Vitest) |
 | `frontend/tests/` | Browser tests (Playwright): `mocked/` (fake API), `pwa/` (service worker), `e2e/` (real backend) |
@@ -454,6 +457,45 @@ What `docker-compose.dev.yaml` mounts:
 
 CI builds the same image on every push (not published).
 
+### The catalogue of techniques
+
+Each school has its own organisation, kept as is (fixed, no free-form tree):
+
+- **Categories** (`category`): Taijutsu 体術 (unarmed), Muto Dori 無刀捕 (unarmed
+  against the sword), Buki 武器 (weapons).
+- **Weapons** (`weapon`, only under Buki): Rokushakubo, Hanbo, Jo, Yari,
+  Naginata, Bisento, Jutte, Kodachi, Biken, Ninjato, Shuriken.
+- **Sections** (`section`): a school's scrolls and groups of forms, in its
+  category (and weapon), e.g. Gyokko Ryu › Taijutsu › Jo Ryaku no Maki,
+  Kukishin Ryu › Buki › Rokushakubo › Shoden Gata. The levels (Shoden,
+  Chuden, Okuden) are sections named as each school names them.
+- **Techniques** (`technique`): in a section.
+
+IDs stay readable: section `<ryu>.<category>[.<weapon>].<name>`, technique
+`<section>.<name>` (`gyokko.taijutsu.jo_ryaku.koku`). URLs use each step's name:
+`/schools/gyokko/taijutsu/jo_ryaku/koku`,
+`/schools/kukishinden/buki/rokushakubo/shoden/chudan_kangi`. Every step has its
+page, even with a single card.
+
+The content (about 640 techniques of seven schools, with kanji, romaji and an
+English and French meaning) lives in `server/database/catalog/techniques.json`,
+collected from public sources (listed per section). Gyokushin and Kumogakure
+Ryu have none yet: no public source names their techniques. The meanings are
+rough glosses, to be reviewed by a teacher. To change the catalogue, edit the
+JSON, then regenerate the block of `db_v1_init.sql` (a test fails if they
+differ), and rebuild the database:
+
+```bash
+python3 tools/catalog-sql.py
+server/.venv/bin/python tools/make-dev-db.py --force
+```
+
+Card emblems (background images): `frontend/src/lib/{schools,categories,weapons,sections}/emblems/<id>.svg`.
+A section uses the emblem of its name (`jo_ryaku.svg`), else of its kind
+(`shoden_omote` → `shoden.svg`, table in `$lib/sections/emblems.ts`); a unit
+test checks that every category, weapon and section of the JSON has its own.
+Techniques have no emblem.
+
 ### Database schema
 
 The schema is designed in [drawdb](https://drawdb.app) and exported to
@@ -491,8 +533,9 @@ every language filled). A tag with rows in `tag_value` takes one of them
 `segment_has_tags` store that value's ID, never its name. A tag without takes
 text, stored as typed and not translated, in its `value_format`: `NULL` = any
 text, `year` = a year from 100 years ago to this year. Seeded (`db_v1_init.sql`):
-location (outdoor, dojo), event (seminar, class, demo), year, and country (the
-249 ISO 3166-1 alpha-3 codes, e.g. `CHE`, named in English and French).
+location (outdoor, dojo), event (seminar, class, demo), year, country (the
+249 ISO 3166-1 alpha-3 codes, e.g. `CHE`, named in English and French), and
+source (YouTube, Onmitsukage, Kanninkan: where the video comes from).
 Example:
 
 ```sql
@@ -746,7 +789,9 @@ access (uploaders and admins):
    current frame; drag a segment's edges to adjust it. Pointing at the film
    strip (also while dragging) shows that frame without moving the playhead;
    click to move it there. For each segment choose
-   school › level › technique and the performer (or add one), and optional tags.
+   school › category › weapon (under Buki only) › scroll or form › technique
+   (each choice narrows the next; a step with a single choice is filled in) and
+   the performer (or add one), and optional tags.
 3. Or choose **Define segments later** (the "all segments done" box is then
    off) or **This video does not contain any technique segment** (box on).
 4. **Proceed** uploads the original (resumable, 50 MB at a time) with the
@@ -766,8 +811,10 @@ sources are deinterlaced (NNEDI3) and HDR ones tone-mapped, as by
 encoded with the script before uploading) is not encoded: its video and audio
 are copied into a new file (seconds, no quality lost). Only the format counts:
 MP4 with faststart, one H.265 Main 8-bit `hvc1` video, SDR BT.709,
-progressive, a keyframe every second, AAC mono or stereo (one audio stream) or
-no audio.
+progressive, a keyframe at least every second, AAC mono or stereo (one audio
+stream) or no audio. When encoding, the script puts a keyframe every second up
+to 30 fps and every half second above (smoother seeking and frame stepping at
+high frame rates; `-g` sets another interval).
 
 Published videos never keep their metadata: tags (a phone's GPS location,
 dates, device, title), chapters and other streams (data or GPS tracks,

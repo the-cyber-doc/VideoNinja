@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" fill="none" stroke="#b3261e" stroke-opacity="0.4" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">
+	<!-- Daisho Sabaki: the long and the short sword, side by side -->
+	<path d="M62 118C98 82 136 52 180 30c-18 40-56 72-104 98z" fill="#b3261e" fill-opacity="0.12"/>
+	<path d="M50 106l26 26M62 120l-40 40"/>
+	<path d="M98 160c22-22 46-40 72-54-12 26-34 46-62 64z" fill="#b3261e" fill-opacity="0.12"/>
+	<path d="M88 150l20 20M98 162l-24 24"/>
+</svg>

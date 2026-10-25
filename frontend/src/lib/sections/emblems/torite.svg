@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" fill="none" stroke="#b3261e" stroke-opacity="0.4" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">
+	<!-- Torite, capture: a hand seizing a wrist -->
+	<path d="M20 112h104v32H20z" fill="#b3261e" fill-opacity="0.12"/>
+	<path d="M124 108c14-4 26 2 30 14M124 148c16 6 30 2 36-10"/>
+	<path d="M84 96c10-14 30-14 36 0v64c-6 14-26 14-36 0"/>
+	<path d="M120 116h22M120 132h22"/>
+</svg>

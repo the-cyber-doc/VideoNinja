@@ -45,11 +45,14 @@
 	"nav.upload": { "en": "Upload", "fr": "Téléverser" },
 
 	"schools.title": { "en": "Schools", "fr": "Écoles" },
-	"levels.title": { "en": "Levels", "fr": "Niveaux" },
+	"categories.title": { "en": "Categories", "fr": "Catégories" },
+	"categories.none": { "en": "No techniques known yet for this school.", "fr": "Aucune technique connue pour cette école pour l'instant." },
+	"weapons.title": { "en": "Weapons", "fr": "Armes" },
+	"sections.title": { "en": "Scrolls and forms", "fr": "Rouleaux et formes" },
 	"techniques.title": { "en": "Techniques", "fr": "Techniques" },
 	"techniques.none": {
-		"en": "No techniques for this level yet.",
-		"fr": "Pas encore de technique pour ce niveau."
+		"en": "No techniques in this section yet.",
+		"fr": "Pas encore de technique dans cette section."
 	},
 	"technique.videos": { "en": "Videos", "fr": "Vidéos" },
 	"nav.videos": { "en": "Videos", "fr": "Vidéos" },
@@ -278,7 +281,9 @@
 		"fr": "Le segment doit finir après son début, dans la vidéo."
 	},
 	"upload.segment.school": { "en": "School", "fr": "École" },
-	"upload.segment.level": { "en": "Level", "fr": "Niveau" },
+	"upload.segment.category": { "en": "Category", "fr": "Catégorie" },
+	"upload.segment.weapon": { "en": "Weapon", "fr": "Arme" },
+	"upload.segment.section": { "en": "Scroll or form", "fr": "Rouleau ou forme" },
 	"upload.segment.technique": { "en": "Technique", "fr": "Technique" },
 	"upload.segment.performer": { "en": "Performer", "fr": "Exécutant" },
 	"upload.segment.choose": { "en": "Choose…", "fr": "Choisir…" },

@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" fill="none" stroke="#b3261e" stroke-opacity="0.4" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">
+	<!-- Eri Jime, collar chokes: the crossed collar of the jacket -->
+	<path d="M50 30l50 70 50-70" fill="#b3261e" fill-opacity="0.12"/>
+	<path d="M50 30c-10 50-10 100 0 150M150 30c10 50 10 100 0 150M100 100L60 180M100 100l40 80"/>
+</svg>

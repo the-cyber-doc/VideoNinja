@@ -3,7 +3,7 @@
 // Needs the "video_mgmt" access.
 import { api } from '../api';
 import { url } from '../base';
-import type { Catalog } from '../catalog.svelte';
+import { pathOf, sectionId, type Catalog } from '../catalog.svelte';
 import type { SubmitSegment, TagValue } from '../upload/api';
 import type { Annotation, Mode } from '../upload/draft.svelte';
 import { allSegmentsDone, wholeSeconds } from '../upload/rules';
@@ -58,7 +58,7 @@ export function videoSection(video: Pick<VideoRow, 'all_segments_done' | 'segmen
 const tagValues = (tags: TagValue[]) =>
 	tags.map((tag) => (tag.value == null ? { id: tag.id } : { id: tag.id, value: tag.value }));
 
-/** The server's annotation, for the panel: school and level from the catalogue,
+/** The server's annotation, for the panel: the technique's path from the catalogue,
  * the mode from what was saved (no segment: "no technique" if marked done, else
  * "define later"). */
 export function toAnnotation(saved: AnnotationsOut, catalog: Catalog): Annotation {
@@ -68,15 +68,17 @@ export function toAnnotation(saved: AnnotationsOut, catalog: Catalog): Annotatio
 		allSegmentsDone: saved.all_segments_done,
 		tags: tagValues(saved.tags),
 		segments: saved.segments.map((s, i) => {
-			const technique = catalog.techniques.find((t) => t.id === s.technique);
+			const path = pathOf(catalog, s.technique);
 			return {
 				key: i + 1,
 				id: s.id,
 				createdBy: s.created_by,
 				begin: s.begin_s,
 				end: s.end_s,
-				school: technique?.ryu ?? '',
-				level: technique?.level ?? '',
+				school: path?.ryu ?? '',
+				category: path?.category ?? '',
+				weapon: path?.weapon ?? '',
+				section: path ? sectionId(path) : '',
 				technique: s.technique,
 				performer: s.performer,
 				tags: tagValues(s.tags)

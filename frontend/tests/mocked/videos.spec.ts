@@ -1,17 +1,10 @@
 import { expect, test, type Page } from '@playwright/test';
+import { CATALOG as FULL, KETO, KOKU } from '../catalog';
 import { fulfillClip } from '../clip';
 
 // The Videos page (video_mgmt access): published videos by section, and the
 // annotation panel for one of them. The API is faked and keeps what is saved.
-const CATALOG = {
-	schools: [{ id: 'gyokko', kanji: '玉虎流', romaji: 'Gyokko Ryu' }],
-	levels: [{ id: 'shoden', kanji: '初伝', romaji: 'Shoden' }],
-	techniques: [
-		{ id: 'gyokko.koku', kanji: '虚空', romaji: 'Koku', ryu: 'gyokko', level: 'shoden' },
-		{ id: 'gyokko.keto', kanji: '闕倒', romaji: 'Keto', ryu: 'gyokko', level: 'shoden' }
-	],
-	segments: []
-};
+const CATALOG = { ...FULL, segments: [] };
 const MANAGER = ['segment', 'comment', 'annotate', 'upload', 'video_mgmt'];
 const video = (id: number, segment_count: number, all_segments_done: boolean, duration_s: number | null = 65.4) => ({
 	id,
@@ -41,8 +34,8 @@ async function setup(page: Page, access = MANAGER) {
 		uploaded_by: 'Hana',
 		tags: [],
 		segments: [
-			{ id: 11, begin_s: 1, end_s: 2, technique: 'gyokko.koku', performer: 'hatsumi', tags: [], created_by: 'Hana' },
-			{ id: 12, begin_s: 2, end_s: 3, technique: 'gyokko.keto', performer: 'hatsumi', tags: [], created_by: null }
+			{ id: 11, begin_s: 1, end_s: 2, technique: KOKU, performer: 'hatsumi', tags: [], created_by: 'Hana' },
+			{ id: 12, begin_s: 2, end_s: 3, technique: KETO, performer: 'hatsumi', tags: [], created_by: null }
 		]
 	};
 	page.on('request', (r) => {
@@ -232,15 +225,16 @@ test('annotate a published video: its segments loaded, Proceed saves them, nothi
 	await expect(page).toHaveURL('/videos/1');
 	await expect(page.locator('video').first()).toHaveAttribute('src', '/media/video/1');
 
-	// The saved segments, with school and level from the catalogue.
+	// The saved segments, with their place in the catalogue.
 	const first = page.getByRole('article', { name: 'Segment 1' });
 	await expect(first.getByLabel('School')).toHaveValue('gyokko');
-	await expect(first.getByLabel('Level')).toHaveValue('shoden');
-	await expect(first.getByLabel('Technique')).toHaveValue('gyokko.koku');
-	await expect(page.getByRole('article', { name: 'Segment 2' }).getByLabel('Technique')).toHaveValue('gyokko.keto');
+	await expect(first.getByLabel('Category')).toHaveValue('taijutsu');
+	await expect(first.getByLabel('Scroll or form')).toHaveValue('gyokko.taijutsu.jo_ryaku');
+	await expect(first.getByLabel('Technique')).toHaveValue(KOKU);
+	await expect(page.getByRole('article', { name: 'Segment 2' }).getByLabel('Technique')).toHaveValue(KETO);
 
 	// Change one, remove the other, mark it complete.
-	await first.getByLabel('Technique').selectOption('gyokko.keto');
+	await first.getByLabel('Technique').selectOption(KETO);
 	page.on('dialog', (d) => d.accept());
 	await page.getByRole('article', { name: 'Segment 2' }).getByRole('button', { name: 'Delete this segment' }).click();
 	await page.getByRole('checkbox', { name: /All the segments have been created/ }).check();
@@ -253,7 +247,7 @@ test('annotate a published video: its segments loaded, Proceed saves them, nothi
 	expect(put.body).toEqual({
 		all_segments_done: true,
 		tags: [],
-		segments: [{ id: 11, begin_s: 1, end_s: 2, technique: 'gyokko.keto', performer: 'hatsumi', tags: [] }]
+		segments: [{ id: 11, begin_s: 1, end_s: 2, technique: KETO, performer: 'hatsumi', tags: [] }]
 	});
 	expect(sent.filter((s) => s.path.startsWith('/files') || s.path.includes('/submit'))).toEqual([]); // no upload
 });
@@ -295,7 +289,7 @@ test('who did what: the file name, its uploader, each segment\'s author (mine fo
 test('leaving with unsaved changes asks first', async ({ page }) => {
 	await setup(page);
 	await page.goto('/videos/1');
-	await page.getByRole('article', { name: 'Segment 1' }).getByLabel('Technique').selectOption('gyokko.keto');
+	await page.getByRole('article', { name: 'Segment 1' }).getByLabel('Technique').selectOption(KETO);
 	// Every confirmation answered by `answer` (a click interrupted by a dialog may be
 	// replayed by Playwright: never leave one open).
 	const asked: string[] = [];
@@ -306,7 +300,7 @@ test('leaving with unsaved changes asks first', async ({ page }) => {
 	await expect.poll(() => asked.length).toBeGreaterThan(0);
 	expect(asked[0]).toBe('Leave without saving your changes?');
 	await expect(page).toHaveURL('/videos/1'); // stayed, changes kept
-	await expect(page.getByRole('article', { name: 'Segment 1' }).getByLabel('Technique')).toHaveValue('gyokko.keto');
+	await expect(page.getByRole('article', { name: 'Segment 1' }).getByLabel('Technique')).toHaveValue(KETO);
 
 	answer = true;
 	await page.getByRole('button', { name: 'Cancel' }).press('Enter');

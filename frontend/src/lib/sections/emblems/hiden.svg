@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" fill="none" stroke="#b3261e" stroke-opacity="0.4" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">
+	<!-- Hiden, the secret transmission: a sealed scroll -->
+	<rect x="40" y="76" width="120" height="48" rx="24" fill="#b3261e" fill-opacity="0.12"/>
+	<path d="M100 76v48M84 124l-14 40M116 124l14 40"/>
+	<circle cx="100" cy="100" r="10"/>
+</svg>

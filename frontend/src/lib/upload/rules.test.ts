@@ -7,8 +7,10 @@ const segment = (over: Partial<DraftSegment> = {}): DraftSegment => ({
 	begin: 12.4,
 	end: 26.2,
 	school: 'gyokko',
-	level: 'shoden',
-	technique: 'gyokko.koku',
+	category: 'taijutsu',
+	weapon: '',
+	section: 'gyokko.taijutsu.jo_ryaku',
+	technique: 'gyokko.taijutsu.jo_ryaku.koku',
 	performer: 'hatsumi',
 	tags: [],
 	...over
@@ -40,6 +42,16 @@ describe('segments', () => {
 	it('complete segment', () => expect(segmentProblems(segment(), 60)).toEqual([]));
 	it('lists what is missing', () =>
 		expect(segmentProblems(segment({ school: '', performer: '' }), 60)).toEqual(['school', 'performer']));
+	it('a weapon only under Buki', () => {
+		const staff = { category: 'buki', section: 'kukishinden.buki.rokushakubo.shoden' };
+		expect(segmentProblems(segment({ ...staff, weapon: '' }), 60)).toEqual(['weapon']);
+		expect(segmentProblems(segment({ ...staff, weapon: 'rokushakubo' }), 60)).toEqual([]);
+		expect(segmentProblems(segment({ category: '', section: '', technique: '' }), 60)).toEqual([
+			'category',
+			'section',
+			'technique'
+		]);
+	});
 	it('times inside the video, end after begin', () => {
 		expect(segmentProblems(segment({ end: 12 }), 60)).toEqual(['times']);
 		expect(segmentProblems(segment({ end: 70 }), 60)).toEqual(['times']);
@@ -68,7 +80,7 @@ describe('submit body', () => {
 		const body = submitBody(draft({ mode: 'later', allSegmentsDone: true, segments: [segment()] }));
 		expect(body.all_segments_done).toBe(false);
 		expect(body.segments).toEqual([
-			{ begin_s: 12, end_s: 27, technique: 'gyokko.koku', performer: 'hatsumi', tags: [] }
+			{ begin_s: 12, end_s: 27, technique: 'gyokko.taijutsu.jo_ryaku.koku', performer: 'hatsumi', tags: [] }
 		]);
 	});
 });

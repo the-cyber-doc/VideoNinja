@@ -1,14 +1,10 @@
 import { expect, test, type Page } from '@playwright/test';
+import { CATALOG as FULL, KOKU } from '../catalog';
 
 // Writing comments, with a fake API that keeps them (and sorts them as the server:
 // last modified first). The logged-in user is kenji.
-const CATALOG = {
-	schools: [{ id: 'gyokko', kanji: '玉虎流', romaji: 'Gyokko Ryu' }],
-	levels: [{ id: 'shoden', kanji: '初伝', romaji: 'Shoden' }],
-	techniques: [{ id: 'gyokko.koku', kanji: '虚空', romaji: 'Koku', ryu: 'gyokko', level: 'shoden' }],
-	segments: []
-};
-const PAGE = '/schools/gyokko/shoden/gyokko.koku';
+const CATALOG = { ...FULL, segments: [] };
+const PAGE = '/schools/gyokko/taijutsu/jo_ryaku/koku';
 
 interface Comment {
 	id: number;
@@ -34,7 +30,7 @@ async function setup(page: Page, access = ['segment', 'comment']) {
 		r.fulfill({ json: { username: 'kenji', name: null, role: 'user', role_name: 'User', access } })
 	);
 	await page.route('/api/catalog', (r) => r.fulfill({ json: CATALOG }));
-	await page.route('/api/techniques/gyokko.koku/comments', (r) => {
+	await page.route(`/api/techniques/${KOKU}/comments`, (r) => {
 		if (r.request().method() === 'GET') return r.fulfill({ json: sorted() });
 		const body = r.request().postDataJSON();
 		sent.push({ method: 'POST', url: r.request().url(), body });
@@ -79,7 +75,7 @@ test('add a comment: the button comes first, the new comment on top', async ({ p
 	await expect(section.locator('form')).toHaveCount(0);
 	await expect(list(page)).toHaveText([/Keep the elbow low/, /My old one/, /Celui d'Hana/]);
 	expect(sent).toEqual([
-		{ method: 'POST', url: expect.stringMatching(/\/api\/techniques\/gyokko.koku\/comments$/), body: { text: 'Keep the elbow low.\nThen turn.', lang: 'fr' } }
+		{ method: 'POST', url: expect.stringMatching(new RegExp(`/api/techniques/${KOKU}/comments$`)), body: { text: 'Keep the elbow low.\nThen turn.', lang: 'fr' } }
 	]);
 	const added = list(page).first();
 	await expect(added.getByRole('img', { name: 'Language: Français' })).toBeVisible();
@@ -138,7 +134,7 @@ test('without the comment access: no add, edit or delete', async ({ page }) => {
 
 test('a failed save keeps the text and says why', async ({ page }) => {
 	await setup(page);
-	await page.route('/api/techniques/gyokko.koku/comments', (r) =>
+	await page.route(`/api/techniques/${KOKU}/comments`, (r) =>
 		r.request().method() === 'POST' ? r.fulfill({ status: 403, json: { detail: 'Access denied' } }) : r.fallback()
 	);
 	await page.goto(PAGE);

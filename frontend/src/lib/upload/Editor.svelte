@@ -99,7 +99,7 @@
 	}
 
 	function create(begin: number, end: number) {
-		// The new segment starts with the previous one's school, level and performer.
+		// The new segment starts with the previous one's place in the catalogue (all but the technique) and performer.
 		const last = draft.segments.at(-1);
 		const key = nextKey();
 		draft.segments.push({
@@ -107,7 +107,9 @@
 			begin,
 			end,
 			school: last?.school ?? '',
-			level: last?.level ?? '',
+			category: last?.category ?? '',
+			weapon: last?.weapon ?? '',
+			section: last?.section ?? '',
 			technique: '',
 			performer: last?.performer ?? '',
 			tags: []
