@@ -7,6 +7,7 @@
 	// when the pointer leaves, the video shows the marker's frame again.
 	import Icon from '../Icon.svelte';
 	import { t } from '../i18n.svelte';
+	import { FRAME_SAMPLES, frameDuration, frameStep, type FrameSample } from '../frames';
 	import { formatTime } from '../time';
 	import type { Annotation } from './draft.svelte';
 	import Timeline from './Timeline.svelte';
@@ -83,8 +84,11 @@
 	}
 
 	const step = (frames: number) => {
-		video?.pause();
-		seek(current + frames * frame);
+		if (video && !video.paused) {
+			video.pause();
+			current = video.currentTime; // timeupdate lags: where it actually stopped
+		}
+		seek(frameStep(current, frames, frame));
 	};
 
 	function stop() {
@@ -161,22 +165,26 @@
 	}
 
 	/** Frame duration from consecutive frames, played for a moment by a hidden,
-	 * muted video: the visible one (and its seek marker) is never disturbed. */
+	 * muted video: the visible one (and its seek marker) is never disturbed. In the
+	 * page, invisible: WebKit only reports the frames of a video it renders. */
 	async function measureFrame(url: string): Promise<number> {
 		const v = document.createElement('video');
 		if (!('requestVideoFrameCallback' in v)) return frame;
 		v.muted = true;
+		v.playsInline = true;
 		v.preload = 'auto';
+		v.setAttribute('aria-hidden', 'true');
+		v.style.cssText = 'position:fixed;left:0;top:0;width:2px;height:2px;opacity:0;pointer-events:none';
+		document.body.append(v);
 		v.src = url;
-		const times: number[] = [];
+		const samples: FrameSample[] = [];
 		const measured = await new Promise<number>((resolve) => {
 			const timer = setTimeout(() => resolve(frame), 2000);
 			const onFrame = (_: number, meta: VideoFrameCallbackMetadata) => {
-				times.push(meta.mediaTime);
-				if (times.length < 6) return v.requestVideoFrameCallback(onFrame);
+				samples.push(meta);
+				if (samples.length < FRAME_SAMPLES) return v.requestVideoFrameCallback(onFrame);
 				clearTimeout(timer);
-				const gaps = times.slice(1).map((time, i) => time - times[i]).filter((gap) => gap > 0.001);
-				resolve(gaps.length ? Math.min(...gaps) : frame);
+				resolve(frameDuration(samples) ?? frame);
 			};
 			v.requestVideoFrameCallback(onFrame);
 			v.play().catch(() => resolve(frame));
@@ -184,6 +192,7 @@
 		v.pause();
 		v.removeAttribute('src');
 		v.load();
+		v.remove();
 		return measured;
 	}
 

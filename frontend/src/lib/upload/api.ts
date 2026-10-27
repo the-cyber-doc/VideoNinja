@@ -53,6 +53,23 @@ export interface UploadStatus {
 }
 
 /** False when the server cannot receive uploads now (its tusd is not running). */
+/** What the server accepts (the page refuses other files before hashing them). */
+export interface UploadLimits {
+	max_bytes: number;
+	/** Lower case, without the dot. */
+	extensions: string[];
+}
+
+export const uploadLimits = () => api<UploadLimits>('/api/uploads/limits');
+
+/** Why this file cannot be uploaded, or '' if it can. */
+export function refusal(file: { name: string; size: number }, limits: UploadLimits | null): 'type' | 'size' | '' {
+	if (!limits) return ''; // not known (yet): the server checks anyway
+	const extension = file.name.includes('.') ? file.name.split('.').pop()!.toLowerCase() : '';
+	if (!limits.extensions.includes(extension)) return 'type';
+	return file.size > limits.max_bytes ? 'size' : '';
+}
+
 export const uploadsAvailable = async () =>
 	(await api<{ available: boolean }>('/api/uploads/available')).available;
 

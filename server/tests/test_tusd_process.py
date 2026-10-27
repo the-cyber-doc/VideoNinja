@@ -31,7 +31,7 @@ def wait_for(condition, timeout=5.0):
 def test_command_line(tmp_path, monkeypatch):
     monkeypatch.setenv("VIDEONINJA_TUSD_BIN", "/bin/tusd")
     monkeypatch.setenv("VIDEONINJA_UPLOAD_DIR", str(tmp_path / "up"))
-    monkeypatch.setenv("VIDEONINJA_MAX_UPLOAD_GB", "1")
+    monkeypatch.setenv("VIDEONINJA_MAX_UPLOAD_BYTES", str(1024**3))
     cmd = tusd.Tusd().command()
     assert cmd[0] == "/bin/tusd"
     args = dict(zip(cmd[1::2], cmd[2::2]))

@@ -109,7 +109,17 @@
 	"menu.user": { "en": "User menu", "fr": "Menu utilisateur" },
 	"menu.profile": { "en": "Profile", "fr": "Profil" },
 	"menu.user_mgmt": { "en": "User Management", "fr": "Gestion des utilisateurs" },
+	"menu.about": { "en": "About", "fr": "À propos" },
 	"menu.logout": { "en": "Log out", "fr": "Se déconnecter" },
+
+	"about.title": { "en": "About", "fr": "À propos" },
+	"about.version": { "en": "Version {version}", "fr": "Version {version}" },
+	"about.build": { "en": "Build {build} of {date}", "fr": "Build {build} du {date}" },
+	"about.db_version": { "en": "Database version {n}", "fr": "Version de la base de données {n}" },
+	"about.db_schema": { "en": "(this release ships version {n})", "fr": "(cette version fournit la version {n})" },
+	"about.source": { "en": "Source code on GitHub", "fr": "Code source sur GitHub" },
+	"about.image": { "en": "Docker images on Docker Hub", "fr": "Images Docker sur Docker Hub" },
+	"about.license": { "en": "Licensed under the GNU GPL v3", "fr": "Sous licence GNU GPL v3" },
 
 	"home.logged_in_as": { "en": "Logged in as", "fr": "Connecté en tant que" },
 
@@ -227,6 +237,14 @@
 	"upload.hashing": {
 		"en": "Checking the file (SHA-256)…",
 		"fr": "Vérification du fichier (SHA-256)…"
+	},
+	"upload.too_large": {
+		"en": "This file is too large: at most {max} GB.",
+		"fr": "Ce fichier est trop volumineux : {max} Go au plus."
+	},
+	"upload.wrong_type": {
+		"en": "This type of file is not accepted. Accepted: {types}.",
+		"fr": "Ce type de fichier n'est pas accepté. Acceptés : {types}."
 	},
 	"upload.duplicate": {
 		"en": "This video already exists.",

@@ -2,6 +2,9 @@ import { expect, test, type Page, type Request } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 import { CATALOG as FULL, KOKU, STAFF } from '../catalog';
 
+// The editor's video. Not the hidden one that measures the frame duration for a moment (aria-hidden).
+const PLAYER = 'video:not([aria-hidden="true"])';
+
 // The upload page with the API and tusd faked. The video is a real 4 s clip
 // (VP9: Playwright's Chromium has no H.264), opened locally by the page.
 const CLIP = 'tests/fixtures/clip.webm';
@@ -24,6 +27,7 @@ interface Fake {
 	submitted: unknown[];
 	mine: unknown[];
 	tusRequests: string[];
+	limits: { max_bytes: number; extensions: string[] };
 }
 
 // As the server sends them: names in the request's language, sorted by name.
@@ -48,6 +52,7 @@ async function setup(page: Page, user = UPLOADER, over: Partial<Fake> = {}): Pro
 		submitted: [],
 		mine: [],
 		tusRequests: [],
+		limits: { max_bytes: 20 * 1024 ** 3, extensions: ['mp4', 'mov', 'mkv', 'webm'] },
 		...over
 	};
 	page.on('dialog', (d) => d.accept());
@@ -67,6 +72,7 @@ async function setup(page: Page, user = UPLOADER, over: Partial<Fake> = {}): Pro
 	await page.route('/api/videos/exists*', (r) => r.fulfill({ json: { exists: fake.exists } }));
 	await page.route('/api/uploads/available', (r) => r.fulfill({ json: { available: fake.available } }));
 	await page.route('/api/uploads/mine', (r) => r.fulfill({ json: fake.mine }));
+	await page.route('/api/uploads/limits', (r) => r.fulfill({ json: fake.limits }));
 	await page.route('/api/uploads/*/submit', (r) => {
 		fake.submitted.push({ url: r.request().url(), body: r.request().postDataJSON() });
 		return r.fulfill({ status: 201, json: { id: 1 } });
@@ -90,7 +96,7 @@ async function setup(page: Page, user = UPLOADER, over: Partial<Fake> = {}): Pro
 async function openClip(page: Page) {
 	await page.goto('/upload');
 	await page.getByLabel('Video file').setInputFiles(CLIP);
-	await expect(page.locator('video')).toBeVisible();
+	await expect(page.locator(PLAYER)).toBeVisible();
 	await expect(page.getByRole('slider', { name: 'Timeline' })).toBeVisible();
 }
 
@@ -139,7 +145,30 @@ test('the file is checked by SHA-256: an uploaded one is refused', async ({ page
 	await page.getByLabel('Video file').setInputFiles(CLIP);
 	await check;
 	await expect(page.getByText('This video already exists.')).toBeVisible();
-	await expect(page.locator('video')).toHaveCount(0);
+	await expect(page.locator(PLAYER)).toHaveCount(0);
+});
+
+test('only the accepted types can be picked; others are refused before hashing', async ({ page }) => {
+	await setup(page);
+	await page.goto('/upload');
+	const input = page.getByLabel('Video file');
+	await expect(input).toHaveAttribute('accept', '.mp4,.mov,.mkv,.webm');
+	let checked = false;
+	page.on('request', (r) => (checked ||= r.url().includes('/api/videos/exists')));
+	await input.setInputFiles({ name: 'notes.txt', mimeType: 'text/plain', buffer: Buffer.from('hello') });
+	await expect(page.getByRole('alert')).toHaveText('This type of file is not accepted. Accepted: mp4, mov, mkv, webm.');
+	await expect(page.locator(PLAYER)).toHaveCount(0);
+	expect(checked).toBe(false); // not hashed, not sent
+});
+
+test('a file over the size limit is refused before hashing; in French', async ({ page }) => {
+	await page.addInitScript(() => localStorage.setItem('lang', 'fr'));
+	await setup(page, UPLOADER, { limits: { max_bytes: CLIP_SIZE - 1, extensions: ['webm'] } });
+	await page.goto('/upload');
+	await page.getByLabel('Fichier vidéo').setInputFiles(CLIP);
+	const max = new Intl.NumberFormat('fr', { maximumSignificantDigits: 3 }).format((CLIP_SIZE - 1) / 1024 ** 3);
+	await expect(page.getByRole('alert')).toHaveText(`Ce fichier est trop volumineux : ${max} Go au plus.`);
+	await expect(page.locator(PLAYER)).toHaveCount(0);
 });
 
 test('modes and the "all segments done" checkbox', async ({ page }) => {
@@ -228,7 +257,7 @@ test('segments by drag and by I/O, complete them, proceed: upload then submit', 
 	expect(segments[0].end_s).toBe(2);
 	expect(segments[1].begin_s).toBeGreaterThanOrEqual(2);
 	expect(segments[1].end_s).toBe(4);
-	await expect(page.locator('video')).toHaveCount(0); // page reset
+	await expect(page.locator(PLAYER)).toHaveCount(0); // page reset
 });
 
 test('choosing a technique: one select per step, a weapon only under Buki', async ({ page }) => {
@@ -320,7 +349,7 @@ test('cancel forgets the work and resets the page', async ({ page }) => {
 	await drag(page, 0.2, 0.5);
 	await expect(page.getByRole('article', { name: 'Segment 1' })).toBeVisible();
 	await page.getByRole('button', { name: 'Cancel' }).click();
-	await expect(page.locator('video')).toHaveCount(0);
+	await expect(page.locator(PLAYER)).toHaveCount(0);
 	await expect(page.getByText('Unfinished uploads on this device')).toHaveCount(0);
 });
 
@@ -388,7 +417,7 @@ test('a video just published: the catalogue is fetched again at once', async ({ 
 });
 
 /** The frame shown by the video, in seconds. */
-const shown = (page: Page) => page.locator('video').evaluate((v: HTMLVideoElement) => v.currentTime);
+const shown = (page: Page) => page.locator(PLAYER).evaluate((v: HTMLVideoElement) => v.currentTime);
 const marker = (page: Page) => page.getByRole('slider', { name: 'Timeline' });
 
 test('the timeline shows the frame under the pointer; the seek marker stays', async ({ page }) => {
@@ -429,11 +458,9 @@ test('the timeline shows the frame under the pointer; the seek marker stays', as
 	await expect(marker(page)).toHaveAttribute('aria-valuenow', '1');
 });
 
-// Exact frame steps need the browser's frame timestamps (requestVideoFrameCallback).
-// Playwright's WebKit on Linux plays media through GStreamer, not Safari's media
-// stack: its timestamps are not the frames' (CI measured 6, 21 and 33 ms for 40).
+// Exact frame steps need the frame duration, measured from the frame callbacks
+// (requestVideoFrameCallback) of a hidden video ($lib/frames.ts).
 test.describe('frame by frame', () => {
-	test.skip(({ browserName }) => browserName === 'webkit', "Linux WebKit's frame timestamps (GStreamer) are not Safari's");
 
 	test('→ steps one frame of the video (measured: 25 fps here)', async ({ page }) => {
 		await setup(page);
@@ -446,9 +473,12 @@ test.describe('frame by frame', () => {
 				await page.mouse.move(box.x, box.y - 40); // off the timeline: no preview
 				const before = await shown(page);
 				await page.locator('body').press('ArrowRight');
-				return Math.round(((await shown(page)) - before) * 1000);
+				const after = await shown(page);
+				// Wherever the click landed in its frame: the next frame, on the 25 fps grid
+				// (a hundredth of a frame in), which needs the measured 40 ms.
+				return [Math.floor(after * 25) - Math.floor(before * 25), Math.round(((after * 25) % 1) * 100)];
 			})
-			.toBe(40);
+			.toEqual([1, 1]);
 	});
 });
 

@@ -27,13 +27,12 @@ import logging
 import os
 import re
 import sqlite3
-import subprocess
 import tempfile
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from fastapi.responses import FileResponse
 
-from . import db, paths, queries, snapshot
+from . import db, limits, paths, procs, queries, snapshot
 from .auth import require_access
 
 log = logging.getLogger("uvicorn.error")
@@ -90,11 +89,13 @@ def _dev_clip(video, sha: str, begin: int, end: int):
     fd, tmp = tempfile.mkstemp(dir=clip.parent, suffix=".part.mp4")
     os.close(fd)
     try:
-        subprocess.run(["ffmpeg", "-v", "error", "-nostdin", "-y", "-ss", str(begin), "-to", str(end),
-                        "-i", f"file:{video}", "-map", "0", "-c", "copy", "-movflags", "+faststart",
-                        "-f", "mp4", f"file:{tmp}"], check=True, capture_output=True)
+        result = procs.run(["ffmpeg", "-v", "error", "-nostdin", "-y", "-ss", str(begin), "-to", str(end),
+                            *limits.ffmpeg_input(own=True), "-i", f"file:{video}", "-map", "0", "-c", "copy",
+                            "-movflags", "+faststart", "-f", "mp4", f"file:{tmp}"])
+        if result.returncode != 0:
+            raise OSError(result.stderr.strip()[-500:])
         os.replace(tmp, clip)  # complete or absent, also with requests in parallel
-    except (OSError, subprocess.CalledProcessError) as e:
+    except (OSError, procs.Timeout) as e:
         log.error("Segment clip %s %s-%s: %s", sha, begin, end, e)
         raise _not_found() from None
     finally:

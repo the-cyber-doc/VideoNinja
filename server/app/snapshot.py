@@ -25,7 +25,6 @@ import logging
 import os
 import shutil
 import sqlite3
-import subprocess
 import threading
 import time
 from collections.abc import Iterator
@@ -34,11 +33,14 @@ from pathlib import Path
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from fastapi.responses import FileResponse
 
-from . import catalog, db, i18n
+from . import catalog, db, i18n, procs
 from .auth import current_user
 
 log = logging.getLogger("uvicorn.error")
 router = APIRouter(prefix="/api", tags=["catalog"])
+# Called by the encoder's container (no catalogue there). Never forwarded by nginx;
+# a call from elsewhere only costs a rebuild (one at a time, no new version if nothing changed).
+internal_router = APIRouter(prefix="/internal", tags=["internal"])
 
 INTERNAL_PREFIX = "/protected-catalog"  # nginx internal location, aliased to versions/
 KEEP = 3  # previous versions kept for requests in flight
@@ -81,7 +83,9 @@ def _compress(path: Path) -> None:
         if shutil.which(tool) is None:
             log.warning("%s not found: %s not precompressed", tool, path.name)
             continue
-        subprocess.run(cmd, check=True, capture_output=True)
+        result = procs.run(cmd, timeout=600)
+        if result.returncode != 0:
+            raise RuntimeError(f"{tool} failed: {result.stderr.strip()[-500:]}")
 
 
 def _files(con: sqlite3.Connection) -> dict[str, tuple[str, bytes]]:
@@ -162,6 +166,17 @@ def schedule() -> None:
         _timer.start()
 
 
+def rebuild_now() -> None:
+    """Rebuild at once (errors logged), dropping a scheduled rebuild: a video just
+    published must be in the catalogue the upload page fetches when it sees it."""
+    global _timer
+    with _timer_lock:
+        timer, _timer = _timer, None
+    if timer is not None:
+        timer.cancel()
+    _rebuild_logged()
+
+
 def flush() -> None:
     """Run a scheduled rebuild now (shutdown, tests)."""
     global _timer
@@ -203,3 +218,10 @@ def get_catalog(
         media_type="application/json",
         headers={"Cache-Control": "private, no-cache", "Vary": "Accept-Language"},
     )
+
+
+@internal_router.post("/catalog-changed", status_code=status.HTTP_204_NO_CONTENT)
+def catalog_changed() -> None:
+    """The encoder published a video or made thumbnails: rebuild the catalogue now
+    (not debounced: publishing is rare, and the upload page fetches it at once)."""
+    rebuild_now()

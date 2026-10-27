@@ -22,7 +22,7 @@ test('menu without user management access', async ({ page }) => {
 	await expect(page.getByRole('button', { name: 'Log out' })).toHaveCount(0); // only in the menu
 
 	await page.getByRole('button', { name: 'User menu' }).click();
-	await expect(page.getByRole('menuitem')).toHaveText(['Profile', 'Log out']);
+	await expect(page.getByRole('menuitem')).toHaveText(['Profile', 'About', 'Log out']);
 	// Click outside closes it.
 	await page.getByText('Logged in as').click();
 	await expect(page.getByRole('menu')).toBeHidden();
@@ -43,7 +43,57 @@ test('menu with user management access', async ({ page }) => {
 	await loggedInAs(page, ADMIN);
 	await page.goto('/');
 	await page.getByRole('button', { name: 'User menu' }).click();
-	await expect(page.getByRole('menuitem')).toHaveText(['Profile', 'User Management', 'Log out']);
+	await expect(page.getByRole('menuitem')).toHaveText(['Profile', 'User Management', 'About', 'Log out']);
+});
+
+test('About: the app, its version and build, the database version, links and copyright', async ({ page }) => {
+	await loggedInAs(page, USER);
+	await page.route('/api/about', (r) => r.fulfill({ json: { db_version: 1, db_schema: 1 } }));
+	await page.goto('/');
+	await page.getByRole('button', { name: 'User menu' }).click();
+	await page.getByRole('menuitem', { name: 'About' }).click();
+	await expect(page).toHaveURL('/about');
+
+	const main = page.getByRole('main');
+	await expect(main.getByRole('heading', { name: 'About' })).toBeVisible();
+	await expect(main.getByText('Video Ninja')).toBeVisible();
+	// Set by the build: the release (CI on a tag) or "dev"; the commit, "-dirty" with local changes.
+	await expect(main.getByText(/^Version (dev|\d+\.\d+\.\d+)$/)).toBeVisible();
+	await expect(main.getByText(/^Build ([0-9a-f]{7}(-dirty)?|unknown) of \w{3} \d+, \d{4}$/)).toBeVisible();
+	await expect(main.getByText('Database version 1', { exact: true })).toBeVisible();
+	await expect(main.getByText('this release ships')).toHaveCount(0);
+
+	for (const [name, href] of [
+		['Source code on GitHub', 'https://github.com/the-cyber-doc/VideoNinja'],
+		['Docker images on Docker Hub', 'https://hub.docker.com/u/thecyberdoc'],
+		['Licensed under the GNU GPL v3', 'https://github.com/the-cyber-doc/VideoNinja/blob/main/LICENSE']
+	]) {
+		const link = main.getByRole('link', { name });
+		await expect(link).toHaveAttribute('href', href);
+		await expect(link).toHaveAttribute('target', '_blank');
+		await expect(link).toHaveAttribute('rel', 'noopener noreferrer');
+	}
+	await expect(main.getByText(`© ${new Date().getUTCFullYear()} the-cyber-doc`)).toBeVisible();
+});
+
+test('About: a database older than the release says so; in French', async ({ page }) => {
+	await page.addInitScript(() => localStorage.setItem('lang', 'fr'));
+	await loggedInAs(page, USER);
+	await page.route('/api/about', (r) => r.fulfill({ json: { db_version: 1, db_schema: 2 } }));
+	await page.goto('/about');
+	const main = page.getByRole('main');
+	await expect(main.getByRole('heading', { name: 'À propos' })).toBeVisible();
+	await expect(main.getByText('Version de la base de données 1')).toBeVisible();
+	await expect(main.getByText('(cette version fournit la version 2)')).toBeVisible();
+	await expect(main.getByRole('link', { name: 'Code source sur GitHub' })).toBeVisible();
+});
+
+test('About offline: the database version is unknown, the rest is there', async ({ page }) => {
+	await loggedInAs(page, USER);
+	await page.route('/api/about', (r) => r.abort());
+	await page.goto('/about');
+	await expect(page.getByText('Database version —')).toBeVisible();
+	await expect(page.getByRole('link', { name: 'Source code on GitHub' })).toBeVisible();
 });
 
 test('user management page is not reachable without access', async ({ page }) => {

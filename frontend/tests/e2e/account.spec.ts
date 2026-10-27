@@ -1,8 +1,11 @@
-import { readFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { expect, test, type Page } from '@playwright/test';
 import { TOTP } from 'otpauth';
 
-// Real backend (tests/e2e/backend.sh), fresh database: the tests depend on each other.
+// Real backend, fresh database: the tests depend on each other. Either Playwright's own
+// (tests/e2e/backend.sh, at the domain's root), or the real containers under their base
+// path (tools/test-e2e-stack.sh: E2E_BASE_URL, E2E_SETUP_TOKEN). Paths are relative to
+// the base URL ('login', not '/login'), so they work in both.
 test.describe.configure({ mode: 'serial' });
 
 interface Account {
@@ -17,13 +20,14 @@ let inviteLink = '';
 const code = (account: Account) => new TOTP({ secret: account.totpSecret }).generate();
 
 function setupToken(): string {
+	if (process.env.E2E_SETUP_TOKEN) return process.env.E2E_SETUP_TOKEN;
 	const match = readFileSync('.e2e/server.log', 'utf8').match(/Setup token: (\S+)/);
 	if (!match) throw new Error('No setup token in .e2e/server.log');
 	return match[1];
 }
 
 async function fillLogin(page: Page, account: Account, password = account.password) {
-	await page.goto('/login');
+	await page.goto('login');
 	await page.getByLabel('Username').fill(account.username);
 	await page.getByLabel('Password').fill(password);
 	await page.getByLabel('Authenticator code').fill(account.totpSecret ? code(account) : '123456');
@@ -42,7 +46,7 @@ async function openMenu(page: Page) {
 
 async function logOut(page: Page) {
 	await (await openMenu(page)).getByRole('menuitem', { name: 'Log out' }).click();
-	await expect(page).toHaveURL('/login');
+	await expect(page).toHaveURL('login');
 }
 
 /** Fill the account + authenticator steps of the wizard; return the TOTP secret. */
@@ -61,8 +65,8 @@ async function createAccount(page: Page, password: string): Promise<string> {
 }
 
 test('setup wizard creates the admin account', async ({ page }) => {
-	await page.goto('/');
-	await expect(page).toHaveURL('/setup');
+	await page.goto('./');
+	await expect(page).toHaveURL('setup');
 
 	await page.getByLabel('Setup token').fill(setupToken());
 	await page.getByRole('button', { name: 'Continue' }).click();
@@ -73,13 +77,13 @@ test('setup wizard creates the admin account', async ({ page }) => {
 });
 
 test('setup is closed afterwards', async ({ request }) => {
-	const res = await request.post('/api/setup/verify', { data: { token: 'anything' } });
+	const res = await request.post('api/setup/verify', { data: { token: 'anything' } });
 	expect(res.status()).toBe(404);
 });
 
 test('media requests reach the backend (as nginx does in production)', async ({ request }) => {
 	// Not logged in: the app's 401 (JSON), not a 404 page from the frontend server.
-	const res = await request.get('/media/segment/1/thumbnail');
+	const res = await request.get('media/segment/1/thumbnail');
 	expect(res.status()).toBe(401);
 	expect(await res.json()).toEqual({ detail: 'Not logged in' });
 });
@@ -87,7 +91,7 @@ test('media requests reach the backend (as nginx does in production)', async ({ 
 test('wrong password is refused', async ({ page }) => {
 	await fillLogin(page, admin, 'wrong password!');
 	await expect(page.getByRole('alert')).toBeVisible();
-	await expect(page).toHaveURL('/login');
+	await expect(page).toHaveURL('login');
 });
 
 test('log in, then log out from the user menu', async ({ page }) => {
@@ -95,16 +99,23 @@ test('log in, then log out from the user menu', async ({ page }) => {
 	await logOut(page);
 
 	// The session is gone on the server too.
-	await page.goto('/');
-	await expect(page).toHaveURL('/login');
+	await page.goto('./');
+	await expect(page).toHaveURL('login');
 });
 
-test('user menu: Profile first, User Management for admins, Log out last', async ({ page }) => {
+test('user menu: Profile first, User Management for admins, About, Log out last', async ({ page }) => {
 	await logIn(page);
 	const menu = await openMenu(page);
-	await expect(menu.getByRole('menuitem')).toHaveText(['Profile', 'User Management', 'Log out']);
+	await expect(menu.getByRole('menuitem')).toHaveText(['Profile', 'User Management', 'About', 'Log out']);
 	await page.keyboard.press('Escape');
 	await expect(menu).toBeHidden();
+});
+
+test('About: the version of the database the server runs on', async ({ page }) => {
+	await logIn(page);
+	await (await openMenu(page)).getByRole('menuitem', { name: 'About' }).click();
+	await expect(page.getByText('Database version 1', { exact: true })).toBeVisible();
+	await expect(page.getByText('this release ships')).toHaveCount(0);
 });
 
 test('profile: change the display name', async ({ page }) => {
@@ -121,7 +132,7 @@ test('profile: change the display name', async ({ page }) => {
 
 test('profile: change the password', async ({ page }) => {
 	await logIn(page);
-	await page.goto('/profile');
+	await page.goto('profile');
 	const section = page.getByRole('region', { name: 'Password' });
 	const newPassword = 'another long passphrase';
 
@@ -142,7 +153,7 @@ test('profile: change the password', async ({ page }) => {
 
 test('profile: replace the authenticator', async ({ page }) => {
 	await logIn(page);
-	await page.goto('/profile');
+	await page.goto('profile');
 	const section = page.getByRole('region', { name: 'Authenticator' });
 	await section.getByRole('button', { name: 'Set up a new authenticator' }).click();
 
@@ -159,17 +170,19 @@ test('profile: replace the authenticator', async ({ page }) => {
 	await logIn(page);
 });
 
-test('user management: create a user and get the invitation link', async ({ page }) => {
+test('user management: create a user and get the invitation link', async ({ page, baseURL }) => {
 	await logIn(page);
 	await (await openMenu(page)).getByRole('menuitem', { name: 'User Management' }).click();
-	await expect(page).toHaveURL('/admin/users');
+	await expect(page).toHaveURL('admin/users');
 
 	await page.getByLabel('Username').fill(kenji.username);
 	await page.getByLabel('Role').selectOption({ label: 'User' });
 	await page.getByRole('button', { name: 'Create' }).click();
 
 	inviteLink = await page.getByLabel('Invitation link').inputValue();
-	expect(inviteLink).toMatch(/^https:\/\/localhost:\d+\/register#[\w-]{40,}$/);
+	// The app's address (with its base path) + register#<token>.
+	const register = new URL('register', baseURL).href.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&');
+	expect(inviteLink).toMatch(new RegExp(`^${register}#[\\w-]{40,}$`));
 	const row = page.getByRole('row', { name: /kenji/ });
 	await expect(row).toContainText('Invitation pending');
 	await expect(row.getByRole('button', { name: 'Copy invite link' })).toBeVisible();
@@ -178,20 +191,20 @@ test('user management: create a user and get the invitation link', async ({ page
 
 test('an invited user without password and TOTP cannot log in', async ({ page }) => {
 	for (const password of ['', "kenji's long password", 'x'.repeat(12)]) {
-		await page.goto('/login');
+		await page.goto('login');
 		await page.getByLabel('Username').fill(kenji.username);
 		await page.getByLabel('Password').fill(password || 'something');
 		await page.getByLabel('Authenticator code').fill('123456');
 		await page.getByRole('button', { name: 'Log in' }).click();
 		await expect(page.getByRole('alert')).toBeVisible();
-		await expect(page).toHaveURL('/login');
+		await expect(page).toHaveURL('login');
 	}
 });
 
 test('the invitation link opens the registration wizard', async ({ page }) => {
 	await page.goto(inviteLink);
 	await expect(page.getByText('Username: kenji')).toBeVisible();
-	await expect(page).toHaveURL('/register'); // token removed from the address bar
+	await expect(page).toHaveURL('register'); // token removed from the address bar
 	kenji.totpSecret = await createAccount(page, kenji.password);
 	await expect(page.getByText('Your account is ready')).toBeVisible();
 
@@ -204,17 +217,17 @@ test('the invitation link opens the registration wizard', async ({ page }) => {
 test('a user without user management access sees no menu entry and gets 403', async ({ page }) => {
 	await logIn(page, kenji);
 	const menu = await openMenu(page);
-	await expect(menu.getByRole('menuitem')).toHaveText(['Profile', 'Log out']);
+	await expect(menu.getByRole('menuitem')).toHaveText(['Profile', 'About', 'Log out']);
 
-	await page.goto('/admin/users');
-	await expect(page).toHaveURL('/');
-	expect((await page.request.get('/api/admin/users')).status()).toBe(403);
-	expect((await page.request.post('/api/admin/users', { data: { username: 'evil', role: 'admin' } })).status()).toBe(403);
+	await page.goto('admin/users');
+	await expect(page).toHaveURL('./');
+	expect((await page.request.get('api/admin/users')).status()).toBe(403);
+	expect((await page.request.post('api/admin/users', { data: { username: 'evil', role: 'admin' } })).status()).toBe(403);
 });
 
 test('user management: reset a registered account', async ({ page }) => {
 	await logIn(page);
-	await page.goto('/admin/users');
+	await page.goto('admin/users');
 	const row = page.getByRole('row', { name: /kenji/ });
 	await expect(row).toContainText('Registered');
 	// Own account: no reset button.
@@ -234,7 +247,7 @@ test('user management: reset a registered account', async ({ page }) => {
 test('comments: add, edit and delete my own, saved in the database', async ({ page }) => {
 	page.on('dialog', (d) => d.accept());
 	await logIn(page);
-	await page.goto('/schools/gyokko/taijutsu/jo_ryaku/koku');
+	await page.goto('schools/gyokko/taijutsu/jo_ryaku/koku');
 	const comments = page.locator('.comment');
 	await expect(page.getByText('No comments yet.')).toBeVisible();
 
@@ -262,4 +275,10 @@ test('comments: add, edit and delete my own, saved in the database', async ({ pa
 	await expect(page.getByText('No comments yet.')).toBeVisible();
 	await page.reload();
 	await expect(page.getByText('No comments yet.')).toBeVisible();
+});
+
+// The admin's final credentials (changed by the profile tests), for tests/stack.
+test.afterAll(() => {
+	mkdirSync('.e2e', { recursive: true });
+	writeFileSync('.e2e/admin.json', JSON.stringify(admin));
 });

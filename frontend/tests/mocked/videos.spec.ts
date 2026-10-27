@@ -2,6 +2,9 @@ import { expect, test, type Page } from '@playwright/test';
 import { CATALOG as FULL, KETO, KOKU } from '../catalog';
 import { fulfillClip } from '../clip';
 
+// The editor's video. Not the hidden one that measures the frame duration for a moment (aria-hidden).
+const PLAYER = 'video:not([aria-hidden="true"])';
+
 // The Videos page (video_mgmt access): published videos by section, and the
 // annotation panel for one of them. The API is faked and keeps what is saved.
 const CATALOG = { ...FULL, segments: [] };
@@ -223,7 +226,7 @@ test('annotate a published video: its segments loaded, Proceed saves them, nothi
 	await page.goto('/videos');
 	await section(page, 'In progress').getByRole('link').click();
 	await expect(page).toHaveURL('/videos/1');
-	await expect(page.locator('video').first()).toHaveAttribute('src', '/media/video/1');
+	await expect(page.locator(PLAYER).first()).toHaveAttribute('src', '/media/video/1');
 
 	// The saved segments, with their place in the catalogue.
 	const first = page.getByRole('article', { name: 'Segment 1' });
@@ -260,7 +263,7 @@ test('who did what: the file name, its uploader, each segment\'s author (mine fo
 	await expect(about.locator('.uploader')).toHaveText('Uploaded by Hana');
 	// The file name above the video, on the left; the uploader opposite.
 	const [name, uploader, video] = await Promise.all(
-		[about.locator('.filename'), about.locator('.uploader'), page.locator('video').first()].map((l) => l.boundingBox())
+		[about.locator('.filename'), about.locator('.uploader'), page.locator(PLAYER).first()].map((l) => l.boundingBox())
 	);
 	expect(name!.y + name!.height).toBeLessThanOrEqual(video!.y);
 	expect(uploader!.x).toBeGreaterThan(name!.x + name!.width);

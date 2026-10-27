@@ -7,7 +7,7 @@ from pathlib import Path
 import pyotp
 import pytest
 
-from app import db, snapshot
+from app import db, encoder, snapshot
 
 from .test_auth import login
 from .test_catalog import SHA, add_segments
@@ -115,18 +115,13 @@ def test_authors_by_display_name(admin, tmp_path, monkeypatch):
     assert [(s["id"], s["created_by"]) for s in r.json()["segments"]] == [(1, "admin"), (3, "Kenji")]
 
 
-def test_save_keeps_ids_adds_and_removes(admin, tmp_path, monkeypatch):
-    monkeypatch.setenv("VIDEONINJA_MEDIA_DIR", str(tmp_path / "media"))
-    folder = tmp_path / "media" / "video" / "ab" / SHA
-    folder.mkdir(parents=True)
-    (folder / "segment-2.jpg").write_bytes(b"old")
-    made = []
-    monkeypatch.setattr("app.encoder.thumbnail", lambda video, at, out: (made.append(at), out.write_bytes(b"jpg")))
+def test_save_keeps_ids_adds_and_removes(admin):
     body = {"all_segments_done": True, "tags": [{"id": "place", "value": "outdoor"}], "segments": [
         {"id": 1, "begin_s": 12, "end_s": 27, "technique": KETO, "performer": "masaaki-hatsumi",
-         "tags": [{"id": "place", "value": "dojo"}]},  # same times: same thumbnail
+         "tags": [{"id": "place", "value": "dojo"}]},  # same times
         {"begin_s": 30, "end_s": 40, "technique": KOKU, "performer": "hatsumi"},  # new
     ]}  # segment 2: removed
+    sql("UPDATE segment SET thumbnail = 'segment-' || id || '.jpg'")
     r = admin.put("/api/videos/1/annotations", json=body)
     assert r.status_code == 200, r.text
     saved = r.json()
@@ -135,18 +130,27 @@ def test_save_keeps_ids_adds_and_removes(admin, tmp_path, monkeypatch):
     assert saved["segments"][0]["tags"] == [{"id": "place", "value": "dojo"}]
     assert saved["all_segments_done"] is True and saved["tags"] == [{"id": "place", "value": "outdoor"}]
     assert sql("SELECT count(*) FROM segment_has_tags WHERE segment = 2") == [(0,)]
-    assert made == [35]  # only the new segment's thumbnail, in its middle
-    assert (folder / "segment-3.jpg").read_bytes() == b"jpg"
-    assert not (folder / "segment-2.jpg").exists()  # removed with its segment
-    assert sql("SELECT thumbnail FROM segment WHERE id = 3") == [("segment-3.jpg",)]
+    # Thumbnails are the encoder's: the API only marks the video, and the new segment has none yet.
+    assert sql("SELECT id, thumbnail FROM segment ORDER BY id") == [(1, "segment-1.jpg"), (3, None)]
+    assert sql("SELECT thumbs_dirty FROM video WHERE id = 1") == [(1,)]
 
-    # Re-timed: a new thumbnail, same ID.
-    body["segments"] = [{**saved["segments"][1], "begin_s": 2, "end_s": 6}]
+    # Re-timed: same ID, its thumbnail to be made again.
+    body["segments"] = [{**saved["segments"][0]}, {**saved["segments"][1], "begin_s": 2, "end_s": 6}]
+    sql("UPDATE segment SET thumbnail = 'segment-3.jpg' WHERE id = 3")
     r = admin.put("/api/videos/1/annotations", json=body)
-    assert [s["id"] for s in r.json()["segments"]] == [3] and made[-1] == 4
+    assert [s["id"] for s in r.json()["segments"]] == [3, 1]
+    assert sql("SELECT id, thumbnail FROM segment ORDER BY id") == [(1, "segment-1.jpg"), (3, None)]
+    assert sql("SELECT thumbs_dirty FROM video WHERE id = 1") == [(2,)]
+
+    # Tags or technique only: no thumbnail to make.
+    body["segments"] = [{**saved["segments"][0], "technique": KOKU}]
+    sql("DELETE FROM segment WHERE id = 3")
+    sql("UPDATE video SET thumbs_dirty = 0")
+    admin.put("/api/videos/1/annotations", json=body)
+    assert sql("SELECT thumbs_dirty FROM video WHERE id = 1") == [(0,)]
 
     snapshot.flush()  # the catalogue follows
-    assert [(s["id"], s["begin_s"]) for s in admin.get("/api/catalog").json()["segments"]] == [(3, 2)]
+    assert [(s["id"], s["begin_s"]) for s in admin.get("/api/catalog").json()["segments"]] == [(1, 12)]
 
 
 @pytest.mark.parametrize("segment, error", [
@@ -189,16 +193,47 @@ def test_whole_video_by_nginx(admin, monkeypatch):
 
 @pytest.mark.skipif(not (shutil.which("ffmpeg") and READY.is_file()), reason="ffmpeg or sample missing")
 def test_real_thumbnails_and_video(admin, tmp_path, monkeypatch):
+    """The encoder makes the thumbnails of new segments and deletes those of removed ones."""
     monkeypatch.setenv("VIDEONINJA_MEDIA_DIR", str(tmp_path / "media"))
     folder = tmp_path / "media" / "video" / "ab" / SHA
     folder.mkdir(parents=True)
     (folder / "video.mp4").symlink_to(READY)
+    (folder / "segment-1.jpg").write_bytes(b"old")  # of a segment removed below
     sql("UPDATE video SET duration_s = 20.05")
-    sql("DELETE FROM segment")
     body = {"all_segments_done": False, "segments": [
         {"begin_s": 4, "end_s": 10, "technique": KOKU, "performer": "hatsumi"}]}
     assert admin.put("/api/videos/1/annotations", json=body).status_code == 200
-    thumb = next(folder.glob("segment-*.jpg"))
-    assert thumb.read_bytes()[:2] == b"\xff\xd8"  # a JPEG
+    assert not list(folder.glob("segment-3.jpg"))  # not by the API
+
+    notified = []
+    monkeypatch.setattr(encoder, "catalog_changed", lambda: notified.append(True))
+    encoder.Encoder().refresh_thumbnails()
+    assert (folder / "segment-3.jpg").read_bytes()[:2] == b"\xff\xd8"  # a JPEG
+    assert sorted(p.name for p in folder.iterdir()) == ["segment-3.jpg", "video.mp4"]  # no temporary file left
+    assert sql("SELECT thumbnail FROM segment WHERE id = 3") == [("segment-3.jpg",)]
+    assert sql("SELECT thumbs_dirty FROM video WHERE id = 1") == [(0,)]
+    assert notified == [True]  # the catalogue is rebuilt
+
     r = admin.get("/media/video/1", headers={"Range": "bytes=0-99"})  # development: the app sends it
     assert r.status_code == 206 and r.headers["content-range"].endswith(f"/{READY.stat().st_size}")
+
+
+def test_thumbnail_of_a_segment_retimed_meanwhile_is_not_kept(admin, tmp_path, monkeypatch):
+    """A segment moved while the encoder made its thumbnail: the old picture is not saved
+    for it, and the video stays to do (the API's second change is not lost)."""
+    monkeypatch.setenv("VIDEONINJA_MEDIA_DIR", str(tmp_path / "media"))
+    (tmp_path / "media" / "video" / "ab" / SHA).mkdir(parents=True)
+    sql("UPDATE segment SET thumbnail = NULL")
+    sql("UPDATE video SET thumbs_dirty = 1")
+
+    def thumbnail(video, at, out):
+        if out.name == ".segment-1.jpg":  # the API moves segment 1, meanwhile
+            sql("UPDATE segment SET begin_s = 13 WHERE id = 1")
+            sql("UPDATE video SET thumbs_dirty = thumbs_dirty + 1")
+        out.write_bytes(b"jpg")
+
+    monkeypatch.setattr(encoder, "thumbnail", thumbnail)
+    monkeypatch.setattr(encoder, "catalog_changed", lambda: None)
+    encoder.Encoder().refresh_thumbnails()
+    assert sql("SELECT id, thumbnail FROM segment ORDER BY id") == [(1, None), (2, "segment-2.jpg")]
+    assert sql("SELECT thumbs_dirty FROM video") == [(1,)]

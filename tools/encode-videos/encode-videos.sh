@@ -36,6 +36,9 @@ USE_CPU=0             # 1 = libx265 instead of NVENC (testing / no GPU)
 X265_PRESET="medium"  # libx265 preset (-c): ultrafast .. placebo, slower = smaller
 PROGRESS=""           # file for ffmpeg's -progress output (key=value, e.g. out_time_us)
 KEEP_METADATA=0       # 1 = keep tags (GPS location, dates, device…) and chapters
+FORMATS="mov,matroska,avi,mpegts,mpeg,dv,asf"  # ffmpeg demuxers allowed for inputs
+TIME_LIMIT=0          # seconds per ffmpeg run, 0 = none
+PROBE_LIMIT=0         # seconds per ffprobe run, 0 = none
 EXTENSIONS="mov|mp4|m4v|mkv|avi|mts|m2ts|webm|3gp|mpg|mpeg|vob|ts|dv"
 
 usage() {
@@ -61,6 +64,12 @@ Options:
   -P FILE   Write ffmpeg's progress (key=value lines, out_time_us…) to FILE
   -m        Keep the metadata (GPS location, dates, device, title…) and
             chapters; default: removed. Other streams are dropped either way.
+  -W LIST   ffmpeg demuxers allowed for the inputs, comma-separated; files are
+            read from local files only (default: $FORMATS)
+  -T SEC    Stop any ffmpeg run after SEC seconds, 0 = never
+            (default: $TIME_LIMIT)
+  -L SEC    Stop any ffprobe run after SEC seconds, 0 = never
+            (default: $PROBE_LIMIT)
   -h        Help
 EOF
 }
@@ -69,7 +78,7 @@ log()  { printf '%s %s\n' "$(date '+%H:%M:%S')" "$*" >&2; }
 die()  { log "ERROR: $*"; exit 1; }
 
 # ---------- options ----------
-while getopts ":o:q:p:g:t:d:w:x:P:2fncmh" opt; do
+while getopts ":o:q:p:g:t:d:w:x:P:W:T:L:2fncmh" opt; do
   case $opt in
     o) OUT_DIR=$OPTARG ;;
     q) CQ=$OPTARG ;;
@@ -85,6 +94,9 @@ while getopts ":o:q:p:g:t:d:w:x:P:2fncmh" opt; do
     x) X265_PRESET=$OPTARG ;;
     P) PROGRESS=$OPTARG ;;
     m) KEEP_METADATA=1 ;;
+    W) FORMATS=$OPTARG ;;
+    T) TIME_LIMIT=$OPTARG ;;
+    L) PROBE_LIMIT=$OPTARG ;;
     h) usage; exit 0 ;;
     :) die "Option -$OPTARG needs a value" ;;
     *) usage; exit 2 ;;
@@ -99,7 +111,18 @@ shift $((OPTIND - 1))
 [[ $DEINT =~ ^(auto|on|off)$ ]]              || die "-d must be auto, on or off"
 [[ $X265_PRESET =~ ^(ultrafast|superfast|veryfast|faster|fast|medium|slow|slower|veryslow|placebo)$ ]] \
   || die "-x must be a libx265 preset (ultrafast .. placebo)"
+[[ $FORMATS =~ ^[a-z0-9_]+(,[a-z0-9_]+)*$ ]] || die "-W must be a comma-separated list of ffmpeg demuxers"
+[[ $TIME_LIMIT =~ ^[0-9]+$ ]]   || die "-T must be a number of seconds"
+[[ $PROBE_LIMIT =~ ^[0-9]+$ ]]  || die "-L must be a number of seconds"
 DR_SUFFIX=""; (( DOUBLE_RATE )) && DR_SUFFIX=" double-rate"
+# Every input: a local file in one of the allowed formats (no network, no playlists).
+INPUT_OPTS=(-protocol_whitelist file -format_whitelist "$FORMATS")
+# Every ffmpeg/ffprobe run on an input: with its time limit, if any (SIGTERM, then SIGKILL 30 s later).
+limited() {
+  local limit=$TIME_LIMIT
+  [[ $1 == ffprobe ]] && limit=$PROBE_LIMIT
+  if (( limit > 0 )); then timeout -k 30 "$limit" "$@"; else "$@"; fi
+}
 
 # ---------- dependency checks ----------
 command -v ffmpeg  >/dev/null || die "ffmpeg not found"
@@ -171,7 +194,7 @@ detect_interlace() {   # $1 = file, $2 = field_order from ffprobe
   esac
   # Unknown field order: analyse the content with idet
   local out tff bff prog
-  out=$(ffmpeg -hide_banner -nostdin -i "file:$1" -map 0:v:0 -an -sn -dn \
+  out=$(limited ffmpeg -hide_banner -nostdin "${INPUT_OPTS[@]}" -i "file:$1" -map 0:v:0 -an -sn -dn \
           -frames:v "$IDET_FRAMES" -vf idet -f null - 2>&1 | grep 'Multi frame detection' | tail -n1) || true
   tff=$(sed -n 's/.*TFF: *\([0-9]*\).*/\1/p' <<<"$out"); tff=${tff:-0}
   bff=$(sed -n 's/.*BFF: *\([0-9]*\).*/\1/p' <<<"$out"); bff=${bff:-0}
@@ -218,10 +241,10 @@ build_vf() {
 run_encode() {   # in out mode tin interlace
   local in=$1 out=$2 mode=$3 tin=${4:-} il=${5:-progressive}
   local tmp="${out%.*}.part.mp4"
-  local -a cmd=(ffmpeg -hide_banner -nostdin -loglevel error -stats -y)
+  local -a cmd=(limited ffmpeg -hide_banner -nostdin -loglevel error -stats -y)
   (( USE_CPU )) || cmd+=(-hwaccel cuda)
   [[ -n $PROGRESS ]] && cmd+=(-progress "file:$PROGRESS")
-  cmd+=(-i "file:$in" -map 0:v:0 -map '0:a:0?')
+  cmd+=("${INPUT_OPTS[@]}" -i "file:$in" -map 0:v:0 -map '0:a:0?')
   if (( KEEP_METADATA )); then
     cmd+=(-map_metadata 0 -map_chapters 0)
   else
@@ -263,7 +286,7 @@ process_file() {   # in relative_path
   fi
 
   local info trc pixfmt fo hdr="" tin="" il=progressive
-  if ! info=$(ffprobe -v error -select_streams v:0 -show_streams \
+  if ! info=$(limited ffprobe -v error "${INPUT_OPTS[@]}" -select_streams v:0 -show_streams \
                 -of default=noprint_wrappers=1 "file:$in" 2>/dev/null) || [[ -z $info ]]; then
     log "FAIL (no video stream / unreadable): $rel"; N_FAIL=$((N_FAIL + 1)); return 0
   fi

@@ -2,12 +2,15 @@
 real ffmpeg runs in test_encoder.py)."""
 
 import sqlite3
+import threading
+import time
 from datetime import UTC, datetime, timedelta
 
 import pyotp
 import pytest
+from fastapi.testclient import TestClient
 
-from app import clock, db, encoder, i18n, security, snapshot
+from app import clock, db, encoder, i18n, security, snapshot, videos
 
 from .test_auth import login
 from .test_users import USER_PASSWORD, create, register, user_login
@@ -229,11 +232,18 @@ def test_pre_create_refusals(admin, monkeypatch):
     assert status(cookie=token, deferred=True) == 400
     assert status(cookie=token, sha="not-a-hash") == 400
     assert status(cookie=token, filename="../x") == 400
-    monkeypatch.setenv("VIDEONINJA_MAX_UPLOAD_GB", "0.000001")
+    # Only the accepted video formats, by extension (the content is checked by ffprobe).
+    for name in ("photo.jpg", "notes.txt", "clip.mp4.exe", "noextension"):
+        assert status(cookie=token, filename=name) == 415, name
+    monkeypatch.setenv("VIDEONINJA_INPUT_FORMATS", "matroska")
+    assert status(cookie=token, filename="a.mp4") == 415
+    assert status(cookie=token, filename="a.MKV") is None  # accepted
+    monkeypatch.setenv("VIDEONINJA_MAX_UPLOAD_BYTES", "1999")
     assert status(cookie=token, size=2000) == 413
 
 
-def test_pre_create_accepts_and_names_the_upload(admin):
+def test_pre_create_accepts_and_names_the_upload(admin, monkeypatch):
+    monkeypatch.setattr(videos, "FINISH_WAIT_S", 0.2)  # the incomplete upload below: no long wait
     con = sqlite3.connect(db.db_path())
     with con:  # saved from an earlier browser request
         con.execute("UPDATE user SET time_zone = 'Asia/Kolkata'")
@@ -248,6 +258,24 @@ def test_pre_create_accepts_and_names_the_upload(admin):
     assert submit(admin, tus_id).status_code == 409
     hook(admin, "post-finish", tus_id=tus_id, offset=1000)
     assert submit(admin, tus_id).status_code == 201
+
+
+def test_submit_waits_for_the_post_finish_hook(admin, monkeypatch):
+    """tusd answers the last chunk before its post-finish hook has run: the page's
+    submit, sent at once, waits for it (FINISH_WAIT_S at most)."""
+    tus_id = hook(admin, "pre-create", session(admin))["ChangeFileInfo"]["ID"]
+    finisher = TestClient(admin.app, base_url="https://testserver")  # tusd's own call
+    timer = threading.Timer(0.5, lambda: hook(finisher, "post-finish", tus_id=tus_id, offset=1000))
+    timer.start()
+    try:
+        assert submit(admin, tus_id).status_code == 201
+    finally:
+        timer.join()
+    monkeypatch.setattr(videos, "FINISH_WAIT_S", 0.3)
+    never = hook(admin, "pre-create", session(admin), sha="b" * 64)["ChangeFileInfo"]["ID"]
+    started = time.monotonic()
+    assert submit(admin, never).status_code == 409  # the hook never came
+    assert time.monotonic() - started < 2
 
 
 # --- submit ---

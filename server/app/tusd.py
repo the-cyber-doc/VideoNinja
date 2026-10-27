@@ -1,6 +1,7 @@
 """Uploads through tusd (resumable uploads), decided by the app.
 
-tusd runs in the app's container, started and watched by the app (Tusd below).
+tusd runs in its own container in production (VIDEONINJA_TUSD=0, reached at
+VIDEONINJA_TUSD_URL), and as a child of the app in development (Tusd below).
 
 - /internal/upload-auth: nginx asks it before forwarding ANY request to tusd
   (auth_request: create, every chunk, resume, cancel): session, "upload" access,
@@ -21,12 +22,14 @@ import re
 import secrets
 import shutil
 import sqlite3
+import urllib.error
+import urllib.request
 from http.cookies import CookieError, SimpleCookie
 from typing import Any
 
 from fastapi import APIRouter, Depends, Header, HTTPException, status
 
-from . import clock, db, paths, queries, security
+from . import clock, db, limits, paths, queries, security
 from .auth import require_access
 from .children import Child
 from .validation import RULES
@@ -40,10 +43,6 @@ FILENAME = re.compile(RULES["original_filename"]["pattern"])
 def files_path() -> str:
     """tusd's -base-path: where the browser sends uploads, nginx forwarding it as is."""
     return f"{paths.base_path()}/files/"
-
-
-def max_upload_bytes() -> int:
-    return int(float(os.environ.get("VIDEONINJA_MAX_UPLOAD_GB", "20")) * 1024**3)
 
 
 def _reject(status_code: int, detail: str) -> dict[str, Any]:
@@ -87,11 +86,13 @@ def _pre_create(con: sqlite3.Connection, event: dict[str, Any]) -> dict[str, Any
     size = upload.get("Size")
     if upload.get("SizeIsDeferred") or not isinstance(size, int) or size <= 0:
         return _reject(400, "The file size must be known")
-    if size > max_upload_bytes():
+    if size > limits.max_upload_bytes():
         return _reject(413, "File too large")
     # "filename": the tus metadata convention (tus-js-client); stored as video.original_filename.
     if not SHA256.fullmatch(original_sha256) or not FILENAME.fullmatch(meta.get("filename", "")):
         return _reject(400, "Invalid metadata")
+    if not limits.accepted_name(meta["filename"]):
+        return _reject(415, "This type of file is not accepted")
     with con:
         if queries.video_known(con, original_sha256):
             return _reject(409, "This video already exists")
@@ -173,7 +174,7 @@ class Tusd(Child):
         return [
             self.binary, "-host", self.host, "-port", self.port,
             "-upload-dir", str(paths.upload_dir()), "-base-path", files_path(),
-            "-behind-proxy", "-disable-download", "-max-size", str(max_upload_bytes()),
+            "-behind-proxy", "-disable-download", "-max-size", str(limits.max_upload_bytes()),
             "-hooks-http", f"http://127.0.0.1:{self.app_port}/internal/tusd-hook",
             "-hooks-enabled-events", "pre-create,post-finish",
             "-hooks-http-forward-headers", "Cookie",
@@ -206,8 +207,21 @@ def stop() -> None:
 
 
 def available() -> bool:
-    """False when the app should run tusd and it is not running (binary missing,
-    crashed and restarting). VIDEONINJA_TUSD=0: tusd is run elsewhere, assumed up."""
+    """Whether tusd takes uploads now. Its own container (VIDEONINJA_TUSD_URL): it
+    answers a tus OPTIONS request. Run by the app: its process is running (False
+    when the binary is missing, or it crashed and is restarting). Neither (tests,
+    tusd run by hand): assumed up."""
+    url = os.environ.get("VIDEONINJA_TUSD_URL")
+    if url:
+        return _answers(url.rstrip("/") + files_path())
     if os.environ.get("VIDEONINJA_TUSD", "1") == "0":
         return True
     return process.running()
+
+
+def _answers(url: str) -> bool:
+    try:
+        with urllib.request.urlopen(urllib.request.Request(url, method="OPTIONS"), timeout=2) as r:
+            return bool(r.headers.get("Tus-Version"))
+    except (OSError, urllib.error.URLError):
+        return False

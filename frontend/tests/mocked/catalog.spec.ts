@@ -187,11 +187,9 @@ test('clicking a segment plays its clip in a dialog', async ({ page }) => {
 	await expect(page.locator('dialog')).toHaveCount(0);
 });
 
-// Exact frame steps need the browser's frame timestamps (requestVideoFrameCallback).
-// Playwright's WebKit on Linux plays media through GStreamer, not Safari's media
-// stack: its timestamps are not the frames' (CI measured 6, 21 and 33 ms for 40).
+// Exact frame steps need the frame duration, measured from the frame callbacks
+// (requestVideoFrameCallback; $lib/frames.ts: also WebKit's extra one on a speed change).
 test.describe('frame by frame', () => {
-	test.skip(({ browserName }) => browserName === 'webkit', "Linux WebKit's frame timestamps (GStreamer) are not Safari's");
 
 	test('the player: slow motion and frame by frame', async ({ page }) => {
 		await loggedIn(page);
@@ -211,7 +209,7 @@ test.describe('frame by frame', () => {
 		expect(await video.evaluate((v: HTMLVideoElement) => v.playbackRate)).toBe(0.25);
 
 		// Frame by frame: the clip is 25 fps, measured from the first frames played.
-		await expect.poll(time).toBeGreaterThan(0.3);
+		await expect.poll(time).toBeGreaterThan(0.6);
 		const moved = async (action: () => Promise<void>) => {
 			const before = await time();
 			await action();

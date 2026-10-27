@@ -36,7 +36,7 @@ test('English by default, switch to French from the flag menu, remembered', asyn
 	await expect(page.getByText('Connecté en tant que kenji (Utilisateur).')).toBeVisible();
 	await expect(page.locator('html')).toHaveAttribute('lang', 'fr');
 	await page.getByRole('button', { name: 'Menu utilisateur' }).click();
-	await expect(page.getByRole('menuitem')).toHaveText(['Profil', 'Se déconnecter']);
+	await expect(page.getByRole('menuitem')).toHaveText(['Profil', 'À propos', 'Se déconnecter']);
 
 	await page.reload();
 	await expect(page.getByRole('button', { name: 'Langue : Français' })).toBeVisible();

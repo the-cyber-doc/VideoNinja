@@ -16,10 +16,13 @@
 		performers as loadPerformers,
 		submit,
 		tags as loadTags,
+		refusal,
+		uploadLimits,
 		uploadsAvailable,
 		videoExists,
 		type Performer,
-		type Tag
+		type Tag,
+		type UploadLimits
 	} from '#lib/upload/api.js';
 	import AnnotationPanel from '#lib/upload/AnnotationPanel.svelte';
 	import { deleteDraft, listDrafts, loadDraft, newDraft, saveDraft, type Draft } from '#lib/upload/draft.svelte.js';
@@ -49,6 +52,7 @@
 	let error = $state('');
 	let refresh = $state(0);
 	let unavailable = $state(false); // the server cannot receive uploads (tusd not running)
+	let limits = $state<UploadLimits | null>(null); // largest file, accepted types
 	let retrying = $state(false); // upload interrupted, being retried
 	let hashing: AbortController | null = null;
 	let upload: Upload | null = null;
@@ -63,6 +67,7 @@
 		loadPerformers().then((list) => (performers = list), (e) => (error = e.message));
 		listDrafts().then((list) => (drafts = list), () => {});
 		checkAvailable();
+		uploadLimits().then((l) => (limits = l), () => {});
 	});
 
 	$effect(() => {
@@ -112,6 +117,16 @@
 		if (!chosen) return;
 		reset();
 		message = error = '';
+		// Refused by the server anyway: said at once, before hashing a large file for nothing.
+		const refused = refusal(chosen, limits);
+		if (refused) {
+			error =
+				refused === 'size'
+					? t('upload.too_large', { max: gigabytes(limits!.max_bytes) })
+					: t('upload.wrong_type', { types: limits!.extensions.join(', ') });
+			if (input) input.value = '';
+			return;
+		}
 		file = chosen;
 		step = 'hashing';
 		checkAvailable(); // it may have come back since the page was opened
@@ -135,6 +150,9 @@
 			}
 		}
 	}
+
+	const gigabytes = (bytes: number) =>
+		new Intl.NumberFormat(i18n.lang, { maximumSignificantDigits: 3 }).format(bytes / 1024 ** 3);
 
 	async function newPerformer(name: string) {
 		const performer = await addPerformer(name);
@@ -209,7 +227,13 @@
 		<section class="card">
 			<label class="file">
 				{t('upload.choose')}
-				<input bind:this={input} type="file" accept="video/*" onchange={choose} disabled={busy} />
+				<input
+					bind:this={input}
+					type="file"
+					accept={limits ? limits.extensions.map((e) => `.${e}`).join(',') : 'video/*'}
+					onchange={choose}
+					disabled={busy}
+				/>
 			</label>
 			<p class="hint">{t('upload.hint_local')}</p>
 

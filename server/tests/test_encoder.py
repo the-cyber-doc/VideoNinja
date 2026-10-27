@@ -1,12 +1,14 @@
 """The encoder with real ffmpeg and encode-videos.sh, on tiny generated clips."""
 
 import hashlib
+import io
 import json
 import os
 import re
 import shutil
 import sqlite3
 import subprocess
+import sys
 import threading
 import time
 from pathlib import Path
@@ -19,6 +21,7 @@ from app.main import app
 
 from .test_upload import admin, hook, session, submit, uploaded  # noqa: F401 (fixture)
 from .test_catalog import KOKU
+from .test_procs import gone
 
 pytestmark = pytest.mark.skipif(not (shutil.which("ffmpeg") and shutil.which("ffprobe")),
                                 reason="ffmpeg not installed")
@@ -383,3 +386,101 @@ def test_script_keyframe_interval(tmp_path, rate, options, every):
     assert f"{rate} fps, keyframe every {every} s" in result.stderr
     # The dry run prints the ffmpeg command shell-escaped: expr:gte\(t\,n_forced\*1\)
     assert re.search(rf"n_forced\\?\*{re.escape(every)}\\?\)", result.stdout), result.stdout
+
+
+# --- hardening: formats, time limits, its own container ---
+
+
+def test_script_gets_the_formats_and_the_time_limit(enc, tmp_path, monkeypatch):
+    monkeypatch.setenv("VIDEONINJA_INPUT_FORMATS", "mov,matroska")
+    monkeypatch.setenv("VIDEONINJA_FFMPEG_TIMEOUT_H", "2")
+    monkeypatch.setenv("VIDEONINJA_FFPROBE_TIMEOUT_MIN", "10")
+    enc.script, called = failing_script(tmp_path)
+    (tmp_path / "work").mkdir()
+    with pytest.raises(encoder.JobError):
+        enc.encode(1, tmp_path / "original", tmp_path / "work", 60.0)
+    args = called.read_text().split()
+    assert args[args.index("-W") + 1] == "mov,matroska" and args[args.index("-T") + 1] == "7200"
+    assert args[args.index("-L") + 1] == "600"
+
+
+def test_encoding_stopped_after_the_time_limit(enc, tmp_path, monkeypatch):
+    """Too long: stopped (ffmpeg included), a final failure (not tried again)."""
+    pid_file = tmp_path / "child.pid"
+    script = tmp_path / "encode.sh"
+    script.write_text(f"#!/bin/bash\nsleep 60 &\necho $! > {pid_file}\nwait\n")
+    script.chmod(0o755)
+    enc.script = str(script)
+    enc.progress = lambda video, percent: None
+    monkeypatch.setenv("VIDEONINJA_FFMPEG_TIMEOUT_H", str(1 / 3600))  # 1 s
+    (tmp_path / "work").mkdir()
+    with pytest.raises(encoder.JobError, match="stopped after") as error:
+        enc.encode(1, tmp_path / "original", tmp_path / "work", 60.0)
+    assert not error.value.retryable
+    assert gone(int(pid_file.read_text()))  # the "ffmpeg" too
+
+
+def test_probe_time_limit(tmp_path, monkeypatch):
+    monkeypatch.setattr(encoder.procs, "run", lambda cmd: (_ for _ in ()).throw(encoder.procs.Timeout("x")))
+    with pytest.raises(encoder.JobError) as error:
+        encoder.probe_duration(tmp_path / "a.mp4")
+    assert not error.value.retryable
+
+
+def test_only_allowed_formats_are_read(tmp_path, monkeypatch):
+    """By content, whatever the name: a Matroska file named .mp4 is refused when
+    only MP4 is allowed. And only local files."""
+    sample = Path(__file__).parent / "video_test_need_encoding.webm"
+    disguised = tmp_path / "kata.mp4"
+    disguised.symlink_to(sample)
+    assert encoder.probe_duration(disguised) > 0
+    monkeypatch.setenv("VIDEONINJA_INPUT_FORMATS", "mov")
+    with pytest.raises(encoder.JobError, match="whitelist"):
+        encoder.probe_duration(disguised)
+    with pytest.raises(encoder.JobError, match="whitelist"):
+        encoder.run(["ffprobe", "-v", "error", *encoder.limits.ffmpeg_input(), "http://127.0.0.1:9/a.mp4"])
+
+
+def test_script_refuses_other_formats(tmp_path):
+    sample = Path(__file__).parent / "video_test_need_encoding.webm"
+    result = subprocess.run([str(encoder.DEFAULT_SCRIPT), "-c", "-n", "-W", "mov", "-o", str(tmp_path / "out"),
+                             str(sample)], capture_output=True, text=True)
+    assert "FAIL" in result.stderr, result.stderr
+    result = subprocess.run([str(encoder.DEFAULT_SCRIPT), "-c", "-n", "-o", str(tmp_path / "out"), str(sample)],
+                            capture_output=True, text=True, check=True)
+    assert "-protocol_whitelist file -format_whitelist mov\\,matroska" in result.stdout, result.stdout
+
+
+def test_catalogue_rebuilt_by_the_api(client, admin_secret, monkeypatch):
+    """The encoder's container has no catalogue: it asks the API, which rebuilds it at once."""
+    scheduled = []
+    monkeypatch.setattr(encoder.snapshot, "rebuild_now", lambda: scheduled.append(True))
+    assert client.post("/internal/catalog-changed").status_code == 204
+    assert scheduled == [True]
+
+    requests = []
+    monkeypatch.setenv("VIDEONINJA_API_URL", "http://api:8000/")
+    monkeypatch.setattr(encoder.urllib.request, "urlopen",
+                        lambda r, timeout: requests.append((r.method, r.full_url)) or io.BytesIO())
+    encoder.catalog_changed()
+    assert requests == [("POST", "http://api:8000/internal/catalog-changed")]
+    assert scheduled == [True]  # not in the encoder itself
+
+
+def test_container_waits_for_the_setup_and_stops_on_sigterm(tmp_path):
+    """python -m app.encoder before the setup: waits for the database; SIGTERM: exits at once."""
+    env = {**os.environ, "VIDEONINJA_DB": str(tmp_path / "none.db"), "VIDEONINJA_MEDIA_DIR": str(tmp_path / "m"),
+           "VIDEONINJA_UPLOAD_DIR": str(tmp_path / "u")}
+    process = subprocess.Popen([sys.executable, "-m", "app.encoder"], env=env, cwd=Path(__file__).parents[1],
+                               stderr=subprocess.PIPE, text=True)
+    time.sleep(1)
+    assert process.poll() is None  # waiting
+    process.terminate()
+    assert process.wait(5) == 0
+
+
+def test_container_refuses_wrong_settings(tmp_path):
+    env = {**os.environ, "VIDEONINJA_DB": str(tmp_path / "none.db"), "VIDEONINJA_INPUT_FORMATS": "hls"}
+    result = subprocess.run([sys.executable, "-m", "app.encoder"], env=env, cwd=Path(__file__).parents[1],
+                            capture_output=True, text=True, timeout=10)
+    assert result.returncode != 0 and "VIDEONINJA_INPUT_FORMATS" in result.stderr

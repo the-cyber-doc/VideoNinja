@@ -3,8 +3,8 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from . import (
-    auth, comments, crypto, db, encoder, media, nginx, paths, performers, profile, register, security,
-    setup, snapshot, tags, tusd, users, video_mgmt, videos,
+    about, auth, comments, crypto, db, encoder, health, limits, media, paths, performers, procs, profile, register,
+    security, setup, snapshot, tags, tusd, users, video_mgmt, videos,
 )
 
 
@@ -13,7 +13,8 @@ async def lifespan(app: FastAPI):
     crypto.load_key()  # refuse to start without the encryption key
     paths.base_path()  # refuse to start with an invalid VIDEONINJA_BASE_PATH
     encoder.x265_preset()  # nor with an invalid VIDEONINJA_X265_PRESET
-    nginx.start()  # also before the setup: it serves the setup wizard
+    limits.check()  # nor VIDEONINJA_MAX_UPLOAD_BYTES, VIDEONINJA_INPUT_FORMATS
+    procs.check()  # nor VIDEONINJA_FFMPEG_TIMEOUT_H, VIDEONINJA_FFPROBE_TIMEOUT_MIN
     if db.is_initialized():
         app.state.setup_token = None
         con = db.connect()
@@ -30,11 +31,11 @@ async def lifespan(app: FastAPI):
     encoder.stop()  # the current encoding goes back to the queue
     tusd.stop()
     snapshot.flush()  # don't lose a pending rebuild
-    nginx.stop()
 
 
 app = FastAPI(title="Video Ninja", lifespan=lifespan)
 app.include_router(setup.router)
+app.include_router(about.router)
 app.include_router(auth.router)
 app.include_router(profile.router)
 app.include_router(register.router)
@@ -47,8 +48,5 @@ app.include_router(tags.router)
 app.include_router(videos.router)
 app.include_router(video_mgmt.router)
 app.include_router(tusd.router)
-
-
-@app.get("/health")
-def health() -> dict[str, str]:
-    return {"status": "ok"}
+app.include_router(snapshot.internal_router)
+app.include_router(health.router)

@@ -14,9 +14,23 @@ Restart: encodings cut by a crash or reboot are queued again at startup (at
 most MAX_ATTEMPTS tries); a clean shutdown puts the current one back without
 counting the attempt.
 
+A second thread makes the thumbnails of segments added or re-timed on the Videos
+page (the API marks the video, video.thumbs_dirty) and deletes those of removed
+segments, also while a video is being encoded. A third one writes a heartbeat
+every HEARTBEAT_S seconds (table heartbeat), checked by /health.
+
+Where it runs: its own container in production (python -m app.encoder, no
+encryption key, no catalogue: after a change it asks the API to rebuild the
+catalogue, VIDEONINJA_API_URL); a thread of the API in development.
+
+Every ffmpeg / ffprobe reads local files of the allowed formats only and stops
+after VIDEONINJA_FFMPEG_TIMEOUT_H, ffprobe after VIDEONINJA_FFPROBE_TIMEOUT_MIN
+(limits.py, procs.py).
+
 Environment: VIDEONINJA_X265_PRESET (default medium), VIDEONINJA_ENCODE_SCRIPT
 (default: tools/encode-videos/encode-videos.sh of the repository),
-VIDEONINJA_ENCODER=0 to disable it; folders in paths.py.
+VIDEONINJA_ENCODER=0 to keep it out of the API, VIDEONINJA_API_URL (its own
+container); folders in paths.py.
 """
 
 import hashlib
@@ -27,19 +41,24 @@ import shutil
 import signal
 import sqlite3
 import subprocess
+import sys
 import threading
 import time
+import urllib.request
 from collections.abc import Iterator
 from contextlib import contextmanager
+from datetime import datetime
 from pathlib import Path
 
-from . import clock, db, paths, queries, snapshot
+from . import clock, db, limits, paths, procs, queries, snapshot
 
 log = logging.getLogger("uvicorn.error")
 
 MAX_ATTEMPTS = 3
 UPLOAD_EXPIRY_S = 7 * 24 * 3600  # an upload not submitted within a week is deleted
 POLL_S = 10
+HEARTBEAT_S = 30
+HEARTBEAT_MAX_AGE_S = 120  # older: the encoder is down (/health)
 PROGRESS_EVERY_S = 5
 HASH_SHARE = 5  # % of the progress bar for checking the original; encoding gets the rest up to 95
 THUMB_WIDTH = 320
@@ -101,6 +120,7 @@ class Encoder:
         self.stopping = threading.Event()
         self.process: subprocess.Popen | None = None
         self.thread: threading.Thread | None = None
+        self.helpers: list[threading.Thread] = []  # thumbnails, heartbeat
 
     # --- lifecycle ---
 
@@ -111,30 +131,26 @@ class Encoder:
         self.work.mkdir(parents=True, exist_ok=True)
         with transaction() as con:
             queries.requeue_interrupted(con, MAX_ATTEMPTS)
+        self.beat()  # healthy from the start
         self.thread = threading.Thread(target=self.run, name="encoder", daemon=True)
-        self.thread.start()
+        self.helpers = [threading.Thread(target=self.run_thumbnails, name="thumbnails", daemon=True),
+                        threading.Thread(target=self.run_heartbeat, name="heartbeat", daemon=True)]
+        for thread in (self.thread, *self.helpers):
+            thread.start()
         log.info("Encoder started (x265 preset %s)", self.preset)
 
     def stop(self) -> None:
         self.stopping.set()
         self.kill_encoding()
-        if self.thread:
-            self.thread.join(timeout=60)
+        for thread in (self.thread, *self.helpers):
+            if thread:
+                thread.join(timeout=60)
 
     def kill_encoding(self) -> None:
         """Stop the script AND its ffmpeg: the script does not pass SIGTERM on,
         so the whole process group goes (else ffmpeg keeps encoding, orphaned)."""
-        process = self.process
-        if process is None or process.poll() is not None:
-            return
-        try:
-            os.killpg(process.pid, signal.SIGTERM)
-            process.wait(30)
-        except ProcessLookupError:
-            pass
-        except subprocess.TimeoutExpired:
-            os.killpg(process.pid, signal.SIGKILL)
-            process.wait()
+        if self.process is not None:
+            procs.stop(self.process)
 
     def run(self) -> None:
         while not self.stopping.is_set():
@@ -147,6 +163,64 @@ class Encoder:
                 self.stopping.wait(POLL_S)
 
     # --- queue ---
+
+    def run_heartbeat(self) -> None:
+        while not self.stopping.wait(HEARTBEAT_S):
+            try:
+                self.beat()
+            except Exception:  # noqa: BLE001 - try again at the next beat
+                log.exception("Encoder heartbeat failed")
+
+    @staticmethod
+    def beat() -> None:
+        with transaction() as con:
+            queries.set_heartbeat(con, "encoder", clock.at(0))
+
+    def run_thumbnails(self) -> None:
+        while not self.stopping.wait(POLL_S):
+            try:
+                self.refresh_thumbnails()
+            except Exception:  # noqa: BLE001 - keep the loop alive
+                log.exception("Thumbnails error")
+
+    def refresh_thumbnails(self) -> None:
+        """Videos whose segments changed on the Videos page: a thumbnail for each
+        segment without one (new or re-timed), the files of removed segments deleted."""
+        with transaction() as con:
+            videos = queries.thumbs_dirty_videos(con)
+        changed = False
+        for video in videos:
+            if self.stopping.is_set():
+                return
+            with transaction() as con:
+                segments = queries.segment_thumbnails(con, video["id"])
+            folder = self.videos / video["sha256sum"][:2] / video["sha256sum"]
+            duration = video["duration_s"] or max((s["end_s"] for s in segments), default=0)
+            for s in segments:
+                if s["thumbnail"] is not None:
+                    continue
+                name = f"segment-{s['id']}.jpg"
+                tmp = folder / f".{name}"
+                try:
+                    thumbnail(folder / "video.mp4", middle(s["begin_s"], s["end_s"], duration), tmp)
+                    os.replace(tmp, folder / name)  # whole or not at all
+                except (OSError, JobError) as e:
+                    log.warning("Video %s: no thumbnail for segment %s: %s", video["id"], s["id"], e)
+                    continue
+                finally:
+                    tmp.unlink(missing_ok=True)
+                with transaction() as con:
+                    queries.set_new_segment_thumbnail(con, s, name)
+            keep = {f"segment-{s['id']}.jpg" for s in segments}
+            for path in folder.glob("segment-*.jpg"):
+                if path.name not in keep:
+                    path.unlink(missing_ok=True)
+            with transaction() as con:
+                queries.clear_thumbs_dirty(con, video["id"], video["thumbs_dirty"])
+            log.info("Video %s: segment thumbnails updated", video["id"])
+            changed = True
+        if changed:
+            catalog_changed()
 
     def housekeeping(self) -> None:
         """Delete the originals of published, dropped or abandoned uploads."""
@@ -217,7 +291,7 @@ class Encoder:
             shutil.rmtree(folder, ignore_errors=True)
             raise Gone()
         log.info("Video %s published (%s)", video, sha256)
-        snapshot.schedule()
+        catalog_changed()
 
     def progress(self, video: int, percent: float) -> None:
         if self.stopping.is_set():
@@ -252,7 +326,7 @@ class Encoder:
             encoded = work / "out" / "video.mp4"
             encoded.parent.mkdir()
             strip_metadata(original, encoded)  # a new file: the original stays until published
-            if reason := needs_encoding(encoded):
+            if reason := needs_encoding(encoded, own=True):
                 raise JobError(f"Removing the metadata changed the format: {reason}")
         check_encoded(encoded)
         sha256 = file_sha256(encoded)
@@ -288,22 +362,26 @@ class Encoder:
     def encode(self, video: int, original: Path, work: Path, duration: float) -> Path:
         progress_file = work / "progress"
         out = work / "out"
+        limit = procs.timeout_s()
         cmd = ["nice", "-n", "10", self.script, "-c", "-x", self.preset, "-P", str(progress_file),
+               "-W", ",".join(limits.input_formats()), "-T", str(int(limit)),
+               "-L", str(int(procs.probe_timeout_s())),
                "-o", str(out), "-f", str(original)]
         with (work / "encode.log").open("wb") as log_file:
             # Own process group: stopping it stops ffmpeg too (kill_encoding).
-            self.process = subprocess.Popen(cmd, stdout=log_file, stderr=subprocess.STDOUT,
-                                            start_new_session=True)
+            self.process = procs.popen(cmd, stdout=log_file, stderr=subprocess.STDOUT)
             try:
-                last = time.monotonic()
+                started = last = time.monotonic()
                 while self.process.poll() is None:
                     self.stopping.wait(0.5)  # notice the end (or a shutdown) quickly
+                    if time.monotonic() - started > limit:
+                        raise JobError(f"Encoding stopped after {limit / 3600:g} h")
                     if self.stopping.is_set() or time.monotonic() - last >= PROGRESS_EVERY_S:
                         done = out_time_s(progress_file)
                         self.progress(video, HASH_SHARE + (95 - HASH_SHARE) * min(done / duration, 1))
                         last = time.monotonic()
             finally:
-                self.kill_encoding()  # stopped, deleted or failed: nothing keeps running
+                self.kill_encoding()  # stopped, deleted, failed or too long: nothing keeps running
         if self.process.returncode != 0:
             tail = (work / "encode.log").read_text(encoding="utf-8", errors="replace").strip().splitlines()[-5:]
             raise JobError("Encoding failed: " + " | ".join(tail))
@@ -326,6 +404,30 @@ def stop() -> None:
     encoder.stop()
 
 
+def catalog_changed() -> None:
+    """A video published or new thumbnails: the catalogue must be rebuilt. In its own
+    container the encoder has no catalogue: the API rebuilds it (an internal call).
+    In the API: directly. At once, not debounced: the upload page fetches the
+    catalogue as soon as it sees the video published."""
+    api = os.environ.get("VIDEONINJA_API_URL")
+    if not api:
+        snapshot.rebuild_now()
+        return
+    request = urllib.request.Request(f"{api.rstrip('/')}/internal/catalog-changed", method="POST")
+    try:
+        urllib.request.urlopen(request, timeout=10).close()
+    except OSError as e:  # the API rebuilds at its next start anyway
+        log.warning("Catalogue rebuild not requested from the API: %s", e)
+
+
+def healthy(con: sqlite3.Connection) -> bool:
+    """Its heartbeat is recent (/health, and the encoder container's healthcheck)."""
+    at = queries.heartbeat(con, "encoder")
+    if at is None:
+        return False
+    return (clock.now() - datetime.fromisoformat(at)).total_seconds() < HEARTBEAT_MAX_AGE_S
+
+
 # --- file helpers ---
 
 
@@ -341,14 +443,18 @@ def check_complete(original: Path, info: Path) -> None:
 
 
 def run(cmd: list[str]) -> str:
-    result = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace")
+    """ffmpeg / ffprobe to the end (procs.run: own process group, time limit)."""
+    try:
+        result = procs.run(cmd)
+    except procs.Timeout as e:
+        raise JobError(str(e)) from None  # final: it would take as long again
     if result.returncode != 0:
         raise JobError(f"{cmd[0]} failed: {result.stderr.strip()[-500:]}")
     return result.stdout
 
 
 def probe_duration(path: Path) -> float:
-    out = run(["ffprobe", "-v", "error", "-show_entries", "format=duration:stream=codec_type",
+    out = run(["ffprobe", "-v", "error", *limits.ffmpeg_input(), "-show_entries", "format=duration:stream=codec_type",
                "-of", "json", f"file:{path}"])
     data = json.loads(out)
     if not any(s.get("codec_type") == "video" for s in data.get("streams", [])):
@@ -360,8 +466,8 @@ def probe_duration(path: Path) -> float:
 
 
 def check_encoded(path: Path) -> None:
-    out = run(["ffprobe", "-v", "error", "-show_entries", "stream=codec_type,codec_name,codec_tag_string",
-               "-of", "json", f"file:{path}"])
+    out = run(["ffprobe", "-v", "error", *limits.ffmpeg_input(own=True),
+               "-show_entries", "stream=codec_type,codec_name,codec_tag_string", "-of", "json", f"file:{path}"])
     streams = json.loads(out).get("streams", [])
     videos = [s for s in streams if s.get("codec_type") == "video"]
     audios = [s for s in streams if s.get("codec_type") == "audio"]
@@ -371,7 +477,7 @@ def check_encoded(path: Path) -> None:
         raise JobError("Encoded audio is not AAC")
 
 
-def needs_encoding(path: Path) -> str | None:
+def needs_encoding(path: Path, own: bool = False) -> str | None:
     """Why the original must be encoded, or None if its format is already what
     encode-videos.sh makes: MP4 with faststart, one H.265 Main 8-bit video
     (hvc1), SDR BT.709, progressive, a keyframe every GOP_S seconds, AAC mono or
@@ -380,7 +486,7 @@ def needs_encoding(path: Path) -> str | None:
     Such a file (e.g. a phone's recording, or encoded with the script before
     upload) is not encoded again, which would only lose quality and take the Pi
     minutes to hours: strip_metadata copies its streams. When unsure: encode."""
-    out = run(["ffprobe", "-v", "error", "-show_entries",
+    out = run(["ffprobe", "-v", "error", *limits.ffmpeg_input(own), "-show_entries",
                "format=format_name:stream=codec_type,codec_name,codec_tag_string,profile,pix_fmt,"
                "width,height,field_order,color_transfer,color_primaries,channels,avg_frame_rate"
                ":stream_side_data=side_data_type", "-of", "json", f"file:{path}"])
@@ -414,7 +520,7 @@ def needs_encoding(path: Path) -> str | None:
     if a is not None and ((a.get("codec_name"), a.get("profile")) != ("aac", "LC") or a.get("channels") not in (1, 2)):
         return (f"audio is {a.get('codec_name')} {a.get('profile')} with {a.get('channels')} channels,"
                 " not AAC mono or stereo")
-    return keyframe_problem(path, v.get("avg_frame_rate", "0/1"))
+    return keyframe_problem(path, v.get("avg_frame_rate", "0/1"), own)
 
 
 def strip_metadata(original: Path, out: Path) -> None:
@@ -423,20 +529,20 @@ def strip_metadata(original: Path, out: Path) -> None:
     device, encoder), no chapters, no other streams (data or GPS tracks,
     timecode, subtitles). The picture's rotation is side data, not metadata: it
     stays. Seconds, even for a long video: only the bytes are copied."""
-    run(["ffmpeg", "-v", "error", "-nostdin", "-y", "-i", f"file:{original}",
+    run(["ffmpeg", "-v", "error", "-nostdin", "-y", *limits.ffmpeg_input(), "-i", f"file:{original}",
          "-map", "0:v:0", "-map", "0:a:0?", "-c", "copy",
          "-map_metadata", "-1", "-map_metadata:s", "-1", "-map_chapters", "-1",
          "-fflags", "+bitexact", "-flags:v", "+bitexact", "-flags:a", "+bitexact",
          "-tag:v", "hvc1", "-movflags", "+faststart", "-f", "mp4", f"file:{out}"])
 
 
-def keyframe_problem(path: Path, frame_rate: str) -> str | None:
+def keyframe_problem(path: Path, frame_rate: str, own: bool = False) -> str | None:
     """None if the video starts with a keyframe and has one at least every GOP_S
     seconds (one frame of tolerance). Reads packet headers only: no decoding."""
     num, _, den = frame_rate.partition("/")
     frame_s = float(den or 1) / float(num) if float(num or 0) else 0.1
-    out = run(["ffprobe", "-v", "error", "-select_streams", "v:0", "-show_entries", "packet=pts_time,flags",
-               "-of", "csv=p=0", f"file:{path}"])
+    out = run(["ffprobe", "-v", "error", *limits.ffmpeg_input(own), "-select_streams", "v:0",
+               "-show_entries", "packet=pts_time,flags", "-of", "csv=p=0", f"file:{path}"])
     keys = sorted(float(t) for t, _, flags in (line.partition(",") for line in out.splitlines())
                   if "K" in flags and t not in ("", "N/A"))
     if not keys or keys[0] > frame_s:
@@ -472,10 +578,12 @@ def middle(begin_s: float, end_s: float, duration: float) -> float:
 
 
 def thumbnail(video: Path, at_s: float, out: Path) -> None:
-    common = ["-frames:v", "1", "-vf", f"scale={THUMB_WIDTH}:-2", "-q:v", "4", f"file:{out}"]
-    run(["ffmpeg", "-v", "error", "-nostdin", "-y", "-ss", f"{max(at_s, 0):.3f}", "-i", f"file:{video}", *common])
+    """A JPEG of one of the app's own videos (encoded, MP4)."""
+    common = ["-frames:v", "1", "-vf", f"scale={THUMB_WIDTH}:-2", "-q:v", "4", "-f", "image2", f"file:{out}"]
+    source = [*limits.ffmpeg_input(own=True), "-i", f"file:{video}"]
+    run(["ffmpeg", "-v", "error", "-nostdin", "-y", "-ss", f"{max(at_s, 0):.3f}", *source, *common])
     if not out.is_file():  # -ss past the last frame writes nothing
-        run(["ffmpeg", "-v", "error", "-nostdin", "-y", "-i", f"file:{video}", *common])
+        run(["ffmpeg", "-v", "error", "-nostdin", "-y", *source, *common])
 
 
 def out_time_s(progress_file: Path) -> float:
@@ -499,3 +607,39 @@ def file_sha256(path: Path) -> str:
         while chunk := f.read(4 << 20):
             digest.update(chunk)
     return digest.hexdigest()
+
+
+# --- its own container: python -m app.encoder ---
+
+
+def main(argv: list[str]) -> int:
+    """The encoder's container. --health: exit 0 if the heartbeat is recent (healthcheck)."""
+    logging.basicConfig(level=logging.INFO, format="%(levelname)s:     %(message)s")
+    if argv == ["--health"]:
+        if not db.is_initialized():
+            return 0  # before the setup there is nothing to encode
+        con = db.connect()
+        try:
+            return 0 if healthy(con) else 1
+        finally:
+            con.close()
+    limits.check()
+    procs.check()
+    x265_preset()
+    stopping = threading.Event()
+    signal.signal(signal.SIGTERM, lambda *_: stopping.set())
+    signal.signal(signal.SIGINT, lambda *_: stopping.set())
+    while not db.is_initialized():  # the API's setup wizard creates the database
+        if stopping.wait(POLL_S):
+            return 0
+    start()
+    if not (encoder.thread and encoder.thread.is_alive()):
+        return 1  # ffmpeg missing: logged by start()
+    stopping.wait()
+    log.info("Encoder stopping")
+    stop()  # the current encoding goes back to the queue
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))

@@ -1,0 +1,23 @@
+"""About page: what the server knows (the app's version and build are in the frontend build)."""
+
+import sqlite3
+
+from fastapi import APIRouter, Depends
+from pydantic import BaseModel
+
+from . import db, queries
+from .auth import current_user
+
+router = APIRouter(prefix="/api", tags=["about"])
+
+
+class AboutOut(BaseModel):
+    db_version: int  # of the running database (config.db_version, set when it was built)
+    db_schema: int  # latest db_vN.sql shipped with this release
+
+
+@router.get("/about")
+def about(
+    _: sqlite3.Row = Depends(current_user), con: sqlite3.Connection = Depends(db.get_db)
+) -> AboutOut:
+    return AboutOut(db_version=int(queries.config_value(con, "db_version") or 0), db_schema=db.latest_scripts()[0])

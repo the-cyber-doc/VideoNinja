@@ -1,10 +1,9 @@
 """The app under a base path (e.g. https://example.org/videoninja/), behind nginx."""
 
-import time
 
 import pytest
 
-from app import nginx, paths, tusd
+from app import paths, tusd
 
 from .test_auth import login
 from .test_upload import admin, hook, uploaded  # noqa: F401 (fixture)
@@ -69,40 +68,3 @@ def test_upload_auth_under_the_base_path(base, client, admin):  # noqa: F811
     assert auth("/videoninja/files/", "POST") == 204
     assert auth(f"/videoninja/files/{tus_id}") == 204
     assert auth(f"/files/{tus_id}") == 404  # not under the base path
-
-
-def stub(tmp_path):
-    script = tmp_path / "nginx"
-    calls = tmp_path / "calls"
-    script.write_text(f'#!/bin/sh\necho "$@" >> "{calls}"\necho "2026/10/23 [warn] 1#1: hello"\nexec sleep 60\n')
-    script.chmod(0o755)
-    return script, calls
-
-
-def test_nginx_started_with_its_configuration(tmp_path, monkeypatch, caplog):
-    script, calls = stub(tmp_path)
-    monkeypatch.setenv("VIDEONINJA_NGINX", "1")
-    monkeypatch.setenv("VIDEONINJA_NGINX_BIN", str(script))
-    monkeypatch.setenv("VIDEONINJA_NGINX_CONF", "/app/nginx/nginx.conf")
-    nginx.start()
-    try:
-        for _ in range(100):
-            if calls.exists() and "hello" in caplog.text:
-                break
-            time.sleep(0.05)
-        assert calls.read_text().split() == ["-c", "/app/nginx/nginx.conf", "-e", "stderr", "-g", "daemon", "off;"]
-        assert nginx.process.running()
-        assert "nginx: 2026/10/23 [warn] 1#1: hello" in caplog.text  # its warnings in the app's log
-    finally:
-        nginx.stop()
-    assert not nginx.process.running()
-
-
-def test_nginx_not_started_without_configuration(tmp_path, monkeypatch):
-    script, calls = stub(tmp_path)
-    monkeypatch.setenv("VIDEONINJA_NGINX", "1")
-    monkeypatch.setenv("VIDEONINJA_NGINX_BIN", str(script))
-    monkeypatch.delenv("VIDEONINJA_NGINX_CONF", raising=False)
-    monkeypatch.setattr(nginx, "process", None)
-    nginx.start()  # development: Vite serves the frontend
-    assert nginx.process is None

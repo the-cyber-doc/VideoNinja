@@ -5,20 +5,19 @@ Needs the "video_mgmt" access.
 Saving replaces the video's annotation in one transaction: segments sent with
 their ID are updated (IDs never change: the PWA caches clips by segment ID),
 those without one are added, the others deleted. New and re-timed segments get
-a new thumbnail, from the encoded video; deleted ones lose theirs.
+a new thumbnail and deleted ones lose theirs, by the encoder (the API runs no
+ffmpeg and cannot write the media): the video is marked (video.thumbs_dirty) and
+the segment shows its video's thumbnail meanwhile.
 """
 
 import logging
-import os
 import sqlite3
-import tempfile
 from datetime import tzinfo
-from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 
-from . import db, encoder, paths, queries
+from . import db, queries
 from .auth import require_access, user_zone
 from .snapshot import rebuild_after_write
 from .tags import tag_rules
@@ -120,7 +119,7 @@ def save_annotations(
             raise _unprocessable("A segment ends after the end of the video")
         _check_tags(segment.tags, known_tags, zone)
 
-    retimed: list[int] = []  # new or moved: their thumbnail must be made again
+    changed = False  # a segment added, moved or removed: thumbnails to make or delete
     removed = [i for i in existing if i not in sent_ids]
     with con:
         for segment_id in removed:
@@ -130,49 +129,24 @@ def save_annotations(
             if old is None:
                 segment_id = queries.insert_segment(
                     con, video_id, segment.technique, segment.begin_s, segment.end_s, segment.performer, me["id"])
-                retimed.append(segment_id)
+                changed = True
             else:
                 segment_id = segment.id
                 queries.update_segment(con, segment_id, segment.technique, segment.begin_s, segment.end_s,
                                        segment.performer)
                 queries.clear_segment_tags(con, segment_id)
                 if (old["begin_s"], old["end_s"]) != (segment.begin_s, segment.end_s):
-                    retimed.append(segment_id)
+                    queries.clear_segment_thumbnail(con, segment_id)
+                    changed = True
             for tag in segment.tags:
                 queries.insert_segment_tag(con, segment_id, tag.id, tag.value)
         queries.clear_video_tags(con, video_id)
         for tag in body.tags:
             queries.insert_video_tag(con, video_id, tag.id, tag.value)
         queries.set_all_segments_done(con, video_id, body.all_segments_done)
+        if changed or removed:
+            queries.mark_thumbs_dirty(con, video_id)
 
-    folder = paths.video_dir() / video["sha256sum"][:2] / video["sha256sum"]
-    for segment_id in removed:
-        (folder / f"segment-{segment_id}.jpg").unlink(missing_ok=True)
-    _make_thumbnails(con, video, folder, retimed)
     log.info("Video %s annotated by user id %s: %d segments (%d removed)", video_id, me["id"],
              len(body.segments), len(removed))
     return get_annotations(video_id, me, con)
-
-
-def _make_thumbnails(con: sqlite3.Connection, video: sqlite3.Row, folder: Path, segment_ids: list[int]) -> None:
-    """In the middle of each segment, as when the video was published."""
-    if not segment_ids:
-        return
-    times = {s["id"]: s for s in queries.video_segments(con, video["id"])}
-    duration = video["duration_s"] or max(s["end_s"] for s in times.values())
-    for segment_id in segment_ids:
-        segment, name = times[segment_id], f"segment-{segment_id}.jpg"
-        fd, tmp = tempfile.mkstemp(dir=folder, prefix=".", suffix=".jpg")
-        os.close(fd)
-        try:
-            encoder.thumbnail(folder / "video.mp4", encoder.middle(segment["begin_s"], segment["end_s"], duration),
-                              Path(tmp))
-            os.replace(tmp, folder / name)  # whole or not at all
-        except (OSError, encoder.JobError) as e:
-            log.warning("Video %s: no thumbnail for segment %s: %s", video["id"], segment_id, e)
-            continue
-        finally:
-            if os.path.exists(tmp):
-                os.unlink(tmp)
-        with con:
-            queries.set_segment_thumbnail(con, segment_id, video["id"], name)

@@ -12,6 +12,7 @@
 	import type { Segment } from '../catalog.svelte';
 	import { i18n, t } from '../i18n.svelte';
 	import { clipUrl, segmentDuration } from '../media';
+	import { FRAME_SAMPLES, frameDuration, frameStep, type FrameSample } from '../frames';
 	import { formatTime } from '../time';
 
 	let { segment, title, onclose }: { segment: Segment; title: string; onclose: () => void } = $props();
@@ -30,13 +31,12 @@
 	let frame = 1 / 30;
 	function measureFrame(v: HTMLVideoElement) {
 		if (!('requestVideoFrameCallback' in v)) return;
-		const times: number[] = [];
+		const samples: FrameSample[] = [];
 		const onFrame = (_: number, meta: VideoFrameCallbackMetadata) => {
-			times.push(meta.mediaTime);
-			if (times.length < 6) return v.requestVideoFrameCallback(onFrame);
-			const gaps = times.slice(1).map((time, i) => time - times[i]).filter((gap) => gap > 0.001);
+			samples.push(meta);
+			if (samples.length < FRAME_SAMPLES) return v.requestVideoFrameCallback(onFrame);
 			// Slowed down or not, mediaTime counts in the video's own time.
-			if (gaps.length) frame = Math.min(...gaps);
+			frame = frameDuration(samples) ?? frame;
 		};
 		v.requestVideoFrameCallback(onFrame);
 	}
@@ -44,7 +44,7 @@
 	function step(frames: number) {
 		if (!video) return;
 		video.pause();
-		video.currentTime = Math.min(Math.max(video.currentTime + frames * frame, 0), video.duration || 0);
+		video.currentTime = Math.min(Math.max(frameStep(video.currentTime, frames, frame), 0), video.duration || 0);
 	}
 
 	/** Why the clip did not load: a HEAD (not answered by the service worker) asks the server. */

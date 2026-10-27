@@ -2,6 +2,7 @@ import adapter from '@sveltejs/adapter-static';
 import basicSsl from '@vitejs/plugin-basic-ssl';
 import { sveltekit } from '@sveltejs/kit/vite';
 import { defineConfig } from 'vitest/config';
+import { execSync } from 'node:child_process';
 
 // Where the browser sees the app: '' (the domain's root, default) or e.g.
 // '/videoninja' (a subfolder; the Docker image's build argument). Build time only.
@@ -13,10 +14,31 @@ const suffix = process.env.BUILD_NAME ? `-${process.env.BUILD_NAME}` : '';
 // /api and /media reach the backend without the base path (as nginx forwards them).
 const toBackend = (target: string) => ({ target, rewrite: (path: string) => path.slice(BASE_PATH.length) });
 
+// Shown on the About page. CI and the Docker image pass APP_VERSION (the release tag, else
+// "dev") and APP_COMMIT (a full SHA is shortened); elsewhere they come from git, if there is one.
+function git(command: string): string | undefined {
+	try {
+		return execSync(`git ${command}`, { stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim();
+	} catch {
+		return undefined;
+	}
+}
+const APP_VERSION = (process.env.APP_VERSION || git('describe --tags --exact-match') || 'dev').replace(/^v/, '');
+const dirty = git('status --porcelain') ? '-dirty' : '';
+const commit = process.env.APP_COMMIT;
+const APP_COMMIT = commit
+	? commit.replace(/^([0-9a-f]{7})[0-9a-f]{33}$/, '$1')
+	: (git('rev-parse --short HEAD') ?? 'unknown') + dirty;
+
 export default defineConfig({
 	cacheDir: `node_modules/.vite${suffix}`,
 	// For the app's code ($lib/base.ts) and the service worker.
-	define: { __BASE_PATH__: JSON.stringify(BASE_PATH) },
+	define: {
+		__BASE_PATH__: JSON.stringify(BASE_PATH),
+		__APP_VERSION__: JSON.stringify(APP_VERSION),
+		__APP_BUILD__: JSON.stringify(APP_COMMIT),
+		__BUILD_DATE__: JSON.stringify(new Date().toISOString())
+	},
 	plugins: [
 		// Dev over https: the session cookie is Secure (__Host-), as in production.
 		basicSsl(),

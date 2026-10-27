@@ -6,13 +6,14 @@ encoded; until then its segments are not in the catalogue.
 """
 
 import sqlite3
+import time
 from datetime import tzinfo
 from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field, model_validator
 
-from . import clock, db, queries, tusd
+from . import clock, db, limits, queries, tusd
 from .auth import require_access, user_zone
 from .snapshot import rebuild_after_write
 from .tags import Rule, tag_rules, value_error
@@ -21,6 +22,9 @@ from .validation import RULES, field
 router = APIRouter(prefix="/api", tags=["videos"])
 uploader = require_access("upload")
 RECENT_S = 7 * 24 * 3600  # published videos stay in "my uploads" for a week
+# tusd answers the last chunk before its post-finish hook has marked the upload
+# finished: a submit sent at once waits for it, this long at most.
+FINISH_WAIT_S = 5.0
 
 
 class TagIn(BaseModel):
@@ -120,6 +124,7 @@ def submit(
             raise _unprocessable(f"Unknown performer: {segment.performer}")
         _check_tags(segment.tags, known_tags, zone)
 
+    _wait_finished(con, tus_id)
     with con:
         upload = queries.upload(con, tus_id)
         if upload is None or upload["user"] != me["id"] or upload["state"] == "deleted":
@@ -141,6 +146,26 @@ def submit(
             for tag in segment.tags:
                 queries.insert_segment_tag(con, segment_id, tag.id, tag.value)
     return {"id": video_id}
+
+
+class UploadLimits(BaseModel):
+    max_bytes: int
+    extensions: list[str]  # lower case, without the dot
+
+
+@router.get("/uploads/limits")
+def upload_limits(_: sqlite3.Row = Depends(uploader)) -> UploadLimits:
+    """What the upload page may send (checked again by the pre-create hook, and the
+    content by ffprobe before encoding): the page refuses other files at once."""
+    return UploadLimits(max_bytes=limits.max_upload_bytes(), extensions=limits.extensions())
+
+
+def _wait_finished(con: sqlite3.Connection, tus_id: str) -> None:
+    """Until tusd's post-finish hook has marked the upload (outside a transaction:
+    each read sees the hook's commit), or FINISH_WAIT_S."""
+    end = time.monotonic() + FINISH_WAIT_S
+    while (upload := queries.upload(con, tus_id)) and upload["state"] == "uploading" and time.monotonic() < end:
+        time.sleep(0.1)
 
 
 @router.get("/uploads/mine")

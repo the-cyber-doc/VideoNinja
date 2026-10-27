@@ -88,13 +88,14 @@
 						<Icon name="user" size={22} />
 					</button>
 					{#if menuOpen}
-						<!-- Entries: Profile first, Log out always last. -->
+						<!-- Entries: Profile first, About just before Log out, Log out always last. -->
 						<div class="menu" role="menu">
 							<p class="who">{session.user.name ?? session.user.username}</p>
 							<a role="menuitem" href={url('/profile')}>{t('menu.profile')}</a>
 							{#if hasAccess('user_mgmt')}
 								<a role="menuitem" href={url('/admin/users')}>{t('menu.user_mgmt')}</a>
 							{/if}
+							<a role="menuitem" href={url('/about')}>{t('menu.about')}</a>
 							<button role="menuitem" class="logout" onclick={logout}>{t('menu.logout')}</button>
 						</div>
 					{/if}
