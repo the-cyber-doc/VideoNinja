@@ -7,7 +7,7 @@ pytest==9.1.1
 httpx2==2.16.0
 # for `uvicorn --reload`
 watchfiles==1.3.0
-# Python security linter (code scanning: .github/workflows/codeql.yml, README Security)
+# Python security linter (ci-cd.yml's server tests; README, Security)
 bandit==1.9.4
 # Style and errors (flake8 --max-line-length=120 app tests)
 flake8==7.4.1
