@@ -215,11 +215,10 @@ def config_value(con: sqlite3.Connection, name: str) -> str | None:
 
 
 def _named(con: sqlite3.Connection, table: str, *columns: str) -> list[sqlite3.Row]:
-    extra = "".join(f', x."{c}"' for c in columns)
-    return con.execute(
-        f'SELECT x."id", x."kanji", x."romaji"{extra}, t."en" AS "description_en", t."fr" AS "description_fr"'
-        f' FROM "{table}" x LEFT JOIN "translation" t ON t."id" = x."description" ORDER BY x.rowid'
-    ).fetchall()
+    # Table and columns: this module's own names (the callers below), never input.
+    names = "".join(f', x."{c}"' for c in ("id", "kanji", "romaji", *columns))[2:]
+    sql = f'SELECT {names}, t."en" AS "description_en", t."fr" AS "description_fr" FROM "{table}" x'  # nosec B608
+    return con.execute(sql + ' LEFT JOIN "translation" t ON t."id" = x."description" ORDER BY x.rowid').fetchall()
 
 
 def schools(con: sqlite3.Connection) -> list[sqlite3.Row]:

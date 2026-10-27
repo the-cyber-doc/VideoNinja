@@ -17,6 +17,7 @@ async def lifespan(app: FastAPI):
     encoder.x265_preset()  # nor with an invalid VIDEONINJA_X265_PRESET
     limits.check()  # nor VIDEONINJA_MAX_UPLOAD_BYTES, VIDEONINJA_INPUT_FORMATS
     procs.check()  # nor VIDEONINJA_FFMPEG_TIMEOUT_H, VIDEONINJA_FFPROBE_TIMEOUT_MIN
+    paths.service_url("VIDEONINJA_TUSD_URL")  # nor a tusd address other than http(s)
     if db.is_initialized():
         app.state.setup_token = None
         db.migrate()  # to this release's version, before anything reads it (else: no start)

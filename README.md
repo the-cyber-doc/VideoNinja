@@ -32,6 +32,7 @@ Self-hosted on a Raspberry Pi 5 with Docker behind nginx.
 | `docker-compose.dev.yaml`, `tools/docker-dev.sh` | The production images built from the checkout and run locally on the development data (see [9. Docker images](#9-docker-images)) |
 | `tools/make-dev-db.py` | A development database with a fixed test admin (see [Test admin without the wizard](#test-admin-without-the-wizard)) |
 | `tools/test-browser.sh` | Every browser test, once, with the browsers in Playwright's Docker image (also where WebKit can't start locally; see [6. Frontend tests](#6-frontend-tests)) |
+| `tools/sbom.sh` | SPDX SBOMs of the four images and the sources, `--scan` for their known vulnerabilities (see [Security](#security)) |
 | `tools/test-e2e-stack.sh` | The e2e tests against the four real containers, on a throwaway instance (see [End-to-end tests on the containers](#end-to-end-tests-on-the-containers)) |
 | `.github/workflows/ci-cd.yml` | CI: tests + builds on every push; images published only for `v*` tags |
 
@@ -96,7 +97,7 @@ cd server
 # (With a system Python 3.15: python3.15 -m venv .venv)
 uv venv --python 3.15 --seed .venv
 . .venv/bin/activate
-pip install -r requirements-dev.txt
+pip install --require-hashes -r requirements-dev.txt
 
 # Encryption key for development (32 random bytes, base64). Never commit it.
 python -c "import base64, os; print(base64.b64encode(os.urandom(32)).decode())" > dev.key
@@ -214,7 +215,8 @@ sudo docker compose up -d && sudo rm videoninja.db
 ```bash
 # Backend, in server/ with the venv active
 pytest
-pip install flake8 && flake8 app tests --count --select=E9,F63,F7,F82 --show-source --statistics
+flake8 --max-line-length=120 app tests
+bandit -r app -q          # Python security linter: no finding allowed (see Security)
 
 # Frontend, in frontend/
 npm run check
@@ -1383,6 +1385,84 @@ request; after an interruption it asks for the offset (`HEAD`) and continues.
   same-origin media requests.
 - **Audit trail:** nginx logs the final status of every request (`401`/`403` =
   denied); the app logs each allow/deny decision with user and segment ID.
+
+## Security
+
+### SBOM (SPDX)
+
+What the app is made of, package by package (OS packages, Python, npm, binaries),
+in [SPDX](https://spdx.dev) JSON:
+
+- **Published images:** each release carries its SBOM and its build provenance
+  (SLSA), attached by CI (BuildKit, `sbom: true`):
+  `docker buildx imagetools inspect thecyberdoc/videoninja-api:1.2.3 --format '{{ json .SBOM }}'`.
+- **Every week** (and on demand: Actions → Security → Run workflow): the
+  `Security` workflow builds the four images, writes their SBOMs and the
+  sources' (`videoninja-*.spdx.json`, as artifacts of the run) and scans them.
+- **Locally:** `tools/sbom.sh` (the images of `tools/docker-dev.sh build`) writes
+  `sbom/videoninja-{nginx,api,encoder,tusd,sources}.spdx.json`; `--scan` adds a
+  vulnerability table per SBOM (`sbom/*.vulns.txt`). Syft and Grype run from their
+  official images, pinned by digest.
+
+### Python dependencies: locked, with hashes
+
+`server/requirements.in` (the app's own dependencies) and
+`server/requirements-dev.in` (plus the development tools) are the files to edit.
+`requirements.txt` and `requirements-dev.txt` are generated from them: every
+package the app ends up with, pinned, with the hashes of all its files (every
+platform: amd64, arm64, glibc, musl). pip refuses a file whose hash differs
+(`--require-hashes`): a package replaced on PyPI, or a mirror serving something
+else, stops the install. After editing an `.in` file, in `server/`:
+
+```bash
+uv pip compile requirements.in --universal --python-version 3.15 --generate-hashes -o requirements.txt
+uv pip compile requirements-dev.in --universal --python-version 3.15 --generate-hashes -o requirements-dev.txt
+pip install --require-hashes -r requirements-dev.txt
+```
+
+To update every dependency within the pins (dependencies of dependencies), add
+`--upgrade` to both compile commands. Commit the `.in` and `.txt` files together.
+
+### Code scanning
+
+| Tool | What | Where |
+|---|---|---|
+| [CodeQL](https://codeql.github.com) | The Python backend, the frontend's JavaScript/TypeScript (not the `.svelte` templates) and the workflows (`actions`: injections, permissions), with the `security-extended` queries | `.github/workflows/codeql.yml`: every push, pull request and Monday; results in **Security → Code scanning** |
+| [Bandit](https://bandit.readthedocs.io) | Python security linter (shell calls, SQL built from strings, URLs that can open files…) | CI's server tests (a finding fails them); locally `bandit -r app -q` |
+
+A Bandit finding that is reviewed and harmless is marked on its line, the
+reason first: `import subprocess  # only through procs.py  # nosec B404`. Never
+mark a whole file or test as ignored. Today's marks: `subprocess` (argument lists
+built by the app, no shell), one SQL statement naming the module's own tables,
+and the two internal URLs (`VIDEONINJA_API_URL`, `VIDEONINJA_TUSD_URL`), which
+the app now only accepts as `http(s)` (a `file:` URL would read local files).
+
+### Known vulnerabilities
+
+[Grype](https://github.com/anchore/grype) matches the SBOMs against the
+vulnerability databases (NVD, GitHub advisories, Alpine and Debian trackers). The
+weekly workflow puts the results in the repository's **Security → Code
+scanning** tab, per image and for the sources: a new vulnerability in an
+unchanged image shows up there without any push. It never fails the build; read
+each finding (does the vulnerable function run here? is a fixed version out?)
+and update. Enable **Dependabot alerts** in the repository's settings too.
+
+### Versions: pinned, and how updates come
+
+| What | Pinned by | Updated by |
+|---|---|---|
+| Python packages | `server/requirements.txt`: every package, dependencies of dependencies too, with the SHA-256 of each file (`pip install --require-hashes`, in the image and CI) | Dependabot (pip), or by hand (below) |
+| npm packages | `package-lock.json` (versions and sha512 hashes, `npm ci`) | Dependabot (npm) |
+| Base images | exact tag in `server/Dockerfile` | Dependabot (docker; `dhi.io` with the Docker Hub secrets as Dependabot secrets) |
+| tusd, nginx source, ngx_brotli | version + SHA-256 in `server/Dockerfile` | by hand (watch their releases) |
+| Alpine / Debian packages (`apk add`) | not pinned: the base image's current ones | a rebuild (the weekly scan says when) |
+| GitHub Actions | tags (`ci-cd.yml`), commits (`security.yml`) | Dependabot (github-actions) |
+
+Dependabot (`.github/dependabot.yml`) opens a pull request per update, weekly,
+for a release at least **14 days old** (`cooldown`), time for a broken or
+malicious release to be noticed and withdrawn; CI tests each pull request.
+Before merging: read the release notes (breaking changes, security fixes), let
+CI run, and run `tools/test-e2e-stack.sh` for anything in the images.
 
 ## License
 

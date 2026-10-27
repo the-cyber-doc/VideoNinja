@@ -14,7 +14,7 @@ never left running, never left unreaped.
 import os
 import shutil
 import signal
-import subprocess
+import subprocess  # this module's purpose (docstring)  # nosec B404
 import tempfile
 from collections.abc import Sequence
 
@@ -64,7 +64,8 @@ def _command(cmd: Sequence[str]) -> list[str]:
 def popen(cmd: Sequence[str], **kwargs) -> subprocess.Popen:
     """Start cmd in its own process group, killed if the app's process dies.
     The caller must end with stop() (also after a normal exit)."""
-    return subprocess.Popen(_command(cmd), start_new_session=True, **kwargs)
+    # An argument list (no shell) built by the app, never from a request.
+    return subprocess.Popen(_command(cmd), start_new_session=True, **kwargs)  # nosec B603
 
 
 def stop(process: subprocess.Popen) -> None:

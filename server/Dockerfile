@@ -63,7 +63,7 @@ FROM python:3.15.2-alpine3.24 AS python-packages
 COPY server/requirements.txt /tmp/requirements.txt
 RUN apk add --no-cache build-base libffi-dev cargo \
     && python -m venv /opt/venv \
-    && /opt/venv/bin/pip install --no-cache-dir -r /tmp/requirements.txt \
+    && /opt/venv/bin/pip install --no-cache-dir --require-hashes -r /tmp/requirements.txt \
     && /opt/venv/bin/pip uninstall --yes pip
 
 # The app's sources, readable by the containers' user whatever the umask of the

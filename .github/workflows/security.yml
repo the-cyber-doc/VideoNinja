@@ -1,0 +1,109 @@
+name: Security
+
+# The four images, built as CI builds them (amd64), and the sources: each described by
+# an SPDX SBOM (Syft) and scanned for known vulnerabilities (Grype). Results in the
+# repository's Security tab (code scanning) and the SBOMs as artifacts. Weekly: a new
+# vulnerability in an unchanged image shows up without any push. Never fails the
+# build: it reports; deciding what to update is yours (README, Security).
+# Third-party actions pinned by commit (a tag can be moved); Dependabot updates them.
+on:
+  schedule:
+    - cron: '17 4 * * 1'   # Mondays, 04:17 UTC
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - server/requirements.txt
+      - frontend/package-lock.json
+      - server/Dockerfile
+      - .github/workflows/security.yml
+
+permissions:
+  contents: read
+
+jobs:
+  images:
+    name: Scan ${{ matrix.image }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write   # upload to code scanning
+    strategy:
+      fail-fast: false
+      matrix:
+        image: [nginx, api, encoder, tusd]
+    steps:
+    - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09   # v5
+
+    - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069   # v4
+
+    # The base images come from Docker Hardened Images (dhi.io).
+    - uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6   # v4
+      with:
+        registry: dhi.io
+        username: ${{ secrets.DOCKERHUB_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+    - name: Build (amd64, as CI)
+      uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc   # v7
+      with:
+        context: .
+        file: ./server/Dockerfile
+        target: ${{ matrix.image }}
+        platforms: linux/amd64
+        load: true
+        tags: videoninja-${{ matrix.image }}:scan
+        cache-from: type=gha,scope=${{ matrix.image }}-linux-amd64
+
+    - name: SBOM (SPDX)
+      uses: anchore/sbom-action@66cbf4bc1f1c0d2edc94016e65bc221b6bb0ad6c   # v0.24.3
+      with:
+        image: videoninja-${{ matrix.image }}:scan
+        format: spdx-json
+        output-file: videoninja-${{ matrix.image }}.spdx.json
+        artifact-name: videoninja-${{ matrix.image }}.spdx.json
+
+    - name: Vulnerabilities
+      id: scan
+      uses: anchore/scan-action@27805bf3b4e84b4a5c980df22ed233c00390a439   # v7.4.2
+      with:
+        sbom: videoninja-${{ matrix.image }}.spdx.json
+        fail-build: false
+        output-format: sarif
+
+    - uses: github/codeql-action/upload-sarif@24c54180a607b1449ed407dd24f251e4e9147c8d   # v4.38.3
+      with:
+        sarif_file: ${{ steps.scan.outputs.sarif }}
+        category: image-${{ matrix.image }}
+
+  sources:
+    name: Scan the sources (npm, pip)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+    - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09   # v5
+
+    # Every dependency, development ones too (frontend/package-lock.json,
+    # server/requirements*.txt): also what builds the images.
+    - name: SBOM (SPDX)
+      uses: anchore/sbom-action@66cbf4bc1f1c0d2edc94016e65bc221b6bb0ad6c   # v0.24.3
+      with:
+        path: .
+        format: spdx-json
+        output-file: videoninja-sources.spdx.json
+        artifact-name: videoninja-sources.spdx.json
+
+    - name: Vulnerabilities
+      id: scan
+      uses: anchore/scan-action@27805bf3b4e84b4a5c980df22ed233c00390a439   # v7.4.2
+      with:
+        sbom: videoninja-sources.spdx.json
+        fail-build: false
+        output-format: sarif
+
+    - uses: github/codeql-action/upload-sarif@24c54180a607b1449ed407dd24f251e4e9147c8d   # v4.38.3
+      with:
+        sarif_file: ${{ steps.scan.outputs.sarif }}
+        category: sources

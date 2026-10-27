@@ -5,8 +5,10 @@ import threading
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
 import pytest
+from fastapi.testclient import TestClient
 
-from app import clock, db, encoder
+from app import clock, db, encoder, paths
+from app.main import app
 
 from .test_auth import login
 
@@ -110,3 +112,20 @@ def test_database_on_another_version(client, admin_secret):
     con.close()
     r = client.get("/health")
     assert r.status_code == 503 and r.json()["database"] == "failing"
+
+
+@pytest.mark.parametrize("value", ["file:///etc/passwd", "ftp://tusd/", "tusd:1080", "http://"])
+def test_service_urls_are_http_only(monkeypatch, value):
+    """urllib would open file: and ftp: URLs too: another container's address is http(s)."""
+    monkeypatch.setenv("VIDEONINJA_TUSD_URL", value)
+    with pytest.raises(RuntimeError, match="VIDEONINJA_TUSD_URL"):
+        paths.service_url("VIDEONINJA_TUSD_URL")
+    with pytest.raises(RuntimeError), TestClient(app):
+        pass  # the API does not start with it
+
+
+def test_service_url_without_trailing_slash(monkeypatch):
+    monkeypatch.setenv("VIDEONINJA_API_URL", "https://api:8000/")
+    assert paths.service_url("VIDEONINJA_API_URL") == "https://api:8000"
+    monkeypatch.delenv("VIDEONINJA_API_URL")
+    assert paths.service_url("VIDEONINJA_API_URL") is None

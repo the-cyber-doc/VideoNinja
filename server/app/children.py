@@ -2,7 +2,7 @@
 stop (with a backoff), stopped with the app; their output goes to the app's log."""
 
 import logging
-import subprocess
+import subprocess  # tusd in development: its own command line, no shell  # nosec B404
 import threading
 import time
 
@@ -43,7 +43,7 @@ class Child:
         backoff = 1.0
         while not self.stopping.is_set():
             started = time.monotonic()
-            self.process = subprocess.Popen(
+            self.process = subprocess.Popen(  # command(): the app's argument list  # nosec B603
                 self.command(), stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                 text=True, encoding="utf-8", errors="replace",
             )

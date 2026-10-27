@@ -1,0 +1,43 @@
+# New versions of what the app is built from, as pull requests (CI tests each one).
+# cooldown: a release is proposed only once it is two weeks old, time for a broken
+# or malicious one to be noticed and withdrawn (security updates come at once).
+version: 2
+
+registries:
+  # Docker Hardened Images: a Docker account. Set DOCKERHUB_USERNAME and
+  # DOCKERHUB_TOKEN as Dependabot secrets too (Settings → Secrets → Dependabot).
+  dhi:
+    type: docker-registry
+    url: dhi.io
+    username: ${{secrets.DOCKERHUB_USERNAME}}
+    password: ${{secrets.DOCKERHUB_TOKEN}}
+
+updates:
+  - package-ecosystem: pip
+    directory: /server
+    schedule: { interval: weekly }
+    cooldown: { default-days: 14 }
+    groups:
+      python-minor:
+        update-types: [minor, patch]
+
+  - package-ecosystem: npm
+    directory: /frontend
+    schedule: { interval: weekly }
+    cooldown: { default-days: 14 }
+    groups:
+      npm-minor:
+        update-types: [minor, patch]
+
+  # server/Dockerfile's FROM lines (nginx, python, node, static…).
+  - package-ecosystem: docker
+    directory: /server
+    registries: [dhi]
+    schedule: { interval: weekly }
+    cooldown: { default-days: 14 }
+
+  # The workflows' actions (pinned by commit in security.yml).
+  - package-ecosystem: github-actions
+    directory: /
+    schedule: { interval: weekly }
+    cooldown: { default-days: 14 }

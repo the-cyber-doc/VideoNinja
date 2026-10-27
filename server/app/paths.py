@@ -4,6 +4,7 @@ media read-only for nginx). Development default: next to the database."""
 import os
 import re
 from pathlib import Path
+from urllib.parse import urlsplit
 
 from . import db
 
@@ -40,3 +41,15 @@ def base_path() -> str:
     if not _BASE_PATH.fullmatch(value):
         raise RuntimeError(f"VIDEONINJA_BASE_PATH must look like /videoninja, not {value!r}")
     return value
+
+
+def service_url(variable: str) -> str | None:
+    """Another container's address (VIDEONINJA_API_URL, VIDEONINJA_TUSD_URL), without
+    a trailing slash; None if not set. http(s) only: urllib would also open file: or
+    ftp: URLs. RuntimeError otherwise: checked at startup."""
+    value = os.environ.get(variable)
+    if not value:
+        return None
+    if urlsplit(value).scheme not in ("http", "https") or not urlsplit(value).hostname:
+        raise RuntimeError(f"{variable}={value!r}: must be an http(s) URL, e.g. http://api:8000")
+    return value.rstrip("/")

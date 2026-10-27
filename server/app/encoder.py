@@ -40,7 +40,7 @@ import os
 import shutil
 import signal
 import sqlite3
-import subprocess
+import subprocess  # only through procs.py: argument lists, no shell  # nosec B404
 import sys
 import threading
 import time
@@ -409,13 +409,13 @@ def catalog_changed() -> None:
     container the encoder has no catalogue: the API rebuilds it (an internal call).
     In the API: directly. At once, not debounced: the upload page fetches the
     catalogue as soon as it sees the video published."""
-    api = os.environ.get("VIDEONINJA_API_URL")
+    api = paths.service_url("VIDEONINJA_API_URL")
     if not api:
         snapshot.rebuild_now()
         return
-    request = urllib.request.Request(f"{api.rstrip('/')}/internal/catalog-changed", method="POST")
+    request = urllib.request.Request(f"{api}/internal/catalog-changed", method="POST")
     try:
-        urllib.request.urlopen(request, timeout=10).close()
+        urllib.request.urlopen(request, timeout=10).close()  # http(s) only (paths)  # nosec B310
     except OSError as e:  # the API rebuilds at its next start anyway
         log.warning("Catalogue rebuild not requested from the API: %s", e)
 
@@ -626,6 +626,7 @@ def main(argv: list[str]) -> int:
     limits.check()
     procs.check()
     x265_preset()
+    paths.service_url("VIDEONINJA_API_URL")
     stopping = threading.Event()
     signal.signal(signal.SIGTERM, lambda *_: stopping.set())
     signal.signal(signal.SIGINT, lambda *_: stopping.set())

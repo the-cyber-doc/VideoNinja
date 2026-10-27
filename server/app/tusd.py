@@ -217,9 +217,9 @@ def available() -> bool:
     answers a tus OPTIONS request. Run by the app: its process is running (False
     when the binary is missing, or it crashed and is restarting). Neither (tests,
     tusd run by hand): assumed up."""
-    url = os.environ.get("VIDEONINJA_TUSD_URL")
+    url = paths.service_url("VIDEONINJA_TUSD_URL")
     if url:
-        return _answers(url.rstrip("/") + files_path())
+        return _answers(url + files_path())
     if os.environ.get("VIDEONINJA_TUSD", "1") == "0":
         return True
     return process.running()
@@ -227,7 +227,8 @@ def available() -> bool:
 
 def _answers(url: str) -> bool:
     try:
-        with urllib.request.urlopen(urllib.request.Request(url, method="OPTIONS"), timeout=2) as r:
+        request = urllib.request.Request(url, method="OPTIONS")
+        with urllib.request.urlopen(request, timeout=2) as r:  # http(s) only (paths)  # nosec B310
             return bool(r.headers.get("Tus-Version"))
     except (OSError, urllib.error.URLError):
         return False

@@ -1,0 +1,13 @@
+# The app's direct dependencies, pinned. Edit this file, then regenerate the lock file
+# with every dependency and its hashes (README, Development):
+#   uv pip compile requirements.in --universal --python-version 3.15 --generate-hashes -o requirements.txt
+fastapi==0.157.0
+uvicorn==0.54.0
+uvloop==0.23.0
+httptools==0.9.0
+argon2-cffi==25.1.0
+cryptography==50.0.2
+pyotp==2.10.0
+segno==1.6.6
+# IANA timezones for zoneinfo (app/clock.py): the slim image has no system tz database
+tzdata==2026.5
