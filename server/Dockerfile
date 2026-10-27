@@ -3,7 +3,7 @@
 #            files after the API's X-Accel-Redirect, uploads after its check
 #   api      the FastAPI app: sessions, the database, the catalogue snapshots
 #   encoder  the encoding queue (encode-videos.sh, ffmpeg) and segment thumbnails
-#   tusd     resumable uploads (the official static binary, nothing else)
+#   tusd     resumable uploads (tusd built from its source, nothing else)
 # Behind your TLS proxy, under BASE_PATH (default /videoninja, as
 # https://example.org/videoninja/). Built from the repository root (it needs
 # frontend/, nginx/, tools/):
@@ -21,24 +21,27 @@
 # at 3.14 and have no package manager (ffmpeg, brotli, zopfli, tini are needed).
 # Versions pinned; update them together with their checksums below.
 
-# tusd: official release, checksums pinned per architecture. (The official
-# image's binary is built on Alpine; the release binary is static.)
-FROM dhi.io/alpine-base:3.24-alpine3.24-dev AS tusd-download
-USER root
-ARG TARGETARCH
-ARG TUSD_VERSION=v2.10.1
-ARG TUSD_SHA256_amd64=e8c8d7738275d2d9377db953aecbc242262d3620e77fbd3c1491361d9cea6ac8
-ARG TUSD_SHA256_arm64=134e575a6524698b54d989958c680f0a4ec243d9622c1926e30e27c2a86e4752
+# tusd, built from its release's source (pinned SHA-256): the release binaries are
+# built with older Go and libraries than their security fixes (the weekly scan). The
+# latest Go, and the libraries below at their fixed versions; every module checked by
+# Go against go.sum and its checksum database (sum.golang.org). Static, no cgo.
+FROM dhi.io/golang:1.27.3-alpine3.24-dev AS tusd-build
+USER 0:0
+ARG TUSD_VERSION=2.10.1
+ARG TUSD_COMMIT=388a27cb81c33b2349e0308b5e97e23797e86fd9
+ARG TUSD_SHA256=ab47dd763c7d5269b13738cc731ea85b0670b62f49bccf046587b2588e71bd95
+# Raised above tusd's own go.mod: its release still has the vulnerable ones.
+ARG TUSD_MODULES="golang.org/x/net@v0.60.0 golang.org/x/crypto@v0.57.0 google.golang.org/grpc@v1.83.2 go.opentelemetry.io/otel/sdk@v1.45.0"
+ENV CGO_ENABLED=0 GOFLAGS=-trimpath GOTOOLCHAIN=local
 WORKDIR /tmp/build
-RUN case "$TARGETARCH" in \
-        amd64) sha="$TUSD_SHA256_amd64" ;; \
-        arm64) sha="$TUSD_SHA256_arm64" ;; \
-        *) echo "no tusd for $TARGETARCH" >&2; exit 1 ;; \
-    esac \
-    && wget -q -O tusd.tar.gz "https://github.com/tus/tusd/releases/download/${TUSD_VERSION}/tusd_linux_${TARGETARCH}.tar.gz" \
-    && echo "$sha  tusd.tar.gz" | sha256sum -c - \
-    && tar xzf tusd.tar.gz "tusd_linux_${TARGETARCH}/tusd" \
-    && install -D -m 755 "tusd_linux_${TARGETARCH}/tusd" /out/usr/local/bin/tusd \
+RUN wget -q -O tusd.tar.gz "https://github.com/tus/tusd/archive/refs/tags/v${TUSD_VERSION}.tar.gz" \
+    && echo "${TUSD_SHA256}  tusd.tar.gz" | sha256sum -c - \
+    && tar xzf tusd.tar.gz \
+    && cd "tusd-${TUSD_VERSION}" \
+    && go get ${TUSD_MODULES} \
+    && go mod tidy \
+    && go build -ldflags "-s -w -X github.com/tus/tusd/v2/cmd/tusd/cli.VersionName=v${TUSD_VERSION} -X github.com/tus/tusd/v2/cmd/tusd/cli.GitCommit=${TUSD_COMMIT}" \
+        -o /out/usr/local/bin/tusd ./cmd/tusd \
     && /out/usr/local/bin/tusd -version \
     && mkdir -p /out/srv/uploads
 
@@ -144,8 +147,8 @@ RUN sed -i "s#/videoninja/#${BASE_PATH}/#g" /etc/videoninja/nginx.conf \
 
 # The hardened static base: CA certificates and a passwd file, nothing else.
 FROM dhi.io/static:20261020-alpine3.24 AS tusd
-COPY --from=tusd-download /out/usr/local/bin/tusd /usr/local/bin/tusd
-COPY --from=tusd-download --chown=10001:10001 /out/srv/uploads /srv/uploads
+COPY --from=tusd-build /out/usr/local/bin/tusd /usr/local/bin/tusd
+COPY --from=tusd-build --chown=10001:10001 /out/srv/uploads /srv/uploads
 VOLUME ["/srv/uploads"]
 USER 10001:10001
 # Its arguments (base path, hooks, size limit) come from the compose file.

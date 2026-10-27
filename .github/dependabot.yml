@@ -25,6 +25,11 @@ updates:
     directory: /frontend
     schedule: { interval: weekly }
     cooldown: { default-days: 14 }
+    ignore:
+      # svelte-check accepts TypeScript up to 6 only (its peer dependency): no 7 until
+      # it does (npm ci refuses the install).
+      - dependency-name: typescript
+        update-types: [version-update:semver-major]
     groups:
       npm-minor:
         update-types: [minor, patch]

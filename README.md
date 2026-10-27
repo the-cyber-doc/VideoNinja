@@ -1427,7 +1427,7 @@ To update every dependency within the pins (dependencies of dependencies), add
 
 | Tool | What | Where |
 |---|---|---|
-| [CodeQL](https://codeql.github.com) | The Python backend, the frontend's JavaScript/TypeScript (not the `.svelte` templates) and the workflows (`actions`: injections, permissions), with the `security-extended` queries | `.github/workflows/codeql.yml`: every push, pull request and Monday; results in **Security → Code scanning** |
+| [CodeQL](https://codeql.github.com) | The Python backend, the frontend's JavaScript/TypeScript (not the `.svelte` templates) and the workflows (`actions`: injections, permissions) | GitHub's **default setup** (Settings → Code security → CodeQL analysis): every push, pull request and week, maintained by GitHub; results in **Security → Code scanning**. More queries: set its query suite to *Extended*. (A CodeQL workflow in the repository as well is refused by GitHub while the default setup is on.) |
 | [Bandit](https://bandit.readthedocs.io) | Python security linter (shell calls, SQL built from strings, URLs that can open files…) | CI's server tests (a finding fails them); locally `bandit -r app -q` |
 
 A Bandit finding that is reviewed and harmless is marked on its line, the
@@ -1454,7 +1454,8 @@ and update. Enable **Dependabot alerts** in the repository's settings too.
 | Python packages | `server/requirements.txt`: every package, dependencies of dependencies too, with the SHA-256 of each file (`pip install --require-hashes`, in the image and CI) | Dependabot (pip), or by hand (below) |
 | npm packages | `package-lock.json` (versions and sha512 hashes, `npm ci`) | Dependabot (npm) |
 | Base images | exact tag in `server/Dockerfile` | Dependabot (docker; `dhi.io` with the Docker Hub secrets as Dependabot secrets) |
-| tusd, nginx source, ngx_brotli | version + SHA-256 in `server/Dockerfile` | by hand (watch their releases) |
+| tusd | its source (version + SHA-256), built with the latest Go (`dhi.io/golang`, Dependabot) and its Go libraries raised to their fixed versions (`TUSD_MODULES` in `server/Dockerfile`, checked against `go.sum` and sum.golang.org) | by hand: a new tusd release, or a Go library the weekly scan flags |
+| nginx source, ngx_brotli | version + SHA-256 in `server/Dockerfile` | by hand (watch their releases) |
 | Alpine / Debian packages (`apk add`) | not pinned: the base image's current ones | a rebuild (the weekly scan says when) |
 | GitHub Actions | tags (`ci-cd.yml`), commits (`security.yml`) | Dependabot (github-actions) |
 
