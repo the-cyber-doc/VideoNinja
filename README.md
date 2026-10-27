@@ -18,8 +18,8 @@ Self-hosted on a Raspberry Pi 5 with Docker behind nginx.
 |---|---|
 | `server/app/` | Backend: Python 3.15 + FastAPI |
 | `server/tests/` | Backend tests (pytest) |
-| `server/database/` | `db_vN.sql` (schema) + `db_vN_init.sql` (initial data) |
-| `server/database/catalog/techniques.json`, `tools/catalog-sql.py` | The schools' techniques (source) and the generator of their block in `db_v1_init.sql` (see [The catalogue of techniques](#the-catalogue-of-techniques)) |
+| `server/database/` | `db_vN.sql` (schema) + `db_vN_init.sql` (initial data) of each version, `migrations/` between versions |
+| `server/database/catalog/techniques.json`, `tools/catalog-sql.py` | The schools' techniques (source) and the generator of their block in the newest `db_v<N>_init.sql` (see [The catalogue of techniques](#the-catalogue-of-techniques)) |
 | `frontend/` | SvelteKit PWA (`adapter-static`, Svelte 5, TypeScript) |
 | `frontend/src/**/*.test.ts` | Frontend unit tests (Vitest) |
 | `frontend/tests/` | Browser tests (Playwright): `mocked/` (fake API), `pwa/` (service worker), `e2e/` (real backend) |
@@ -120,6 +120,7 @@ catalogue snapshots in `catalog/` are ignored by git.
 | `VIDEONINJA_INPUT_FORMATS` | `mov,matroska,avi,mpegts,mpeg,dv,asf` | The ffmpeg demuxers allowed for uploads (`-format_whitelist`): MP4/MOV/M4V/3GP, MKV/WebM, AVI, MTS/M2TS/TS, MPG/VOB, DV, WMV. They also give the file extensions the upload page and tusd's hook accept. Any other name stops the start. |
 | `VIDEONINJA_FFMPEG_TIMEOUT_H` | `24` | Each ffmpeg run (and a whole encoding) is stopped after this many hours: the video fails, it is not tried again. |
 | `VIDEONINJA_FFPROBE_TIMEOUT_MIN` | `10` | The same for each ffprobe run, in minutes: it only reads the file's headers and index. |
+| `VIDEONINJA_ARGON2_CONCURRENCY` | `2` | Password checks (Argon2: 64 MiB and a CPU core each) running at once; the others wait up to 10 s, then get `503` with `Retry-After` ("the server is busy"). |
 | `VIDEONINJA_X265_PRESET` | `medium` | libx265 preset of the encoding queue (`ultrafast` … `veryslow`; slower = smaller files). Case, spaces and quotes are ignored; any other value stops the app at start, naming the value received. |
 | `TZ` | system timezone (image: UTC) | Server's timezone (IANA name, e.g. `Europe/Zurich`), for dates written without a user: invitations. Users' dates are in their browser's timezone. |
 | `VIDEONINJA_BASE_PATH` | `''` (image: `/videoninja`) | Where the browser sees the app (a subfolder of the domain). The session cookie's name and path and tusd's upload URLs follow it; the frontend is built with the same value (`BASE_PATH`). |
@@ -573,7 +574,7 @@ English and French meaning) lives in `server/database/catalog/techniques.json`,
 collected from public sources (listed per section). Gyokushin and Kumogakure
 Ryu have none yet: no public source names their techniques. The meanings are
 rough glosses, to be reviewed by a teacher. To change the catalogue, edit the
-JSON, then regenerate the block of `db_v1_init.sql` (a test fails if they
+JSON, then regenerate the block of the latest `db_v<N>_init.sql` (a test fails if they
 differ), and rebuild the database:
 
 ```bash
@@ -590,10 +591,39 @@ Techniques have no emblem.
 ### Database schema
 
 The schema is designed in [drawdb](https://drawdb.app) and exported to
-`server/database/db_v1.sql`. drawdb does not export `AUTOINCREMENT`: after each
+`server/database/db_v<N>.sql`. drawdb does not export `AUTOINCREMENT`: after each
 export, re-add `"id" INTEGER PRIMARY KEY AUTOINCREMENT` on `video`, `segment`,
-`user` and `comment`. On first start the app uses the highest
-`N` for which both `db_vN.sql` and `db_vN_init.sql` exist.
+`user` and `comment`.
+
+Versions: the app runs on one database version, `EXPECTED_VERSION` in
+`server/app/db.py` (now 2), kept in the database itself (`config.db_version`).
+
+| File | What |
+|---|---|
+| `db_v<N>.sql` + `db_v<N>_init.sql` | Version N's schema and initial data: the setup builds a new database from those of `EXPECTED_VERSION` |
+| `migrations/v<a>_to_v<b>.sql` | One version to the next (`v1_to_v2.sql`) or back (`v2_to_v1.sql`), in one transaction, ending with the new `db_version` |
+
+At startup, before any request, the API compares the database's version with
+`EXPECTED_VERSION` and migrates it one version at a time, up (a newer release)
+or down (going back to an older one). It first copies the database next to it,
+`videoninja.db.v<old>-<UTC time>.bak` (delete those copies once the new version
+runs well). It refuses to start, and changes nothing, if a step's script is
+missing; a step that fails is rolled back and stops the start. The encoder
+waits until the database has the expected version, and `/health` reports the
+database as failing otherwise.
+
+| Version | Since | Changes |
+|---|---|---|
+| 1 | v0.0.6 (efae32a) | — |
+| 2 | the four containers | `heartbeat` (the encoder's liveness, for `/health`), `video.thumbs_dirty` (segment thumbnails made by the encoder) |
+
+Changing the schema: never edit a released `db_v<N>` file. Add `db_v<N+1>.sql`
+and `db_v<N+1>_init.sql` (the new complete schema and data), the two migration
+scripts, raise `EXPECTED_VERSION`, and add the version's row above.
+`tools/catalog-sql.py` writes the newest `_init.sql`; a catalogue change for
+existing databases also needs a migration. `server/tests/test_migrations.py`
+checks that migrating up and down gives exactly the schema a fresh database
+of that version has.
 
 Conventions: text is UTF-8 (`PRAGMA encoding = 'UTF-8'`). Dates are in columns
 named `…_at` declared `DATETIME`, holding ISO 8601 text with the UTC offset in
@@ -611,19 +641,13 @@ segment, at upload or later on the Videos page; editing a segment keeps it).
 Both `ON DELETE SET NULL`. The annotation API sends display names (the user's
 name, else the username), never user IDs.
 
-`db_v1.sql` is still changed in place: there is no migration yet. A database
-created before a change to it must be rebuilt (development:
-`tools/make-dev-db.py --force`; production: a new setup). Since
-`segment.created_by` was added, older databases fail on the Videos page and
-on uploads.
-
 Tags: a tag's name and its fixed values' names are translated (`tag.name`,
 `tag_value.name`: translation IDs `tag.<id>.name`, `tag_value.<tag>.<id>.name`,
 every language filled). A tag with rows in `tag_value` takes one of them
 (shown sorted by name in the user's language), and `video_has_tags` /
 `segment_has_tags` store that value's ID, never its name. A tag without takes
 text, stored as typed and not translated, in its `value_format`: `NULL` = any
-text, `year` = a year from 100 years ago to this year. Seeded (`db_v1_init.sql`):
+text, `year` = a year from 100 years ago to this year. Seeded (`db_v<N>_init.sql`):
 location (outdoor, dojo), event (seminar, class, demo), year, country (the
 249 ISO 3166-1 alpha-3 codes, e.g. `CHE`, named in English and French), and
 source (YouTube, Onmitsukage, Kanninkan: where the video comes from).
@@ -947,6 +971,25 @@ many addresses is not stopped by it, the authenticator code still is. The
 address is your proxy's `X-Forwarded-For`: if the proxy does not set it, every
 client looks the same and one attacker throttles everybody.
 
+Before that, nginx limits the **rate of requests** per address (`limit_req`):
+60 a minute (bursts of 30) on the credential forms sent (POST) (login, setup, registration,
+password and authenticator changes), 20 a second (bursts of 100) on the API, 50
+a second (bursts of 300) on media, 10 a second (bursts of 50) on uploads. Over
+it, nginx answers `429` itself (`Retry-After: 5`), and the page says to try again
+in a moment. Password checks are capped too: at most
+`VIDEONINJA_ARGON2_CONCURRENCY` at a time (each takes 64 MiB), so a burst of
+logins cannot exhaust the API's memory; the others wait their turn, then get
+"the server is busy".
+
+**Writes from other sites** are refused (`403`): every request that changes
+something (POST, PUT, PATCH, DELETE: the API, and the uploads, checked with the
+app before tusd gets them) must come from a page of this origin. The browser
+says so in `Sec-Fetch-Site` (only `same-origin` passes); older browsers without
+it send `Origin`, which must name this host. Requests with neither are not a
+browser's (scripts, the containers' own calls) and pass: the session cookie is
+`SameSite=Strict` anyway. Under a subfolder, the domain's other sites share the
+origin and pass too (see [Sharing the domain](#sharing-the-domain-subfolder)).
+
 Users are added by invitation, from **User Management** in the user menu
 (top right; only for roles with the `user_mgmt` access, i.e. admins):
 
@@ -980,7 +1023,10 @@ techniques, not all), **To annotate** (none yet), **Complete**, and **No
 technique** (marked as containing none). Each thumbnail shows the video's
 duration and whether it is saved on this device.
 A video opened here is saved on the device by the PWA, like clips (deleted
-on logout): reopening it doesn't download it again. Clicking one opens the same annotation panel as the upload page,
+on logout): reopening it doesn't download it again. The phone at the right of
+the page's title removes every video saved this way, at once (they take
+hundreds of MB and are only needed while annotating); their thumbnails and the
+clips stay, and the badges go back to the cloud. Clicking one opens the same annotation panel as the upload page,
 with the video from the server and its saved segments and tags: **Proceed**
 saves them (nothing is uploaded). Segments keep their ID; new or re-timed ones
 get a new thumbnail, and the PWA drops saved clips of segments re-timed or
@@ -1167,6 +1213,8 @@ as UID 10001, writes only to `/tmp`, and logs to the container's output
 - sends the security headers (CSP, `Referrer-Policy: no-referrer`, …) and
   takes the client's address from `X-Forwarded-For`, trusted only from
   private addresses (your proxy);
+- limits the rate of requests per address (`limit_req`, see [Users](#users)),
+  answering `429` itself, as JSON with `Retry-After`;
 - sends **one clip per user at a time** (whole videos on the Videos page: four
   transfers per user, its own count: the editor's three video elements and the
   download that saves the video on the device). The app puts the user's ID in the

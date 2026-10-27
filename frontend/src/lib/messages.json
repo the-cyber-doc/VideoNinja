@@ -3,6 +3,14 @@
 		"en": "Too many failed attempts. Try again in {minutes} min.",
 		"fr": "Trop de tentatives échouées. Réessayez dans {minutes} min."
 	},
+	"error.rate_limited": {
+		"en": "Too many requests at once. Try again in a moment.",
+		"fr": "Trop de requêtes à la fois. Réessayez dans un instant."
+	},
+	"error.busy": {
+		"en": "The server is busy. Try again in a moment.",
+		"fr": "Le serveur est occupé. Réessayez dans un instant."
+	},
 	"common.username": { "en": "Username", "fr": "Nom d'utilisateur" },
 	"common.username_label": { "en": "Username:", "fr": "Nom d'utilisateur :" },
 	"common.username_hint": {
@@ -72,6 +80,15 @@
 	"videos.back": { "en": "All videos", "fr": "Toutes les vidéos" },
 	"videos.saving": { "en": "Saving…", "fr": "Enregistrement…" },
 	"videos.saved": { "en": "Saved.", "fr": "Enregistré." },
+	"videos.remove_saved": {
+		"en": "Remove the videos saved on this device ({n})",
+		"fr": "Supprimer les vidéos enregistrées sur cet appareil ({n})"
+	},
+	"videos.none_saved": { "en": "No video saved on this device", "fr": "Aucune vidéo enregistrée sur cet appareil" },
+	"videos.removed": {
+		"en": "The videos were removed from this device.",
+		"fr": "Les vidéos ont été supprimées de cet appareil."
+	},
 	"videos.leave_confirm": {
 		"en": "Leave without saving your changes?",
 		"fr": "Quitter sans enregistrer vos modifications ?"

@@ -9,6 +9,7 @@
 	import { hasAccess } from '#lib/session.svelte.js';
 	import Icon from '#lib/Icon.svelte';
 	import { formatTime } from '#lib/time.js';
+	import { offline, removeVideos, savedVideos } from '#lib/offline.svelte.js';
 	import SavedBadge from '#lib/SavedBadge.svelte';
 	import { listVideos, SECTIONS, videoSection, videoThumbnailUrl, videoUrl, type VideoRow } from '#lib/videos/annotations.js';
 
@@ -32,12 +33,30 @@
 	// The first section with videos starts open.
 	const firstOpen = $derived(groups.find((g) => g.videos.length)?.section);
 	const duration = (v: VideoRow) => (v.duration_s == null ? '' : formatTime(Math.floor(v.duration_s)));
+
+	// Whole videos saved while annotating (hundreds of MB each): removed at once,
+	// their badges back to the cloud. Opening one saves it again.
+	const stored = $derived(savedVideos().length);
+	let removed = $state(false);
+	async function removeSaved() {
+		await removeVideos();
+		removed = true;
+	}
 </script>
 
 {#if allowed}
 	<div class="page">
-		<h1>{t('videos.title')}</h1>
+		<header>
+			<h1>{t('videos.title')}</h1>
+			{#if offline.available}
+				{@const label = stored ? t('videos.remove_saved', { n: stored }) : t('videos.none_saved')}
+				<button type="button" class="icon remove" title={label} aria-label={label} disabled={!stored} onclick={removeSaved}>
+					<Icon name="phone" size={22} />
+				</button>
+			{/if}
+		</header>
 		{#if saved}<p class="ok" role="status">{t('videos.saved')}</p>{/if}
+		{#if removed}<p class="ok" role="status">{t('videos.removed')}</p>{/if}
 		{#if error}<p class="error" role="alert">{error}</p>{/if}
 
 		{#if videos === null && !error}
@@ -99,9 +118,34 @@
 		display: grid;
 		gap: 0.75rem;
 	}
-	h1 {
-		text-align: center;
+	/* The title centred, the remove button at the right of the same line. */
+	header {
+		display: grid;
+		grid-template-columns: 1fr auto 1fr;
+		align-items: center;
 		margin-bottom: 0.25rem;
+	}
+	h1 {
+		grid-column: 2;
+		text-align: center;
+		margin: 0;
+	}
+	.remove {
+		grid-column: 3;
+		justify-self: end;
+		display: grid;
+		place-items: center;
+		width: 2.4rem;
+		height: 2.4rem;
+		padding: 0;
+		border-radius: 50%;
+		color: var(--text);
+		background: var(--bg);
+		border: 1px solid var(--border);
+	}
+	.remove:disabled {
+		opacity: 0.4;
+		cursor: default;
 	}
 	.ok {
 		color: var(--ok);

@@ -10,12 +10,6 @@ CREATE TABLE IF NOT EXISTS "config" (
 	PRIMARY KEY("name")
 );
 
--- Liveness of the services in other containers (the encoder), for /health.
-CREATE TABLE IF NOT EXISTS "heartbeat" (
-	"name" VARCHAR NOT NULL PRIMARY KEY,
-	"at" DATETIME NOT NULL
-);
-
 CREATE TABLE IF NOT EXISTS "ryu" (
 	"id" VARCHAR NOT NULL UNIQUE,
 	"kanji" VARCHAR NOT NULL,
@@ -103,9 +97,6 @@ CREATE TABLE IF NOT EXISTS "video" (
 	"error" TEXT,
 	"attempts" INTEGER NOT NULL DEFAULT 0,
 	"upload" VARCHAR,
-	-- Changes of its segments on the Videos page not yet seen by the encoder, which makes
-	-- their thumbnails and deletes the old ones (a counter: a change during its work is not lost).
-	"thumbs_dirty" INTEGER NOT NULL DEFAULT 0,
 	FOREIGN KEY ("uploaded_by") REFERENCES "user"("id")
 	ON UPDATE NO ACTION ON DELETE SET NULL
 );

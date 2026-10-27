@@ -206,7 +206,8 @@ test('thumbnail: bottom right, the duration then whether the video is on the dev
 	const picture = (await link.locator('img').boundingBox())!;
 	const duration = link.locator('.duration');
 	await expect(duration).toHaveText('1:05');
-	// No service worker here: not downloaded.
+	// No service worker here: not downloaded, and nothing to remove from the device.
+	await expect(page.getByRole('button', { name: /saved on this device/ })).toHaveCount(0);
 	const badge = link.getByRole('img', { name: 'Not downloaded' });
 	await expect(badge).toHaveAttribute('title', 'Not downloaded');
 	const icon = (await badge.boundingBox())!;

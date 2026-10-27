@@ -137,6 +137,33 @@ export function saveVideo(path: string) {
 		.finally(() => saving.delete(path));
 }
 
+const WHOLE_VIDEO = /\/media\/video\/\d+$/; // not its /thumbnail
+
+/** Paths of the whole videos saved on this device (reactive). */
+export const savedVideos = () => [...saved].filter((path) => WHOLE_VIDEO.test(path));
+
+/** Delete every whole video from the device (they take hundreds of MB, and are only
+ * needed while annotating): saves in progress stopped, their thumbnails kept (small,
+ * the Videos page shows them offline). Clips are not touched. */
+export async function removeVideos() {
+	for (const [path, abort] of saving) {
+		if (WHOLE_VIDEO.test(pathOf(path))) abort.abort();
+	}
+	try {
+		if (await caches.has(MEDIA)) {
+			const cache = await caches.open(MEDIA);
+			for (const request of await cache.keys()) {
+				const path = new URL(request.url).pathname;
+				if (WHOLE_VIDEO.test(path)) await cache.delete(request);
+			}
+		}
+	} catch {
+		// storage blocked: nothing was saved
+	}
+	for (const path of savedVideos()) saved.delete(path);
+	mediaChanged();
+}
+
 /** The service worker answers saved whole videos itself: tell it what changed. */
 function mediaChanged() {
 	navigator.serviceWorker?.controller?.postMessage({ type: 'media-changed' });

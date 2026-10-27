@@ -128,3 +128,24 @@ test('a segment added on the Videos page gets its thumbnail from the encoder', a
 		)
 		.toBe(true);
 });
+
+// Last: they use up this address's request budget.
+test('a write from another origin is refused, through nginx', async ({ page }) => {
+	await logIn(page);
+	const name = { data: { name: 'From elsewhere' } };
+	const elsewhere = await page.request.post('api/profile/name', { ...name, headers: { 'Sec-Fetch-Site': 'cross-site' } });
+	expect(elsewhere.status()).toBe(403);
+	const evil = await page.request.post('api/profile/name', { ...name, headers: { Origin: 'https://evil.example' } });
+	expect(evil.status()).toBe(403);
+});
+
+test('a burst of login requests is cut by nginx (429, Retry-After), before the app', async ({ request }) => {
+	// Invalid bodies: answered 422 by the app at once, no password checked, nothing counted
+	// by its throttling. Over the credentials' rate and burst, nginx answers itself.
+	const answers = await Promise.all(Array.from({ length: 60 }, () => request.post('api/auth/login', { data: {} })));
+	const limited = answers.filter((r) => r.status() === 429);
+	expect(limited.length).toBeGreaterThan(20);
+	expect(answers.filter((r) => r.status() === 422).length).toBeLessThanOrEqual(40);
+	expect(await limited[0].json()).toEqual({ detail: 'Too many requests' });
+	expect(limited[0].headers()['retry-after']).toBe('5');
+});

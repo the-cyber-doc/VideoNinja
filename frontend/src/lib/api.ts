@@ -24,9 +24,17 @@ async function errorMessage(res: Response): Promise<string> {
 	// Too many failed credentials from this address (login, profile, setup,
 	// registration): the server's wait, in the user's language.
 	if (res.status === 429) {
+		// nginx's rate limit (limit_req) says "Too many requests": a moment, not minutes.
+		const limited = await res
+			.clone()
+			.json()
+			.then((body) => body.detail === 'Too many requests', () => false);
+		if (limited) return t('error.rate_limited');
 		const minutes = Math.max(1, Math.ceil(Number(res.headers.get('Retry-After') ?? 60) / 60));
 		return t('error.throttled', { minutes });
 	}
+	// Every password check busy (a burst of logins): try again in a moment.
+	if (res.status === 503 && res.headers.has('Retry-After')) return t('error.busy');
 	try {
 		const detail = (await res.json()).detail;
 		if (typeof detail === 'string') return detail;

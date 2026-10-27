@@ -13,11 +13,12 @@ def test_needs_session(client, admin_secret):
 
 def test_database_version(client, admin_secret):
     assert login(client, admin_secret).status_code == 200
-    assert client.get("/api/about").json() == {"db_version": 1, "db_schema": 1}
+    expected = db.EXPECTED_VERSION
+    assert client.get("/api/about").json() == {"db_version": expected, "db_schema": expected}
 
-    # A database built by an older release keeps its own version.
+    # Another version (migrated at the next start): said as it is.
     con = sqlite3.connect(db.db_path())
     with con:
         con.execute("UPDATE config SET value = '0' WHERE name = 'db_version'")
     con.close()
-    assert client.get("/api/about").json() == {"db_version": 0, "db_schema": 1}
+    assert client.get("/api/about").json() == {"db_version": 0, "db_schema": expected}

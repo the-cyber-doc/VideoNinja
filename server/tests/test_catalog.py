@@ -103,10 +103,10 @@ def test_seed_catalogue():
     from pathlib import Path
     tool = Path(__file__).resolve().parents[2] / "tools" / "catalog-sql.py"
     check = subprocess.run([sys.executable, str(tool), "--check"], capture_output=True, text=True)
-    assert check.returncode == 0, check.stderr  # db_v1_init.sql matches catalog/techniques.json
+    assert check.returncode == 0, check.stderr  # the latest db_v<N>_init.sql matches catalog/techniques.json
 
     con = sqlite3.connect(":memory:")
-    for script in db.latest_scripts()[1:]:
+    for script in db.scripts():
         con.executescript(script.read_text(encoding="utf-8"))
     per_school = dict(con.execute('SELECT ryu, count(*) FROM technique JOIN section s ON s.id = section GROUP BY ryu'))
     assert set(per_school) == set(SCHOOLS) - {"gyokushin", "kumogakure"}

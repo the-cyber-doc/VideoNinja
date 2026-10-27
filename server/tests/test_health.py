@@ -99,3 +99,14 @@ def test_encoder_container_healthcheck(client, admin_secret):
     assert encoder.main(["--health"]) == 1
     beat()
     assert encoder.main(["--health"]) == 0
+
+
+def test_database_on_another_version(client, admin_secret):
+    """Not migrated (an encoder or API of another release on it): failing, not ok."""
+    beat()
+    con = sqlite3.connect(db.db_path())
+    with con:
+        con.execute("UPDATE config SET value = '1' WHERE name = 'db_version'")
+    con.close()
+    r = client.get("/health")
+    assert r.status_code == 503 and r.json()["database"] == "failing"

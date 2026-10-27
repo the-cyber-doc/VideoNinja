@@ -2,6 +2,7 @@ import json
 import sqlite3
 
 import pyotp
+import pytest
 
 from app import crypto, db
 
@@ -67,7 +68,7 @@ def test_complete_streams_steps_and_creates_db(client):
 
     con = sqlite3.connect(db.db_path())
     assert con.execute("PRAGMA journal_mode").fetchone()[0] == "wal"
-    assert con.execute("SELECT value FROM config WHERE name = 'db_version'").fetchone()[0] == "1"
+    assert con.execute("SELECT value FROM config WHERE name = 'db_version'").fetchone()[0] == str(db.EXPECTED_VERSION)
     assert con.execute("SELECT count(*) FROM ryu").fetchone()[0] == 9
     user = con.execute("SELECT username, role, totp, pw_hash FROM user").fetchall()
     assert len(user) == 1
@@ -86,9 +87,12 @@ def test_setup_closed_after_completion(client, admin_secret):
     assert client.post("/api/setup/totp", json={"token": "x", "username": "admin"}).status_code == 404
 
 
-def test_latest_scripts_picks_highest_complete_pair(tmp_path, monkeypatch):
+def test_built_from_the_expected_version(tmp_path, monkeypatch):
+    """A new database: the scripts of the version this release runs on, not the newest files."""
     for name in ("db_v1.sql", "db_v1_init.sql", "db_v2.sql", "db_v2_init.sql", "db_v3.sql"):
         (tmp_path / name).write_text("")
     monkeypatch.setattr(db, "SQL_DIR", tmp_path)
-    version, schema, seed = db.latest_scripts()
-    assert (version, schema.name, seed.name) == (2, "db_v2.sql", "db_v2_init.sql")
+    monkeypatch.setattr(db, "EXPECTED_VERSION", 2)
+    assert [p.name for p in db.scripts()] == ["db_v2.sql", "db_v2_init.sql"]
+    with pytest.raises(RuntimeError, match="db_v3_init.sql"):
+        db.scripts(3)  # incomplete: refused

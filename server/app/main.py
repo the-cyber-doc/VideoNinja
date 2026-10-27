@@ -1,6 +1,8 @@
+import logging
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
 
 from . import (
     about, auth, comments, crypto, db, encoder, health, limits, media, paths, performers, procs, profile, register,
@@ -17,6 +19,7 @@ async def lifespan(app: FastAPI):
     procs.check()  # nor VIDEONINJA_FFMPEG_TIMEOUT_H, VIDEONINJA_FFPROBE_TIMEOUT_MIN
     if db.is_initialized():
         app.state.setup_token = None
+        db.migrate()  # to this release's version, before anything reads it (else: no start)
         con = db.connect()
         try:
             security.purge_expired_sessions(con)
@@ -33,7 +36,29 @@ async def lifespan(app: FastAPI):
     snapshot.flush()  # don't lose a pending rebuild
 
 
+log = logging.getLogger("uvicorn.error")
 app = FastAPI(title="Video Ninja", lifespan=lifespan)
+SAFE_METHODS = {"GET", "HEAD", "OPTIONS"}
+
+
+@app.middleware("http")
+async def same_origin_writes(request: Request, call_next):
+    """A state-changing request to the API comes from this origin's own pages, or it is
+    refused (security.cross_site). /internal/ (tusd's hooks, the encoder) is not a
+    browser's: nginx never forwards it."""
+    if (request.method not in SAFE_METHODS and request.url.path.startswith(("/api/", "/media/"))
+            and security.cross_site(request.headers)):
+        log.warning("Cross-site %s %s refused (Sec-Fetch-Site %r, Origin %r)", request.method, request.url.path,
+                    request.headers.get("sec-fetch-site"), request.headers.get("origin"))
+        return JSONResponse({"detail": "Cross-site request refused"}, status_code=403)
+    return await call_next(request)
+
+
+@app.exception_handler(security.Busy)
+async def argon2_busy(request: Request, exc: security.Busy) -> JSONResponse:
+    log.warning("Password checks: all busy, %s %s answered 503", request.method, request.url.path)
+    return JSONResponse({"detail": "The server is busy, try again in a moment"}, status_code=503,
+                        headers={"Retry-After": "5"})
 app.include_router(setup.router)
 app.include_router(about.router)
 app.include_router(auth.router)

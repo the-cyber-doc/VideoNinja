@@ -2,7 +2,8 @@
 only a state per component, no details. 200 if every component is ok (or the app
 is not set up yet), else 503.
 
-- database: answers a query, and its file passes a quick integrity check.
+- database: answers a query, has this release's version, and its file passes a
+  quick integrity check.
 - encoder: its heartbeat is recent (it runs in another container).
 - tusd: takes uploads (tusd.available).
 """
@@ -28,6 +29,9 @@ def _database() -> tuple[State, State]:
         con = db.connect()
         try:
             con.execute("SELECT 1").fetchone()
+            if db.version(con) != db.EXPECTED_VERSION:
+                log.error("Health: database version %s, this release needs %s", db.version(con), db.EXPECTED_VERSION)
+                return "failing", "failing"
             if con.execute("PRAGMA quick_check(1)").fetchone()[0] != "ok":
                 log.error("Health: the database fails its integrity check")
                 return "failing", "failing"

@@ -228,6 +228,45 @@ test('logout deletes the cached user data', async ({ page, context, at }) => {
 	);
 });
 
+test('Videos page: the phone right of the title removes every saved video, their badges back to the cloud', async ({ page, context, at }) => {
+	await fakeApi(context);
+	const MANAGER = { ...USER, role: 'video_mgmt', access: ['segment', 'upload', 'video_mgmt'] };
+	await context.route('**/api/auth/me', (r) => r.fulfill({ json: MANAGER }));
+	const row = (id: number) => ({ id, original_filename: `kata-${id}.mp4`, uploaded_at: '2027-01-15T09:00:00+01:00', duration_s: 4, all_segments_done: false, segment_count: 1 });
+	await context.route('**/api/videos', (r) => r.fulfill({ json: [row(1), row(2)] }));
+	await context.route('**/media/video/*/thumbnail', (r) => r.fulfill({ contentType: 'image/png', body: PNG }));
+
+	await controlled(page, at('/videos'));
+	const remove = page.getByRole('button', { name: 'No video saved on this device' });
+	await expect(remove).toBeDisabled();
+	// Two whole videos saved while annotating, a video thumbnail and a clip.
+	await page.evaluate(async (paths) => {
+		const cache = await caches.open('media');
+		for (const path of paths) await cache.put(path, new Response('saved'));
+	}, [at('/media/video/1'), at('/media/video/2'), at('/media/video/1/thumbnail'), at('/media/segment/7')]);
+	await page.reload();
+
+	const badge = (id: number) => page.getByRole('link', { name: new RegExp(`kata-${id}\\.mp4`) }).getByRole('img');
+	await expect(badge(1)).toHaveAccessibleName('Saved on this device');
+	await expect(badge(2)).toHaveAccessibleName('Saved on this device');
+	// On the title's line, at the right.
+	const title = (await page.getByRole('heading', { name: 'Videos' }).boundingBox())!;
+	const button = page.getByRole('button', { name: 'Remove the videos saved on this device (2)' });
+	const box = (await button.boundingBox())!;
+	expect(Math.abs(box.y + box.height / 2 - (title.y + title.height / 2))).toBeLessThan(8);
+	expect(box.x).toBeGreaterThan(title.x + title.width);
+
+	await button.click();
+	await expect(page.getByRole('status')).toHaveText('The videos were removed from this device.');
+	await expect(badge(1)).toHaveAccessibleName('Not downloaded');
+	await expect(badge(2)).toHaveAccessibleName('Not downloaded');
+	await expect(remove).toBeDisabled();
+	// Only the whole videos: the clip and the thumbnails (also those the page just showed) stay.
+	const left = await cachedPaths(page, 'media');
+	expect(left.filter((path) => /\/media\/video\/\d+$/.test(path))).toEqual([]);
+	expect(left).toEqual(expect.arrayContaining([at('/media/segment/7'), at('/media/video/1/thumbnail')]));
+});
+
 test('whole videos: the service worker never stands between the network and the editor', async ({ page, context, at }) => {
 	// A service worker is stopped by the browser after a while (Firefox: about 30 s,
 	// whatever waitUntil says): a video of hundreds of MB passing through it would

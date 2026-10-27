@@ -629,7 +629,9 @@ def main(argv: list[str]) -> int:
     stopping = threading.Event()
     signal.signal(signal.SIGTERM, lambda *_: stopping.set())
     signal.signal(signal.SIGINT, lambda *_: stopping.set())
-    while not db.is_initialized():  # the API's setup wizard creates the database
+    # The API's setup wizard creates the database; at its start, the API migrates it.
+    # Never on another version: its columns would not be the ones used here.
+    while db.current_version() != db.EXPECTED_VERSION:
         if stopping.wait(POLL_S):
             return 0
     start()

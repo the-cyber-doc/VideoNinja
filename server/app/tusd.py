@@ -27,7 +27,7 @@ import urllib.request
 from http.cookies import CookieError, SimpleCookie
 from typing import Any
 
-from fastapi import APIRouter, Depends, Header, HTTPException, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
 
 from . import clock, db, limits, paths, queries, security
 from .auth import require_access
@@ -127,12 +127,18 @@ def tusd_hook(hook: dict[str, Any], con: sqlite3.Connection = Depends(db.get_db)
 
 @router.get("/upload-auth", status_code=status.HTTP_204_NO_CONTENT)
 def upload_auth(
+    request: Request,
     x_original_uri: str = Header(default=""),
     x_original_method: str = Header(default=""),
     user: sqlite3.Row = Depends(require_access("upload")),
     con: sqlite3.Connection = Depends(db.get_db),
 ) -> None:
-    """nginx auth_request for /files/…: 204 = forward to tusd; 401/403/404 = refuse."""
+    """nginx auth_request for /files/…: 204 = forward to tusd; 401/403/404 = refuse.
+    The subrequest carries the browser's headers: a write (create, chunk, cancel) from
+    another origin is refused, as for the API (main.same_origin_writes)."""
+    if x_original_method.upper() not in ("GET", "HEAD", "OPTIONS") and security.cross_site(request.headers):
+        log.warning("Upload %s refused to user id %s: cross-site", x_original_method, user["id"])
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Cross-site request refused")
     path = x_original_uri.split("?", 1)[0]
     base = files_path()
     if not path.startswith(base):

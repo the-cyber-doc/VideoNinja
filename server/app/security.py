@@ -1,7 +1,12 @@
 import hashlib
+import os
 import secrets
 import sqlite3
+import threading
+from collections.abc import Iterator, Mapping
+from contextlib import contextmanager
 from datetime import timedelta, tzinfo
+from urllib.parse import urlsplit
 from zoneinfo import ZoneInfo
 
 import pyotp
@@ -19,18 +24,62 @@ _hasher = PasswordHasher()
 # Verified against when the username is unknown, so both cases take the same time.
 _DUMMY_HASH = _hasher.hash(secrets.token_hex(16))
 
+# Each Argon2 hash takes 64 MiB and a CPU core for a moment: a burst of logins (or of
+# wrong passwords, each still hashed) would exhaust the container's memory. At most
+# VIDEONINJA_ARGON2_CONCURRENCY at a time (default 2); the others wait their turn up
+# to ARGON2_WAIT_S, then get 503 (main.py: Busy).
+ARGON2_WAIT_S = 10.0
+_argon2 = threading.BoundedSemaphore(max(1, int(os.environ.get("VIDEONINJA_ARGON2_CONCURRENCY", "2"))))
+
+
+class Busy(Exception):
+    """Too many password checks at once: try again in a moment."""
+
+
+@contextmanager
+def _argon2_slot() -> Iterator[None]:
+    if not _argon2.acquire(timeout=ARGON2_WAIT_S):
+        raise Busy()
+    try:
+        yield
+    finally:
+        _argon2.release()
+
 
 def hash_password(password: str) -> str:
-    return _hasher.hash(password)
+    with _argon2_slot():
+        return _hasher.hash(password)
 
 
 def verify_password(pw_hash: str | None, password: str) -> bool:
     """pw_hash=None (unknown user) still runs a full verification, then fails."""
-    try:
-        _hasher.verify(pw_hash or _DUMMY_HASH, password)
-    except (VerificationError, InvalidHashError):
-        return False
+    with _argon2_slot():
+        try:
+            _hasher.verify(pw_hash or _DUMMY_HASH, password)
+        except (VerificationError, InvalidHashError):
+            return False
     return pw_hash is not None
+
+
+# --- Cross-site requests ---
+# Writes are refused unless the browser says they come from this origin: the session
+# cookie is SameSite=Strict already; this also stops a site of the same domain
+# (another subdomain is "same-site", not "same-origin").
+
+
+def cross_site(headers: Mapping[str, str]) -> bool:
+    """True if a state-changing request does not come from a page of this origin.
+    Sec-Fetch-Site (every current browser) decides; else Origin must name this
+    host (older browsers); neither (tools, server calls, tests): not a browser's."""
+    site = headers.get("sec-fetch-site")
+    if site is not None:
+        return site != "same-origin"
+    origin = headers.get("origin")
+    if origin is None:
+        return False
+    host = headers.get("x-forwarded-host") or headers.get("host") or ""
+    # nginx forwards the host without its port ($host): compare host names only.
+    return urlsplit(origin).hostname != urlsplit(f"//{host}").hostname
 
 
 def new_totp_secret() -> str:

@@ -60,6 +60,27 @@ test('too many failed attempts (429): the wait, in the user\'s language', async 
 	await expect(page.getByRole('alert')).toHaveText('Trop de tentatives échouées. Réessayez dans 11 min.');
 });
 
+for (const [name, status, body, en, fr] of [
+	['nginx rate limit (429 "Too many requests")', 429, { detail: 'Too many requests' }, 'Too many requests at once. Try again in a moment.', 'Trop de requêtes à la fois. Réessayez dans un instant.'],
+	['every password check busy (503 + Retry-After)', 503, { detail: 'The server is busy, try again in a moment' }, 'The server is busy. Try again in a moment.', 'Le serveur est occupé. Réessayez dans un instant.']
+] as const) {
+	test(`${name}: said in the user's language`, async ({ page }) => {
+		await page.route('/api/auth/login', (r) => r.fulfill({ status, json: body, headers: { 'Retry-After': '5' } }));
+		const logIn = async (button: string) => {
+			await page.getByLabel(/Username|Nom d'utilisateur/).fill('admin');
+			await page.getByLabel(/Password|Mot de passe/).fill('x'.repeat(rules.password.min_length));
+			await page.getByLabel(/Authenticator code|Code/).fill('123456');
+			await page.getByRole('button', { name: button }).click();
+		};
+		await logIn('Log in');
+		await expect(page.getByRole('alert')).toHaveText(en);
+		await page.evaluate(() => localStorage.setItem('lang', 'fr'));
+		await page.reload();
+		await logIn('Se connecter');
+		await expect(page.getByRole('alert')).toHaveText(fr);
+	});
+}
+
 test('not set up yet: redirects to the setup wizard', async ({ page }) => {
 	await page.route('/api/setup/status', (r) => r.fulfill({ json: { initialized: false } }));
 	await page.goto('/login');

@@ -484,3 +484,21 @@ def test_container_refuses_wrong_settings(tmp_path):
     result = subprocess.run([sys.executable, "-m", "app.encoder"], env=env, cwd=Path(__file__).parents[1],
                             capture_output=True, text=True, timeout=10)
     assert result.returncode != 0 and "VIDEONINJA_INPUT_FORMATS" in result.stderr
+
+
+def test_container_waits_for_the_expected_database_version(tmp_path):
+    """A database not migrated yet (the API migrates it at its start): the encoder waits."""
+    from .test_migrations import build
+    build(tmp_path / "v1.db", 1)
+    env = {**os.environ, "VIDEONINJA_DB": str(tmp_path / "v1.db"), "VIDEONINJA_MEDIA_DIR": str(tmp_path / "m"),
+           "VIDEONINJA_UPLOAD_DIR": str(tmp_path / "u")}
+    process = subprocess.Popen([sys.executable, "-m", "app.encoder"], env=env, cwd=Path(__file__).parents[1],
+                               stderr=subprocess.PIPE, text=True)
+    time.sleep(1)
+    assert process.poll() is None  # waiting, not encoding on the old schema
+    process.terminate()
+    assert process.wait(5) == 0
+    con = sqlite3.connect(tmp_path / "v1.db")  # untouched: still version 1, no heartbeat table
+    assert con.execute("SELECT value FROM config WHERE name = 'db_version'").fetchone() == ("1",)
+    assert con.execute("SELECT count(*) FROM sqlite_master WHERE name = 'heartbeat'").fetchone() == (0,)
+    con.close()
