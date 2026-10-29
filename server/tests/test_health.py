@@ -129,3 +129,43 @@ def test_service_url_without_trailing_slash(monkeypatch):
     assert paths.service_url("VIDEONINJA_API_URL") == "https://api:8000"
     monkeypatch.delenv("VIDEONINJA_API_URL")
     assert paths.service_url("VIDEONINJA_API_URL") is None
+
+
+def test_integrity_checked_hourly_not_on_every_call(client, admin_secret, tusd_server, monkeypatch):
+    """quick_check reads the whole file: once, then again only after INTEGRITY_EVERY_S."""
+    from app import health
+    checks = []
+    connect = db.connect
+
+    def traced(*args, **kwargs):
+        con = connect(*args, **kwargs)
+        con.set_trace_callback(lambda sql: checks.append(sql) if "quick_check" in sql else None)
+        return con
+
+    monkeypatch.setattr(db, "connect", traced)
+    now = [1000.0]
+    monkeypatch.setattr(health.time, "monotonic", lambda: now[0])
+    beat()
+    for _ in range(3):
+        assert client.get("/health").json()["database"] == "ok"
+    assert len(checks) == 1
+    now[0] += health.INTEGRITY_EVERY_S
+    assert client.get("/health").json()["database"] == "ok"
+    assert len(checks) == 2
+
+
+def test_integrity_failure_kept_until_checked_again(tmp_path, monkeypatch, caplog):
+    from app import health
+
+    class Corrupt:
+        def execute(self, sql):
+            assert "quick_check" in sql
+            return self
+
+        def fetchone(self):
+            return ("*** in database main *** Page 7 is never used",)
+
+    monkeypatch.setenv("VIDEONINJA_DB", str(tmp_path / "corrupt.db"))
+    assert health._integrity_ok(Corrupt()) is False
+    assert "fails its integrity check" in caplog.text
+    assert health._integrity_ok(None) is False  # kept: not checked again within the hour

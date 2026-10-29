@@ -4,7 +4,6 @@
 Not in the catalogue snapshot: written by users and changing often.
 """
 
-import logging
 import sqlite3
 from datetime import tzinfo
 from typing import Literal
@@ -13,12 +12,11 @@ from fastapi import APIRouter, Depends, status
 from pydantic import BaseModel, field_validator
 from pydantic_core import PydanticCustomError
 
-from . import clock, db, i18n, queries
+from . import audit, clock, db, i18n, queries
 from .errors import ApiError
 from .auth import current_user, require_access, user_zone
 from .validation import field
 
-log = logging.getLogger(__name__)
 router = APIRouter(prefix="/api", tags=["comments"])
 commenter = require_access("comment")
 
@@ -56,7 +54,7 @@ def _own(con: sqlite3.Connection, comment_id: int, me: sqlite3.Row) -> sqlite3.R
     if row is None:
         raise ApiError("comment.unknown")
     if not row["mine"]:
-        log.warning("Denied: user id %s tried to change comment %s of user id %s", me["id"], comment_id, row["author"])
+        audit.event("comment.denied", comment_id=comment_id, author_id=row["author"])
         raise ApiError("comment.not_author")
     return row
 
@@ -88,6 +86,7 @@ def add_comment(
     with db.write(con):
         _technique(con, technique_id)
         comment_id = queries.insert_comment(con, technique_id, me["id"], body.lang, body.text, clock.at(0, zone))
+    audit.event("comment.created", comment_id=comment_id, technique_id=technique_id)
     return _out(queries.comment(con, comment_id, me["id"]))
 
 
@@ -102,6 +101,7 @@ def edit_comment(
     with db.write(con):
         _own(con, comment_id, me)
         queries.update_comment(con, comment_id, body.lang, body.text, clock.at(0, zone))
+    audit.event("comment.edited", comment_id=comment_id)
     return _out(queries.comment(con, comment_id, me["id"]))
 
 
@@ -114,3 +114,4 @@ def delete_comment(
     with db.write(con):
         _own(con, comment_id, me)
         queries.delete_comment(con, comment_id)
+    audit.event("comment.deleted", comment_id=comment_id)

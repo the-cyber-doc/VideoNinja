@@ -10,20 +10,18 @@ ffmpeg and cannot write the media): the video is marked (video.thumbs_dirty) and
 the segment shows its video's thumbnail meanwhile.
 """
 
-import logging
 import sqlite3
 from datetime import tzinfo
 
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
 
-from . import db, queries, segments
+from . import audit, db, queries, segments
 from .errors import ApiError
 from .auth import require_access, user_zone
 from .segments import AnnotatedSegment, TagIn
 from .snapshot import rebuild_after_write
 
-log = logging.getLogger(__name__)
 router = APIRouter(prefix="/api", tags=["video management"])
 manager = require_access("video_mgmt")
 
@@ -133,6 +131,5 @@ def save_annotations(
         if changed or removed:
             queries.mark_thumbs_dirty(con, video_id)
 
-    log.info("Video %s annotated by user id %s: %d segments (%d removed)", video_id, me["id"],
-             len(body.segments), len(removed))
+    audit.event("annotations.saved", video_id=video_id, segments=len(body.segments), removed=len(removed))
     return get_annotations(video_id, me, con)

@@ -151,8 +151,10 @@ def touch_session(con: sqlite3.Connection, session_id: str, now: str, expires_at
     )
 
 
-def delete_session(con: sqlite3.Connection, session_id: str) -> None:
-    con.execute('DELETE FROM "session" WHERE "id" = ?', (session_id,))
+def delete_session(con: sqlite3.Connection, session_id: str) -> int | None:
+    """The session's user, or None if there was no such session."""
+    row = con.execute('DELETE FROM "session" WHERE "id" = ? RETURNING "user"', (session_id,)).fetchone()
+    return row[0] if row else None
 
 
 def delete_user_sessions(con: sqlite3.Connection, user_id: int, except_id: str | None = None) -> None:

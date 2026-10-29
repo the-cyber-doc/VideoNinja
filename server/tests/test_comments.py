@@ -120,7 +120,7 @@ def test_only_the_author_edits_or_deletes(admin, kenji, caplog):
     assert admin.patch(f"/api/comments/{his['id']}", json={"text": "Changed", "lang": "en"}).status_code == 403
     assert admin.delete(f"/api/comments/{his['id']}").status_code == 403
     assert kenji.delete(f"/api/comments/{mine['id']}").status_code == 403
-    assert "tried to change comment" in caplog.text
+    assert "comment.denied" in caplog.text
     assert {c["text"] for c in admin.get(COMMENTS).json()} == {"Admin's", "Kenji's"}
 
 

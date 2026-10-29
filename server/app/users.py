@@ -1,18 +1,16 @@
 """User management (admin API): needs the "user_mgmt" access."""
 
-import logging
 import sqlite3
 from typing import Literal
 
 from fastapi import APIRouter, Depends, status
 from pydantic import BaseModel
 
-from . import clock, db, i18n, invites, queries
+from . import audit, clock, db, i18n, invites, queries
 from .errors import ApiError
 from .auth import require_access
 from .validation import field
 
-log = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/admin", tags=["users"])
 admin = require_access("user_mgmt")
 
@@ -83,7 +81,7 @@ def create_user(
             raise ApiError("user.exists")
         user_id = queries.insert_user(con, body.username, body.role)
         token = invites.create(con, user_id)
-    log.warning("User management: user id %s created %r (%s)", me["id"], body.username, body.role)
+    audit.event("user.invited", target_user_id=user_id, role=body.role)
     return _invite_out(con, user_id, token)
 
 
@@ -95,6 +93,7 @@ def get_invite(
     token = invites.token_of(con, user_id)
     if token is None:
         raise ApiError("user.no_invite")
+    audit.event("invite.shown", target_user_id=user_id)
     return _invite_out(con, user_id, token)
 
 
@@ -115,5 +114,5 @@ def reset_user(
         token = invites.create(con, user_id)
         queries.clear_user_credentials(con, user_id)
         queries.delete_user_sessions(con, user_id)
-    log.warning("User management: user id %s reset user id %s", me["id"], user_id)
+    audit.event("user.reset", target_user_id=user_id)
     return _invite_out(con, user_id, token)

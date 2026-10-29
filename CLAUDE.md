@@ -311,7 +311,8 @@ the encoder waits for the version; `/health` fails on a mismatch.
   `/internal/`. The encoder asks the API to rebuild the catalogue (`POST /internal/catalog-changed`,
   harmless: only schedules). API and encoder share SQLite (same host, local disk). In development
   the API runs tusd (`children.py`) and the encoder thread itself; the api image sets both off.
-- `/health` (`app/health.py`): database (query + `quick_check`), encoder (heartbeat table, < 2 min,
+- `/health` (`app/health.py`): database (query + version every call; `quick_check` at the first call then
+  hourly, `INTEGRITY_EVERY_S`, result cached per file), encoder (heartbeat table, < 2 min,
   written every 30 s by the encoder), tusd (tus OPTIONS at `VIDEONINJA_TUSD_URL`); 503 if one fails,
   `not_set_up` before the setup. nginx serves the
   frontend, X-Accel-Redirect media/catalogue, auth_request on every upload request.
@@ -368,6 +369,13 @@ the encoder waits for the version; `/health` fails on a mismatch.
   `add(user_id=…)`; tusd hook adopts the event's `X-Request-Id`; encoder jobs and thumbnails
   `bind(video_id=…)`; `catalog_changed` sends its own ID. Frontend: `ApiError.requestId` (answer header,
   tus too; shown later by the shared error display). Test: `tests/test_middleware.py`.
+- Audit (`app/audit.py`): security events only through `audit.event("<name>", **fields)` on logger
+  `app.audit`, names fixed in `EVENTS` (with their level; KeyError otherwise; AST test). Who = the
+  request's `user_id` (context) or a field (registration, logout: `security.delete_session` returns the
+  session's user); what = `target_user_id`, `video_id`, `comment_id`… Never passwords, tokens, TOTP
+  secrets/codes, nor a failed login's username (`client` = `throttle.client_key`). Test:
+  `tests/test_audit.py` (a whole account flow scanned for every secret). README "Logs": fields, jq
+  recipes, the event list (keep it in sync with `EVENTS`).
 - Buffering: nginx buffers app responses by default; an app endpoint that
   streams progress sends `X-Accel-Buffering: no` (the app decides, nginx
   follows). Media bytes never go through the app: nginx streams them itself

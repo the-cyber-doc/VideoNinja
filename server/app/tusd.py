@@ -29,7 +29,7 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, Header, Request, status
 
-from . import clock, db, errors, limits, logs, middleware, paths, queries, security
+from . import audit, clock, db, errors, limits, logs, middleware, paths, queries, security
 from .auth import require_access
 from .errors import ApiError
 from .children import Child
@@ -77,8 +77,9 @@ def _pre_create(con: sqlite3.Connection, event: dict[str, Any]) -> dict[str, Any
     user = security.session_user(con, token) if token else None
     if user is None:
         return _reject("auth.not_logged_in")
+    logs.add(user_id=user["id"])
     if "upload" not in security.accesses(user):
-        log.warning("Upload denied: user id %s lacks access 'upload'", user["id"])
+        audit.event("access.denied", access="upload")
         return _reject("auth.access_denied")
 
     upload = event.get("Upload") or {}
@@ -100,7 +101,7 @@ def _pre_create(con: sqlite3.Connection, event: dict[str, Any]) -> dict[str, Any
         tus_id = secrets.token_hex(16)  # the upload's file name in tusd's folder
         # The hook has no browser request: the user's saved timezone.
         queries.insert_upload(con, tus_id, user["id"], original_sha256, size, clock.at(0, clock.user_zone(user)))
-    log.info("Upload %s accepted for user id %s (%d bytes)", tus_id, user["id"], size)
+    audit.event("upload.accepted", tus_id=tus_id, size=size)
     return {"ChangeFileInfo": {"ID": tus_id}}
 
 
@@ -142,7 +143,7 @@ def upload_auth(
     The subrequest carries the browser's headers: a write (create, chunk, cancel) from
     another origin is refused, as for the API (main.same_origin_writes)."""
     if x_original_method.upper() not in ("GET", "HEAD", "OPTIONS") and security.cross_site(request.headers):
-        log.warning("Upload %s refused to user id %s: cross-site", x_original_method, user["id"])
+        audit.event("request.cross_site", method=x_original_method, route="/files/")
         raise ApiError("cross_site")
     path = x_original_uri.split("?", 1)[0]
     base = files_path()
@@ -155,7 +156,7 @@ def upload_auth(
         return
     upload = queries.upload(con, tus_id)
     if upload is None or upload["user"] != user["id"] or upload["state"] == "deleted":
-        log.warning("Upload %r refused to user id %s", tus_id, user["id"])
+        audit.event("upload.denied", tus_id=tus_id)
         raise ApiError("not_found")
 
 

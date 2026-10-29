@@ -17,7 +17,6 @@ In memory (one process): a restart resets the counters.
 """
 
 import ipaddress
-import logging
 import threading
 import time
 from collections import OrderedDict, deque
@@ -25,9 +24,9 @@ from collections.abc import Iterator
 
 from fastapi import HTTPException, Request
 
+from . import audit
 from .errors import ApiError
 
-log = logging.getLogger(__name__)
 
 MAX_FAILURES = 10
 WINDOW_S = 15 * 60
@@ -85,7 +84,7 @@ def failed(key: str) -> None:
         times.append(now)
         _failures.move_to_end(key)
         if len(times) == MAX_FAILURES:
-            log.warning("Throttled: %s, %s credential failures in %s min", key, MAX_FAILURES, WINDOW_S // 60)
+            audit.event("credentials.throttled", client=key, failures=MAX_FAILURES, minutes=WINDOW_S // 60)
 
 
 def reset() -> None:
