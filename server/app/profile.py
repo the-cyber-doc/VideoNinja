@@ -4,18 +4,16 @@ Users may only change their own account here. Changing a credential needs the
 current password, and logs the user out of every other session.
 """
 
-import logging
 import sqlite3
 
 from fastapi import APIRouter, Depends, status
 from pydantic import BaseModel
 
-from . import crypto, db, i18n, queries, security, throttle
+from . import audit, crypto, db, i18n, queries, security, throttle
 from .errors import ApiError
 from .auth import UserOut, current_user, session_token, user_out
 from .validation import field
 
-log = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/profile", tags=["profile"])
 # A wrong current password (403) counts as a credential failure.
 password_guard = Depends(throttle.credential_guard(403))
@@ -38,7 +36,7 @@ class TotpConfirmIn(BaseModel):
 
 def _check_password(con: sqlite3.Connection, user: sqlite3.Row, password: str) -> None:
     if not security.verify_password(queries.user_pw_hash(con, user["id"]), password):
-        log.warning("Profile: wrong current password for user id %s", user["id"])
+        audit.event("password.wrong")
         # 403, not 401: the session is still valid.
         raise ApiError("profile.wrong_password")
 
@@ -68,7 +66,7 @@ def set_password(
     with db.write(con):
         queries.set_user_pw_hash(con, user["id"], pw_hash)
         security.delete_other_sessions(con, user["id"], token)
-    log.warning("Profile: password changed for user id %s", user["id"])
+    audit.event("password.changed")
 
 
 @router.post("/totp")
@@ -91,4 +89,4 @@ def confirm_totp(
     with db.write(con):
         queries.set_user_totp(con, user["id"], crypto.encrypt(body.totp_secret, crypto.totp_aad(user["id"])))
         security.delete_other_sessions(con, user["id"], token)
-    log.warning("Profile: authenticator replaced for user id %s", user["id"])
+    audit.event("totp.replaced")

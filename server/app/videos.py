@@ -13,7 +13,7 @@ from typing import Literal
 from fastapi import APIRouter, Depends, Query, status
 from pydantic import BaseModel, Field
 
-from . import clock, db, limits, queries, security, segments, tusd
+from . import audit, clock, db, limits, queries, security, segments, tusd
 from .errors import ApiError
 from .auth import require_access, user_zone
 from .segments import SegmentIn, TagIn
@@ -107,6 +107,7 @@ def submit(
             )
             for tag in segment.tags:
                 queries.insert_segment_tag(con, segment_id, tag.id, tag.value)
+    audit.event("video.submitted", video_id=video_id, tus_id=tus_id, segments=len(body.segments))
     return {"id": video_id}
 
 
@@ -144,6 +145,7 @@ def retry(video_id: int, me: sqlite3.Row = Depends(uploader), con: sqlite3.Conne
         _may_manage(me, queries.video(con, video_id))
         if not queries.retry_video(con, video_id):
             raise ApiError("video.not_failed")
+    audit.event("video.retried", video_id=video_id)
 
 
 @router.delete("/videos/{video_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -156,3 +158,4 @@ def delete(video_id: int, me: sqlite3.Row = Depends(uploader), con: sqlite3.Conn
         queries.delete_video(con, video_id)
         if video["upload"]:
             queries.set_upload_state(con, video["upload"], "deleted")
+    audit.event("video.deleted", video_id=video_id)

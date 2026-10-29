@@ -10,7 +10,7 @@ from fastapi import APIRouter, Depends, Request, status
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
-from . import db, encoder, errors, security, snapshot, throttle, tusd
+from . import audit, db, encoder, errors, security, snapshot, throttle, tusd
 from .errors import ApiError
 from .validation import field
 
@@ -89,7 +89,7 @@ def complete(body: CompleteIn, request: Request) -> StreamingResponse:
             ):
                 yield json.dumps({"step": step}) + "\n"
             request.app.state.setup_token = None
-            log.warning("Setup complete: admin user %r created.", body.username)
+            audit.event("setup.completed", admin=body.username)
             snapshot.schedule()  # first catalogue (failures logged; GET /api/catalog retries)
             tusd.start()
             encoder.start()

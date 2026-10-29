@@ -5,8 +5,8 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
 from . import (
-    about, auth, comments, crypto, db, encoder, errors, health, limits, logs, media, middleware, paths, performers,
-    procs, profile, register, security, setup, snapshot, tags, tusd, users, video_mgmt, videos,
+    about, audit, auth, comments, crypto, db, encoder, errors, health, limits, logs, media, middleware, paths,
+    performers, procs, profile, register, security, setup, snapshot, tags, tusd, users, video_mgmt, videos,
 )
 
 
@@ -52,8 +52,8 @@ async def same_origin_writes(request: Request, call_next):
     browser's: nginx never forwards it."""
     if (request.method not in SAFE_METHODS and request.url.path.startswith(("/api/", "/media/"))
             and security.cross_site(request.headers)):
-        log.warning("Cross-site %s %s refused (Sec-Fetch-Site %r, Origin %r)", request.method, request.url.path,
-                    request.headers.get("sec-fetch-site"), request.headers.get("origin"))
+        audit.event("request.cross_site", method=request.method, path=request.url.path,
+                    sec_fetch_site=request.headers.get("sec-fetch-site"), origin=request.headers.get("origin"))
         return errors.response("cross_site")
     return await call_next(request)
 

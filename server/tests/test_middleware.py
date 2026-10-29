@@ -64,7 +64,7 @@ def test_endpoint_lines_carry_the_request(client, admin_secret, caplog):
     r = client.post("/api/admin/users", json={"username": "kenji", "role": "user"}, headers={"X-Request-ID": NGINX_ID})
     assert r.status_code == 201
     ours = [rec for rec in caplog.records if getattr(rec, "request_id", None) == NGINX_ID]
-    assert {rec.name for rec in ours} == {"app.users", "app.middleware"}  # the endpoint's own line too
+    assert {rec.name for rec in ours} == {"app.audit", "app.middleware"}  # the endpoint's own line too
     assert all(rec.user_id == 1 for rec in ours)
 
 

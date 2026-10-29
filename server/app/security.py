@@ -165,9 +165,10 @@ def accesses(user: sqlite3.Row) -> frozenset[str]:
     return frozenset(json.loads(user["access"]))
 
 
-def delete_session(con: sqlite3.Connection, token: str) -> None:
+def delete_session(con: sqlite3.Connection, token: str) -> int | None:
+    """End the session; its user's ID, or None if it did not exist (expired, already ended)."""
     with db.write(con):
-        queries.delete_session(con, _session_id(token))
+        return queries.delete_session(con, _session_id(token))
 
 
 def delete_other_sessions(con: sqlite3.Connection, user_id: int, token: str) -> None:

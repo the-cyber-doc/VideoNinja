@@ -1424,6 +1424,55 @@ request; after an interruption it asks for the offset (`HEAD`) and continues.
 - **Audit trail:** nginx logs the final status of every request (`401`/`403` =
   denied); the app logs each allow/deny decision with user and segment ID.
 
+### 7. Logs
+
+Each container logs to journald (the compose file's `logging`), tagged
+`docker-videoninja-<container>`. The API and the encoder write one JSON object
+per line (`VIDEONINJA_LOG_FORMAT=json` in the images); nginx writes its access
+log as text.
+
+| Field | What |
+|---|---|
+| `ts`, `level`, `logger`, `msg` | Time (with its UTC offset), level, where (`app.encoder`, `app.audit`, `uvicorn.error`…), the message |
+| `request_id` | The request's ID: nginx's `$request_id`, also `rid=` in nginx's log and `X-Request-ID` in the answer the browser got |
+| `user_id` | Who, once the session is checked (IDs, never usernames) |
+| `video_id` | The encoder's lines of a video (encoding, thumbnails) |
+| `method`, `route`, `status`, `duration_ms` | `app.middleware`'s line per request; `route` is the template (`/api/videos/{video_id}/annotations`), never the path's IDs or tokens |
+| `event` | `app.audit`'s security events (below) |
+| `exc` | The traceback of an error |
+
+```sh
+# Follow the API, readable
+journalctl -t docker-videoninja-api -f -o cat | jq -c '{ts, level, logger, msg}'
+# Everything about one request (the ID from nginx's log, or from the browser's X-Request-ID)
+journalctl -t docker-videoninja-api -o cat | jq -c 'select(.request_id == "3f2a…")'
+# Errors and warnings of the last day
+journalctl -t docker-videoninja-api -t docker-videoninja-encoder --since -1d -o cat | jq -c 'select(.level != "INFO")'
+# A video's encoding
+journalctl -t docker-videoninja-encoder -o cat | jq -c 'select(.video_id == 42)'
+```
+
+**Security events** (`logger` `app.audit`, `event` one of a fixed list, in
+`server/app/audit.py`): `setup.completed`; `login.succeeded`, `login.failed`
+(with the client's address, never the username typed), `logout`,
+`credentials.throttled`; `password.wrong`, `password.changed`, `totp.replaced`,
+`totp.undecryptable`; `user.invited`, `user.reset`, `user.registered`,
+`invite.shown`; `access.denied`, `request.cross_site`, `comment.denied`,
+`upload.denied`; `upload.accepted`, `video.submitted`, `video.retried`,
+`video.deleted`, `annotations.saved`, `comment.created`, `comment.edited`,
+`comment.deleted`. Refusals and failures are warnings, the rest info. They carry
+who (`user_id`) and what (`target_user_id`, `video_id`, `comment_id`…), never a
+password, token or TOTP secret.
+
+```sh
+# Failed logins and refusals of the last week
+journalctl -t docker-videoninja-api --since -7d -o cat \
+  | jq -c 'select(.logger == "app.audit" and .level != "INFO") | {ts, event, client, user_id}'
+```
+
+`/health` checks the database's integrity (`PRAGMA quick_check`, which reads
+the whole file) at its first call and then hourly, not on every healthcheck.
+
 ## Security
 
 ### SBOM (SPDX)

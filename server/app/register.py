@@ -1,16 +1,14 @@
 """Registration of an invited user (public, the invitation token is the credential)."""
 
-import logging
 import sqlite3
 
 from fastapi import APIRouter, Depends, status
 from pydantic import BaseModel
 
-from . import crypto, db, invites, queries, security, throttle
+from . import audit, crypto, db, invites, queries, security, throttle
 from .errors import ApiError
 from .validation import field
 
-log = logging.getLogger(__name__)
 # An unknown invitation token (404) counts as a credential failure.
 router = APIRouter(prefix="/api/register", tags=["register"],
                    dependencies=[Depends(throttle.credential_guard(404))])
@@ -64,4 +62,4 @@ def complete(body: CompleteIn, con: sqlite3.Connection = Depends(db.get_db)) -> 
             pw_hash,
             crypto.encrypt(body.totp_secret, crypto.totp_aad(user["id"])),
         )
-    log.warning("Registered: user id %s (%r)", user["id"], user["username"])
+    audit.event("user.registered", user_id=user["id"])  # no session yet: said here
