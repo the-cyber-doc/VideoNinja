@@ -1,294 +1,140 @@
 <script lang="ts">
-	// Upload and annotate a video. The file is opened on this device; nothing is
-	// sent before Proceed. Then the original is uploaded (tus, resumable), submitted
-	// with its segments, encoded by the server's queue and published later.
-	// The work in progress is saved on this device (draft) and resumed by picking
-	// the same file again.
+	// Upload and annotate a video: the steps and their state are the flow's
+	// (lib/upload/flow.svelte.ts); the page's data (+page.ts: access checked there).
+	// Here, the component's own work: the draft saved shortly after every change, the
+	// guard against leaving while hashing or uploading, the confirmations.
 	import ErrorMessage from '#lib/ErrorMessage.svelte';
-	import { beforeNavigate, goto } from '$app/navigation';
+	import { beforeNavigate, invalidate } from '$app/navigation';
 	import { onDestroy } from 'svelte';
-	import type { Upload } from 'tus-js-client';
-	import { url } from '#lib/base.js';
+	import { addPerformer } from '#lib/api/performers.js';
 	import { loadCatalog } from '#lib/catalog.svelte.js';
-	import { i18n, t } from '#lib/i18n.svelte.js';
-	import { hasAccess } from '#lib/session.svelte.js';
-	import { addPerformer, listPerformers as loadPerformers } from '#lib/api/performers.js';
-	import { listTags as loadTags } from '#lib/api/tags.js';
-	import type { Performer, Tag, UploadLimits } from '#lib/api/types.js';
-	import { submit, uploadLimits, uploadsAvailable, videoExists } from '#lib/api/uploads.js';
-	import { refusal } from '#lib/upload/rules.js';
+	import { t } from '#lib/i18n.svelte.js';
 	import AnnotationPanel from '#lib/upload/AnnotationPanel.svelte';
-	import { deleteDraft, listDrafts, loadDraft, newDraft, saveDraft, type Draft } from '#lib/upload/draft.svelte.js';
-	import { sha256File } from '#lib/upload/hash.js';
+	import { saveDraft } from '#lib/upload/draft.svelte.js';
+	import { UploadFlow } from '#lib/upload/flow.svelte.js';
 	import MyUploads from '#lib/upload/MyUploads.svelte';
-	import { submitBody } from '#lib/upload/rules.js';
-	import { startUpload } from '#lib/upload/upload.js';
+	import type { PageProps } from './$types';
 
-	type Step = 'pick' | 'hashing' | 'edit' | 'uploading' | 'submitting';
-
-	const allowed = $derived(hasAccess('upload'));
+	let { data }: PageProps = $props();
 	const catalog = $derived(loadCatalog());
-
-	let step = $state<Step>('pick');
+	// The limits and availability the page opened with (rechecked by the flow).
+	// svelte-ignore state_referenced_locally
+	const flow = new UploadFlow(data.limits, !data.available);
 	let input = $state<HTMLInputElement>();
-	let file = $state<File | null>(null);
-	let src = $state('');
-	let draft = $state<Draft | null>(null);
-	let drafts = $state<Draft[]>([]);
-	let performers = $state<Performer[]>([]);
-	let tags = $state<Tag[]>([]);
-	let hashProgress = $state(0);
-	let uploadProgress = $state(0);
-	let duplicate = $state(false);
-	let resumed = $state(false);
-	let message = $state('');
-	let error = $state<unknown>(null);
-	let refresh = $state(0);
-	let unavailable = $state(false); // the server cannot receive uploads (tusd not running)
-	let limits = $state<UploadLimits | null>(null); // largest file, accepted types
-	let retrying = $state(false); // upload interrupted, being retried
-	let hashing: AbortController | null = null;
-	let upload: Upload | null = null;
-
-	const busy = $derived(step === 'hashing' || step === 'uploading' || step === 'submitting');
-
-	$effect(() => {
-		if (!allowed) {
-			goto(url('/'), { replace: true });
-			return;
-		}
-		loadPerformers().then((list) => (performers = list), (e) => (error = e));
-		listDrafts().then((list) => (drafts = list), () => {});
-		checkAvailable();
-		uploadLimits().then((l) => (limits = l), () => {});
-	});
-
-	$effect(() => {
-		if (!allowed) return;
-		void i18n.lang; // reload on language change: tag names are translated by the server
-		loadTags().then((list) => (tags = list), (e) => (error = e));
-	});
-
-	function checkAvailable() {
-		uploadsAvailable().then((ok) => (unavailable = !ok), () => {});
-	}
 
 	// Save the draft shortly after every change.
 	let saveTimer: ReturnType<typeof setTimeout>;
 	$effect(() => {
-		if (!draft || step === 'pick') return;
+		const draft = flow.draft;
+		if (!draft || flow.step === 'pick') return;
 		JSON.stringify(draft); // read everything: any change saves
 		clearTimeout(saveTimer);
-		saveTimer = setTimeout(() => draft && saveDraft(draft).catch(() => {}), 400);
+		saveTimer = setTimeout(() => saveDraft(draft).catch(() => {}), 400);
 	});
 
 	// Hashing or uploading: leaving stops it (the draft is kept; the upload resumes later).
 	beforeNavigate(({ cancel, willUnload }) => {
-		if (busy && !willUnload && !confirm(t('upload.leave_confirm'))) cancel();
+		if (flow.busy && !willUnload && !confirm(t('upload.leave_confirm'))) cancel();
 	});
-	onDestroy(() => {
-		hashing?.abort();
-		upload?.abort(); // not terminated: resumed from the draft
-		if (src) URL.revokeObjectURL(src);
-	});
-
-	function reset() {
-		if (src) URL.revokeObjectURL(src);
-		file = null;
-		src = '';
-		draft = null;
-		step = 'pick';
-		hashProgress = uploadProgress = 0;
-		duplicate = resumed = false;
-		upload = null;
-		if (input) input.value = '';
-		listDrafts().then((list) => (drafts = list), () => {});
-	}
+	onDestroy(() => flow.dispose());
 
 	async function choose() {
 		const chosen = input?.files?.[0];
-		if (!chosen) return;
-		reset();
-		message = '';
-		error = null;
-		// Refused by the server anyway: said at once, before hashing a large file for nothing.
-		const refused = refusal(chosen, limits);
-		if (refused) {
-			error =
-				refused === 'size'
-					? t('upload.too_large', { max: gigabytes(limits!.max_bytes) })
-					: t('upload.wrong_type', { types: limits!.extensions.join(', ') });
-			if (input) input.value = '';
-			return;
-		}
-		file = chosen;
-		step = 'hashing';
-		checkAvailable(); // it may have come back since the page was opened
-		hashing = new AbortController();
-		try {
-			const sha = await sha256File(chosen, (f) => (hashProgress = f), hashing.signal);
-			if (await videoExists(sha)) {
-				duplicate = true;
-				step = 'pick';
-				return;
-			}
-			const saved = await loadDraft(sha).catch(() => undefined);
-			resumed = !!saved;
-			draft = saved ?? newDraft(sha, chosen);
-			src = URL.createObjectURL(chosen);
-			step = 'edit';
-		} catch (e) {
-			if (!hashing?.signal.aborted) {
-				error = e;
-				step = 'pick';
-			}
-		}
+		if (chosen && !(await flow.choose(chosen)) && input) input.value = ''; // refused: pick again
 	}
-
-	const gigabytes = (bytes: number) =>
-		new Intl.NumberFormat(i18n.lang, { maximumSignificantDigits: 3 }).format(bytes / 1024 ** 3);
 
 	async function newPerformer(name: string) {
 		const performer = await addPerformer(name);
-		performers = [...performers, performer];
+		await invalidate('app:performers');
 		return performer;
-	}
-
-	/** Called by the panel once the annotation is complete. */
-	function proceed() {
-		if (!draft || !file || unavailable) return;
-		error = null;
-		message = '';
-		step = 'uploading';
-		uploadProgress = 0;
-		retrying = false;
-		const current = draft;
-		upload = startUpload(file, { sha256: current.sha256, originalFilename: current.originalFilename, uploadUrl: current.uploadUrl }, {
-			onUrl: (url) => (current.uploadUrl = url),
-			onProgress: (f) => {
-				uploadProgress = f;
-				retrying = false;
-			},
-			onRetry: () => (retrying = true),
-			onSuccess: async (tusId) => {
-				step = 'submitting';
-				try {
-					await submit(tusId, submitBody(current));
-					await deleteDraft(current.sha256).catch(() => {});
-					reset();
-					message = t('upload.submitted');
-					refresh++;
-				} catch (e) {
-					error = e;
-					step = 'edit';
-				}
-			},
-			onError: (e) => {
-				// The server forgot this upload (expired, deleted): start over next time.
-				if (e.status === 404 || e.status === 410) current.uploadUrl = undefined;
-				error = t('upload.failed', { error: e.message });
-				retrying = false;
-				step = 'edit';
-				checkAvailable();
-			}
-		});
 	}
 
 	async function cancel() {
 		if (!confirm(t('upload.cancel_confirm'))) return;
-		hashing?.abort();
-		await upload?.abort(true).catch(() => {}); // also deletes what was uploaded
-		if (draft) await deleteDraft(draft.sha256).catch(() => {});
-		reset();
-	}
-
-	async function discard(sha256: string) {
-		await deleteDraft(sha256).catch(() => {});
-		drafts = drafts.filter((d) => d.sha256 !== sha256);
+		await flow.cancel();
+		if (input) input.value = '';
 	}
 </script>
 
-<svelte:window onbeforeunload={(e) => busy && e.preventDefault()} />
+<svelte:window onbeforeunload={(e) => flow.busy && e.preventDefault()} />
 
-{#if allowed}
-	<div class="page">
-		<h1>{t('upload.title')}</h1>
+<div class="page">
+	<h1>{t('upload.title')}</h1>
 
-		{#if unavailable}<ErrorMessage error={t('upload.unavailable')} />{/if}
-		{#if message}<p class="ok" role="status">{message}</p>{/if}
-		<ErrorMessage error={error} />
+	{#if flow.unavailable}<ErrorMessage error={t('upload.unavailable')} />{/if}
+	{#if flow.message}<p class="ok" role="status">{flow.message}</p>{/if}
+	<ErrorMessage error={flow.error ?? data.error} />
 
-		<section class="card">
-			<label class="file">
-				{t('upload.choose')}
-				<input
-					bind:this={input}
-					type="file"
-					accept={limits ? limits.extensions.map((e) => `.${e}`).join(',') : 'video/*'}
-					onchange={choose}
-					disabled={busy}
-				/>
+	<section class="card">
+		<label class="file">
+			{t('upload.choose')}
+			<input
+				bind:this={input}
+				type="file"
+				accept={flow.limits ? flow.limits.extensions.map((e) => `.${e}`).join(',') : 'video/*'}
+				onchange={choose}
+				disabled={flow.busy}
+			/>
+		</label>
+		<p class="hint">{t('upload.hint_local')}</p>
+
+		{#if flow.step === 'hashing'}
+			<label class="bar">
+				{t('upload.hashing')}
+				<progress max="1" value={flow.hashProgress}></progress>
 			</label>
-			<p class="hint">{t('upload.hint_local')}</p>
-
-			{#if step === 'hashing'}
-				<label class="bar">
-					{t('upload.hashing')}
-					<progress max="1" value={hashProgress}></progress>
-				</label>
-			{/if}
-			{#if duplicate}<ErrorMessage error={t('upload.duplicate')} />{/if}
-			{#if resumed}<p class="ok">{t('upload.resumed')}</p>{/if}
-
-			{#if step === 'pick' && drafts.length}
-				<div class="drafts">
-					<h2>{t('upload.drafts')}</h2>
-					<p class="hint">{t('upload.draft_resume_hint')}</p>
-					<ul>
-						{#each drafts as d (d.sha256)}
-							<li>
-								<span>{d.originalFilename}</span>
-								<span class="hint">{t('upload.draft_segments', { n: d.segments.length })}</span>
-								<button type="button" class="secondary" onclick={() => discard(d.sha256)}>
-									{t('upload.draft_discard')}
-								</button>
-							</li>
-						{/each}
-					</ul>
-				</div>
-			{/if}
-		</section>
-
-		{#if draft && src && step !== 'hashing'}
-			{#await catalog then c}
-				<AnnotationPanel
-					{src}
-					filename={draft.originalFilename}
-					bind:annotation={draft}
-					catalog={c}
-					{performers}
-					{tags}
-					{busy}
-					blocker={unavailable ? t('upload.reason.unavailable') : ''}
-					onaddperformer={newPerformer}
-					onproceed={proceed}
-					oncancel={cancel}
-				>
-					{#if step === 'uploading' || step === 'submitting'}
-						<label class="bar">
-							{t('upload.step.upload')}
-							<progress max="1" value={uploadProgress}></progress>
-						</label>
-						{#if retrying}<ErrorMessage error={t('upload.retrying')} role="status" />{/if}
-						{#if step === 'submitting'}<p class="hint">{t('upload.step.submit')}</p>{/if}
-					{/if}
-				</AnnotationPanel>
-			{/await}
 		{/if}
+		{#if flow.duplicate}<ErrorMessage error={t('upload.duplicate')} />{/if}
+		{#if flow.resumed}<p class="ok">{t('upload.resumed')}</p>{/if}
 
-		<MyUploads {refresh} />
-	</div>
-{/if}
+		{#if flow.step === 'pick' && flow.drafts.length}
+			<div class="drafts">
+				<h2>{t('upload.drafts')}</h2>
+				<p class="hint">{t('upload.draft_resume_hint')}</p>
+				<ul>
+					{#each flow.drafts as d (d.sha256)}
+						<li>
+							<span>{d.originalFilename}</span>
+							<span class="hint">{t('upload.draft_segments', { n: d.segments.length })}</span>
+							<button type="button" class="secondary" onclick={() => flow.discard(d.sha256)}>
+								{t('upload.draft_discard')}
+							</button>
+						</li>
+					{/each}
+				</ul>
+			</div>
+		{/if}
+	</section>
+
+	{#if flow.draft && flow.src && flow.step !== 'hashing'}
+		{#await catalog then c}
+			<AnnotationPanel
+				src={flow.src}
+				filename={flow.draft.originalFilename}
+				bind:annotation={flow.draft}
+				catalog={c}
+				performers={data.performers}
+				tags={data.tags}
+				busy={flow.busy}
+				blocker={flow.unavailable ? t('upload.reason.unavailable') : ''}
+				onaddperformer={newPerformer}
+				onproceed={() => flow.proceed()}
+				oncancel={cancel}
+			>
+				{#if flow.step === 'uploading' || flow.step === 'submitting'}
+					<label class="bar">
+						{t('upload.step.upload')}
+						<progress max="1" value={flow.uploadProgress}></progress>
+					</label>
+					{#if flow.retrying}<ErrorMessage error={t('upload.retrying')} role="status" />{/if}
+					{#if flow.step === 'submitting'}<p class="hint">{t('upload.step.submit')}</p>{/if}
+				{/if}
+			</AnnotationPanel>
+		{/await}
+	{/if}
+
+	<MyUploads refresh={flow.submitted} />
+</div>
 
 <style>
 	.page {

@@ -358,12 +358,19 @@ the encoder waits for the version; `/health` fails on a mismatch.
 - Frame steps (player + editor): `$lib/frames.ts` — `frameDuration` = median gap per presented
   frame over `FRAME_SAMPLES` callbacks (not the smallest: WebKit adds one on a speed change),
   `frameStep` = next/previous frame on the grid. The editor measures with a hidden video IN the
-  page (WebKit reports no frames otherwise; `aria-hidden`, tests select `video:not([aria-hidden])`).
+  page (`$lib/upload/video.ts` `measureFrame`, with `makeStrip` for the film strip; WebKit reports no frames
+  otherwise; `aria-hidden`, tests select `video:not([aria-hidden])`). Marking rules (I/O, a new segment
+  inheriting the previous one's catalogue place and performer, keys → actions): `$lib/upload/marking.ts`,
+  pure functions on the Annotation (unit-tested); `Editor.svelte` wires them to the video.
 - `navigator.storage.persist()`; clear Cache API + IndexedDB on logout.
 - New versions: `$lib/pwa.ts` calls `registration.update()` on `visibilitychange` (visible) and
   hourly; `onAppUpdated` (controllerchange, not the first install) → `$lib/UpdateBanner.svelte`
   (root layout): "new version" + Reload, never an automatic reload.
-- Upload page (online only, `upload` access): file opened locally, SHA-256
+- Upload page (online only, `upload` access, checked in `upload/+page.ts`, which also loads performers,
+  tags (`depends('app:lang')`), limits, availability): steps and state in `$lib/upload/flow.svelte.ts`
+  (`UploadFlow`: pick → hashing → edit → uploading → submitting; its API/draft/hash/tus functions injected,
+  `FlowDeps`, tests give fakes: `flow.test.ts`); the page keeps the autosave effect, the leave guard and the
+  confirmations. File opened locally, SHA-256
   checked against the server (duplicates refused) → own film-strip timeline
   (drag, edges, I/O keys) for segments → tus upload of the original → server
   queue encodes and publishes. Drafts in IndexedDB, deleted on logout.
