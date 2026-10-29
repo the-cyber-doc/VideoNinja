@@ -355,9 +355,19 @@ the encoder waits for the version; `/health` fails on a mismatch.
   `logs.configure()` at the import of `app.main` and in the encoder's `main()`, uvicorn's loggers
   through the same root handler (`StderrHandler`: `sys.stderr` at each write). `VIDEONINJA_LOG_FORMAT`
   `text` (default, dev) | `json` (images: `ts` in clock's format, `level`, `logger`, `msg`, extras,
-  `exc`); `VIDEONINJA_LOG_LEVEL` (INFO); bad value → no start. uvicorn's access log off in json (nginx
-  logs requests). The setup token's line is read by tools/test-e2e-stack.sh (sed on the token's
-  characters). Test: `tests/test_logs.py`.
+  `exc`); `VIDEONINJA_LOG_LEVEL` (INFO); bad value → no start. The setup token's line is read by
+  tools/test-e2e-stack.sh (sed on the token's characters). Test: `tests/test_logs.py`.
+- Request IDs: nginx's `$request_id` → `X-Request-ID` to the api (server-level proxy_set_header),
+  tusd and the auth subrequest; `rid=` in nginx's log; `add_header X-Request-ID` to the browser.
+  `app/middleware.py` `RequestLog` (pure ASGI, added last = outermost): takes a valid ID
+  (`[A-Za-z0-9-]{1,64}`) or makes one (then adds the header itself), `logs.start(request_id=…)` for
+  the rest of the task (uvicorn's traceback included), one line per request (`app.middleware`:
+  method, route TEMPLATE, status, `duration_ms`; healthy /health DEBUG); uvicorn's access log off.
+  Context: `logs.start` / `logs.bind(**f)` (contextmanager) / `logs.add(**f)` (mutates the bound dict:
+  FastAPI's sync dependencies run in context copies) + `ContextFilter`; `auth.current_user` and login
+  `add(user_id=…)`; tusd hook adopts the event's `X-Request-Id`; encoder jobs and thumbnails
+  `bind(video_id=…)`; `catalog_changed` sends its own ID. Frontend: `ApiError.requestId` (answer header,
+  tus too; shown later by the shared error display). Test: `tests/test_middleware.py`.
 - Buffering: nginx buffers app responses by default; an app endpoint that
   streams progress sends `X-Accel-Buffering: no` (the app decides, nginx
   follows). Media bytes never go through the app: nginx streams them itself

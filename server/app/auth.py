@@ -7,7 +7,7 @@ from cryptography.exceptions import InvalidTag
 from fastapi import APIRouter, Depends, Request, Response, status
 from pydantic import BaseModel
 
-from . import clock, crypto, db, i18n, queries, security, throttle
+from . import clock, crypto, db, i18n, logs, queries, security, throttle
 from .errors import ApiError
 from .validation import field
 
@@ -44,6 +44,7 @@ def current_user(
     user = security.session_user(con, token, zone) if token else None
     if user is None:
         raise ApiError("auth.not_logged_in")
+    logs.add(user_id=user["id"])  # on this request's every line from now on
     return user
 
 
@@ -105,6 +106,7 @@ def login(
     if not (password_ok and totp_ok):
         raise ApiError("auth.invalid_credentials")
 
+    logs.add(user_id=user["id"])
     security.purge_expired_sessions(con)
     token = security.create_session(con, user, zone)
     name, path = security.session_cookie()

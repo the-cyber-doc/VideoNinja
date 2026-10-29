@@ -6,12 +6,14 @@ type Params = Record<string, string | number>;
 /** A failed API call. The server answers every error as {code, detail, params}
  * (server/app/errors.py); `message` is the code's text in the user's language
  * (messages.json: error.<code>, `params` as its placeholders), never the server's
- * English `detail`. status 0: no answer at all (code 'network'). */
+ * English `detail`. status 0: no answer at all (code 'network'). `requestId`: the
+ * answer's X-Request-ID, in the server's logs ("request_id") and nginx's ("rid"). */
 export class ApiError extends Error {
 	constructor(
 		public status: number,
 		public code: string,
-		public params: Params = {}
+		public params: Params = {},
+		public requestId: string | null = null
 	) {
 		super(errorText(code, params, status));
 	}
@@ -55,14 +57,14 @@ const isErrorBody = (body: unknown): body is ErrorBody =>
 	typeof body === 'object' && body !== null && typeof (body as ErrorBody).code === 'string';
 
 /** The error of an answer with this status and (parsed JSON) body, if any. */
-export function errorFromBody(status: number, body: unknown): ApiError {
-	if (isErrorBody(body)) return new ApiError(status, body.code, body.params ?? {});
-	return new ApiError(status, BY_STATUS[status] ?? 'http_error', { status });
+export function errorFromBody(status: number, body: unknown, requestId: string | null = null): ApiError {
+	if (isErrorBody(body)) return new ApiError(status, body.code, body.params ?? {}, requestId);
+	return new ApiError(status, BY_STATUS[status] ?? 'http_error', { status }, requestId);
 }
 
 async function responseError(res: Response): Promise<ApiError> {
 	const body = await res.json().catch(() => null);
-	return errorFromBody(res.status, body);
+	return errorFromBody(res.status, body, res.headers.get('X-Request-ID'));
 }
 
 /** Sent on every API call. */
