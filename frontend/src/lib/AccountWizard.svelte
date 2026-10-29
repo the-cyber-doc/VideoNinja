@@ -1,134 +1,43 @@
 <script lang="ts">
-	// Account creation wizard, shared by two pages:
-	// - /setup (first start): setup token from the server logs, creates the admin
-	//   and the database;
-	// - /register (invitation): the invitation token from the link, the username
-	//   chosen by the admin.
+	// Account creation wizard, shared by /setup (first start) and /register (an
+	// invitation): its steps and state are the Wizard's (wizard.svelte.ts); here, the
+	// forms and the navigation to the login page.
 	import ErrorMessage from './ErrorMessage.svelte';
 	import { goto } from '$app/navigation';
-	import { errorFromBody } from '#lib/api/client.js';
-	import * as register from '#lib/api/register.js';
-	import * as setupApi from '#lib/api/setup.js';
 	import { url } from '#lib/base.js';
-	import { t, type MessageKey } from '#lib/i18n.svelte.js';
+	import { t } from '#lib/i18n.svelte.js';
 	import { onTotpInput, rules } from '#lib/validation.js';
+	import { INIT_TASKS, Wizard } from './wizard.svelte';
 
 	/** Invitation token: registration mode. Without it: first-start setup. */
 	let { invite }: { invite?: string } = $props();
 	// The mode is fixed for the page's lifetime.
 	// svelte-ignore state_referenced_locally
-	const setup = invite === undefined;
-
-	const STEPS: MessageKey[] = setup
-		? ['wizard.step.setup_token', 'wizard.step.admin', 'wizard.step.authenticator', 'wizard.step.init']
-		: ['wizard.step.invitation', 'wizard.step.account', 'wizard.step.authenticator', 'wizard.step.done'];
-	// The setup steps reported by the server, in order.
-	const INIT_TASKS = ['schema', 'data', 'admin', 'done'] as const;
-
-	let step = $state(0);
-	let error = $state<unknown>(null);
-	let busy = $state(false);
-
-	let token = $state('');
-	let username = $state(setup ? 'admin' : '');
-	let name = $state('');
-	let password = $state('');
-	let password2 = $state('');
-	let totp = $state<{ secret: string; qr: string } | null>(null);
-	let totpCode = $state('');
-	let completed = $state<string[]>([]);
-	let registered = $state(false);
-	let finished = $derived(setup ? completed.includes('done') : registered);
+	const w = new Wizard(invite);
 	const usernameHint = $derived(
 		t('common.username_hint', { min: rules.username.min_length, max: rules.username.max_length })
 	);
+	const toLogin = () => goto(url('/login'), { replace: true });
 
 	$effect(() => {
-		if (setup) {
-			setupApi.isInitialized().then((ok) => {
-				if (ok) goto(url('/login'), { replace: true });
-			});
-		} else {
-			// The invitation is checked at once: the user sees who it is for, or why it fails.
-			run(async () => {
-				username = (await register.verifyInvite(invite)).username;
-				step = 1;
-			});
-		}
+		w.start().then((next) => {
+			if (next === 'login') toLogin(); // set up already
+		});
 	});
 
-	/** Run an action with busy/error handling. */
-	async function run(action: () => Promise<void>) {
-		busy = true;
-		error = null;
-		try {
-			await action();
-		} catch (e) {
-			error = e;
-		} finally {
-			busy = false;
-		}
-	}
-
-	const submitToken = (e: SubmitEvent) => {
+	const submit = (action: () => Promise<unknown>) => (e: SubmitEvent) => {
 		e.preventDefault();
-		run(async () => {
-			await setupApi.verifyToken(token.trim());
-			step = 1;
-		});
-	};
-
-	const submitAccount = (e: SubmitEvent) => {
-		e.preventDefault();
-		if (password !== password2) {
-			error = t('common.passwords_mismatch');
-			return;
-		}
-		run(async () => {
-			totp = setup
-				? await setupApi.newTotp(token.trim(), username)
-				: await register.newTotp(invite);
-			step = 2;
-		});
-	};
-
-	const submitTotp = (e: SubmitEvent) => {
-		e.preventDefault();
-		run(async () => {
-			const credentials = { name, password, totp_secret: totp!.secret, totp_code: totpCode };
-			if (!setup) {
-				await register.complete({ token: invite, ...credentials });
-				password = password2 = '';
-				registered = true;
-				step = 3;
-				return;
-			}
-			// Validation errors (e.g. a wrong code) throw here, before anything is created.
-			// A failure after the answer started (status 200 sent): {error: {code, detail, params}}.
-			const events = setupApi.complete({
-				token: token.trim(),
-				username,
-				...credentials
-			});
-			const first = await events.next();
-			step = 3;
-			for (let r = first; !r.done; r = await events.next()) {
-				if (r.value.error) throw errorFromBody(0, r.value.error);
-				if (r.value.step) completed = [...completed, r.value.step];
-			}
-			password = password2 = '';
-			if (!finished) throw new Error(t('wizard.setup_unexpected_end'));
-		});
+		action();
 	};
 </script>
 
 <main class="card">
-	<h1>{setup ? t('wizard.setup_title') : t('wizard.register_title')}</h1>
+	<h1>{w.setup ? t('wizard.setup_title') : t('wizard.register_title')}</h1>
 
 	<ol class="stepper" aria-label={t('wizard.progress')}>
-		{#each STEPS as label, i (label)}
-			<li class:active={i === step} class:done={i < step || finished}>
-				<span class="dot">{i < step || finished ? '✓' : i + 1}</span>
+		{#each w.labels as label, i (label)}
+			<li class:active={i === w.position} class:done={i < w.position}>
+				<span class="dot">{i < w.position ? '✓' : i + 1}</span>
 				<span class="label">{t(label)}</span>
 			</li>
 		{/each}
@@ -137,14 +46,14 @@
 		class="bar"
 		role="progressbar"
 		aria-valuemin="0"
-		aria-valuemax={STEPS.length}
-		aria-valuenow={finished ? STEPS.length : step}
+		aria-valuemax={w.labels.length}
+		aria-valuenow={w.position}
 	>
-		<div style:width="{((finished ? STEPS.length : step) / STEPS.length) * 100}%"></div>
+		<div style:width="{(w.position / w.labels.length) * 100}%"></div>
 	</div>
 
-	{#if step === 0 && setup}
-		<form onsubmit={submitToken}>
+	{#if w.step === 'token' && w.setup}
+		<form onsubmit={submit(w.submitToken)}>
 			<p class="hint">
 				{t('wizard.token_hint')}
 				<code>docker logs videoninja</code>.
@@ -152,30 +61,30 @@
 			<label>
 				{t('wizard.step.setup_token')}
 				<input
-					bind:value={token}
+					bind:value={w.token}
 					autocomplete="off"
 					autocapitalize="none"
 					maxlength={rules.setup_token.max_length}
 					required
 				/>
 			</label>
-			<ErrorMessage error={error} />
-			<button disabled={busy}>{t('common.continue')}</button>
+			<ErrorMessage error={w.error} />
+			<button disabled={w.busy}>{t('common.continue')}</button>
 		</form>
-	{:else if step === 0}
-		{#if error}
-			<ErrorMessage {error} />
+	{:else if w.step === 'token'}
+		{#if w.error}
+			<ErrorMessage error={w.error} />
 			<p class="hint">{t('wizard.ask_new_invite')}</p>
 		{:else}
 			<p class="hint">{t('wizard.checking_invite')}</p>
 		{/if}
-	{:else if step === 1}
-		<form onsubmit={submitAccount}>
-			{#if setup}
+	{:else if w.step === 'account'}
+		<form onsubmit={submit(w.submitAccount)}>
+			{#if w.setup}
 				<label>
 					{t('common.username')}
 					<input
-						bind:value={username}
+						bind:value={w.username}
 						autocomplete="username"
 						autocapitalize="none"
 						minlength={rules.username.min_length}
@@ -186,19 +95,19 @@
 					/>
 				</label>
 			{:else}
-				<p>{t('common.username_label')} <strong>{username}</strong></p>
+				<p>{t('common.username_label')} <strong>{w.username}</strong></p>
 				<!-- Lets password managers store the password under the right username. -->
-				<input type="text" value={username} autocomplete="username" hidden readonly />
+				<input type="text" value={w.username} autocomplete="username" hidden readonly />
 			{/if}
 			<label>
 				{t('common.display_name_optional')}
-				<input bind:value={name} autocomplete="name" maxlength={rules.display_name.max_length} />
+				<input bind:value={w.name} autocomplete="name" maxlength={rules.display_name.max_length} />
 			</label>
 			<label>
 				{t('common.password_min', { min: rules.password.min_length })}
 				<input
 					type="password"
-					bind:value={password}
+					bind:value={w.password}
 					autocomplete="new-password"
 					minlength={rules.password.min_length}
 					maxlength={rules.password.max_length}
@@ -209,25 +118,25 @@
 				{t('common.confirm_password')}
 				<input
 					type="password"
-					bind:value={password2}
+					bind:value={w.password2}
 					autocomplete="new-password"
 					maxlength={rules.password.max_length}
 					required
 				/>
 			</label>
-			<ErrorMessage error={error} />
-			<button disabled={busy}>{t('common.continue')}</button>
+			<ErrorMessage error={w.error} />
+			<button disabled={w.busy}>{t('common.continue')}</button>
 		</form>
-	{:else if step === 2 && totp}
-		<form onsubmit={submitTotp}>
+	{:else if w.step === 'authenticator' && w.totp}
+		<form onsubmit={submit(w.submitTotp)}>
 			<p class="hint">{t('wizard.scan_hint')}</p>
-			<img class="qr" src={totp.qr} alt={t('common.qr_alt')} width="200" height="200" />
-			<p class="hint">{t('common.manual_key')} <code class="secret">{totp.secret}</code></p>
+			<img class="qr" src={w.totp.qr} alt={t('common.qr_alt')} width="200" height="200" />
+			<p class="hint">{t('common.manual_key')} <code class="secret">{w.totp.secret}</code></p>
 			<label>
 				{t('common.totp_code')}
 				<input
-					value={totpCode}
-					oninput={(e) => (totpCode = onTotpInput(e))}
+					value={w.totpCode}
+					oninput={(e) => (w.totpCode = onTotpInput(e))}
 					inputmode="numeric"
 					autocomplete="one-time-code"
 					minlength={rules.totp_code.min_length}
@@ -236,32 +145,32 @@
 					required
 				/>
 			</label>
-			<ErrorMessage error={error} />
+			<ErrorMessage error={w.error} />
 			<div class="row">
-				<button type="button" class="secondary" onclick={() => (step = 1)} disabled={busy}>
+				<button type="button" class="secondary" onclick={w.back} disabled={w.busy}>
 					{t('common.back')}
 				</button>
-				<button disabled={busy}>{t('common.create')}</button>
+				<button disabled={w.busy}>{t('common.create')}</button>
 			</div>
 		</form>
-	{:else if step === 3}
-		{#if setup}
+	{:else if w.step === 'done'}
+		{#if w.setup}
 			<ul class="tasks">
 				{#each INIT_TASKS as task (task)}
-					{@const done = completed.includes(task)}
-					{@const current = !done && busy && INIT_TASKS.find((id) => !completed.includes(id)) === task}
+					{@const done = w.completed.includes(task)}
+					{@const current = w.currentTask === task}
 					<li class:done class:current>
 						<span class="mark">{done ? '✓' : current ? '…' : '·'}</span>{t(`wizard.task.${task}`)}
 					</li>
 				{/each}
 			</ul>
 		{/if}
-		<ErrorMessage error={error} />
-		{#if finished}
+		<ErrorMessage error={w.error} />
+		{#if w.finished}
 			<p>
-				{setup ? t('wizard.setup_ready') : t('wizard.register_ready')}
+				{w.setup ? t('wizard.setup_ready') : t('wizard.register_ready')}
 			</p>
-			<button onclick={() => goto(url('/login'), { replace: true })}>
+			<button onclick={toLogin}>
 				{t('wizard.go_to_login')}
 			</button>
 		{/if}

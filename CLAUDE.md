@@ -303,7 +303,10 @@ the encoder waits for the version; `/health` fails on a mismatch.
   language change; after a change, `invalidate('app:<name>')` (users page: `app:users`). Page logic in a
   `<name>.svelte.ts` beside it (`admin/users/users.svelte.ts`: `UserAdmin` actions + busy/error/link).
   `/login`, `/setup`, `/register` are outside the group (no shell). `/setup`
-  and `/register#<token>` share `$lib/AccountWizard.svelte`.
+  and `/register#<token>` share `$lib/AccountWizard.svelte` (forms only); its steps are
+  `$lib/wizard.svelte.ts` `Wizard` (named steps token → account → authenticator → done; setup or registration
+  by the invitation token; `start()` returns 'login' when set up already; API functions injected,
+  `WizardDeps`; tests `wizard.test.ts`).
 - Styles: tokens in `src/app.css` (`:root`; colours per theme, sizes and media colours not). Spacing
   `--space-0…8` (0.125/0.25/0.5/0.75/1/1.25/1.5/2/3rem): EVERY gap, margin, padding and offset is one
   (geometry like a handle centred on an edge: `calc(var(--edge) / -2)`, a local variable). Type (every font size)
