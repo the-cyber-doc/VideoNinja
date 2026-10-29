@@ -43,10 +43,10 @@ or ID encoding (Base62/Sqids).
   accept `upload` or `video_mgmt` (`require_access` takes several, any one).
   The annotation panel (`$lib/upload/AnnotationPanel.svelte`, type `Annotation`)
   is shared by the upload and Videos pages; on the server, `app/segments.py` (models + `check`:
-  techniques/performers looked up once for all segments, `queries.known_*` with `json_each`; tag
+  techniques/performers looked up once for all segments, `queries.catalog.known_techniques` / `queries.performers.known_performers` with `json_each`; tag
   rules from `tags.value_error` as error codes) by `videos.submit` (before waiting for the upload) and
   `video_mgmt.save_annotations` (inside its write). Role accesses come with the session row
-  (`queries.session_user` JSON array, `security.accesses`): no extra query per `require_access`, tusd
+  (`queries.sessions.session_user`: `User.access`, from a JSON array): no extra query per `require_access`, tusd
   hook or owner check. Test: `tests/test_segments.py` (query counts constant). The service worker deletes saved
   clips/thumbnails of segments removed or re-timed when the catalogue changes.
   Exception: every user edits their OWN profile (`/api/profile/…`: display name,
@@ -167,6 +167,14 @@ the encoder waits for the version; `/health` fails on a mismatch.
   annotation panel: file name above the video, uploader opposite, "Created by" left of each
   segment's delete button (new segments and the upload page: the current user).
 - Databases are migrated, never rebuilt (see Schema above).
+- Queries: `app/queries/` package, one module per table or purpose (users, sessions, invites, config,
+  catalog, comments, performers, tags, uploads, videos, segments, queue, thumbnails); called by module,
+  `queries.users.insert_user(…)` (no flat re-export). Every SQL statement there, `?` parameters only
+  (column lists built from constants carry `# nosec B608` with the reason). The logged-in user is the frozen
+  `queries.users.User` (id, username, name, role, time_zone, `access` frozenset; never credentials:
+  `Credentials` for the login only), from `security.session_user` / `auth.current_user` / `require_access`:
+  `me.id`, `me.access`; `clock.user_zone(user.time_zone, zone)`. Other rows stay `sqlite3.Row` (each read
+  in one module). Test: `tests/test_queries.py` (every query used; User without credentials).
 - Transactions: `db.connect()` is autocommit (`autocommit=True`, `db.Connection` makes `with con:`
   raise). Writes / check-then-write: `with db.write(con):` (BEGIN IMMEDIATE, rollback on any
   exception); consistent multi-reads: `with db.read(con):`. No nesting; Argon2 and other slow work

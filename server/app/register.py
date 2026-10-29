@@ -53,9 +53,9 @@ def complete(body: CompleteIn, con: sqlite3.Connection = Depends(db.get_db)) -> 
     pw_hash = security.hash_password(body.password)  # slow: before the write lock
     with db.write(con):
         # Deleting the invitation first makes the link single-use, even under concurrent requests.
-        if not queries.delete_invite(con, user["id"]):
+        if not queries.invites.delete_invite(con, user["id"]):
             raise ApiError("invite.invalid")
-        queries.set_user_registration(
+        queries.users.set_user_registration(
             con,
             user["id"],
             body.name.strip() or None,

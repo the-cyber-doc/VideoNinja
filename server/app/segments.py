@@ -58,8 +58,8 @@ def check(
     ids = [s.id for s in segments if isinstance(s, AnnotatedSegment) and s.id is not None]
     if len(set(ids)) != len(ids):
         raise ApiError("segment.duplicate")
-    techniques = queries.known_techniques(con, {s.technique for s in segments})
-    performers = queries.known_performers(con, {s.performer for s in segments})
+    techniques = queries.catalog.known_techniques(con, {s.technique for s in segments})
+    performers = queries.performers.known_performers(con, {s.performer for s in segments})
     for segment in segments:
         segment_id = segment.id if isinstance(segment, AnnotatedSegment) else None
         if segment_id is not None and (existing is None or segment_id not in existing):

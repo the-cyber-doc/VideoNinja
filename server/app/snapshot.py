@@ -36,6 +36,7 @@ from fastapi.responses import FileResponse
 from . import catalog, db, i18n, procs, settings
 from .errors import ApiError
 from .auth import current_user
+from .queries.users import User
 
 log = logging.getLogger(__name__)
 router = APIRouter(prefix="/api", tags=["catalog"])
@@ -195,7 +196,7 @@ def rebuild_after_write(request: Request) -> Iterator[None]:
 
 @router.get("/catalog")
 def get_catalog(
-    _: sqlite3.Row = Depends(current_user),
+    _: User = Depends(current_user),
     lang: str = Depends(i18n.language),
 ) -> Response:
     """The catalogue file of the request's language. Behind nginx: an empty answer

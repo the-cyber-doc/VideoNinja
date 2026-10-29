@@ -13,6 +13,7 @@ from pydantic import BaseModel
 
 from . import clock, db, i18n, queries
 from .auth import require_access, user_zone
+from .queries.users import User
 
 router = APIRouter(prefix="/api", tags=["tags"])
 YEARS_BACK = 100  # a "year" tag: from this many years ago to this year
@@ -43,8 +44,8 @@ def year_range(zone: tzinfo) -> tuple[int, int]:
 
 
 def tag_rules(con: sqlite3.Connection) -> dict[str, Rule]:
-    rules: dict[str, Rule] = {r["id"]: r["value_format"] for r in queries.tags(con)}
-    for v in queries.tag_values(con):
+    rules: dict[str, Rule] = {r["id"]: r["value_format"] for r in queries.tags.tags(con)}
+    for v in queries.tags.tag_values(con):
         rule = rules[v["tag"]]
         rules[v["tag"]] = [*(rule if isinstance(rule, list) else []), v["id"]]
     return rules
@@ -64,17 +65,17 @@ def value_error(rule: Rule, value: str | None, zone: tzinfo) -> tuple[str, dict[
 
 @router.get("/tags", response_model_exclude_none=True)
 def list_tags(
-    _: sqlite3.Row = Depends(require_access("upload", "video_mgmt")),
+    _: User = Depends(require_access("upload", "video_mgmt")),
     con: sqlite3.Connection = Depends(db.get_db),
     lang: str = Depends(i18n.language),
     zone: tzinfo = Depends(user_zone),
 ) -> list[Tag]:
     """Every tag, sorted by name in the request's language, and its values too."""
     values: dict[str, list[TagValue]] = {}
-    for v in queries.tag_values(con):
+    for v in queries.tags.tag_values(con):
         values.setdefault(v["tag"], []).append(TagValue(id=v["id"], name=i18n.pick(v, "name", lang, v["id"])))
     out = []
-    for r in queries.tags(con):
+    for r in queries.tags.tags(con):
         tag = Tag(id=r["id"], name=i18n.pick(r, "name", lang, r["id"]), format=r["value_format"])
         if r["id"] in values:
             tag.values = sorted(values[r["id"]], key=lambda v: i18n.sort_key(v.name))

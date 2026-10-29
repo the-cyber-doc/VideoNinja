@@ -13,7 +13,6 @@ stay plain seconds (…_S constants, segment begin_s / end_s).
 """
 
 import re
-import sqlite3
 from datetime import UTC, datetime, timedelta, tzinfo
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
@@ -45,9 +44,10 @@ def zone(time_zone: str | None = Header(default=None)) -> ZoneInfo | None:
     return zone_named(time_zone)
 
 
-def user_zone(user: sqlite3.Row, request_zone: tzinfo | None = None) -> tzinfo:
-    """The timezone to write the user's dates in: the request's, the saved one, the server's."""
-    return request_zone or zone_named(user["time_zone"]) or server_zone()
+def user_zone(saved: str | None, request_zone: tzinfo | None = None) -> tzinfo:
+    """The timezone to write a user's dates in: the request's, the saved one (the user's
+    time_zone), the server's."""
+    return request_zone or zone_named(saved) or server_zone()
 
 
 def now() -> datetime:

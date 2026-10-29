@@ -11,6 +11,7 @@ from . import db, i18n, queries
 from .errors import ApiError
 from .auth import require_access
 from .validation import field
+from .queries.users import User
 
 router = APIRouter(prefix="/api", tags=["performers"])
 uploader = require_access("upload", "video_mgmt")  # annotating at upload or later
@@ -33,26 +34,27 @@ def slug(name: str) -> str:
 
 @router.get("/performers")
 def list_performers(
-    _: sqlite3.Row = Depends(uploader), con: sqlite3.Connection = Depends(db.get_db)
+    _: User = Depends(uploader), con: sqlite3.Connection = Depends(db.get_db)
 ) -> list[Performer]:
     """Sorted by name, ignoring case and accents."""
-    return sorted((Performer(**dict(r)) for r in queries.performers(con)), key=lambda p: i18n.sort_key(p.name))
+    performers = (Performer(**dict(r)) for r in queries.performers.performers(con))
+    return sorted(performers, key=lambda p: i18n.sort_key(p.name))
 
 
 @router.post("/performers", status_code=status.HTTP_201_CREATED)
 def create_performer(
-    body: PerformerIn, _: sqlite3.Row = Depends(uploader), con: sqlite3.Connection = Depends(db.get_db)
+    body: PerformerIn, _: User = Depends(uploader), con: sqlite3.Connection = Depends(db.get_db)
 ) -> Performer:
     name = " ".join(body.name.split())
     if not name:
         raise ApiError("performer.empty_name")
     with db.write(con):
-        if queries.performer_name_exists(con, name):
+        if queries.performers.performer_name_exists(con, name):
             raise ApiError("performer.exists")
         base = performer_id = slug(name)
         n = 1
-        while queries.performer_exists(con, performer_id):
+        while queries.performers.performer_exists(con, performer_id):
             n += 1
             performer_id = f"{base}-{n}"
-        queries.insert_performer(con, performer_id, name)
+        queries.performers.insert_performer(con, performer_id, name)
     return Performer(id=performer_id, name=name)
