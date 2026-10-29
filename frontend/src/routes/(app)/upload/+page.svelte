@@ -292,31 +292,31 @@
 		max-width: 60rem;
 		margin: 0 auto;
 		display: grid;
-		gap: 1rem;
+		gap: var(--space-4);
 	}
 	h1 {
 		text-align: center;
 		margin-bottom: 0;
 	}
 	h2 {
-		font-size: 1.1rem;
-		margin: 0 0 0.5rem;
+		font-size: var(--text-lg);
+		margin: 0 0 var(--space-2);
 	}
 	.card {
 		display: grid;
-		gap: 0.6rem;
+		gap: var(--space-2);
 		margin: 0;
-		padding: 1rem;
+		padding: var(--space-4);
 		background: var(--surface);
 		border: 1px solid var(--border);
 		border-radius: var(--radius);
 	}
 	.file input {
-		padding: 0.4rem;
+		padding: var(--space-2);
 	}
 	.bar {
 		display: grid;
-		gap: 0.25rem;
+		gap: var(--space-1);
 	}
 	progress {
 		width: 100%;
@@ -327,7 +327,7 @@
 	}
 	.drafts ul {
 		display: grid;
-		gap: 0.4rem;
+		gap: var(--space-2);
 		margin: 0;
 		padding: 0;
 		list-style: none;
@@ -336,7 +336,7 @@
 		display: flex;
 		flex-wrap: wrap;
 		align-items: center;
-		gap: 0.75rem;
+		gap: var(--space-3);
 	}
 	.drafts li span:first-child {
 		flex: 1;

@@ -112,20 +112,20 @@
 
 <style>
 	h2 {
-		font-size: 1.1rem;
-		margin: 0 0 0.75rem;
+		font-size: var(--text-lg);
+		margin: 0 0 var(--space-3);
 	}
 	ul {
 		display: grid;
-		gap: 0.5rem;
+		gap: var(--space-2);
 		margin: 0;
 		padding: 0;
 		list-style: none;
 	}
 	li {
 		display: grid;
-		gap: 0.3rem;
-		padding: 0.6rem 0.8rem;
+		gap: var(--space-1);
+		padding: var(--space-2) var(--space-3);
 		background: var(--surface);
 		border: 1px solid var(--border);
 		border-left-width: 4px;
@@ -145,14 +145,14 @@
 		flex-wrap: wrap;
 		align-items: center;
 		justify-content: space-between;
-		gap: 0.5rem;
+		gap: var(--space-2);
 	}
 	strong {
 		overflow-wrap: anywhere;
 	}
 	.when,
 	.status {
-		font-size: 0.85rem;
+		font-size: var(--text-sm);
 		color: var(--muted);
 	}
 	li.failed .status {
@@ -160,7 +160,7 @@
 	}
 	.actions {
 		display: flex;
-		gap: 0.4rem;
+		gap: var(--space-2);
 	}
 	progress {
 		width: 100%;

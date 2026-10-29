@@ -122,8 +122,8 @@
 		display: grid;
 		grid-template-columns: 1fr auto 1fr;
 		align-items: center;
-		gap: 1rem;
-		padding: 0.5rem 1rem;
+		gap: var(--space-4);
+		padding: var(--space-2) var(--space-4);
 		background: var(--surface);
 		border-bottom: 1px solid var(--border);
 	}
@@ -131,7 +131,7 @@
 		justify-self: start;
 		display: flex;
 		align-items: center;
-		gap: 0.5rem;
+		gap: var(--space-2);
 		font-weight: 700;
 		color: var(--text);
 		text-decoration: none;
@@ -142,8 +142,8 @@
 	}
 	@media (max-width: 40rem) {
 		header {
-			gap: 0.5rem;
-			padding: 0.5rem 0.75rem;
+			gap: var(--space-2);
+			padding: var(--space-2) var(--space-3);
 		}
 		/* Hidden but still read: the link keeps "Video Ninja" as its name. */
 		.brand .name {
@@ -157,13 +157,13 @@
 	}
 	.content {
 		min-width: 0;
-		padding: 1rem;
+		padding: var(--space-4);
 	}
 	.tools {
 		justify-self: end;
 		display: flex;
 		align-items: center;
-		gap: 0.5rem;
+		gap: var(--space-2);
 	}
 	.user-menu {
 		position: relative;
@@ -182,36 +182,36 @@
 	.menu {
 		position: absolute;
 		right: 0;
-		top: calc(100% + 0.4rem);
+		top: calc(100% + var(--space-2));
 		z-index: 10;
 		min-width: 12rem;
 		display: grid;
-		padding: 0.3rem;
+		padding: var(--space-1);
 		background: var(--surface);
 		border: 1px solid var(--border);
 		border-radius: var(--radius);
-		box-shadow: 0 6px 24px rgb(0 0 0 / 0.15);
+		box-shadow: var(--shadow-menu);
 	}
 	.who {
 		margin: 0;
-		padding: 0.4rem 0.7rem;
-		font-size: 0.85rem;
+		padding: var(--space-2) var(--space-3);
+		font-size: var(--text-sm);
 		color: var(--muted);
 		border-bottom: 1px solid var(--border);
-		margin-bottom: 0.3rem;
+		margin-bottom: var(--space-1);
 	}
 	.menu a,
 	.menu button {
 		display: block;
 		width: 100%;
-		padding: 0.5rem 0.7rem;
+		padding: var(--space-2) var(--space-3);
 		font: inherit;
 		font-weight: normal;
 		text-align: left;
 		color: var(--text);
 		background: none;
 		border: 0;
-		border-radius: 6px;
+		border-radius: var(--radius-sm);
 		text-decoration: none;
 		cursor: pointer;
 	}
@@ -221,7 +221,7 @@
 	}
 	.menu .logout {
 		border-top: 1px solid var(--border);
-		border-radius: 0 0 6px 6px;
-		margin-top: 0.3rem;
+		border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+		margin-top: var(--space-1);
 	}
 </style>

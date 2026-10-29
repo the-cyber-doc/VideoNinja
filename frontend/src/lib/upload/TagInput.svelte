@@ -116,18 +116,18 @@
 		padding: 0;
 		border: 0;
 		display: grid;
-		gap: 0.4rem;
+		gap: var(--space-2);
 	}
 	legend {
-		font-size: 0.9rem;
+		font-size: var(--text-label);
 		color: var(--muted);
 		padding: 0;
-		margin-bottom: 0.3rem;
+		margin-bottom: var(--space-1);
 	}
 	ul {
 		display: flex;
 		flex-wrap: wrap;
-		gap: 0.4rem;
+		gap: var(--space-2);
 		margin: 0;
 		padding: 0;
 		list-style: none;
@@ -135,17 +135,17 @@
 	.chip {
 		display: inline-flex;
 		align-items: center;
-		gap: 0.3rem;
-		padding: 0.15rem 0.3rem 0.15rem 0.6rem;
-		font-size: 0.85rem;
+		gap: var(--space-1);
+		padding: var(--space-0) var(--space-1) var(--space-0) var(--space-2);
+		font-size: var(--text-sm);
 		background: var(--bg);
 		border: 1px solid var(--border);
-		border-radius: 999px;
+		border-radius: var(--radius-pill);
 	}
 	.chip button {
 		display: grid;
 		place-items: center;
-		padding: 0.15rem;
+		padding: var(--space-0);
 		color: var(--muted);
 		background: none;
 		border-radius: 50%;
@@ -153,7 +153,7 @@
 	.add {
 		display: flex;
 		flex-wrap: wrap;
-		gap: 0.4rem;
+		gap: var(--space-2);
 	}
 	.add input,
 	.add select {

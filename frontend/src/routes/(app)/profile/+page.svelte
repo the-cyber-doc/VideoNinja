@@ -205,13 +205,13 @@
 <style>
 	section {
 		display: grid;
-		gap: 0.75rem;
-		padding-top: 1.25rem;
-		margin-top: 1.25rem;
+		gap: var(--space-3);
+		padding-top: var(--space-5);
+		margin-top: var(--space-5);
 		border-top: 1px solid var(--border);
 	}
 	h2 {
-		font-size: 1.1rem;
+		font-size: var(--text-lg);
 		margin: 0;
 	}
 	.ok {
@@ -220,15 +220,15 @@
 	}
 	.qr {
 		justify-self: center;
-		background: #fff;
-		border-radius: 6px;
+		background: var(--qr-bg);
+		border-radius: var(--radius-sm);
 	}
 	.secret {
 		word-break: break-all;
 	}
 	.row {
 		display: flex;
-		gap: 0.5rem;
+		gap: var(--space-2);
 		justify-content: space-between;
 	}
 </style>

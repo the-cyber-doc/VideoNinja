@@ -44,24 +44,24 @@
 	.app {
 		display: flex;
 		align-items: center;
-		gap: 0.75rem;
-		font-size: 1.3rem;
+		gap: var(--space-3);
+		font-size: var(--text-title);
 		font-weight: 600;
-		margin: 0 0 1rem;
+		margin: 0 0 var(--space-4);
 	}
 	ul {
 		list-style: none;
 		padding: 0;
-		margin: 0 0 1rem;
+		margin: 0 0 var(--space-4);
 		display: grid;
-		gap: 0.35rem;
+		gap: var(--space-1);
 	}
 	.hint,
 	.legal {
 		color: var(--muted);
 	}
 	.legal {
-		font-size: 0.9rem;
+		font-size: var(--text-label);
 		margin: 0;
 	}
 </style>

@@ -143,7 +143,7 @@
 	dialog {
 		width: min(56rem, calc(100vw - 2rem));
 		max-height: calc(100dvh - 2rem);
-		padding: 0.75rem;
+		padding: var(--space-3);
 		color: var(--text);
 		background: var(--surface);
 		border: 1px solid var(--border);
@@ -153,21 +153,21 @@
 		display: flex;
 		flex-wrap: wrap;
 		align-items: center;
-		gap: 0.75rem;
+		gap: var(--space-3);
 	}
 	dialog::backdrop {
-		background: rgb(0 0 0 / 0.7);
+		background: var(--scrim);
 	}
 	header {
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
-		gap: 0.5rem;
-		margin-bottom: 0.5rem;
+		gap: var(--space-2);
+		margin-bottom: var(--space-2);
 	}
 	h2 {
 		margin: 0;
-		font-size: 1.05rem;
+		font-size: var(--text-lg);
 	}
 	.duration {
 		font-weight: normal;
@@ -189,8 +189,8 @@
 		display: flex;
 		flex-wrap: wrap;
 		align-items: center;
-		gap: 0.3rem;
-		margin-top: 0.4rem;
+		gap: var(--space-1);
+		margin-top: var(--space-2);
 	}
 	.tools button.icon {
 		width: 2rem;
@@ -200,13 +200,13 @@
 		display: flex;
 		margin-left: auto;
 		border: 1px solid var(--border);
-		border-radius: 6px;
+		border-radius: var(--radius-sm);
 		overflow: hidden;
 	}
 	button.speed {
 		height: 2rem;
-		padding: 0 0.45rem;
-		font-size: 0.8rem;
+		padding: 0 var(--space-2);
+		font-size: var(--text-xs); /* four of them fit one line on a phone */
 		font-variant-numeric: tabular-nums;
 		color: var(--text);
 		background: transparent;
@@ -217,14 +217,14 @@
 		border-left: 1px solid var(--border);
 	}
 	button.speed[aria-pressed='true'] {
-		color: #fff;
+		color: var(--accent-text); /* as every button on the accent */
 		background: var(--accent);
 	}
 	video {
 		display: block;
 		width: 100%;
 		max-height: calc(100dvh - 10rem);
-		background: #000;
-		border-radius: 6px;
+		background: var(--media-bg);
+		border-radius: var(--radius-sm);
 	}
 </style>

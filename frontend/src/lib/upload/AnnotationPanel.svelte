@@ -148,14 +148,14 @@
 
 <style>
 	h2 {
-		font-size: 1.1rem;
-		margin: 0 0 0.5rem;
+		font-size: var(--text-lg);
+		margin: 0 0 var(--space-2);
 	}
 	.card {
 		display: grid;
-		gap: 0.6rem;
+		gap: var(--space-2);
 		margin: 0;
-		padding: 1rem;
+		padding: var(--space-4);
 		background: var(--surface);
 		border: 1px solid var(--border);
 		border-radius: var(--radius);
@@ -165,42 +165,42 @@
 		flex-wrap: wrap;
 		align-items: baseline;
 		justify-content: space-between;
-		gap: 0.25rem 1rem;
+		gap: var(--space-1) var(--space-4);
 	}
 	.filename {
 		overflow-wrap: anywhere;
 	}
 	.uploader {
-		font-size: 0.85rem;
+		font-size: var(--text-sm);
 		color: var(--muted);
 	}
 	.mode {
 		display: flex;
 		flex-wrap: wrap;
 		align-items: center;
-		gap: 0.5rem 1.25rem;
+		gap: var(--space-2) var(--space-5);
 	}
 	.mode legend {
 		float: left;
 		width: 100%;
 		padding: 0;
-		font-size: 0.9rem;
+		font-size: var(--text-label);
 		color: var(--muted);
 	}
 	label.choice {
 		display: flex;
 		align-items: center;
-		gap: 0.5rem;
-		font-size: 1rem;
+		gap: var(--space-2);
+		font-size: var(--text-md);
 		color: var(--text);
 	}
 	.segments {
 		display: grid;
-		gap: 0.75rem;
+		gap: var(--space-3);
 	}
 	.buttons {
 		display: flex;
 		justify-content: flex-end;
-		gap: 0.5rem;
+		gap: var(--space-2);
 	}
 </style>

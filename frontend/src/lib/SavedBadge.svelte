@@ -18,10 +18,10 @@
 	.badge {
 		display: grid;
 		place-items: center;
-		padding: 0.2rem;
-		color: #fff;
-		background: rgb(0 0 0 / 0.65);
-		border-radius: 4px;
+		padding: var(--space-1);
+		color: var(--on-media);
+		background: var(--scrim);
+		border-radius: var(--radius-xs);
 		line-height: 0;
 	}
 </style>

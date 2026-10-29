@@ -210,15 +210,15 @@
 		margin: 0 auto;
 	}
 	h1 {
-		margin-top: 0.5rem;
+		margin-top: var(--space-2);
 	}
 	h2 {
-		font-size: 1.1rem;
-		margin: 0 0 0.75rem;
+		font-size: var(--text-lg);
+		margin: 0 0 var(--space-3);
 	}
 	section {
-		margin-bottom: 2rem;
-		padding: 1.25rem;
+		margin-bottom: var(--space-7);
+		padding: var(--space-5);
 		background: var(--surface);
 		border: 1px solid var(--border);
 		border-radius: var(--radius);
@@ -226,36 +226,28 @@
 	form.inline {
 		display: flex;
 		flex-wrap: wrap;
-		gap: 0.75rem;
+		gap: var(--space-3);
 		align-items: end;
 	}
 	form.inline label {
 		flex: 1 1 12rem;
 	}
-	select {
-		font: inherit;
-		padding: 0.55rem 0.7rem;
-		color: var(--text);
-		background: var(--bg);
-		border: 1px solid var(--border);
-		border-radius: 6px;
-	}
 	.link {
 		display: grid;
-		gap: 0.4rem;
-		margin-top: 1rem;
+		gap: var(--space-2);
+		margin-top: var(--space-4);
 	}
 	.link p {
 		margin: 0;
-		font-size: 0.9rem;
+		font-size: var(--text-label);
 	}
 	.link input {
 		width: 100%;
 		font-family: ui-monospace, monospace;
-		font-size: 0.85rem;
+		font-size: var(--text-sm);
 	}
 	.error {
-		margin-top: 0.75rem;
+		margin-top: var(--space-3);
 	}
 	table {
 		width: 100%;
@@ -263,12 +255,12 @@
 	}
 	th,
 	td {
-		padding: 0.45rem 0.5rem;
+		padding: var(--space-2) var(--space-2);
 		text-align: left;
 		border-bottom: 1px solid var(--border);
 	}
 	th {
-		font-size: 0.85rem;
+		font-size: var(--text-sm);
 		color: var(--muted);
 		font-weight: 600;
 	}

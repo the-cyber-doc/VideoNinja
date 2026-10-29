@@ -175,7 +175,7 @@
 		height: 4rem;
 		min-height: 4rem; /* in a column (phones), flex: 1 alone would shrink it to nothing */
 		border: 1px solid var(--border);
-		border-radius: 6px;
+		border-radius: var(--radius-sm);
 		background: var(--bg);
 		overflow: hidden;
 		cursor: crosshair;
@@ -196,11 +196,11 @@
 	}
 	.segment {
 		position: absolute;
-		top: 0.4rem;
-		bottom: 0.4rem;
+		top: var(--space-2);
+		bottom: var(--space-2);
 		background: hsl(var(--hue, 0) 70% 50% / 0.45);
 		border: 2px solid hsl(var(--hue, 0) 70% 40%);
-		border-radius: 4px;
+		border-radius: var(--radius-xs);
 		cursor: pointer;
 	}
 	.segment.selected {
@@ -208,7 +208,7 @@
 		box-shadow: 0 0 0 2px var(--accent);
 	}
 	.segment.preview {
-		background: rgb(255 255 255 / 0.35);
+		background: var(--media-highlight);
 		border-style: dashed;
 		border-color: var(--text);
 		pointer-events: none;
@@ -218,24 +218,25 @@
 		left: 50%;
 		top: 50%;
 		translate: -50% -50%;
-		font-size: 0.8rem;
+		font-size: var(--text-xs);
 		font-weight: 700;
-		color: #fff;
-		text-shadow: 0 0 3px #000;
+		color: var(--on-media);
+		text-shadow: var(--media-text-shadow);
 		pointer-events: none;
 	}
 	.edge {
+		--edge: 0.6rem; /* the handle's width, centred on the segment's edge */
 		position: absolute;
 		top: 0;
 		bottom: 0;
-		width: 0.6rem;
+		width: var(--edge);
 		cursor: ew-resize;
 	}
 	.edge.begin {
-		left: -0.3rem;
+		left: calc(var(--edge) / -2);
 	}
 	.edge.end {
-		right: -0.3rem;
+		right: calc(var(--edge) / -2);
 	}
 	.playhead,
 	.marker {
@@ -264,16 +265,16 @@
 	.hover span {
 		position: absolute;
 		top: 0;
-		left: 3px;
-		padding: 0 0.25rem;
-		font-size: 0.75rem;
+		left: var(--space-0);
+		padding: 0 var(--space-1);
+		font-size: var(--text-xs);
 		font-variant-numeric: tabular-nums;
-		color: #fff;
-		background: rgb(0 0 0 / 0.65);
+		color: var(--on-media);
+		background: var(--scrim);
 		border-radius: 3px;
 	}
 	.hover span.right {
 		left: auto;
-		right: 3px;
+		right: var(--space-0);
 	}
 </style>

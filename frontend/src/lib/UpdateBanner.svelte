@@ -19,19 +19,19 @@
 <style>
 	.update {
 		position: fixed;
-		inset: auto 1rem 1rem;
+		inset: auto var(--space-4) var(--space-4);
 		z-index: 100;
 		display: flex;
 		flex-wrap: wrap;
 		align-items: center;
 		justify-content: center;
-		gap: 0.5rem 1rem;
+		gap: var(--space-2) var(--space-4);
 		max-width: 32rem;
 		margin: 0 auto;
-		padding: 0.75rem 1rem;
+		padding: var(--space-3) var(--space-4);
 		background: var(--surface);
 		border: 1px solid var(--accent);
 		border-radius: var(--radius);
-		box-shadow: 0 0.25rem 1rem rgb(0 0 0 / 0.2);
+		box-shadow: var(--shadow-banner);
 	}
 </style>

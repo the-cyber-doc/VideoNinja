@@ -270,17 +270,17 @@
 <style>
 	.stepper {
 		display: flex;
-		gap: 0.5rem;
+		gap: var(--space-2);
 		padding: 0;
-		margin: 0 0 0.5rem;
+		margin: 0 0 var(--space-2);
 		list-style: none;
 	}
 	.stepper li {
 		flex: 1;
 		display: grid;
 		justify-items: center;
-		gap: 0.2rem;
-		font-size: 0.75rem;
+		gap: var(--space-1);
+		font-size: var(--text-xs);
 		color: var(--muted);
 		text-align: center;
 	}
@@ -307,7 +307,7 @@
 	}
 	.bar {
 		height: 4px;
-		margin-bottom: 1.25rem;
+		margin-bottom: var(--space-5);
 		background: var(--border);
 		border-radius: 2px;
 		overflow: hidden;
@@ -319,23 +319,23 @@
 	}
 	.qr {
 		justify-self: center;
-		background: #fff;
-		border-radius: 6px;
+		background: var(--qr-bg);
+		border-radius: var(--radius-sm);
 	}
 	.secret {
 		word-break: break-all;
 	}
 	.row {
 		display: flex;
-		gap: 0.5rem;
+		gap: var(--space-2);
 		justify-content: space-between;
 	}
 	.tasks {
 		list-style: none;
 		padding: 0;
-		margin: 0 0 1rem;
+		margin: 0 0 var(--space-4);
 		display: grid;
-		gap: 0.4rem;
+		gap: var(--space-2);
 	}
 	.tasks li {
 		color: var(--muted);

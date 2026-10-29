@@ -25,14 +25,14 @@
 	ol {
 		display: flex;
 		flex-wrap: wrap;
-		margin: 0 0 0.5rem;
+		margin: 0 0 var(--space-2);
 		padding: 0;
 		list-style: none;
-		font-size: 0.9rem;
+		font-size: var(--text-label);
 	}
 	li + li::before {
 		content: '›';
-		padding: 0 0.5rem;
+		padding: 0 var(--space-2);
 		color: var(--muted);
 	}
 	a {

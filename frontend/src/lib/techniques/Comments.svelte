@@ -80,18 +80,18 @@
 
 <style>
 	.add {
-		margin-bottom: 0.75rem;
+		margin-bottom: var(--space-3);
 	}
 	.new {
-		margin-bottom: 0.75rem;
-		padding: 0.75rem 1rem;
+		margin-bottom: var(--space-3);
+		padding: var(--space-3) var(--space-4);
 		background: var(--surface);
 		border: 1px solid var(--border);
 		border-radius: var(--radius);
 	}
 	ol {
 		display: grid;
-		gap: 0.75rem;
+		gap: var(--space-3);
 		margin: 0;
 		padding: 0;
 		list-style: none;

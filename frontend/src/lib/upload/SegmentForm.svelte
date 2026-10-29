@@ -191,8 +191,8 @@
 <style>
 	.segment {
 		display: grid;
-		gap: 0.6rem;
-		padding: 0.8rem 1rem;
+		gap: var(--space-2);
+		padding: var(--space-3) var(--space-4);
 		background: var(--surface);
 		border: 1px solid var(--border);
 		border-radius: var(--radius);
@@ -203,19 +203,19 @@
 	header {
 		display: flex;
 		align-items: center;
-		gap: 0.5rem;
+		gap: var(--space-2);
 	}
 	header .link {
 		margin-right: auto;
 	}
 	.author {
-		font-size: 0.85rem;
+		font-size: var(--text-sm);
 		color: var(--muted);
 		text-align: right;
 	}
 	button.link {
 		display: flex;
-		gap: 0.75rem;
+		gap: var(--space-3);
 		padding: 0;
 		font-weight: normal;
 		color: var(--text);
@@ -224,14 +224,14 @@
 	button.icon {
 		display: grid;
 		place-items: center;
-		padding: 0.3rem;
+		padding: var(--space-1);
 		color: var(--muted);
 		background: none;
 	}
 	.fields {
 		display: grid;
 		grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
-		gap: 0.6rem;
+		gap: var(--space-2);
 	}
 	.invalid {
 		color: var(--error);
@@ -241,7 +241,7 @@
 	}
 	.add {
 		display: flex;
-		gap: 0.3rem;
+		gap: var(--space-1);
 	}
 	.add input {
 		flex: 1;
