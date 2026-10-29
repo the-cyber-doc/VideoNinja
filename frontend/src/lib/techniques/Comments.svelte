@@ -5,9 +5,10 @@
 	// worker answers with the last copy seen (writing needs a connection).
 	import { t } from '../i18n.svelte';
 	import { hasAccess } from '../session.svelte';
-	import CommentCard, { type Comment } from './CommentCard.svelte';
+	import CommentCard from './CommentCard.svelte';
 	import CommentForm from './CommentForm.svelte';
-	import { addComment, deleteComment, editComment, listComments, type CommentIn } from './comments';
+	import { addComment, deleteComment, editComment, listComments } from '../api/comments';
+	import type { Comment, CommentIn } from '../api/types';
 
 	let { technique }: { technique: string } = $props();
 	let comments = $state<Promise<Comment[]>>(new Promise(() => {}));

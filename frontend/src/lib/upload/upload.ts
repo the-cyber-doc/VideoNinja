@@ -2,7 +2,7 @@
 // 50 MB chunks. The upload URL is kept in the draft: after leaving the page,
 // picking the same file again continues where it stopped.
 import { Upload } from 'tus-js-client';
-import { ApiError, errorFromBody } from '../api';
+import { ApiError, errorFromBody } from '../api/client';
 import { url } from '../base';
 
 export const CHUNK_SIZE = 50 * 1024 * 1024; // nginx: client_max_body_size 64m on /files/

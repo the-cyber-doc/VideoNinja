@@ -704,7 +704,7 @@ table). Request validation answers `validation.<kind>` (`VALIDATION` in the same
 file), with the field's name in `params.field`. The setup's progress stream, whose
 status is sent before it fails, carries the same object in `{"error": …}`.
 
-In the frontend, `frontend/src/lib/api.ts` turns every failed call into an
+In the frontend, `frontend/src/lib/api/client.ts` turns every failed call into an
 `ApiError` (`status`, `code`, `params`) whose `message` is already the
 translated text: pages show `e.message`, never the server's `detail`. A code the
 frontend does not know (a newer server than an installed app) and an answer
@@ -726,6 +726,11 @@ After changing an endpoint or a model, run `tools/api-types.sh` (both steps) and
 commit both files with the change. A backend test fails while `openapi.json` is
 out of date, and `npm run check` while `schema.d.ts` is. An update of FastAPI or
 pydantic may change the schema's text: the same command.
+
+The frontend calls the API only through `frontend/src/lib/api/`: one module per
+domain (`auth.ts`, `users.ts`, `uploads.ts`…), each function typed from
+`schema.d.ts` (`types.ts` names the types the app uses). Pages and components hold
+no API URL; a unit test (`lib/api/boundary.test.ts`) fails if one appears.
 
 `package.json` lets openapi-typescript use the project's TypeScript 6
 (`overrides`): its release still declares TypeScript 5, and works with 6.

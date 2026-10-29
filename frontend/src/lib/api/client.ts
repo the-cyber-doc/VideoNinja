@@ -1,5 +1,5 @@
-import { i18n, isMessageKey, t } from './i18n.svelte';
-import { url } from './base';
+import { i18n, isMessageKey, t } from '../i18n.svelte';
+import { url } from '../base';
 
 type Params = Record<string, string | number>;
 
@@ -19,15 +19,6 @@ export class ApiError extends Error {
 	}
 }
 
-export interface User {
-	username: string;
-	name: string | null;
-	role: string;
-	/** The role's name in the current language. */
-	role_name: string;
-	/** What the role allows, e.g. 'user_mgmt'. Only hides menus: the API enforces it. */
-	access: string[];
-}
 
 /** The text of an error code in the current language. A code this version does not
  * know (a newer server than this cached app) falls back to the HTTP status. */
@@ -100,6 +91,7 @@ async function request(path: string, body?: unknown, method?: Method): Promise<R
 }
 
 /** GET when body is undefined, POST JSON otherwise; or the method given (PATCH, DELETE). */
+/** Use the typed functions of the modules beside this one (auth.ts, users.ts…): this is their transport. */
 export async function api<T>(path: string, body?: unknown, method?: Method): Promise<T> {
 	const res = await request(path, body, method);
 	return res.status === 204 ? (undefined as T) : res.json();
@@ -119,17 +111,4 @@ export async function* ndjson<T>(path: string, body: unknown): AsyncGenerator<T>
 		for (const line of lines) if (line.trim()) yield JSON.parse(line);
 	}
 	if (buffer.trim()) yield JSON.parse(buffer);
-}
-
-export const isInitialized = async () =>
-	(await api<{ initialized: boolean }>('/api/setup/status')).initialized;
-
-/** The logged-in user, or null. */
-export async function currentUser(): Promise<User | null> {
-	try {
-		return await api<User>('/api/auth/me');
-	} catch (e) {
-		if (e instanceof ApiError && e.status === 401) return null;
-		throw e;
-	}
 }

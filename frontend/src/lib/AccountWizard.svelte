@@ -5,7 +5,9 @@
 	// - /register (invitation): the invitation token from the link, the username
 	//   chosen by the admin.
 	import { goto } from '$app/navigation';
-	import { api, errorFromBody, isInitialized, ndjson } from '#lib/api.js';
+	import { errorFromBody } from '#lib/api/client.js';
+	import * as register from '#lib/api/register.js';
+	import * as setupApi from '#lib/api/setup.js';
 	import { url } from '#lib/base.js';
 	import { t, type MessageKey } from '#lib/i18n.svelte.js';
 	import { onTotpInput, rules } from '#lib/validation.js';
@@ -42,13 +44,13 @@
 
 	$effect(() => {
 		if (setup) {
-			isInitialized().then((ok) => {
+			setupApi.isInitialized().then((ok) => {
 				if (ok) goto(url('/login'), { replace: true });
 			});
 		} else {
 			// The invitation is checked at once: the user sees who it is for, or why it fails.
 			run(async () => {
-				username = (await api<{ username: string }>('/api/register/verify', { token: invite })).username;
+				username = (await register.verifyInvite(invite)).username;
 				step = 1;
 			});
 		}
@@ -70,7 +72,7 @@
 	const submitToken = (e: SubmitEvent) => {
 		e.preventDefault();
 		run(async () => {
-			await api('/api/setup/verify', { token: token.trim() });
+			await setupApi.verifyToken(token.trim());
 			step = 1;
 		});
 	};
@@ -83,8 +85,8 @@
 		}
 		run(async () => {
 			totp = setup
-				? await api('/api/setup/totp', { token: token.trim(), username })
-				: await api('/api/register/totp', { token: invite });
+				? await setupApi.newTotp(token.trim(), username)
+				: await register.newTotp(invite);
 			step = 2;
 		});
 	};
@@ -94,7 +96,7 @@
 		run(async () => {
 			const credentials = { name, password, totp_secret: totp!.secret, totp_code: totpCode };
 			if (!setup) {
-				await api('/api/register/complete', { token: invite, ...credentials });
+				await register.complete({ token: invite, ...credentials });
 				password = password2 = '';
 				registered = true;
 				step = 3;
@@ -102,7 +104,7 @@
 			}
 			// Validation errors (e.g. a wrong code) throw here, before anything is created.
 			// A failure after the answer started (status 200 sent): {error: {code, detail, params}}.
-			const events = ndjson<{ step?: string; error?: unknown }>('/api/setup/complete', {
+			const events = setupApi.complete({
 				token: token.trim(),
 				username,
 				...credentials

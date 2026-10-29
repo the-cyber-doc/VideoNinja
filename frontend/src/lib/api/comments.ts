@@ -1,13 +1,7 @@
-// Comments API: read by every logged-in user; written with the "comment" access,
-// each user changing only their own (the server checks both).
-import { api } from '../api';
-import type { Lang } from '../i18n.svelte';
-import type { Comment } from './CommentCard.svelte';
-
-export interface CommentIn {
-	text: string;
-	lang: Lang;
-}
+// Comments: read by every logged-in user; written with the "comment" access, each
+// user changing only their own (the server checks both).
+import { api } from './client';
+import type { Comment, CommentIn } from './types';
 
 const path = (technique: string) => `/api/techniques/${encodeURIComponent(technique)}/comments`;
 

@@ -1,4 +1,4 @@
-import type { User } from './api';
+import type { User } from './api/types';
 
 /** The logged-in user, loaded by the (app) layout and shared by its pages. */
 export const session = $state<{ user: User | null }>({ user: null });

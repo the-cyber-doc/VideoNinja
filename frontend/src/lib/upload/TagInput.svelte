@@ -4,13 +4,13 @@
 	// Shown by their (translated) names, kept by ID: a language change relabels them.
 	import Icon from '../Icon.svelte';
 	import { t } from '../i18n.svelte';
-	import type { Tag, TagValue } from './api';
+	import type { Tag, TagIn } from '../api/types';
 
 	let {
 		available,
 		value = $bindable(),
 		label
-	}: { available: Tag[]; value: TagValue[]; label: string } = $props();
+	}: { available: Tag[]; value: TagIn[]; label: string } = $props();
 
 	const id = $props.id();
 	let name = $state('');
@@ -20,7 +20,7 @@
 	const chosen = $derived(unused.find((tag) => same(tag.name, name.trim())));
 
 	const tagName = (id: string) => available.find((tag) => tag.id === id)?.name ?? id;
-	function chip(tag: TagValue) {
+	function chip(tag: TagIn) {
 		const values = available.find((a) => a.id === tag.id)?.values;
 		const value = values ? (values.find((v) => v.id === tag.value)?.name ?? tag.value) : tag.value;
 		return value ? t('upload.tag.chip', { name: tagName(tag.id), value }) : tagName(tag.id);

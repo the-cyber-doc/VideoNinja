@@ -4,20 +4,7 @@
 	import Flag from '../Flag.svelte';
 	import { i18n, isLang, LANGUAGES, t } from '../i18n.svelte';
 	import CommentForm from './CommentForm.svelte';
-	import type { CommentIn } from './comments';
-
-	export interface Comment {
-		id: number;
-		user: string;
-		/** ISO 8601 with the UTC offset (the author's timezone): "2026-10-23T12:13:38+02:00". */
-		created_at: string;
-		/** Same format; equal to created_at until the comment is edited. */
-		modified_at: string;
-		lang: string;
-		text: string;
-		/** Written by the logged-in user. */
-		mine: boolean;
-	}
+	import type { Comment, CommentIn } from '../api/types';
 
 	let {
 		comment,

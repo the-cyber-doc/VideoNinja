@@ -1,6 +1,6 @@
 // Rules of the upload page, kept out of the components (unit-tested).
 import { BUKI } from '../catalog.svelte';
-import type { Submit } from './api';
+import type { Submit, UploadLimits } from '../api/types';
 import type { Annotation, Draft, DraftSegment, Mode } from './draft.svelte';
 
 /** "Define later": not done, read-only. "No technique segment": done, read-only. Else: the user's choice. */
@@ -58,4 +58,12 @@ export function submitBody(draft: Draft): Submit {
 		})),
 		tags: draft.tags
 	};
+}
+
+/** Why this file cannot be uploaded, or '' if it can. */
+export function refusal(file: { name: string; size: number }, limits: UploadLimits | null): 'type' | 'size' | '' {
+	if (!limits) return ''; // not known (yet): the server checks anyway
+	const extension = file.name.includes('.') ? file.name.split('.').pop()!.toLowerCase() : '';
+	if (!limits.extensions.includes(extension)) return 'type';
+	return file.size > limits.max_bytes ? 'size' : '';
 }

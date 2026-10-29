@@ -16,7 +16,7 @@ from ..domain import audit, security, throttle
 from ..core.errors import ApiError
 from ..queries.users import User
 from ..core.validation import field
-from .auth import UserOut, user_out
+from .auth import TotpEnrollmentOut, UserOut, user_out
 from .deps import current_user, session_token
 
 router = APIRouter(prefix="/api/profile", tags=["profile"])
@@ -75,9 +75,9 @@ def set_password(
 
 
 @router.post("/totp")
-def new_totp(user: User = Depends(current_user)) -> dict[str, str]:
+def new_totp(user: User = Depends(current_user)) -> TotpEnrollmentOut:
     """A fresh TOTP secret and its QR code. Nothing is stored until /totp/confirm."""
-    return security.totp_enrollment(user.username)
+    return TotpEnrollmentOut(**security.totp_enrollment(user.username))
 
 
 @router.post("/totp/confirm", status_code=status.HTTP_204_NO_CONTENT, dependencies=[password_guard])

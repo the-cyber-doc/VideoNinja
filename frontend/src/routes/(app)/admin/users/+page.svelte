@@ -3,28 +3,16 @@
 	// and the API refuses every call (403) whatever the page does.
 	import { goto } from '$app/navigation';
 	import { url } from '#lib/base.js';
-	import { api } from '#lib/api.js';
+	import type { Invite, Role, UserRow } from '#lib/api/types.js';
+	import { createUser, getInvite, listRoles, listUsers, resetUser } from '#lib/api/users.js';
 	import { i18n, t } from '#lib/i18n.svelte.js';
 	import Icon from '#lib/Icon.svelte';
 	import { hasAccess, session } from '#lib/session.svelte.js';
 	import { rules } from '#lib/validation.js';
 
-	interface UserRow {
-		id: number;
-		username: string;
-		name: string | null;
-		role: string;
-		status: 'registered' | 'invited' | 'expired';
-	}
-	interface Invite {
-		token: string;
-		/** UTC, ISO 8601: "2026-10-30T10:13:38Z". */
-		expires_at: string;
-	}
-
 	const allowed = $derived(hasAccess('user_mgmt'));
 	let users = $state<UserRow[]>([]);
-	let roles = $state<{ id: string; name: string }[]>([]);
+	let roles = $state<Role[]>([]);
 	let error = $state('');
 
 	let username = $state('');
@@ -48,8 +36,8 @@
 	async function load() {
 		try {
 			[users, roles] = await Promise.all([
-				api<UserRow[]>('/api/admin/users'),
-				api<{ id: string; name: string }[]>('/api/admin/roles')
+				listUsers(),
+				listRoles()
 			]);
 		} catch (e) {
 			error = (e as Error).message;
@@ -84,7 +72,7 @@
 	const create = (e: SubmitEvent) => {
 		e.preventDefault();
 		action(async () => {
-			const invite = await api<Invite>('/api/admin/users', { username, role });
+			const invite = await createUser({ username, role });
 			await showLink(username, invite);
 			username = '';
 			await load();
@@ -92,13 +80,13 @@
 	};
 
 	const copyInvite = (user: UserRow) =>
-		action(async () => showLink(user.username, await api<Invite>(`/api/admin/users/${user.id}/invite`)));
+		action(async () => showLink(user.username, await getInvite(user.id)));
 
 	const reset = (user: UserRow) => {
 		if (user.status === 'registered' && !confirm(t('users.reset_confirm', { username: user.username })))
 			return;
 		action(async () => {
-			await showLink(user.username, await api<Invite>(`/api/admin/users/${user.id}/reset`, {}));
+			await showLink(user.username, await resetUser(user.id));
 			await load();
 		});
 	};

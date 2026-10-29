@@ -2,7 +2,7 @@
 // can be resumed after leaving the page. Keyed by the original file's SHA-256:
 // picking the same file again finds it. Deleted on logout ($lib/pwa.ts).
 import { UPLOAD_DB } from '../pwa-caches';
-import type { TagValue } from './api';
+import type { TagIn } from '../api/types';
 
 /** "Define segments later", "This video does not contain any technique segment", or neither. */
 export type Mode = 'later' | 'none' | null;
@@ -27,7 +27,7 @@ export interface DraftSegment {
 	section: string;
 	technique: string;
 	performer: string;
-	tags: TagValue[];
+	tags: TagIn[];
 }
 
 /** What the annotation panel edits: at upload, or later for a published video. */
@@ -36,7 +36,7 @@ export interface Annotation {
 	/** The checkbox, when no mode forces it. */
 	allSegmentsDone: boolean;
 	segments: DraftSegment[];
-	tags: TagValue[];
+	tags: TagIn[];
 }
 
 export interface Draft extends Annotation {

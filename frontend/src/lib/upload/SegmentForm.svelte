@@ -15,7 +15,7 @@
 	import { t } from '../i18n.svelte';
 	import { displayName } from '../session.svelte';
 	import { formatTime } from '../time';
-	import type { Performer, Tag } from './api';
+	import type { Performer, Tag } from '../api/types';
 	import type { DraftSegment } from './draft.svelte';
 	import type { SegmentField } from './rules';
 	import TagInput from './TagInput.svelte';

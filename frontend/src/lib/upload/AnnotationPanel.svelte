@@ -7,7 +7,7 @@
 	import type { Catalog } from '../catalog.svelte';
 	import { t } from '../i18n.svelte';
 	import { displayName } from '../session.svelte';
-	import type { Performer, Tag } from './api';
+	import type { Performer, Tag } from '../api/types';
 	import type { Annotation, Mode } from './draft.svelte';
 	import Editor from './Editor.svelte';
 	import { allSegmentsDone, canProceed, checkboxLocked, segmentProblems } from './rules';

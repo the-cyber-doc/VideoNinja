@@ -10,9 +10,13 @@
 	import { saveVideo } from '#lib/offline.svelte.js';
 	import { hasAccess } from '#lib/session.svelte.js';
 	import AnnotationPanel from '#lib/upload/AnnotationPanel.svelte';
-	import { addPerformer, performers as loadPerformers, tags as loadTags, type Performer, type Tag } from '#lib/upload/api.js';
+	import { addPerformer, listPerformers as loadPerformers } from '#lib/api/performers.js';
+	import { listTags as loadTags } from '#lib/api/tags.js';
+	import type { Performer, Tag } from '#lib/api/types.js';
 	import type { Annotation } from '#lib/upload/draft.svelte.js';
-	import { getAnnotations, saveAnnotations, toAnnotation, toAnnotations, videoUrl } from '#lib/videos/annotations.js';
+	import { getAnnotations, saveAnnotations } from '#lib/api/videos.js';
+	import { videoUrl } from '#lib/media.js';
+	import { toAnnotation, toAnnotations } from '#lib/videos/annotations.js';
 	import type { PageProps } from './$types';
 
 	let { params }: PageProps = $props();

@@ -4,7 +4,8 @@
 	import { untrack } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
-	import { api, currentUser, isInitialized } from '#lib/api.js';
+	import * as auth from '#lib/api/auth.js';
+	import { isInitialized } from '#lib/api/setup.js';
 	import { url } from '#lib/base.js';
 	import { i18n, t } from '#lib/i18n.svelte.js';
 	import Icon from '#lib/Icon.svelte';
@@ -24,7 +25,7 @@
 		(async () => {
 			try {
 				if (!(await isInitialized())) return goto(url('/setup'), { replace: true });
-				session.user = await currentUser();
+				session.user = await auth.currentUser();
 				if (!session.user) return goto(url('/login'), { replace: true });
 				persistStorage();
 				watchSavedMedia();
@@ -38,7 +39,7 @@
 	$effect(() => {
 		void i18n.lang;
 		if (!untrack(() => session.user)) return;
-		currentUser()
+		auth.currentUser()
 			.then((user) => {
 				if (user) session.user = user; // a statement: an object assigned to state is proxied
 			})
@@ -56,7 +57,7 @@
 	}
 
 	async function logout() {
-		await api('/api/auth/logout', {});
+		await auth.logout();
 		await clearUserData();
 		session.user = null;
 		goto(url('/login'), { replace: true });
