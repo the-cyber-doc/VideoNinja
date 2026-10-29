@@ -76,7 +76,7 @@ def _pre_create(con: sqlite3.Connection, event: dict[str, Any]) -> dict[str, Any
     user = security.session_user(con, token) if token else None
     if user is None:
         return _reject(401, "Not logged in")
-    if "upload" not in queries.role_access(con, user["role"]):
+    if "upload" not in security.accesses(user):
         log.warning("Upload denied: user id %s lacks access 'upload'", user["id"])
         return _reject(403, "Access denied")
 

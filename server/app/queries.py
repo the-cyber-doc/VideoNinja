@@ -5,6 +5,7 @@ These functions never commit: the caller opens the transaction (db.write, or
 db.read for several reads), so one transaction can span several of them.
 """
 
+import json
 import sqlite3
 
 # Dates are text with their UTC offset, "2026-10-23T12:13:38+02:00" (app/clock.py),
@@ -131,10 +132,12 @@ def insert_session(
 
 
 def session_user(con: sqlite3.Connection, session_id: str, now: str) -> sqlite3.Row | None:
-    """The unexpired session's times and its user."""
+    """The unexpired session's times and its user, with what its role allows ("access":
+    a JSON array, read by auth.accesses): every protected request needs both."""
     return con.execute(
         'SELECT s."created_at", s."last_seen_at", u."id", u."username", u."name", u."role",'
-        ' u."time_zone"'
+        ' u."time_zone",'
+        ' (SELECT json_group_array(a."access") FROM "role_has_access" a WHERE a."role" = u."role") AS "access"'
         ' FROM "session" s JOIN "user" u ON u."id" = s."user"'
         ' WHERE s."id" = ? AND datetime(s."expires_at") > datetime(?)',
         (session_id, now),
@@ -247,6 +250,15 @@ def technique_exists(con: sqlite3.Connection, technique_id: str) -> bool:
     return con.execute('SELECT 1 FROM "technique" WHERE "id" = ?', (technique_id,)).fetchone() is not None
 
 
+def known_techniques(con: sqlite3.Connection, technique_ids: set[str]) -> set[str]:
+    """Those of `technique_ids` that exist, in one query (the list as one JSON parameter)."""
+    rows = con.execute(
+        'SELECT "id" FROM "technique" WHERE "id" IN (SELECT "value" FROM json_each(?))',
+        (json.dumps(sorted(technique_ids)),),
+    )
+    return {r[0] for r in rows}
+
+
 def segments(con: sqlite3.Connection) -> list[sqlite3.Row]:
     """Segments of published videos only: the others are not encoded yet."""
     return con.execute(
@@ -319,6 +331,15 @@ def performers(con: sqlite3.Connection) -> list[sqlite3.Row]:
 
 def performer_exists(con: sqlite3.Connection, performer_id: str) -> bool:
     return con.execute('SELECT 1 FROM "performer" WHERE "id" = ?', (performer_id,)).fetchone() is not None
+
+
+def known_performers(con: sqlite3.Connection, performer_ids: set[str]) -> set[str]:
+    """Those of `performer_ids` that exist, in one query."""
+    rows = con.execute(
+        'SELECT "id" FROM "performer" WHERE "id" IN (SELECT "value" FROM json_each(?))',
+        (json.dumps(sorted(performer_ids)),),
+    )
+    return {r[0] for r in rows}
 
 
 def performer_name_exists(con: sqlite3.Connection, name: str) -> bool:
