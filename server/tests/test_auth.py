@@ -5,7 +5,8 @@ from zoneinfo import ZoneInfo
 import pyotp
 import pytest
 
-from app import clock, db, security
+from app.core import clock, db
+from app.domain import security
 
 from .conftest import PASSWORD
 

@@ -4,7 +4,7 @@ import logging
 import signal
 import threading
 
-from .. import db, logs, settings
+from ..core import db, logs, settings
 from . import heartbeat, queue
 
 log = logging.getLogger(__name__)

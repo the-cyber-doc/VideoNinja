@@ -6,7 +6,7 @@ import sqlite3
 import pytest
 from fastapi.testclient import TestClient
 
-from app import db
+from app.core import db
 from app.main import app
 
 from .conftest import run_setup

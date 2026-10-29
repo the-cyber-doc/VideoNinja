@@ -17,7 +17,9 @@ from typing import Literal
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse
 
-from .. import db, encoder, tusd
+from .. import encoder
+from ..core import db
+from ..domain import tusd
 
 log = logging.getLogger(__name__)
 router = APIRouter(tags=["health"])

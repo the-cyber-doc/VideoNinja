@@ -7,10 +7,11 @@ import unicodedata
 from fastapi import APIRouter, Depends, status
 from pydantic import BaseModel
 
-from .. import db, i18n, queries
-from ..errors import ApiError
+from .. import queries
+from ..core import db, i18n
+from ..core.errors import ApiError
 from ..queries.users import User
-from ..validation import field
+from ..core.validation import field
 from .deps import require_access
 
 router = APIRouter(prefix="/api", tags=["performers"])

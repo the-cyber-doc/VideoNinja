@@ -5,7 +5,8 @@ import sqlite3
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 
-from .. import db, queries
+from .. import queries
+from ..core import db
 from ..queries.users import User
 from .deps import current_user
 

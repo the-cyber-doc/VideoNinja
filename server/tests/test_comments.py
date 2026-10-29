@@ -4,7 +4,7 @@ from datetime import UTC, datetime
 import pyotp
 import pytest
 
-from app import clock, db
+from app.core import clock, db
 
 from .test_auth import login
 from .test_users import USER_PASSWORD, create, register, user_login

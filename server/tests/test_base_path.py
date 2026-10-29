@@ -3,7 +3,8 @@
 
 import pytest
 
-from app import settings, tusd
+from app.core import settings
+from app.domain import tusd
 
 from .test_auth import login
 from .test_upload import admin, hook, uploaded  # noqa: F401 (fixture)

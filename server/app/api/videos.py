@@ -13,11 +13,13 @@ from typing import Literal
 from fastapi import APIRouter, Depends, Query, status
 from pydantic import BaseModel, Field
 
-from .. import audit, clock, db, limits, queries, segments, settings, tusd
-from ..errors import ApiError
+from .. import queries
+from ..core import clock, db, limits, settings
+from ..domain import audit, segments, tusd
+from ..core.errors import ApiError
 from ..queries.users import User
-from ..segments import SegmentIn, TagIn
-from ..validation import RULES, field
+from ..domain.segments import SegmentIn, TagIn
+from ..core.validation import RULES, field
 from .deps import rebuild_after_write
 from .deps import require_access, user_zone
 

@@ -7,7 +7,7 @@ from pathlib import Path
 import pyotp
 import pytest
 
-from app import audit, security
+from app.domain import audit, security
 
 from .conftest import PASSWORD
 from .test_auth import login

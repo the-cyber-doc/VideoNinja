@@ -11,10 +11,10 @@ from datetime import tzinfo
 from pydantic import BaseModel, Field, model_validator
 from pydantic_core import PydanticCustomError
 
-from . import queries
-from .errors import ApiError
+from .. import queries
+from ..core.errors import ApiError
 from .tags import Rule, tag_rules, value_error
-from .validation import field
+from ..core.validation import field
 
 
 class TagIn(BaseModel):

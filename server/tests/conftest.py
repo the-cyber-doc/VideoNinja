@@ -6,7 +6,8 @@ import pyotp
 import pytest
 from fastapi.testclient import TestClient
 
-from app import clock, snapshot, throttle
+from app.core import clock
+from app.domain import snapshot, throttle
 from app.main import app
 
 PASSWORD = "correct horse battery"

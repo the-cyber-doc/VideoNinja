@@ -9,7 +9,8 @@ from datetime import tzinfo
 from typing import Literal
 
 
-from . import clock, queries
+from .. import queries
+from ..core import clock
 
 YEARS_BACK = 100  # a "year" tag: from this many years ago to this year
 YEAR = re.compile(r"[0-9]{4}")

@@ -4,7 +4,7 @@ import threading
 
 import pytest
 
-from app import security
+from app.domain import security
 
 from .test_auth import login
 from .test_upload import admin, auth, uploaded  # noqa: F401 (fixture)

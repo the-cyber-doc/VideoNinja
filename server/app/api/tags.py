@@ -8,9 +8,10 @@ from typing import Literal
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 
-from .. import db, i18n, queries
+from .. import queries
+from ..core import db, i18n
 from ..queries.users import User
-from ..tags import year_range
+from ..domain.tags import year_range
 from .deps import require_access, user_zone
 
 router = APIRouter(prefix="/api", tags=["tags"])

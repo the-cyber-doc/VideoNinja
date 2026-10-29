@@ -4,7 +4,7 @@ import sqlite3
 import pyotp
 import pytest
 
-from app import crypto, db
+from app.core import crypto, db
 
 from .conftest import PASSWORD
 

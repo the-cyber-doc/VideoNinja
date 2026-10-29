@@ -16,7 +16,7 @@ Self-hosted on a Raspberry Pi 5 with Docker behind nginx.
 
 | Path | Content |
 |---|---|
-| `server/app/` | Backend: Python 3.15 + FastAPI |
+| `server/app/` | Backend: Python 3.15 + FastAPI. `main.py` assembles it from `api/` (the HTTP endpoints, one router per module), `domain/` (the rules: sessions, invitations, annotations, catalogue snapshots, the audit log…), `queries/` (every SQL statement, one module per table), `core/` (settings, logs, errors, database connection and migrations, time, encryption, processes) and `encoder/` (the encoding queue, its own container in production) |
 | `server/tests/` | Backend tests (pytest) |
 | `server/database/` | `db_vN.sql` (schema) + `db_vN_init.sql` (initial data) of each version, `migrations/` between versions |
 | `server/database/catalog/techniques.json`, `tools/catalog-sql.py` | The schools' techniques (source) and the generator of their block in the newest `db_v<N>_init.sql` (see [The catalogue of techniques](#the-catalogue-of-techniques)) |
@@ -108,7 +108,7 @@ VIDEONINJA_DB=dev.db VIDEONINJA_DB_KEY_FILE=dev.key uvicorn app.main:app --reloa
 The API listens on `http://localhost:8000`. `dev.db`, `dev.key` and the
 catalogue snapshots in `catalog/` are ignored by git.
 
-Every setting is read and checked at startup (`server/app/settings.py`): a wrong
+Every setting is read and checked at startup (`server/app/core/settings.py`): a wrong
 value stops the API or the encoder, and the error names every wrong variable at
 once.
 
@@ -607,7 +607,7 @@ export, re-add `"id" INTEGER PRIMARY KEY AUTOINCREMENT` on `video`, `segment`,
 `user` and `comment`.
 
 Versions: the app runs on one database version, `EXPECTED_VERSION` in
-`server/app/db.py` (now 3), kept in the database itself (`config.db_version`).
+`server/app/core/db.py` (now 3), kept in the database itself (`config.db_version`).
 
 | File | What |
 |---|---|
@@ -647,7 +647,7 @@ of that version has.
 
 Conventions: text is UTF-8 (`PRAGMA encoding = 'UTF-8'`). Dates are in columns
 named `…_at` declared `DATETIME`, holding ISO 8601 text with the UTC offset in
-one format, `2026-10-23T12:13:38+02:00` (`server/app/clock.py`); the API sends
+one format, `2026-10-23T12:13:38+02:00` (`server/app/core/clock.py`); the API sends
 them as they are. They are written in the user's timezone: the frontend sends
 the browser's (`Time-Zone: Europe/Zurich`) on every API call and the app saves
 it in `user.time_zone`, for writes without a browser request (tusd hooks).
@@ -696,7 +696,7 @@ Every error the API (and nginx's own 429) answers with has one JSON shape:
 `frontend/src/lib/messages.json` in the user's language, `params` filling its
 placeholders. `detail` is English, for logs, curl and tests only. All codes,
 with their HTTP status and English text, are in one table, `ERRORS` in
-`server/app/errors.py`: raise `ApiError("<code>", param=value)`, never a bare
+`server/app/core/errors.py`: raise `ApiError("<code>", param=value)`, never a bare
 `HTTPException`. A new code needs its `error.<code>` message in every language;
 `server/tests/test_errors.py` fails otherwise (and on a code missing from the
 table). Request validation answers `validation.<kind>` (`VALIDATION` in the same
@@ -1460,7 +1460,7 @@ journalctl -t docker-videoninja-encoder -o cat | jq -c 'select(.video_id == 42)'
 ```
 
 **Security events** (`logger` `app.audit`, `event` one of a fixed list, in
-`server/app/audit.py`): `setup.completed`; `login.succeeded`, `login.failed`
+`server/app/domain/audit.py`): `setup.completed`; `login.succeeded`, `login.failed`
 (with the client's address, never the username typed), `logout`,
 `credentials.throttled`; `password.wrong`, `password.changed`, `totp.replaced`,
 `totp.undecryptable`; `user.invited`, `user.reset`, `user.registered`,

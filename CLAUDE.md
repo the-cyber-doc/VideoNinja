@@ -42,7 +42,7 @@ or ID encoding (Base62/Sqids).
   thumbnail), `/media/video/<id>[/thumbnail]` (whole video). Performers and tags
   accept `upload` or `video_mgmt` (`require_access` takes several, any one).
   The annotation panel (`$lib/upload/AnnotationPanel.svelte`, type `Annotation`)
-  is shared by the upload and Videos pages; on the server, `app/segments.py` (models + `check`:
+  is shared by the upload and Videos pages; on the server, `app/domain/segments.py` (models + `check`:
   techniques/performers looked up once for all segments, `queries.catalog.known_techniques` / `queries.performers.known_performers` with `json_each`; tag
   rules from `tags.value_error` as error codes) by `api.videos.submit` (before waiting for the upload) and
   `api.video_mgmt.save_annotations` (inside its write). Role accesses come with the session row
@@ -73,7 +73,7 @@ or ID encoding (Base62/Sqids).
   X-Original-Method) refused 403 unless `Sec-Fetch-Site: same-origin`, else Origin's host = Host;
   neither header → allowed (not a browser) (`security.cross_site`, middleware in main.py).
 - Brute force: credential failures throttled per client address
-  (`app/throttle.py`, dependency `credential_guard(<failure status>)` on login,
+  (`app/domain/throttle.py`, dependency `credential_guard(<failure status>)` on login,
   profile password checks, setup and invitation tokens): 10 / 15 min → 429 code `throttled`
   (`params.minutes`) + Retry-After, in memory, IPv6 per /64. Never other 401/403 (expired sessions,
   accesses). Client address = `request.client.host` (uvicorn's `FORWARDED_ALLOW_IPS`: production
@@ -147,14 +147,14 @@ the encoder waits for the version; `/health` fails on a mismatch.
   (e.g. `ryu.description`; also `role.name`, `access.name`). Fallback: requested
   language → `en`.
 - Supported languages: `en` (default), `fr`. Adding one: a column in `translation`,
-  `LANGS` in `server/app/i18n.py`, `LANGUAGES` + a flag in the frontend, and the
+  `LANGS` in `server/app/core/i18n.py`, `LANGUAGES` + a flag in the frontend, and the
   translations in `messages.json` (a unit test fails if one is missing).
 - Request language: the frontend sends `Accept-Language: <lang>` on every API call;
   the `i18n.language` dependency resolves it. Queries select every language column
   as `<key>_<lang>` and `i18n.pick` chooses (a column name can't be a `?` parameter).
 - Dates: columns `…_at` declared `DATETIME`, UTF-8 ISO 8601 text with the UTC
   offset in ONE format everywhere (DB, Python, JSON, TS):
-  `2026-10-23T12:13:38+02:00`, via `server/app/clock.py`. Written in the user's
+  `2026-10-23T12:13:38+02:00`, via `server/app/core/clock.py`. Written in the user's
   timezone: browser's `Time-Zone` header on every API call, saved in
   `user.time_zone` (tusd hooks); else the server's (`TZ`). Mixed offsets: SQL
   compares and sorts through `datetime()`, never as text. Compute in UTC, convert
@@ -175,10 +175,18 @@ the encoder waits for the version; `/health` fails on a mismatch.
   `Credentials` for the login only), from `security.session_user` / `api.deps.current_user` / `require_access`:
   `me.id`, `me.access`; `clock.user_zone(user.time_zone, zone)`. Other rows stay `sqlite3.Row` (each read
   in one module). Test: `tests/test_queries.py` (every query used; User without credentials).
+- Packages (`server/app/`): `api/` (HTTP) → `domain/` (rules, stores without HTTP: security, invites,
+  throttle, audit, segments, tags, catalog, snapshot, tusd) → `queries/` (SQL) and `core/` (settings, logs,
+  middleware, errors, db, clock, crypto, i18n, validation, paths, limits, procs, children); `encoder/` uses
+  domain/queries/core. Never upward: core imports only `queries` (db.py: setup's admin, version), domain never
+  api. `validation.json` stays at `app/` (the frontend, the Dockerfile and tools read it there). Loggers
+  follow module paths, except two fixed operator names: `app.audit`, `app.middleware`. Module-level state kept
+  on purpose (callers without a request: the encoder thread, the setup stream): snapshot timer, throttle
+  counters (`throttle.reset()`), Argon2 semaphore, tusd/encoder singletons, health's cache.
 - HTTP layer (`app/api/`): one router per module (about, auth, catalog, comments, health, media,
   performers, profile, register, setup, tags, upload_hooks, users, video_mgmt, videos), `api.ROUTERS`
   included by main.py in that order; `api/deps.py` = the dependencies (`session_token`, `current_user`,
-  `user_zone`, `require_access`, `rebuild_after_write`). Rules and storage stay outside (`app/snapshot.py`,
+  `user_zone`, `require_access`, `rebuild_after_write`). Rules and storage stay outside (`app/domain/snapshot.py`,
   `tusd.py` (the process), `tags.py` (rules), `segments.py`…) and never import `api` (only main.py does).
   Routers call those modules qualified (`snapshot.rebuild_now()`), so tests patch the owning module.
   Loggers `app.api.<module>` (the setup token's: `app.api.setup`).
@@ -258,8 +266,8 @@ the encoder waits for the version; `/health` fails on a mismatch.
   streams (rotation side data kept), then the format is checked again. Published files never keep
   metadata (GPS!), so `sha256sum` ≠ `original_sha256`; duplicates are refused on either hash.
 - Every ffmpeg / ffprobe (and the script's): `-protocol_whitelist file -format_whitelist <formats>`
-  (`app/limits.py`: uploads `VIDEONINJA_INPUT_FORMATS`, default mov,matroska,avi,mpegts,mpeg,dv,asf, which
-  also give the accepted extensions; the app's own MP4s `mov`). Run through `app/procs.py` (never
+  (`app/core/limits.py`: uploads `VIDEONINJA_INPUT_FORMATS`, default mov,matroska,avi,mpegts,mpeg,dv,asf, which
+  also give the accepted extensions; the app's own MP4s `mov`). Run through `app/core/procs.py` (never
   subprocess directly): own process group, `setpriv --pdeathsig KILL`, time limit
   `VIDEONINJA_FFMPEG_TIMEOUT_H` (24 h), ffprobe `VIDEONINJA_FFPROBE_TIMEOUT_MIN` (10 min) (a timeout
   fails the video for good; the script: `-T` / `-L`), output via temporary files,
@@ -285,7 +293,7 @@ the encoder waits for the version; `/health` fails on a mismatch.
   `$lib/i18n.svelte.ts`. Language: saved choice (`localStorage`) → browser/system
   → `en`. Chooser: flag menu left of the user icon (`$lib/LanguageMenu.svelte`).
 - Input rules (lengths, patterns) live once in `server/app/validation.json`:
-  pydantic fields via `app/validation.py`, HTML form attributes via
+  pydantic fields via `app/core/validation.py`, HTML form attributes via
   `src/lib/validation.ts` (build-time import). The backend always re-validates.
 - Service worker: stale-while-revalidate for the catalogue (ETag/304); every
   clip played saved in cache `media`, keyed by `/media/segment/<id>` (no times
@@ -375,7 +383,7 @@ the encoder waits for the version; `/health` fails on a mismatch.
   git, else `dev`/`unknown`); database version at runtime from `GET /api/about` (`config.db_version`,
   and the latest `db_vN.sql` shipped). GitHub, Docker Hub (hub.docker.com/u/thecyberdoc) and GPL-3.0 links.
 - `sw.js` served `no-cache`; hashed assets `immutable`.
-- Settings (`app/settings.py`): every `VIDEONINJA_*` variable + `TZ` read ONLY there (test: no
+- Settings (`app/core/settings.py`): every `VIDEONINJA_*` variable + `TZ` read ONLY there (test: no
   `os.environ`/`getenv` elsewhere but `crypto.py`, which pops `VIDEONINJA_DB_KEY`: never a setting).
   `settings.current()` → frozen `Settings` (typed, defaults resolved: folders next to the DB), parsed once
   per distinct environment (`VARIABLES` = the cache key; tests' `monkeypatch.setenv` just works); wrong
@@ -383,7 +391,7 @@ the encoder waits for the version; `/health` fails on a mismatch.
   `INPUT_FORMATS`, `X265_PRESETS`, `LOG_LEVELS`/`LOG_FORMATS`. Kept helpers derive from it (`db.db_path`,
   `paths.*_dir`, `snapshot.catalog_dir`, `limits.extensions`/`ffmpeg_input`). A new variable: field +
   `from_env` + `VARIABLES` + README table (test: every variable documented). Test: `tests/test_settings.py`.
-- Logging (`app/logs.py`): every module `logging.getLogger(__name__)` (never uvicorn's logger);
+- Logging (`app/core/logs.py`): every module `logging.getLogger(__name__)` (never uvicorn's logger);
   `logs.configure()` at the import of `app.main` and in the encoder's `main()`, uvicorn's loggers
   through the same root handler (`StderrHandler`: `sys.stderr` at each write). `VIDEONINJA_LOG_FORMAT`
   `text` (default, dev) | `json` (images: `ts` in clock's format, `level`, `logger`, `msg`, extras,
@@ -391,7 +399,7 @@ the encoder waits for the version; `/health` fails on a mismatch.
   tools/test-e2e-stack.sh (sed on the token's characters). Test: `tests/test_logs.py`.
 - Request IDs: nginx's `$request_id` → `X-Request-ID` to the api (server-level proxy_set_header),
   tusd and the auth subrequest; `rid=` in nginx's log; `add_header X-Request-ID` to the browser.
-  `app/middleware.py` `RequestLog` (pure ASGI, added last = outermost): takes a valid ID
+  `app/core/middleware.py` `RequestLog` (pure ASGI, added last = outermost): takes a valid ID
   (`[A-Za-z0-9-]{1,64}`) or makes one (then adds the header itself), `logs.start(request_id=…)` for
   the rest of the task (uvicorn's traceback included), one line per request (`app.middleware`:
   method, route TEMPLATE, status, `duration_ms`; healthy /health DEBUG); uvicorn's access log off.
@@ -400,7 +408,7 @@ the encoder waits for the version; `/health` fails on a mismatch.
   `add(user_id=…)`; tusd hook adopts the event's `X-Request-Id`; encoder jobs and thumbnails
   `bind(video_id=…)`; `catalog_changed` sends its own ID. Frontend: `ApiError.requestId` (answer header,
   tus too; shown later by the shared error display). Test: `tests/test_middleware.py`.
-- Audit (`app/audit.py`): security events only through `audit.event("<name>", **fields)` on logger
+- Audit (`app/domain/audit.py`): security events only through `audit.event("<name>", **fields)` on logger
   `app.audit`, names fixed in `EVENTS` (with their level; KeyError otherwise; AST test). Who = the
   request's `user_id` (context) or a field (registration, logout: `security.delete_session` returns the
   session's user); what = `target_user_id`, `video_id`, `comment_id`… Never passwords, tokens, TOTP
@@ -446,7 +454,7 @@ the encoder waits for the version; `/health` fails on a mismatch.
 - Every change keeps the CI chain green: tests → build → publish images.
 - Never commit secrets; never weaken a security control to make something work —
   flag it instead.
-- API errors: `ApiError("<code>", **params)` with the code in `ERRORS` (`server/app/errors.py`:
+- API errors: `ApiError("<code>", **params)` with the code in `ERRORS` (`server/app/core/errors.py`:
   status + English `detail`), answered `{"code", "detail", "params"}` (also validation
   `validation.<kind>`, routing, 500 `internal`, tusd hook bodies, nginx 429 `rate_limited`). Each
   code needs `error.<code>` in messages.json (en + fr; `tests/test_errors.py`: also every code raised

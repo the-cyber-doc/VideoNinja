@@ -1,8 +1,8 @@
 from datetime import UTC, datetime
 from zoneinfo import ZoneInfo
 
-from app import clock
-from app.clock import server_zone  # the real one: conftest replaces clock.server_zone
+from app.core import clock
+from app.core.clock import server_zone  # the real one: conftest replaces clock.server_zone
 
 
 def test_format_and_offsets(monkeypatch):

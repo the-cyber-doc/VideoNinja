@@ -4,7 +4,8 @@ import logging
 import urllib.request
 import uuid
 
-from .. import settings, snapshot
+from ..core import settings
+from ..domain import snapshot
 
 log = logging.getLogger(__name__)
 

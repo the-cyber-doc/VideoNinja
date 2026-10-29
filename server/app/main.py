@@ -4,7 +4,9 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
-from . import api, audit, crypto, db, encoder, errors, logs, middleware, security, settings, snapshot, tusd
+from . import api, encoder
+from .core import crypto, db, errors, logs, middleware, settings
+from .domain import audit, security, snapshot, tusd
 from .api import setup
 
 

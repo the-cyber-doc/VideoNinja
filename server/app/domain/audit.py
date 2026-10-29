@@ -14,7 +14,7 @@ in the wrong field): the client's address instead (as throttle.py counts it).
 import logging
 from typing import Any
 
-log = logging.getLogger(__name__)
+log = logging.getLogger("app.audit")  # a fixed name, not the module's: alerts and the README filter on it
 INFO, WARNING, ERROR = logging.INFO, logging.WARNING, logging.ERROR
 
 EVENTS: dict[str, int] = {

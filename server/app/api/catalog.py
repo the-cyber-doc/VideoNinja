@@ -5,8 +5,9 @@ themselves: snapshot.py."""
 from fastapi import APIRouter, Depends, Response, status
 from fastapi.responses import FileResponse
 
-from .. import i18n, settings, snapshot
-from ..errors import ApiError
+from ..core import i18n, settings
+from ..domain import snapshot
+from ..core.errors import ApiError
 from ..queries.users import User
 from .deps import current_user
 

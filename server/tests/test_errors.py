@@ -11,7 +11,8 @@ from pathlib import Path
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from app import errors, i18n, tags
+from app.core import errors, i18n
+from app.domain import tags
 
 APP = Path(__file__).resolve().parents[1] / "app"
 MESSAGES = Path(__file__).resolve().parents[2] / "frontend" / "src" / "lib" / "messages.json"

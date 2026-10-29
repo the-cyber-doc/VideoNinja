@@ -30,7 +30,8 @@ import time
 from pathlib import Path
 
 
-from . import catalog, db, i18n, procs, settings
+from ..core import db, i18n, procs, settings
+from . import catalog
 
 log = logging.getLogger(__name__)
 

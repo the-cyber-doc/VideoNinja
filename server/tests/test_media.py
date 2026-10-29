@@ -5,7 +5,7 @@ from pathlib import Path
 import pyotp
 import pytest
 
-from app import db
+from app.core import db
 from app.encoder import checks
 
 from .test_auth import login
