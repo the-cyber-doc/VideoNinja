@@ -64,7 +64,7 @@
 
 <style>
 	.comment {
-		padding: 0.75rem 1rem;
+		padding: var(--space-3) var(--space-4);
 		background: var(--surface);
 		border: 1px solid var(--border);
 		border-radius: var(--radius);
@@ -73,8 +73,8 @@
 		display: flex;
 		flex-wrap: wrap;
 		align-items: center;
-		gap: 0.5rem;
-		font-size: 0.9rem;
+		gap: var(--space-2);
+		font-size: var(--text-label);
 	}
 	time,
 	.edited {
@@ -82,23 +82,23 @@
 	}
 	.lang {
 		margin-left: auto;
-		font-size: 0.75rem;
+		font-size: var(--text-xs);
 		text-transform: uppercase;
 		color: var(--muted);
 	}
 	p {
-		margin: 0.4rem 0 0;
+		margin: var(--space-2) 0 0;
 		white-space: pre-line; /* keep the author's line breaks */
 		overflow-wrap: anywhere;
 	}
 	.actions {
 		display: flex;
 		justify-content: flex-end;
-		gap: 0.4rem;
-		margin-top: 0.5rem;
+		gap: var(--space-2);
+		margin-top: var(--space-2);
 	}
 	.actions button {
-		padding: 0.25rem 0.6rem;
-		font-size: 0.85rem;
+		padding: var(--space-1) var(--space-2);
+		font-size: var(--text-sm);
 	}
 </style>

@@ -70,7 +70,7 @@
 <style>
 	.comment-form {
 		display: grid;
-		gap: 0.5rem;
+		gap: var(--space-2);
 	}
 	textarea {
 		width: 100%;
@@ -82,17 +82,17 @@
 		flex-wrap: wrap;
 		align-items: center;
 		justify-content: space-between;
-		gap: 0.5rem;
-		font-size: 0.9rem;
+		gap: var(--space-2);
+		font-size: var(--text-label);
 	}
 	.row label {
 		display: flex;
 		align-items: center;
-		gap: 0.4rem;
+		gap: var(--space-2);
 	}
 	.buttons {
 		display: flex;
-		gap: 0.4rem;
+		gap: var(--space-2);
 	}
 	.error {
 		margin: 0;

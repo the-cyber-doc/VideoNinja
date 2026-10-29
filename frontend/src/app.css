@@ -1,4 +1,50 @@
+/* Design tokens: components use these, not raw values (a raw one is a deliberate
+   exception: an odd size of one component). Colours change with the theme below;
+   sizes, and the colours over media, do not.
+
+   Breakpoints (media queries cannot use variables): 30rem (phones: cards lose
+   their margins) and 40rem (narrow: the header folds its navigation). No others. */
 :root {
+	/* Spacing: every gap, margin, padding and offset is one of these */
+	--space-0: 0.125rem; /* hairline: inside small badges */
+	--space-1: 0.25rem;
+	--space-2: 0.5rem;
+	--space-3: 0.75rem;
+	--space-4: 1rem;
+	--space-5: 1.25rem;
+	--space-6: 1.5rem;
+	--space-7: 2rem;
+	--space-8: 3rem;
+	/* Type: every font size is one of these */
+	--text-xs: 0.75rem; /* small labels: badges, timeline */
+	--text-sm: 0.85rem; /* hints, secondary controls */
+	--text-label: 0.9rem; /* form labels, secondary text */
+	--text-md: 1rem; /* body text (the page's own size) */
+	--text-lg: 1.1rem; /* section and dialog headings */
+	--text-title: 1.4rem; /* page titles */
+	--text-display: 1.6rem; /* the kanji on catalogue cards */
+	/* Corners */
+	--radius-xs: 4px;
+	--radius-sm: 6px;
+	--radius: 10px;
+	--radius-pill: 999px;
+	/* Form controls: a text input, a select and a text button side by side are one
+	   height (a button's own: line, padding and border), whatever each one's browser default. */
+	--control-height: 2.625rem;
+	/* Over pictures and video, whatever the theme */
+	--on-media: #fff;
+	--media-bg: #000;
+	--media-text-shadow: 0 0 3px #000;
+	/* One darkness under anything over a picture or behind a dialog: white text on it
+	   keeps a contrast of 8:1 even over a white picture. Darker on hover. */
+	--scrim: rgb(0 0 0 / 0.7);
+	--scrim-hover: rgb(0 0 0 / 0.85);
+	--media-highlight: rgb(255 255 255 / 0.35); /* the timeline's preview segment */
+	--qr-bg: #fff; /* scanners need a light background */
+	--shadow-menu: 0 6px 24px rgb(0 0 0 / 0.15);
+	--shadow-banner: 0 0.25rem 1rem rgb(0 0 0 / 0.2);
+
+	/* Colours (light) */
 	--bg: #f6f5f2;
 	--surface: #ffffff;
 	--text: #1d1d1f;
@@ -8,7 +54,6 @@
 	--accent-text: #ffffff;
 	--ok: #2e7d32;
 	--error: #b3261e;
-	--radius: 10px;
 	color-scheme: light;
 }
 
@@ -41,8 +86,8 @@ body {
 
 main.card {
 	max-width: 28rem;
-	margin: 3rem auto;
-	padding: 1.5rem;
+	margin: var(--space-8) auto;
+	padding: var(--space-6);
 	background: var(--surface);
 	border: 1px solid var(--border);
 	border-radius: var(--radius);
@@ -50,35 +95,40 @@ main.card {
 
 @media (max-width: 30rem) {
 	main.card {
-		margin: 1rem;
+		margin: var(--space-4);
 	}
 }
 
 h1 {
-	font-size: 1.4rem;
-	margin: 0 0 1rem;
+	font-size: var(--text-title);
+	margin: 0 0 var(--space-4);
 }
 
 form {
 	display: grid;
-	gap: 0.9rem;
+	gap: var(--space-4);
 }
 
 label {
 	display: grid;
-	gap: 0.25rem;
-	font-size: 0.9rem;
+	gap: var(--space-1);
+	font-size: var(--text-label);
 	color: var(--muted);
 }
 
 input,
 select {
 	font: inherit;
-	padding: 0.55rem 0.7rem;
+	padding: var(--space-2) var(--space-3);
 	color: var(--text);
 	background: var(--bg);
 	border: 1px solid var(--border);
-	border-radius: 6px;
+	border-radius: var(--radius-sm);
+}
+
+input:not([type='checkbox'], [type='radio'], [type='range'], [type='file'], [type='color']),
+select {
+	height: var(--control-height);
 }
 
 input:focus-visible,
@@ -90,11 +140,11 @@ button:focus-visible {
 button {
 	font: inherit;
 	font-weight: 600;
-	padding: 0.6rem 1rem;
+	padding: var(--space-2) var(--space-4);
 	color: var(--accent-text);
 	background: var(--accent);
-	border: 0;
-	border-radius: 6px;
+	border: 1px solid transparent; /* as tall as an input and a secondary button */
+	border-radius: var(--radius-sm);
 	cursor: pointer;
 }
 
@@ -110,7 +160,7 @@ button.secondary {
 }
 
 .hint {
-	font-size: 0.85rem;
+	font-size: var(--text-sm);
 	color: var(--muted);
 	margin: 0;
 }

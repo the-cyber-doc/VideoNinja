@@ -41,13 +41,13 @@
 		text-align: center;
 	}
 	h2 {
-		font-size: 1.1rem;
-		margin: 0 0 0.75rem;
+		font-size: var(--text-lg);
+		margin: 0 0 var(--space-3);
 	}
 	.description {
 		white-space: pre-line;
 	}
 	section {
-		margin-top: 1.5rem;
+		margin-top: var(--space-6);
 	}
 </style>

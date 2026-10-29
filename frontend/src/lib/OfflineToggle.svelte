@@ -76,22 +76,22 @@
 	.offline {
 		display: flex;
 		align-items: center;
-		gap: 0.25rem;
+		gap: var(--space-1);
 		min-width: 1.9rem;
 		min-height: 1.9rem;
-		padding: 0.25rem 0.35rem;
-		font-size: 0.75rem;
+		padding: var(--space-1) var(--space-1);
+		font-size: var(--text-xs);
 		font-variant-numeric: tabular-nums;
 		line-height: 1;
-		color: #fff;
-		background: rgb(0 0 0 / 0.6);
+		color: var(--on-media);
+		background: var(--scrim);
 		border: 0;
-		border-radius: 6px;
+		border-radius: var(--radius-sm);
 		cursor: pointer;
 	}
 	.offline:hover,
 	.offline:focus-visible {
-		background: rgb(0 0 0 / 0.8);
+		background: var(--scrim-hover);
 	}
 	.offline:focus-visible {
 		outline: 2px solid var(--accent);

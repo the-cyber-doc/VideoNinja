@@ -295,22 +295,22 @@
 <style>
 	.editor {
 		display: grid;
-		gap: 0.6rem;
+		gap: var(--space-2);
 	}
 	video {
 		width: 100%;
 		max-height: 60vh;
-		background: #000;
+		background: var(--media-bg);
 		border-radius: var(--radius);
 	}
 	.controls {
 		display: flex;
 		align-items: center;
-		gap: 0.5rem;
+		gap: var(--space-2);
 	}
 	.buttons {
 		display: flex;
-		gap: 0.25rem;
+		gap: var(--space-1);
 	}
 	button.icon {
 		display: grid;
@@ -326,12 +326,12 @@
 		display: flex;
 		flex-wrap: wrap;
 		align-items: center;
-		gap: 0.5rem;
+		gap: var(--space-2);
 	}
 	.mark-buttons {
 		display: flex;
 		flex-wrap: wrap;
-		gap: 0.5rem;
+		gap: var(--space-2);
 	}
 	.time {
 		font-variant-numeric: tabular-nums;

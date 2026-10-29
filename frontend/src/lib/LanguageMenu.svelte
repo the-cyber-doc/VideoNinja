@@ -56,36 +56,36 @@
 		display: grid;
 		place-items: center;
 		height: 2.4rem;
-		padding: 0 0.55rem;
+		padding: 0 var(--space-2);
 		background: var(--bg);
 		border: 1px solid var(--border);
-		border-radius: 999px;
+		border-radius: var(--radius-pill);
 	}
 	.menu {
 		position: absolute;
 		right: 0;
-		top: calc(100% + 0.4rem);
+		top: calc(100% + var(--space-2));
 		z-index: 10;
 		min-width: 10rem;
 		display: grid;
-		padding: 0.3rem;
+		padding: var(--space-1);
 		background: var(--surface);
 		border: 1px solid var(--border);
 		border-radius: var(--radius);
-		box-shadow: 0 6px 24px rgb(0 0 0 / 0.15);
+		box-shadow: var(--shadow-menu);
 	}
 	.menu button {
 		display: flex;
 		align-items: center;
-		gap: 0.6rem;
+		gap: var(--space-2);
 		width: 100%;
-		padding: 0.5rem 0.7rem;
+		padding: var(--space-2) var(--space-3);
 		font: inherit;
 		font-weight: normal;
 		color: var(--text);
 		background: none;
 		border: 0;
-		border-radius: 6px;
+		border-radius: var(--radius-sm);
 		cursor: pointer;
 	}
 	.menu button:hover {

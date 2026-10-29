@@ -52,9 +52,9 @@
 		flex-direction: column;
 		align-items: center;
 		justify-content: center;
-		gap: 0.3rem;
+		gap: var(--space-1);
 		height: 100%;
-		padding: 0.5rem;
+		padding: var(--space-2);
 		text-align: center;
 		color: var(--text);
 		text-decoration: none;
@@ -65,16 +65,16 @@
 	}
 	.corner {
 		position: absolute;
-		right: 0.4rem;
-		bottom: 0.4rem;
+		right: var(--space-2);
+		bottom: var(--space-2);
 	}
 	.kanji {
-		font-size: 1.6rem;
+		font-size: var(--text-display);
 		font-weight: 700;
 		line-height: 1.2;
 	}
 	.romaji {
-		font-size: 0.95rem;
+		font-size: var(--text-label);
 		font-weight: 600;
 	}
 	.kanji,

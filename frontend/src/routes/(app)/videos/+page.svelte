@@ -119,14 +119,14 @@
 		max-width: 72rem;
 		margin: 0 auto;
 		display: grid;
-		gap: 0.75rem;
+		gap: var(--space-3);
 	}
 	/* The title centred, the remove button at the right of the same line. */
 	header {
 		display: grid;
 		grid-template-columns: 1fr auto 1fr;
 		align-items: center;
-		margin-bottom: 0.25rem;
+		margin-bottom: var(--space-1);
 	}
 	h1 {
 		grid-column: 2;
@@ -164,8 +164,8 @@
 		display: flex;
 		flex-wrap: wrap;
 		align-items: baseline;
-		gap: 0.25rem 0.75rem;
-		padding: 0.75rem 1rem;
+		gap: var(--space-1) var(--space-3);
+		padding: var(--space-3) var(--space-4);
 		cursor: pointer;
 		list-style: none; /* the arrow replaces the browser's marker */
 	}
@@ -189,7 +189,7 @@
 	}
 	.name {
 		font-weight: 700;
-		font-size: 1.05rem;
+		font-size: var(--text-lg);
 	}
 	.count {
 		color: var(--muted);
@@ -198,29 +198,29 @@
 	summary .hint {
 		flex-basis: 100%;
 		margin: 0;
-		font-size: 0.85rem;
+		font-size: var(--text-sm);
 	}
 	/* Open: most of the screen, its own scroll bar. */
 	.grid {
 		display: grid;
 		grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
-		gap: 0.75rem;
+		gap: var(--space-3);
 		max-height: calc(100dvh - 12rem);
 		overflow-y: auto;
 		margin: 0;
-		padding: 0 1rem 1rem;
+		padding: 0 var(--space-4) var(--space-4);
 		list-style: none;
 	}
 	.empty {
 		margin: 0;
-		padding: 0 1rem 1rem;
+		padding: 0 var(--space-4) var(--space-4);
 	}
 	a {
 		display: grid;
-		gap: 0.3rem;
+		gap: var(--space-1);
 		color: var(--text);
 		text-decoration: none;
-		font-size: 0.85rem;
+		font-size: var(--text-sm);
 	}
 	.picture {
 		position: relative;
@@ -233,7 +233,7 @@
 		aspect-ratio: 16 / 9;
 		object-fit: cover;
 		background: var(--border);
-		border-radius: 6px;
+		border-radius: var(--radius-sm);
 	}
 	a:hover img,
 	a:focus-visible img {
@@ -243,19 +243,19 @@
 	/* Bottom right: the duration, then whether the video is on this device. */
 	.corner {
 		position: absolute;
-		right: 0.35rem;
-		bottom: 0.35rem;
+		right: var(--space-1);
+		bottom: var(--space-1);
 		display: flex;
 		align-items: center;
-		gap: 0.25rem;
+		gap: var(--space-1);
 	}
 	.duration {
-		padding: 0.05rem 0.35rem;
-		font-size: 0.75rem;
+		padding: var(--space-0) var(--space-1);
+		font-size: var(--text-xs);
 		font-variant-numeric: tabular-nums;
-		color: #fff;
-		background: rgb(0 0 0 / 0.75);
-		border-radius: 4px;
+		color: var(--on-media);
+		background: var(--scrim);
+		border-radius: var(--radius-xs);
 	}
 	.file {
 		overflow-wrap: anywhere;

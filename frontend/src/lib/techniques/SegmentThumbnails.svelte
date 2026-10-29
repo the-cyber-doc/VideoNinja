@@ -45,17 +45,17 @@
 	ul {
 		display: grid;
 		grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr));
-		gap: 0.75rem;
+		gap: var(--space-3);
 		margin: 0;
 		padding: 0;
 		list-style: none;
 	}
 	button {
 		display: grid;
-		gap: 0.25rem;
+		gap: var(--space-1);
 		width: 100%;
 		padding: 0;
-		font-size: 0.85rem;
+		font-size: var(--text-sm);
 		color: var(--muted);
 		text-align: center;
 		background: none;
@@ -78,7 +78,7 @@
 		display: flex;
 		align-items: flex-end;
 		justify-content: flex-end;
-		padding: 0.3rem;
+		padding: var(--space-1);
 		pointer-events: none;
 	}
 	.corner :global(button) {
@@ -91,7 +91,7 @@
 		aspect-ratio: 16 / 9;
 		object-fit: cover;
 		background: var(--border);
-		border-radius: 6px;
+		border-radius: var(--radius-sm);
 	}
 	.duration {
 		font-variant-numeric: tabular-nums;

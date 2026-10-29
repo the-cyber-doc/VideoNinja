@@ -122,7 +122,7 @@
 		max-width: 60rem;
 		margin: 0 auto;
 		display: grid;
-		gap: 1rem;
+		gap: var(--space-4);
 	}
 	.back {
 		justify-self: start;

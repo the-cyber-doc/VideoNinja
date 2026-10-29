@@ -299,6 +299,17 @@ the encoder waits for the version; `/health` fails on a mismatch.
   About, Log out always last); its layout loads the user into `$lib/session.svelte.ts`.
   `/login`, `/setup`, `/register` are outside the group (no shell). `/setup`
   and `/register#<token>` share `$lib/AccountWizard.svelte`.
+- Styles: tokens in `src/app.css` (`:root`; colours per theme, sizes and media colours not). Spacing
+  `--space-0…8` (0.125/0.25/0.5/0.75/1/1.25/1.5/2/3rem): EVERY gap, margin, padding and offset is one
+  (geometry like a handle centred on an edge: `calc(var(--edge) / -2)`, a local variable). Type (every font size)
+  `--text-xs/sm/label/md/lg/title/display` (0.75/0.85/0.9/1/1.1/1.4/1.6rem), corners `--radius-xs/sm/(radius)/pill`, `--control-height` (2.625rem: text
+  inputs and selects; text buttons reach it with their 1px transparent border). Over media: `--on-media`,
+  `--media-bg`, `--media-text-shadow`, `--media-highlight`, ONE `--scrim` (0.7, also dialog backdrops) and
+  `--scrim-hover` (0.85); `--qr-bg` (QR codes stay white); shadows `--shadow-menu/banner`. Accent buttons:
+  `--accent-text`. Tests `src/lib/styles.test.ts`: no colour literal in a component (Flag.svelte excepted;
+  `hsl(var(--hue) …)` is computed, fine), no raw spacing value, no font size off the scale. Breakpoints: 30rem and 40rem only
+  (in app.css; media queries can't use variables). The player's speed buttons: `--text-xs` (four fit one
+  line on a phone).
 - Icons: inline SVG via `$lib/Icon.svelte` (no icon library); icon-only buttons
   have `title` (tooltip) + `aria-label`. Flags: inline SVG via `$lib/Flag.svelte`
   (never emoji: Windows shows them as letters).

@@ -49,7 +49,7 @@
 		display: flex;
 		flex-wrap: wrap;
 		justify-content: center;
-		gap: 1rem;
+		gap: var(--space-4);
 		margin: 0;
 		padding: 0;
 		list-style: none;
