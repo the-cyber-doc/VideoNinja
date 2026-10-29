@@ -3,10 +3,11 @@
 import logging
 import sqlite3
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, status
 from pydantic import BaseModel
 
 from . import crypto, db, invites, queries, security, throttle
+from .errors import ApiError
 from .validation import field
 
 log = logging.getLogger("uvicorn.error")
@@ -30,7 +31,7 @@ def _invited(con: sqlite3.Connection, token: str) -> sqlite3.Row:
     user = invites.user_for(con, token)
     if user is None:
         # Same answer for unknown, used and expired links.
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Invalid or expired invitation")
+        raise ApiError("invite.invalid")
     return user
 
 
@@ -50,12 +51,12 @@ def new_totp(body: TokenIn, con: sqlite3.Connection = Depends(db.get_db)) -> dic
 def complete(body: CompleteIn, con: sqlite3.Connection = Depends(db.get_db)) -> None:
     user = _invited(con, body.token)
     if not security.verify_totp(body.totp_secret, body.totp_code):
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid TOTP code")
+        raise ApiError("totp.invalid_code")
     pw_hash = security.hash_password(body.password)  # slow: before the write lock
     with db.write(con):
         # Deleting the invitation first makes the link single-use, even under concurrent requests.
         if not queries.delete_invite(con, user["id"]):
-            raise HTTPException(status.HTTP_404_NOT_FOUND, "Invalid or expired invitation")
+            raise ApiError("invite.invalid")
         queries.set_user_registration(
             con,
             user["id"],

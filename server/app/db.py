@@ -6,9 +6,9 @@ from contextlib import contextmanager
 from datetime import UTC, datetime
 from pathlib import Path
 
-from fastapi import HTTPException, status
 
 from . import crypto, queries
+from .errors import ApiError
 
 log = logging.getLogger("uvicorn.error")
 
@@ -83,7 +83,7 @@ def read(con: sqlite3.Connection) -> Iterator[sqlite3.Connection]:
 def get_db() -> Iterator[sqlite3.Connection]:
     """FastAPI dependency: one connection per request."""
     if not is_initialized():
-        raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, "Setup required")
+        raise ApiError("setup.required")
     con = connect()
     try:
         yield con

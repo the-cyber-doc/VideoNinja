@@ -7,10 +7,11 @@ current password, and logs the user out of every other session.
 import logging
 import sqlite3
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, status
 from pydantic import BaseModel
 
 from . import crypto, db, i18n, queries, security, throttle
+from .errors import ApiError
 from .auth import UserOut, current_user, session_token, user_out
 from .validation import field
 
@@ -39,7 +40,7 @@ def _check_password(con: sqlite3.Connection, user: sqlite3.Row, password: str) -
     if not security.verify_password(queries.user_pw_hash(con, user["id"]), password):
         log.warning("Profile: wrong current password for user id %s", user["id"])
         # 403, not 401: the session is still valid.
-        raise HTTPException(status.HTTP_403_FORBIDDEN, "Wrong current password")
+        raise ApiError("profile.wrong_password")
 
 
 @router.post("/name")
@@ -86,7 +87,7 @@ def confirm_totp(
     """Replace the TOTP secret, once a code from the new one proves the app is set up."""
     _check_password(con, user, body.current_password)
     if not security.verify_totp(body.totp_secret, body.totp_code):
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid code for the new authenticator")
+        raise ApiError("totp.invalid_code")
     with db.write(con):
         queries.set_user_totp(con, user["id"], crypto.encrypt(body.totp_secret, crypto.totp_aad(user["id"])))
         security.delete_other_sessions(con, user["id"], token)

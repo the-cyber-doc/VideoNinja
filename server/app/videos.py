@@ -10,10 +10,11 @@ import time
 from datetime import tzinfo
 from typing import Literal
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, Query, status
 from pydantic import BaseModel, Field
 
 from . import clock, db, limits, queries, security, segments, tusd
+from .errors import ApiError
 from .auth import require_access, user_zone
 from .segments import SegmentIn, TagIn
 from .snapshot import rebuild_after_write
@@ -47,7 +48,7 @@ class UploadStatus(BaseModel):
 def _may_manage(me: sqlite3.Row, video: sqlite3.Row | None) -> sqlite3.Row:
     """The video, if `me` uploaded it or is an admin (user_mgmt access); else 404."""
     if video is None or (video["uploaded_by"] != me["id"] and "user_mgmt" not in security.accesses(me)):
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Unknown video")
+        raise ApiError("video.unknown")
     return video
 
 
@@ -89,11 +90,11 @@ def submit(
     with db.write(con):
         upload = queries.upload(con, tus_id)
         if upload is None or upload["user"] != me["id"] or upload["state"] == "deleted":
-            raise HTTPException(status.HTTP_404_NOT_FOUND, "Unknown upload")
+            raise ApiError("upload.unknown")
         if upload["state"] != "finished":
-            raise HTTPException(status.HTTP_409_CONFLICT, "The upload is not finished")
+            raise ApiError("upload.not_finished")
         if queries.video_known(con, upload["original_sha256"]):
-            raise HTTPException(status.HTTP_409_CONFLICT, "This video already exists")
+            raise ApiError("video.exists")
         video_id = queries.insert_video(
             con, upload["original_sha256"], body.original_filename, body.all_segments_done,
             me["id"], clock.at(0, zone), tus_id,
@@ -142,7 +143,7 @@ def retry(video_id: int, me: sqlite3.Row = Depends(uploader), con: sqlite3.Conne
     with db.write(con):
         _may_manage(me, queries.video(con, video_id))
         if not queries.retry_video(con, video_id):
-            raise HTTPException(status.HTTP_409_CONFLICT, "Only a failed video can be retried")
+            raise ApiError("video.not_failed")
 
 
 @router.delete("/videos/{video_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -151,7 +152,7 @@ def delete(video_id: int, me: sqlite3.Row = Depends(uploader), con: sqlite3.Conn
     with db.write(con):
         video = _may_manage(me, queries.video(con, video_id))
         if video["status"] in ("published", "encoding"):
-            raise HTTPException(status.HTTP_409_CONFLICT, "Published or encoding videos cannot be deleted here")
+            raise ApiError("video.not_deletable")
         queries.delete_video(con, video_id)
         if video["upload"]:
             queries.set_upload_state(con, video["upload"], "deleted")

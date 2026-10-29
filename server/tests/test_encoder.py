@@ -218,7 +218,7 @@ def refused_again(admin, sha: str, size: int) -> None:  # noqa: F811
     answer = hook(admin, "pre-create", session(admin), size=size, sha=sha)
     assert answer["RejectUpload"] is True
     assert answer["HTTPResponse"]["StatusCode"] == 409
-    assert json.loads(answer["HTTPResponse"]["Body"]) == {"detail": "This video already exists"}
+    assert json.loads(answer["HTTPResponse"]["Body"])["code"] == "video.exists"
 
 
 @samples

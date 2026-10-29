@@ -4,10 +4,11 @@ import logging
 import sqlite3
 from typing import Literal
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, status
 from pydantic import BaseModel
 
 from . import clock, db, i18n, invites, queries
+from .errors import ApiError
 from .auth import require_access
 from .validation import field
 
@@ -77,9 +78,9 @@ def create_user(
     """Create a user without credentials, and its invitation."""
     with db.write(con):  # checked and created at once: two admins, one username
         if not queries.role_exists(con, body.role):
-            raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "Unknown role")
+            raise ApiError("user.unknown_role")
         if queries.username_exists(con, body.username):
-            raise HTTPException(status.HTTP_409_CONFLICT, "This username already exists")
+            raise ApiError("user.exists")
         user_id = queries.insert_user(con, body.username, body.role)
         token = invites.create(con, user_id)
     log.warning("User management: user id %s created %r (%s)", me["id"], body.username, body.role)
@@ -93,7 +94,7 @@ def get_invite(
     """The current invitation, to copy the link again."""
     token = invites.token_of(con, user_id)
     if token is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "No valid invitation")
+        raise ApiError("user.no_invite")
     return _invite_out(con, user_id, token)
 
 
@@ -107,10 +108,10 @@ def reset_user(
     nothing changed. The old password and authenticator can never be used again.
     """
     if user_id == me["id"]:
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, "You cannot reset your own account")
+        raise ApiError("user.reset_self")
     with db.write(con):
         if not queries.user_exists(con, user_id):
-            raise HTTPException(status.HTTP_404_NOT_FOUND, "No such user")
+            raise ApiError("user.unknown")
         token = invites.create(con, user_id)
         queries.clear_user_credentials(con, user_id)
         queries.delete_user_sessions(con, user_id)

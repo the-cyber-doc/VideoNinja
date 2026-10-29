@@ -6,11 +6,12 @@ import secrets
 import threading
 from collections.abc import Iterator
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, Request, status
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 from . import db, encoder, security, snapshot, throttle, tusd
+from .errors import ApiError
 from .validation import field
 
 log = logging.getLogger("uvicorn.error")
@@ -44,10 +45,10 @@ class CompleteIn(TokenIn):
 
 def _check_token(request: Request, token: str) -> None:
     if db.is_initialized():
-        raise HTTPException(status.HTTP_404_NOT_FOUND)
+        raise ApiError("not_found")
     expected = request.app.state.setup_token
     if not expected or not secrets.compare_digest(token.encode(), expected.encode()):
-        raise HTTPException(status.HTTP_403_FORBIDDEN, "Invalid setup token")
+        raise ApiError("setup.invalid_token")
 
 
 @router.get("/status")
@@ -72,7 +73,7 @@ def complete(body: CompleteIn, request: Request) -> StreamingResponse:
     """Create the database and the admin user. Streams one JSON line per completed step."""
     _check_token(request, body.token)
     if not security.verify_totp(body.totp_secret, body.totp_code):
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid TOTP code")
+        raise ApiError("totp.invalid_code")
     pw_hash = security.hash_password(body.password)
 
     def progress() -> Iterator[str]:

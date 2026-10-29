@@ -55,7 +55,9 @@ def test_unknown_ones_named_in_order(admin):  # noqa: F811 - fixture
     body = {"all_segments_done": True,
             "segments": [segment(1), segment(10, performer="nope"), segment(20, technique="nope")]}
     r = admin.put("/api/videos/1/annotations", json=body)
-    assert r.status_code == 422 and r.json()["detail"] == "Unknown performer: nope"
+    assert r.status_code == 422
+    assert r.json() == {"code": "segment.unknown_performer", "detail": "Unknown performer: nope",
+                        "params": {"performer": "nope"}}
 
 
 def test_access_checks_cost_no_query(admin, statements):  # noqa: F811 - fixture

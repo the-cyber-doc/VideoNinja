@@ -50,14 +50,15 @@ def tag_rules(con: sqlite3.Connection) -> dict[str, Rule]:
     return rules
 
 
-def value_error(rule: Rule, value: str | None, zone: tzinfo) -> str | None:
-    """Why `value` is not accepted by a tag with this rule, or None."""
+def value_error(rule: Rule, value: str | None, zone: tzinfo) -> tuple[str, dict[str, str | int]] | None:
+    """Why `value` is not accepted by a tag with this rule (an error code of errors.py
+    and its params, but the tag), or None."""
     if rule == "year":
         low, high = year_range(zone)
         if value is None or not YEAR.fullmatch(value) or not low <= int(value) <= high:
-            return f"the value must be a year from {low} to {high}"
+            return "tag.year", {"min": low, "max": high}
     elif rule is not None and value not in rule:
-        return "the value must be one of " + ", ".join(rule)
+        return "tag.value", {"values": ", ".join(rule)}
     return None
 
 

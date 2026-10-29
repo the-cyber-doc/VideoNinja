@@ -7,10 +7,12 @@ import sqlite3
 from collections.abc import Mapping, Sequence
 from datetime import tzinfo
 
-from fastapi import HTTPException, status
+
 from pydantic import BaseModel, Field, model_validator
+from pydantic_core import PydanticCustomError
 
 from . import queries
+from .errors import ApiError
 from .tags import Rule, tag_rules, value_error
 from .validation import field
 
@@ -30,16 +32,12 @@ class SegmentIn(BaseModel):
     @model_validator(mode="after")
     def ordered(self):
         if self.end_s <= self.begin_s:
-            raise ValueError("A segment must end after it begins")
+            raise PydanticCustomError("segment_order", "A segment must end after it begins")
         return self
 
 
 class AnnotatedSegment(SegmentIn):
     id: int | None = None  # None: a new segment (Videos page; uploads only send new ones)
-
-
-def unprocessable(detail: str) -> HTTPException:
-    return HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, detail)
 
 
 def check(
@@ -59,27 +57,28 @@ def check(
     _check_tags(tags, rules, zone)
     ids = [s.id for s in segments if isinstance(s, AnnotatedSegment) and s.id is not None]
     if len(set(ids)) != len(ids):
-        raise unprocessable("A segment is given twice")
+        raise ApiError("segment.duplicate")
     techniques = queries.known_techniques(con, {s.technique for s in segments})
     performers = queries.known_performers(con, {s.performer for s in segments})
     for segment in segments:
         segment_id = segment.id if isinstance(segment, AnnotatedSegment) else None
         if segment_id is not None and (existing is None or segment_id not in existing):
-            raise unprocessable(f"Unknown segment of this video: {segment_id}")
+            raise ApiError("segment.unknown", id=segment_id)
         if segment.technique not in techniques:
-            raise unprocessable(f"Unknown technique: {segment.technique}")
+            raise ApiError("segment.unknown_technique", technique=segment.technique)
         if segment.performer not in performers:
-            raise unprocessable(f"Unknown performer: {segment.performer}")
+            raise ApiError("segment.unknown_performer", performer=segment.performer)
         if duration_s is not None and segment.end_s > duration_s + 1:
-            raise unprocessable("A segment ends after the end of the video")
+            raise ApiError("segment.after_end")
         _check_tags(segment.tags, rules, zone)
 
 
 def _check_tags(tags: Sequence[TagIn], rules: dict[str, Rule], zone: tzinfo) -> None:
     if len({t.id for t in tags}) != len(tags):
-        raise unprocessable("A tag is given twice")
+        raise ApiError("tag.duplicate")
     for tag in tags:
         if tag.id not in rules:
-            raise unprocessable(f"Unknown tag: {tag.id}")
+            raise ApiError("tag.unknown", tag=tag.id)
         if error := value_error(rules[tag.id], tag.value, zone):
-            raise unprocessable(f"Tag {tag.id}: {error}")
+            code, params = error
+            raise ApiError(code, tag=tag.id, **params)

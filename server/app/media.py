@@ -29,10 +29,11 @@ import re
 import sqlite3
 import tempfile
 
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi import APIRouter, Depends, Response
 from fastapi.responses import FileResponse
 
 from . import db, limits, paths, procs, queries, snapshot
+from .errors import ApiError
 from .auth import require_access
 
 log = logging.getLogger("uvicorn.error")
@@ -47,8 +48,8 @@ FILE_NAME = re.compile(r"[A-Za-z0-9_-][A-Za-z0-9._-]*")  # no path, no leading d
 NO_STORE = {"Cache-Control": "private, no-store"}  # as nginx for /protected/
 
 
-def _not_found() -> HTTPException:
-    return HTTPException(status.HTTP_404_NOT_FOUND, "Not found")
+def _not_found() -> ApiError:
+    return ApiError("not_found")
 
 
 def _published(con: sqlite3.Connection, segment_id: int) -> sqlite3.Row:

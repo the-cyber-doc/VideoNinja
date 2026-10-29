@@ -4,10 +4,11 @@ from datetime import tzinfo
 from zoneinfo import ZoneInfo
 
 from cryptography.exceptions import InvalidTag
-from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from fastapi import APIRouter, Depends, Request, Response, status
 from pydantic import BaseModel
 
 from . import clock, crypto, db, i18n, queries, security, throttle
+from .errors import ApiError
 from .validation import field
 
 log = logging.getLogger("uvicorn.error")
@@ -42,7 +43,7 @@ def current_user(
     """Dependency for every protected endpoint: 401 unless a valid session cookie is sent."""
     user = security.session_user(con, token, zone) if token else None
     if user is None:
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Not logged in")
+        raise ApiError("auth.not_logged_in")
     return user
 
 
@@ -60,7 +61,7 @@ def require_access(*accesses: str):
     def check(user: sqlite3.Row = Depends(current_user)) -> sqlite3.Row:
         if not set(accesses) & security.accesses(user):
             log.warning("Denied: user id %s lacks access %s", user["id"], " or ".join(map(repr, accesses)))
-            raise HTTPException(status.HTTP_403_FORBIDDEN, "Access denied")
+            raise ApiError("auth.access_denied")
         return user
 
     return check
@@ -102,7 +103,7 @@ def login(
     totp_ok = _totp_ok(user, body.totp_code)
     # One error for every failure: don't reveal which part was wrong.
     if not (password_ok and totp_ok):
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid username, password or code")
+        raise ApiError("auth.invalid_credentials")
 
     security.purge_expired_sessions(con)
     token = security.create_session(con, user, zone)
