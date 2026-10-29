@@ -7,10 +7,12 @@
 	// when the pointer leaves, the video shows the marker's frame again.
 	import IconButton from '../IconButton.svelte';
 	import { t } from '../i18n.svelte';
-	import { FRAME_SAMPLES, frameDuration, frameStep, type FrameSample } from '../frames';
+	import { frameStep } from '../frames';
 	import { formatTime } from '../time';
 	import type { Annotation } from './draft.svelte';
+	import { addSegment, beginHere, endHere, keyAction, moveSegment, type KeyAction } from './marking';
 	import Timeline from './Timeline.svelte';
+	import { makeStrip, measureFrame } from './video';
 
 	let {
 		src,
@@ -33,7 +35,6 @@
 	let marker = $state<number | null>(null);
 	let frame = $state(1 / 30); // seconds per frame, measured once the video is loaded
 	let strip = $state<string[]>([]);
-	const STRIP_IMAGES = 24;
 
 	const clamp = (time: number) => Math.min(Math.max(time, 0), duration);
 
@@ -98,130 +99,38 @@
 
 	const toggle = () => (video?.paused ? video.play() : video?.pause());
 
-	function nextKey() {
-		return Math.max(0, ...draft.segments.map((s) => s.key)) + 1;
-	}
-
+	// The rules (marking.ts) on this editor's state: the selected segment, the begin marker.
 	function create(begin: number, end: number) {
-		// The new segment starts with the previous one's place in the catalogue (all but the technique) and performer.
-		const last = draft.segments.at(-1);
-		const key = nextKey();
-		draft.segments.push({
-			key,
-			begin,
-			end,
-			school: last?.school ?? '',
-			category: last?.category ?? '',
-			weapon: last?.weapon ?? '',
-			section: last?.section ?? '',
-			technique: '',
-			performer: last?.performer ?? '',
-			tags: []
-		});
-		selected = key;
+		selected = addSegment(draft, begin, end);
 		marker = null;
 	}
 
-	function change(key: number, begin: number, end: number) {
-		const segment = draft.segments.find((s) => s.key === key);
-		if (segment) Object.assign(segment, { begin: clamp(begin), end: clamp(end) });
+	const change = (key: number, begin: number, end: number) => moveSegment(draft, key, begin, end, duration);
+
+	function mark(rule: typeof beginHere) {
+		({ selected, marker } = rule(draft, { selected, marker }, current));
 	}
 
-	/** I: the selected segment's begin, else the marker of a new segment. */
-	function beginHere() {
-		const segment = draft.segments.find((s) => s.key === selected);
-		if (segment && current < segment.end) segment.begin = current;
-		else marker = current;
-	}
-
-	/** O: ends the segment started by the marker, else the selected segment's end. */
-	function endHere() {
-		if (marker !== null && current > marker) return create(marker, current);
-		const segment = draft.segments.find((s) => s.key === selected);
-		if (segment && current > segment.begin) segment.end = current;
-	}
+	const ACTIONS: Record<KeyAction, () => void> = {
+		toggle,
+		back: () => step(-1),
+		forward: () => step(1),
+		begin: () => mark(beginHere),
+		end: () => mark(endHere),
+		clear: () => {
+			selected = null;
+			marker = null;
+		}
+	};
 
 	function onkeydown(e: KeyboardEvent) {
-		const target = e.target as HTMLElement;
-		if (!playable || target.closest('input, select, textarea, button') || e.ctrlKey || e.metaKey || e.altKey) {
-			return;
-		}
-		const actions: Record<string, () => void> = {
-			' ': toggle,
-			ArrowLeft: () => step(-1),
-			ArrowRight: () => step(1),
-			i: beginHere,
-			o: endHere,
-			Escape: () => {
-				selected = null;
-				marker = null;
-			}
-		};
-		const action = actions[e.key.length === 1 ? e.key.toLowerCase() : e.key];
+		if (!playable) return;
+		const inControl = !!(e.target as HTMLElement).closest('input, select, textarea, button');
+		const action = keyAction(e.key, e, inControl);
 		if (action) {
 			e.preventDefault();
-			action();
+			ACTIONS[action]();
 		}
-	}
-
-	/** Frame duration from consecutive frames, played for a moment by a hidden,
-	 * muted video: the visible one (and its seek marker) is never disturbed. In the
-	 * page, invisible: WebKit only reports the frames of a video it renders. */
-	async function measureFrame(url: string): Promise<number> {
-		const v = document.createElement('video');
-		if (!('requestVideoFrameCallback' in v)) return frame;
-		v.muted = true;
-		v.playsInline = true;
-		v.preload = 'auto';
-		v.setAttribute('aria-hidden', 'true');
-		v.style.cssText = 'position:fixed;left:0;top:0;width:2px;height:2px;opacity:0;pointer-events:none';
-		document.body.append(v);
-		v.src = url;
-		const samples: FrameSample[] = [];
-		const measured = await new Promise<number>((resolve) => {
-			const timer = setTimeout(() => resolve(frame), 2000);
-			const onFrame = (_: number, meta: VideoFrameCallbackMetadata) => {
-				samples.push(meta);
-				if (samples.length < FRAME_SAMPLES) return v.requestVideoFrameCallback(onFrame);
-				clearTimeout(timer);
-				resolve(frameDuration(samples) ?? frame);
-			};
-			v.requestVideoFrameCallback(onFrame);
-			v.play().catch(() => resolve(frame));
-		});
-		v.pause();
-		v.removeAttribute('src');
-		v.load();
-		v.remove();
-		return measured;
-	}
-
-	/** Film strip: frames grabbed by a second, hidden video element. Stops at an
-	 * error (e.g. the server's limit of parallel requests for one video: 429). */
-	async function makeStrip(url: string, total: number) {
-		const probe = document.createElement('video');
-		probe.muted = true;
-		probe.preload = 'auto';
-		probe.src = url;
-		const next = (event: string) =>
-			new Promise<boolean>((resolve) => {
-				probe.addEventListener(event, () => resolve(true), { once: true });
-				probe.addEventListener('error', () => resolve(false), { once: true });
-			});
-		if (!(await next('loadeddata'))) return;
-		const canvas = document.createElement('canvas');
-		canvas.height = 54;
-		canvas.width = Math.max(1, Math.round((54 * probe.videoWidth) / (probe.videoHeight || 1)));
-		const images: string[] = [];
-		for (let i = 0; i < STRIP_IMAGES && url === src; i++) {
-			probe.currentTime = ((i + 0.5) * total) / STRIP_IMAGES;
-			if (!(await next('seeked'))) break;
-			canvas.getContext('2d')!.drawImage(probe, 0, 0, canvas.width, canvas.height);
-			images.push(canvas.toDataURL('image/jpeg', 0.6));
-			strip = [...images];
-		}
-		probe.removeAttribute('src');
-		probe.load();
 	}
 
 	async function loaded() {
@@ -229,8 +138,9 @@
 		duration = video.duration;
 		playable = video.videoWidth > 0;
 		if (!playable) return;
-		frame = await measureFrame(src);
-		makeStrip(src, duration);
+		const url = src;
+		frame = await measureFrame(url, frame);
+		makeStrip(url, duration, (images) => (strip = images), () => url === src);
 	}
 </script>
 
@@ -276,8 +186,8 @@
 			<span class="time">{formatTime(Math.floor(current))} / {formatTime(Math.floor(duration))}</span>
 			<!-- Together: they wrap as a pair, side by side or one above the other. -->
 			<span class="mark-buttons">
-				<button type="button" class="secondary" onclick={beginHere}>{t('upload.begin_here')}</button>
-				<button type="button" class="secondary" onclick={endHere}>{t('upload.end_here')}</button>
+				<button type="button" class="secondary" onclick={() => mark(beginHere)}>{t('upload.begin_here')}</button>
+				<button type="button" class="secondary" onclick={() => mark(endHere)}>{t('upload.end_here')}</button>
 			</span>
 		</div>
 		<p class="hint">{t('upload.timeline_hint')}</p>
