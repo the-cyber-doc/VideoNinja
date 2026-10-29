@@ -162,9 +162,9 @@ test('user list: status icons and actions', async ({ page }) => {
 
 test('registration with an invalid link explains what to do', async ({ page }) => {
 	await page.route('/api/register/verify', (r) =>
-		r.fulfill({ status: 404, json: { detail: 'Invalid or expired invitation' } })
+		r.fulfill({ status: 404, json: { code: 'invite.invalid', detail: 'Invalid or expired invitation', params: {} } })
 	);
 	await page.goto('/register#made-up');
-	await expect(page.getByRole('alert')).toHaveText('Invalid or expired invitation');
+	await expect(page.getByRole('alert')).toHaveText('This invitation link is invalid or has expired.');
 	await expect(page.getByText('Ask an administrator for a new invitation link.')).toBeVisible();
 });

@@ -394,8 +394,12 @@ the encoder waits for the version; `/health` fails on a mismatch.
   status + English `detail`), answered `{"code", "detail", "params"}` (also validation
   `validation.<kind>`, routing, 500 `internal`, tusd hook bodies, nginx 429 `rate_limited`). Each
   code needs `error.<code>` in messages.json (en + fr; `tests/test_errors.py`: also every code raised
-  in `app/` is in the table, no bare `HTTPException`). `detail` is never for users: the frontend shows
-  `error.<code>` (until PR 2b, `$lib/api.ts` still shows `detail`).
+  in `app/` is in the table, no bare `HTTPException`). `detail` is never for users. Setup stream:
+  `{"error": {code, detail, params}}`. Frontend: `$lib/api.ts` `ApiError(status, code, params)`,
+  `message` = `t('error.<code>')` (`errorText`; unknown code → `error.http_error` {status}; no JSON →
+  code from the status, `BY_STATUS`; fetch failure → `network`); pages show `e.message`. tus:
+  `uploadError` (`$lib/upload/upload.ts`). Tests: `src/lib/api.test.ts`, mocked specs send coded bodies.
+  Not yet coded: the encoder's `video.error` (English, shown in My uploads).
 - Translate everything, in every supported language (`en`, `fr`), as part of the
   change that adds it, never as a follow-up:
   - Frontend: no hard-coded user-visible text. Every string (labels, buttons,

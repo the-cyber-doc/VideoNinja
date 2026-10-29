@@ -9,6 +9,8 @@ export const LANGUAGES = { en: 'English', fr: 'Français' } as const;
 export type Lang = keyof typeof LANGUAGES;
 export type MessageKey = keyof typeof messages;
 
+export const isMessageKey = (key: string): key is MessageKey => Object.hasOwn(messages, key);
+
 const DEFAULT: Lang = 'en';
 const STORAGE_KEY = 'lang';
 

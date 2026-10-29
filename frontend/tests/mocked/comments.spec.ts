@@ -135,13 +135,13 @@ test('without the comment access: no add, edit or delete', async ({ page }) => {
 test('a failed save keeps the text and says why', async ({ page }) => {
 	await setup(page);
 	await page.route(`/api/techniques/${KOKU}/comments`, (r) =>
-		r.request().method() === 'POST' ? r.fulfill({ status: 403, json: { detail: 'Access denied' } }) : r.fallback()
+		r.request().method() === 'POST' ? r.fulfill({ status: 403, json: { code: 'auth.access_denied', detail: 'Access denied', params: {} } }) : r.fallback()
 	);
 	await page.goto(PAGE);
 	await page.getByRole('button', { name: 'Add a comment' }).click();
 	await page.getByPlaceholder('Your comment').fill('Lost?');
 	await page.getByRole('button', { name: 'Save' }).click();
-	await expect(page.getByRole('alert')).toHaveText('Access denied');
+	await expect(page.getByRole('alert')).toHaveText('You do not have access to this.');
 	await expect(page.getByPlaceholder('Your comment')).toHaveValue('Lost?');
 });
 

@@ -10,7 +10,7 @@ from fastapi import APIRouter, Depends, Request, status
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
-from . import db, encoder, security, snapshot, throttle, tusd
+from . import db, encoder, errors, security, snapshot, throttle, tusd
 from .errors import ApiError
 from .validation import field
 
@@ -78,11 +78,11 @@ def complete(body: CompleteIn, request: Request) -> StreamingResponse:
 
     def progress() -> Iterator[str]:
         if not _setup_lock.acquire(blocking=False):
-            yield json.dumps({"error": "Setup already running"}) + "\n"
+            yield json.dumps({"error": errors.body("setup.running")}) + "\n"
             return
         try:
             if db.is_initialized():
-                yield json.dumps({"error": "Already initialized"}) + "\n"
+                yield json.dumps({"error": errors.body("setup.done")}) + "\n"
                 return
             for step in db.create_database(
                 body.username, body.name or body.username, pw_hash, body.totp_secret
@@ -95,7 +95,7 @@ def complete(body: CompleteIn, request: Request) -> StreamingResponse:
             encoder.start()
         except Exception:
             log.exception("Setup failed")
-            yield json.dumps({"error": "Setup failed, see server logs"}) + "\n"
+            yield json.dumps({"error": errors.body("setup.failed")}) + "\n"
         finally:
             _setup_lock.release()
 

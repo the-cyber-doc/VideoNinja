@@ -691,7 +691,16 @@ with their HTTP status and English text, are in one table, `ERRORS` in
 `HTTPException`. A new code needs its `error.<code>` message in every language;
 `server/tests/test_errors.py` fails otherwise (and on a code missing from the
 table). Request validation answers `validation.<kind>` (`VALIDATION` in the same
-file), with the field's name in `params.field`.
+file), with the field's name in `params.field`. The setup's progress stream, whose
+status is sent before it fails, carries the same object in `{"error": …}`.
+
+In the frontend, `frontend/src/lib/api.ts` turns every failed call into an
+`ApiError` (`status`, `code`, `params`) whose `message` is already the
+translated text: pages show `e.message`, never the server's `detail`. A code the
+frontend does not know (a newer server than an installed app) and an answer
+without the JSON (an nginx page, a proxy's 502) fall back to a message from the
+HTTP status; no answer at all is `network`. tus uploads go through the same
+mapping (`uploadError` in `$lib/upload/upload.ts`).
 
 ### Releasing
 

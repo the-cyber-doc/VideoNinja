@@ -8,7 +8,7 @@ test.beforeEach(async ({ page }) => {
 });
 
 test('not logged in: redirects to login', async ({ page }) => {
-	await page.route('/api/auth/me', (r) => r.fulfill({ status: 401, json: { detail: 'Not logged in' } }));
+	await page.route('/api/auth/me', (r) => r.fulfill({ status: 401, json: { code: 'auth.not_logged_in', detail: 'Not logged in', params: {} } }));
 	await page.goto('/profile');
 	await expect(page).toHaveURL('/login');
 });

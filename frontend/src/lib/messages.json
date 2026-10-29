@@ -42,19 +42,35 @@
 	},
 	"error.setup.required": {
 		"en": "The server is not set up yet.",
-		"fr": "Le serveur n'est pas encore configuré."
+		"fr": "Le serveur n'est pas encore installé."
 	},
 	"error.setup.invalid_token": {
 		"en": "Wrong setup token: copy it again from the server's logs.",
-		"fr": "Jeton de configuration incorrect : copiez-le à nouveau depuis les journaux du serveur."
+		"fr": "Jeton d'installation incorrect : copiez-le à nouveau depuis les journaux du serveur."
+	},
+	"error.setup.running": {
+		"en": "The setup is already running in another window.",
+		"fr": "L'installation est déjà en cours dans une autre fenêtre."
+	},
+	"error.setup.done": {
+		"en": "Video Ninja is already set up: log in.",
+		"fr": "Video Ninja est déjà installé : connectez-vous."
+	},
+	"error.setup.failed": {
+		"en": "The setup failed, see the server logs.",
+		"fr": "L'installation a échoué, consultez les journaux du serveur."
+	},
+	"error.network": {
+		"en": "Cannot reach the server. Check your connection and try again.",
+		"fr": "Impossible de joindre le serveur. Vérifiez votre connexion et réessayez."
 	},
 	"error.totp.invalid_code": {
 		"en": "Wrong code. Check the code in your authenticator app and your device's time.",
 		"fr": "Code incorrect. Vérifiez le code de votre application d'authentification et l'heure de votre appareil."
 	},
 	"error.invite.invalid": {
-		"en": "This invitation link is invalid or has expired. Ask an administrator for a new one.",
-		"fr": "Ce lien d'invitation est invalide ou a expiré. Demandez-en un nouveau à un administrateur."
+		"en": "This invitation link is invalid or has expired.",
+		"fr": "Ce lien d'invitation est invalide ou a expiré."
 	},
 	"error.profile.wrong_password": {
 		"en": "Wrong current password.",
@@ -602,7 +618,7 @@
 		"fr": "Le serveur d'envoi est injoignable : nouvelle tentative…"
 	},
 	"upload.failed": {
-		"en": "The upload failed: {error}. Proceed again to continue where it stopped.",
-		"fr": "L'envoi a échoué : {error}. Relancez pour continuer là où il s'est arrêté."
+		"en": "The upload failed. {error} Proceed again to continue where it stopped.",
+		"fr": "L'envoi a échoué. {error} Relancez pour continuer là où il s'est arrêté."
 	}
 }
