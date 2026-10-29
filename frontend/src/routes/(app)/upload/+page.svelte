@@ -190,8 +190,7 @@
 			},
 			onError: (e) => {
 				// The server forgot this upload (expired, deleted): start over next time.
-				const status = (e as { originalResponse?: { getStatus(): number } }).originalResponse?.getStatus();
-				if (status === 404 || status === 410) current.uploadUrl = undefined;
+				if (e.status === 404 || e.status === 410) current.uploadUrl = undefined;
 				error = t('upload.failed', { error: e.message });
 				retrying = false;
 				step = 'edit';

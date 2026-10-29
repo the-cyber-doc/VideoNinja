@@ -85,7 +85,7 @@ test('media requests reach the backend (as nginx does in production)', async ({ 
 	// Not logged in: the app's 401 (JSON), not a 404 page from the frontend server.
 	const res = await request.get('media/segment/1/thumbnail');
 	expect(res.status()).toBe(401);
-	expect(await res.json()).toEqual({ detail: 'Not logged in' });
+	expect(await res.json()).toEqual({ code: 'auth.not_logged_in', detail: 'Not logged in', params: {} });
 });
 
 test('wrong password is refused', async ({ page }) => {
@@ -114,7 +114,7 @@ test('user menu: Profile first, User Management for admins, About, Log out last'
 test('About: the version of the database the server runs on', async ({ page }) => {
 	await logIn(page);
 	await (await openMenu(page)).getByRole('menuitem', { name: 'About' }).click();
-	await expect(page.getByText('Database version 2', { exact: true })).toBeVisible(); // db.EXPECTED_VERSION
+	await expect(page.getByText('Database version 3', { exact: true })).toBeVisible(); // db.EXPECTED_VERSION
 	await expect(page.getByText('this release ships')).toHaveCount(0);
 });
 
@@ -140,7 +140,7 @@ test('profile: change the password', async ({ page }) => {
 	await section.getByLabel(/^New password/).fill(newPassword);
 	await section.getByLabel('Confirm new password').fill(newPassword);
 	await section.getByRole('button', { name: 'Change password' }).click();
-	await expect(section.getByRole('alert')).toHaveText('Wrong current password');
+	await expect(section.getByRole('alert')).toHaveText('Wrong current password.');
 
 	await section.getByLabel('Current password').fill(admin.password);
 	await section.getByRole('button', { name: 'Change password' }).click();
@@ -211,7 +211,7 @@ test('the invitation link opens the registration wizard', async ({ page }) => {
 	// Single use (opened afresh, as from an e-mail).
 	await page.goto('about:blank');
 	await page.goto(inviteLink);
-	await expect(page.getByRole('alert')).toHaveText('Invalid or expired invitation');
+	await expect(page.getByRole('alert')).toHaveText('This invitation link is invalid or has expired.');
 });
 
 test('a user without user management access sees no menu entry and gets 403', async ({ page }) => {

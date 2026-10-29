@@ -328,6 +328,23 @@ test('upload server unreachable: the user sees it is retrying', async ({ page })
 	await expect(page.getByText('The upload server cannot be reached: retrying…')).toBeVisible();
 });
 
+test("upload refused by the server's hook: its reason, translated", async ({ page }) => {
+	await setup(page);
+	await page.route('/files/**', (r) =>
+		r.fulfill({
+			status: 413,
+			json: { code: 'upload.too_large', detail: 'File too large', params: {} },
+			headers: { 'Tus-Resumable': '1.0.0' }
+		})
+	);
+	await openClip(page);
+	await page.getByLabel('Define segments later').check();
+	await proceed(page).click();
+	await expect(page.getByRole('alert')).toHaveText(
+		'The upload failed. This file is too large. Proceed again to continue where it stopped.'
+	);
+});
+
 test('leaving keeps the work: picking the same file resumes it', async ({ page }) => {
 	await setup(page);
 	await openClip(page);

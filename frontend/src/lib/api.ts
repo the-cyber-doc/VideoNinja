@@ -1,12 +1,19 @@
-import { i18n, t } from './i18n.svelte';
+import { i18n, isMessageKey, t } from './i18n.svelte';
 import { url } from './base';
 
+type Params = Record<string, string | number>;
+
+/** A failed API call. The server answers every error as {code, detail, params}
+ * (server/app/errors.py); `message` is the code's text in the user's language
+ * (messages.json: error.<code>, `params` as its placeholders), never the server's
+ * English `detail`. status 0: no answer at all (code 'network'). */
 export class ApiError extends Error {
 	constructor(
 		public status: number,
-		message: string
+		public code: string,
+		public params: Params = {}
 	) {
-		super(message);
+		super(errorText(code, params, status));
 	}
 }
 
@@ -20,30 +27,42 @@ export interface User {
 	access: string[];
 }
 
-async function errorMessage(res: Response): Promise<string> {
-	// Too many failed credentials from this address (login, profile, setup,
-	// registration): the server's wait, in the user's language.
-	if (res.status === 429) {
-		// nginx's rate limit (limit_req) says "Too many requests": a moment, not minutes.
-		const limited = await res
-			.clone()
-			.json()
-			.then((body) => body.detail === 'Too many requests', () => false);
-		if (limited) return t('error.rate_limited');
-		const minutes = Math.max(1, Math.ceil(Number(res.headers.get('Retry-After') ?? 60) / 60));
-		return t('error.throttled', { minutes });
-	}
-	// Every password check busy (a burst of logins): try again in a moment.
-	if (res.status === 503 && res.headers.has('Retry-After')) return t('error.busy');
-	try {
-		const detail = (await res.json()).detail;
-		if (typeof detail === 'string') return detail;
-		// FastAPI validation errors: [{msg, loc, ...}]
-		if (Array.isArray(detail)) return detail.map((e) => e.msg).join(', ');
-	} catch {
-		// not JSON
-	}
-	return `HTTP ${res.status}`;
+/** The text of an error code in the current language. A code this version does not
+ * know (a newer server than this cached app) falls back to the HTTP status. */
+export function errorText(code: string, params: Params = {}, status = 0): string {
+	const key = `error.${code}`;
+	if (isMessageKey(key)) return t(key, params);
+	return status ? t('error.http_error', { status }) : t('error.internal');
+}
+
+// An answer without the JSON (not from the app: nginx's own pages, e.g. a refused
+// auth_request or a body over its size limit): its status says enough.
+const BY_STATUS: Record<number, string> = {
+	401: 'auth.not_logged_in',
+	403: 'auth.access_denied',
+	404: 'not_found',
+	413: 'upload.too_large',
+	429: 'rate_limited',
+	503: 'busy'
+};
+
+interface ErrorBody {
+	code: string;
+	params?: Params;
+}
+
+const isErrorBody = (body: unknown): body is ErrorBody =>
+	typeof body === 'object' && body !== null && typeof (body as ErrorBody).code === 'string';
+
+/** The error of an answer with this status and (parsed JSON) body, if any. */
+export function errorFromBody(status: number, body: unknown): ApiError {
+	if (isErrorBody(body)) return new ApiError(status, body.code, body.params ?? {});
+	return new ApiError(status, BY_STATUS[status] ?? 'http_error', { status });
+}
+
+async function responseError(res: Response): Promise<ApiError> {
+	const body = await res.json().catch(() => null);
+	return errorFromBody(res.status, body);
 }
 
 /** Sent on every API call. */
@@ -60,16 +79,21 @@ export function apiHeaders(): Record<string, string> {
 type Method = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
 
 async function request(path: string, body?: unknown, method?: Method): Promise<Response> {
-	const res = await fetch(url(path), {
-		method: method ?? (body === undefined ? 'GET' : 'POST'),
-		headers: {
-			...apiHeaders(),
-			...(body === undefined ? {} : { 'Content-Type': 'application/json' })
-		},
-		body: body === undefined ? undefined : JSON.stringify(body),
-		credentials: 'same-origin'
-	});
-	if (!res.ok) throw new ApiError(res.status, await errorMessage(res));
+	let res: Response;
+	try {
+		res = await fetch(url(path), {
+			method: method ?? (body === undefined ? 'GET' : 'POST'),
+			headers: {
+				...apiHeaders(),
+				...(body === undefined ? {} : { 'Content-Type': 'application/json' })
+			},
+			body: body === undefined ? undefined : JSON.stringify(body),
+			credentials: 'same-origin'
+		});
+	} catch {
+		throw new ApiError(0, 'network'); // offline, server down, connection cut
+	}
+	if (!res.ok) throw await responseError(res);
 	return res;
 }
 

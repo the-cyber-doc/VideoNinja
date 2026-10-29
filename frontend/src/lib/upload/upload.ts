@@ -2,6 +2,7 @@
 // 50 MB chunks. The upload URL is kept in the draft: after leaving the page,
 // picking the same file again continues where it stopped.
 import { Upload } from 'tus-js-client';
+import { ApiError, errorFromBody } from '../api';
 import { url } from '../base';
 
 export const CHUNK_SIZE = 50 * 1024 * 1024; // nginx: client_max_body_size 64m on /files/
@@ -14,7 +15,27 @@ export interface UploadCallbacks {
 	onSuccess: (tusId: string) => void;
 	/** A request failed and is retried (connection lost, server down): tell the user. */
 	onRetry: () => void;
-	onError: (error: Error) => void;
+	/** Given up: the server's error (its code translated), or 'network' without an answer. */
+	onError: (error: ApiError) => void;
+}
+
+interface TusResponse {
+	getStatus(): number;
+	getBody(): string;
+}
+
+/** tus-js-client's error as the API's: the answer's JSON (from the app's hooks:
+ * {code, detail, params}) or its status (nginx's own pages), else no answer. */
+export function uploadError(e: Error): ApiError {
+	const response = (e as { originalResponse?: TusResponse | null }).originalResponse;
+	if (!response) return new ApiError(0, 'network');
+	let body: unknown = null;
+	try {
+		body = JSON.parse(response.getBody());
+	} catch {
+		// not JSON: the status alone
+	}
+	return errorFromBody(response.getStatus(), body);
 }
 
 export function startUpload(
@@ -41,7 +62,7 @@ export function startUpload(
 			return retry;
 		},
 		onSuccess: () => callbacks.onSuccess(new URL(upload.url!, location.href).pathname.split('/').pop()!),
-		onError: (e) => callbacks.onError(e)
+		onError: (e) => callbacks.onError(uploadError(e))
 	});
 	upload.start();
 	return upload;

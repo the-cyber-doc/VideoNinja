@@ -39,6 +39,10 @@ ERRORS: dict[str, tuple[int, str]] = {
     # Setup, registration, profile
     "setup.required": (503, "Setup required"),
     "setup.invalid_token": (403, "Invalid setup token"),
+    # In the setup's progress stream (200 already sent): {"error": {code, detail, params}}
+    "setup.running": (409, "Setup already running"),
+    "setup.done": (409, "Already initialized"),
+    "setup.failed": (500, "Setup failed, see server logs"),
     "totp.invalid_code": (400, "Invalid TOTP code"),
     "invite.invalid": (404, "Invalid or expired invitation"),
     "profile.wrong_password": (403, "Wrong current password"),

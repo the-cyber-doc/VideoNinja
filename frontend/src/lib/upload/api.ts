@@ -1,7 +1,6 @@
 // Upload API (app side). The file itself goes to tusd (upload.ts); the app only
 // gets metadata and reports the queue status. Needs the "upload" access.
-import { api, apiHeaders } from '../api';
-import { url } from '../base';
+import { api } from '../api';
 
 export interface Performer {
 	id: string;
@@ -86,11 +85,4 @@ export const submit = (tusId: string, body: Submit) =>
 export const myUploads = () => api<UploadStatus[]>('/api/uploads/mine');
 export const retry = (id: number) => api<void>(`/api/videos/${id}/retry`, {});
 
-export async function remove(id: number) {
-	const res = await fetch(url(`/api/videos/${id}`), {
-		method: 'DELETE',
-		headers: apiHeaders(),
-		credentials: 'same-origin'
-	});
-	if (!res.ok) throw new Error(`HTTP ${res.status}`);
-}
+export const remove = (id: number) => api<void>(`/api/videos/${id}`, undefined, 'DELETE');

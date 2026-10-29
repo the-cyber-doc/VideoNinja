@@ -30,21 +30,35 @@ test('fields follow the shared length rules', async ({ page }) => {
 	);
 });
 
-test('a refused login shows the server message and clears the code', async ({ page }) => {
+test('a refused login says why, in the user\'s language, and clears the code', async ({ page }) => {
 	await page.route('/api/auth/login', (r) =>
-		r.fulfill({ status: 401, json: { detail: 'Invalid credentials' } })
+		r.fulfill({
+			status: 401,
+			json: { code: 'auth.invalid_credentials', detail: 'Invalid username, password or code', params: {} }
+		})
 	);
 	await page.getByLabel('Username').fill('admin');
 	await page.getByLabel('Password').fill('x'.repeat(rules.password.min_length));
 	await page.getByLabel('Authenticator code').fill('123456');
 	await page.getByRole('button', { name: 'Log in' }).click();
-	await expect(page.getByRole('alert')).toHaveText('Invalid credentials');
+	await expect(page.getByRole('alert')).toHaveText('Wrong username, password or code.');
 	await expect(page.getByLabel('Authenticator code')).toHaveValue('');
+	await page.evaluate(() => localStorage.setItem('lang', 'fr'));
+	await page.reload();
+	await page.getByLabel("Nom d'utilisateur").fill('admin');
+	await page.getByLabel('Mot de passe').fill('x'.repeat(rules.password.min_length));
+	await page.getByLabel(/Code/).fill('123456');
+	await page.getByRole('button', { name: 'Se connecter' }).click();
+	await expect(page.getByRole('alert')).toHaveText("Nom d'utilisateur, mot de passe ou code incorrect.");
 });
 
 test('too many failed attempts (429): the wait, in the user\'s language', async ({ page }) => {
 	await page.route('/api/auth/login', (r) =>
-		r.fulfill({ status: 429, json: { detail: 'Too many failed attempts' }, headers: { 'Retry-After': '601' } })
+		r.fulfill({
+			status: 429,
+			json: { code: 'throttled', detail: 'Too many failed attempts, try again in 11 min', params: { minutes: 11 } },
+			headers: { 'Retry-After': '601' }
+		})
 	);
 	const logIn = async (button: string) => {
 		await page.getByLabel(/Username|Nom d'utilisateur/).fill('admin');
@@ -61,11 +75,17 @@ test('too many failed attempts (429): the wait, in the user\'s language', async 
 });
 
 for (const [name, status, body, en, fr] of [
-	['nginx rate limit (429 "Too many requests")', 429, { detail: 'Too many requests' }, 'Too many requests at once. Try again in a moment.', 'Trop de requêtes à la fois. Réessayez dans un instant.'],
-	['every password check busy (503 + Retry-After)', 503, { detail: 'The server is busy, try again in a moment' }, 'The server is busy. Try again in a moment.', 'Le serveur est occupé. Réessayez dans un instant.']
+	['nginx rate limit (429 "rate_limited")', 429, { code: 'rate_limited', detail: 'Too many requests', params: {} }, 'Too many requests at once. Try again in a moment.', 'Trop de requêtes à la fois. Réessayez dans un instant.'],
+	['every password check busy (503 "busy")', 503, { code: 'busy', detail: 'The server is busy, try again in a moment', params: {} }, 'The server is busy. Try again in a moment.', 'Le serveur est occupé. Réessayez dans un instant.'],
+	['an error this version does not know (a newer server)', 409, { code: 'auth.something_new', detail: 'New', params: {} }, 'The server refused the request (HTTP 409).', 'Le serveur a refusé la requête (HTTP 409).'],
+	['an answer without JSON (a proxy\'s page)', 502, '<html>Bad Gateway</html>', 'The server refused the request (HTTP 502).', 'Le serveur a refusé la requête (HTTP 502).']
 ] as const) {
 	test(`${name}: said in the user's language`, async ({ page }) => {
-		await page.route('/api/auth/login', (r) => r.fulfill({ status, json: body, headers: { 'Retry-After': '5' } }));
+		await page.route('/api/auth/login', (r) =>
+			typeof body === 'string'
+				? r.fulfill({ status, body, contentType: 'text/html' })
+				: r.fulfill({ status, json: body, headers: { 'Retry-After': '5' } })
+		);
 		const logIn = async (button: string) => {
 			await page.getByLabel(/Username|Nom d'utilisateur/).fill('admin');
 			await page.getByLabel(/Password|Mot de passe/).fill('x'.repeat(rules.password.min_length));

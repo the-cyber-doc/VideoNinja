@@ -5,7 +5,7 @@
 	// - /register (invitation): the invitation token from the link, the username
 	//   chosen by the admin.
 	import { goto } from '$app/navigation';
-	import { api, isInitialized, ndjson } from '#lib/api.js';
+	import { api, errorFromBody, isInitialized, ndjson } from '#lib/api.js';
 	import { url } from '#lib/base.js';
 	import { t, type MessageKey } from '#lib/i18n.svelte.js';
 	import { onTotpInput, rules } from '#lib/validation.js';
@@ -101,7 +101,8 @@
 				return;
 			}
 			// Validation errors (e.g. a wrong code) throw here, before anything is created.
-			const events = ndjson<{ step?: string; error?: string }>('/api/setup/complete', {
+			// A failure after the answer started (status 200 sent): {error: {code, detail, params}}.
+			const events = ndjson<{ step?: string; error?: unknown }>('/api/setup/complete', {
 				token: token.trim(),
 				username,
 				...credentials
@@ -109,7 +110,7 @@
 			const first = await events.next();
 			step = 3;
 			for (let r = first; !r.done; r = await events.next()) {
-				if (r.value.error) throw new Error(r.value.error);
+				if (r.value.error) throw errorFromBody(0, r.value.error);
 				if (r.value.step) completed = [...completed, r.value.step];
 			}
 			password = password2 = '';
