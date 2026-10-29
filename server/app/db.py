@@ -79,6 +79,18 @@ def read(con: sqlite3.Connection) -> Iterator[sqlite3.Connection]:
             con.execute("ROLLBACK")  # nothing to commit
 
 
+@contextmanager
+def transaction() -> Iterator[sqlite3.Connection]:
+    """A connection of its own (not a request: the encoder), in one write transaction,
+    then closed."""
+    con = connect()
+    try:
+        with write(con):
+            yield con
+    finally:
+        con.close()
+
+
 def get_db() -> Iterator[sqlite3.Connection]:
     """FastAPI dependency: one connection per request."""
     if not is_initialized():

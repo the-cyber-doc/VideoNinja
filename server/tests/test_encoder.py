@@ -11,12 +11,15 @@ import subprocess
 import sys
 import threading
 import time
+import urllib.request
 from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
 
-from app import db, encoder, settings
+from app import db, limits, procs, settings, snapshot
+from app.encoder import checks, notify, thumbnails
+from app.encoder import queue as encoding  # "queue" is this file's helper
 from app.main import app
 
 from .test_upload import admin, hook, session, submit, uploaded  # noqa: F401 (fixture)
@@ -32,7 +35,7 @@ def enc(client, tmp_path, monkeypatch):
     monkeypatch.setenv("VIDEONINJA_UPLOAD_DIR", str(tmp_path / "uploads"))
     monkeypatch.setenv("VIDEONINJA_MEDIA_DIR", str(tmp_path / "media"))
     monkeypatch.setenv("VIDEONINJA_X265_PRESET", "ultrafast")
-    e = encoder.Encoder()
+    e = encoding.Encoder()
     e.uploads.mkdir(parents=True)
     e.work.mkdir(parents=True)
     return e
@@ -76,8 +79,8 @@ def test_encodes_and_publishes(admin, enc, interlaced):  # noqa: F811
     folder = enc.videos / sha[:2] / sha
     assert sorted(p.name for p in folder.iterdir()) == ["segment-1.jpg", "thumb.jpg", "video.mp4"]
     assert hashlib.sha256((folder / "video.mp4").read_bytes()).hexdigest() == sha
-    encoder.check_encoded(folder / "video.mp4")  # HEVC hvc1 + AAC
-    assert encoder.needs_encoding(folder / "video.mp4") is None  # uploaded again: not encoded twice
+    checks.check_encoded(folder / "video.mp4")  # HEVC hvc1 + AAC
+    assert checks.needs_encoding(folder / "video.mp4") is None  # uploaded again: not encoded twice
     assert not list(enc.work.iterdir())  # scratch cleaned
     enc.housekeeping()
     assert not list(enc.uploads.iterdir())  # original deleted once published
@@ -102,7 +105,7 @@ def failing_script(tmp_path) -> tuple[str, Path]:
 
 def queue_sample(admin, enc, sample: Path) -> int:  # noqa: F811
     """Like queue(), but the upload is a symlink to the sample (not copied)."""
-    tus_id = uploaded(admin, sha=encoder.file_sha256(sample), size=sample.stat().st_size)
+    tus_id = uploaded(admin, sha=checks.file_sha256(sample), size=sample.stat().st_size)
     (enc.uploads / tus_id).symlink_to(sample)
     (enc.uploads / f"{tus_id}.info").write_text(json.dumps({"Size": sample.stat().st_size, "Offset": 0}))
     segment = {"begin_s": 5, "end_s": 15, "technique": KOKU, "performer": "hatsumi", "tags": []}
@@ -124,8 +127,8 @@ def remuxed(tmp_path, *options, chapters=False) -> Path:
 
 @samples
 def test_detects_what_needs_encoding():
-    assert encoder.needs_encoding(READY) is None
-    assert encoder.needs_encoding(NOT_READY) == "not an MP4 file"
+    assert checks.needs_encoding(READY) is None
+    assert checks.needs_encoding(NOT_READY) == "not an MP4 file"
 
 
 @samples
@@ -141,7 +144,7 @@ def test_detects_what_needs_encoding():
      "audio is aac LC with 6 channels, not AAC mono or stereo"),
 ])
 def test_published_as_it_is_when_the_format_is_right(tmp_path, options, reason):
-    assert encoder.needs_encoding(remuxed(tmp_path, *options)) == reason
+    assert checks.needs_encoding(remuxed(tmp_path, *options)) == reason
 
 
 @samples
@@ -149,7 +152,7 @@ def test_chapters_are_ignored(tmp_path):
     with_chapters = remuxed(tmp_path, "-movflags", "+faststart", chapters=True)
     assert "Omote" in subprocess.run(["ffprobe", "-v", "error", "-show_chapters", str(with_chapters)],
                                      capture_output=True, text=True, check=True).stdout
-    assert encoder.needs_encoding(with_chapters) is None
+    assert checks.needs_encoding(with_chapters) is None
 
 
 @samples
@@ -164,10 +167,10 @@ def test_original_in_the_target_format_is_not_encoded(admin, enc, tmp_path):  # 
     # Its streams copied without the metadata: another file, so another hash.
     original_sha = sqlite3.connect(db.db_path()).execute(
         "SELECT original_sha256 FROM video WHERE id = ?", (video,)).fetchone()[0]
-    assert original_sha == encoder.file_sha256(READY) != sha
+    assert original_sha == checks.file_sha256(READY) != sha
     published = enc.videos / sha[:2] / sha / "video.mp4"
-    assert encoder.file_sha256(published) == sha
-    assert encoder.needs_encoding(published) is None
+    assert checks.file_sha256(published) == sha
+    assert checks.needs_encoding(published) is None
     assert "encoder" not in probe(published, "format_tags")  # READY's "Lavf…" is gone
 
 
@@ -192,13 +195,13 @@ def test_metadata_stripped_rotation_kept(tmp_path):
     assert all(text in before for text in ("46.2044", "Kata", "Kenji's phone", "Omote", "codec_type=data"))
 
     out = tmp_path / "out.mp4"
-    encoder.strip_metadata(phone, out)
+    checks.strip_metadata(phone, out)
     after = probe(out, "format_tags:stream_tags:stream=codec_type:stream_side_data=rotation")
     assert not any(text in after for text in ("46.2044", "Kata", "Kenji", "Omote", "data", "Lav"))
     assert [line.split("|")[1] for line in after.splitlines() if line.startswith("stream")] == [
         "codec_type=video", "codec_type=audio"]
     assert "rotation=90" in after  # side data, not metadata: the picture stays upright
-    assert encoder.needs_encoding(out) is None
+    assert checks.needs_encoding(out) is None
 
 
 def copying_script(tmp_path, result: Path) -> str:
@@ -226,7 +229,7 @@ def test_reupload_of_a_video_published_as_it_is(admin, enc, tmp_path):  # noqa: 
     enc.script, _ = failing_script(tmp_path)
     queue_sample(admin, enc, READY)
     assert enc.run_once() is True
-    refused_again(admin, encoder.file_sha256(READY), READY.stat().st_size)
+    refused_again(admin, checks.file_sha256(READY), READY.stat().st_size)
 
 
 @samples
@@ -234,30 +237,30 @@ def test_reupload_of_an_encoded_video(admin, enc, tmp_path):  # noqa: F811
     enc.script = copying_script(tmp_path, READY)  # its "encoding" of NOT_READY is READY
     video = queue_sample(admin, enc, NOT_READY)
     assert enc.run_once() is True
-    assert row(video)[2] == encoder.file_sha256(READY) != encoder.file_sha256(NOT_READY)
-    refused_again(admin, encoder.file_sha256(NOT_READY), NOT_READY.stat().st_size)  # the original
-    refused_again(admin, encoder.file_sha256(READY), READY.stat().st_size)  # the published file
+    assert row(video)[2] == checks.file_sha256(READY) != checks.file_sha256(NOT_READY)
+    refused_again(admin, checks.file_sha256(NOT_READY), NOT_READY.stat().st_size)  # the original
+    refused_again(admin, checks.file_sha256(READY), READY.stat().st_size)  # the published file
 
 
 def test_thumbnail_in_the_middle():
-    assert encoder.middle(0, 20.05, 20.05) == 10.025  # the video's
-    assert encoder.middle(5, 15, 20.05) == 10  # a segment's
-    assert encoder.middle(18, 21, 20.05) == 19.025  # a segment ending after the video (rounded up)
+    assert thumbnails.middle(0, 20.05, 20.05) == 10.025  # the video's
+    assert thumbnails.middle(5, 15, 20.05) == 10  # a segment's
+    assert thumbnails.middle(18, 21, 20.05) == 19.025  # a segment ending after the video (rounded up)
 
 
 @samples
 def test_thumbnails_taken_in_the_middle(admin, enc, tmp_path, monkeypatch):  # noqa: F811
     taken = {}
-    real = encoder.thumbnail
+    real = thumbnails.thumbnail
 
     def record(video, at_s, out):
         taken[out.name] = at_s
         real(video, at_s, out)
 
-    monkeypatch.setattr(encoder, "thumbnail", record)
+    monkeypatch.setattr(thumbnails, "thumbnail", record)
     queue_sample(admin, enc, READY)  # one segment, 5-15 s
     assert enc.run_once() is True
-    assert taken == {"thumb.jpg": encoder.probe_duration(READY) / 2, "segment-1.jpg": 10}
+    assert taken == {"thumb.jpg": checks.probe_duration(READY) / 2, "segment-1.jpg": 10}
 
 
 @samples
@@ -299,12 +302,12 @@ def test_not_a_video(admin, enc):  # noqa: F811
 def test_progress_parsing(tmp_path):
     f = tmp_path / "progress"
     f.write_text("out_time_us=1000000\nprogress=continue\nout_time_us=2500000\nprogress=continue\n")
-    assert encoder.out_time_s(f) == 2.5
-    assert encoder.out_time_s(tmp_path / "missing") == 0.0
+    assert checks.out_time_s(f) == 2.5
+    assert checks.out_time_s(tmp_path / "missing") == 0.0
 
 
 def test_rejects_path_in_upload_id(enc):
-    with pytest.raises(encoder.JobError):
+    with pytest.raises(checks.JobError):
         enc.upload_files("../etc")
 
 
@@ -397,7 +400,7 @@ def test_script_gets_the_formats_and_the_time_limit(enc, tmp_path, monkeypatch):
     monkeypatch.setenv("VIDEONINJA_FFPROBE_TIMEOUT_MIN", "10")
     enc.script, called = failing_script(tmp_path)
     (tmp_path / "work").mkdir()
-    with pytest.raises(encoder.JobError):
+    with pytest.raises(checks.JobError):
         enc.encode(1, tmp_path / "original", tmp_path / "work", 60.0)
     args = called.read_text().split()
     assert args[args.index("-W") + 1] == "mov,matroska" and args[args.index("-T") + 1] == "7200"
@@ -414,16 +417,16 @@ def test_encoding_stopped_after_the_time_limit(enc, tmp_path, monkeypatch):
     enc.progress = lambda video, percent: None
     monkeypatch.setenv("VIDEONINJA_FFMPEG_TIMEOUT_H", str(1 / 3600))  # 1 s
     (tmp_path / "work").mkdir()
-    with pytest.raises(encoder.JobError, match="stopped after") as error:
+    with pytest.raises(checks.JobError, match="stopped after") as error:
         enc.encode(1, tmp_path / "original", tmp_path / "work", 60.0)
     assert not error.value.retryable
     assert gone(int(pid_file.read_text()))  # the "ffmpeg" too
 
 
 def test_probe_time_limit(tmp_path, monkeypatch):
-    monkeypatch.setattr(encoder.procs, "run", lambda cmd: (_ for _ in ()).throw(encoder.procs.Timeout("x")))
-    with pytest.raises(encoder.JobError) as error:
-        encoder.probe_duration(tmp_path / "a.mp4")
+    monkeypatch.setattr(procs, "run", lambda cmd: (_ for _ in ()).throw(procs.Timeout("x")))
+    with pytest.raises(checks.JobError) as error:
+        checks.probe_duration(tmp_path / "a.mp4")
     assert not error.value.retryable
 
 
@@ -433,12 +436,12 @@ def test_only_allowed_formats_are_read(tmp_path, monkeypatch):
     sample = Path(__file__).parent / "video_test_need_encoding.webm"
     disguised = tmp_path / "kata.mp4"
     disguised.symlink_to(sample)
-    assert encoder.probe_duration(disguised) > 0
+    assert checks.probe_duration(disguised) > 0
     monkeypatch.setenv("VIDEONINJA_INPUT_FORMATS", "mov")
-    with pytest.raises(encoder.JobError, match="whitelist"):
-        encoder.probe_duration(disguised)
-    with pytest.raises(encoder.JobError, match="whitelist"):
-        encoder.run(["ffprobe", "-v", "error", *encoder.limits.ffmpeg_input(), "http://127.0.0.1:9/a.mp4"])
+    with pytest.raises(checks.JobError, match="whitelist"):
+        checks.probe_duration(disguised)
+    with pytest.raises(checks.JobError, match="whitelist"):
+        checks.run(["ffprobe", "-v", "error", *limits.ffmpeg_input(), "http://127.0.0.1:9/a.mp4"])
 
 
 def test_script_refuses_other_formats(tmp_path):
@@ -454,15 +457,15 @@ def test_script_refuses_other_formats(tmp_path):
 def test_catalogue_rebuilt_by_the_api(client, admin_secret, monkeypatch):
     """The encoder's container has no catalogue: it asks the API, which rebuilds it at once."""
     scheduled = []
-    monkeypatch.setattr(encoder.snapshot, "rebuild_now", lambda: scheduled.append(True))
+    monkeypatch.setattr(snapshot, "rebuild_now", lambda: scheduled.append(True))
     assert client.post("/internal/catalog-changed").status_code == 204
     assert scheduled == [True]
 
     requests = []
     monkeypatch.setenv("VIDEONINJA_API_URL", "http://api:8000/")
-    monkeypatch.setattr(encoder.urllib.request, "urlopen",
+    monkeypatch.setattr(urllib.request, "urlopen",
                         lambda r, timeout: requests.append((r.method, r.full_url)) or io.BytesIO())
-    encoder.catalog_changed()
+    notify.catalog_changed()
     assert requests == [("POST", "http://api:8000/internal/catalog-changed")]
     assert scheduled == [True]  # not in the encoder itself
 

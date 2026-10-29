@@ -10,7 +10,8 @@ import pyotp
 import pytest
 from fastapi.testclient import TestClient
 
-from app import clock, db, encoder, i18n, security, snapshot, videos
+from app import clock, db, i18n, security, snapshot, videos
+from app.encoder import checks, heartbeat, queue
 
 from .test_auth import login
 from .test_users import USER_PASSWORD, create, register, user_login
@@ -51,7 +52,7 @@ def enc(client, tmp_path, monkeypatch):
     """An encoder whose encoding step is faked: it records the jobs and returns a result."""
     monkeypatch.setenv("VIDEONINJA_UPLOAD_DIR", str(tmp_path / "uploads"))
     monkeypatch.setenv("VIDEONINJA_MEDIA_DIR", str(tmp_path / "media"))
-    e = encoder.Encoder()
+    e = queue.Encoder()
     e.uploads.mkdir(parents=True)
     e.work.mkdir(parents=True)
     e.jobs = []
@@ -377,10 +378,10 @@ def test_failures_retry_then_fail(admin, enc):
     video = submit(admin, uploaded(admin)).json()["id"]
 
     def boom(job):
-        raise encoder.JobError(f"boom {len(enc.jobs)}", retryable=True)
+        raise checks.JobError(f"boom {len(enc.jobs)}", retryable=True)
 
     enc.on_job = boom
-    for _ in range(encoder.MAX_ATTEMPTS):
+    for _ in range(queue.MAX_ATTEMPTS):
         enc.run_once()
     status = admin.get("/api/uploads/mine").json()[0]
     assert (status["status"], status["error"]) == ("failed", "boom 3")
@@ -393,29 +394,40 @@ def test_failures_retry_then_fail(admin, enc):
 
 def test_final_failure(admin, enc):
     video = submit(admin, uploaded(admin)).json()["id"]
-    enc.on_job = lambda job: (_ for _ in ()).throw(encoder.JobError("Not a video"))
+    enc.on_job = lambda job: (_ for _ in ()).throw(checks.JobError("Not a video"))
     enc.run_once()
     assert video_row(video)[:3] == ("failed", 1, "Not a video")
 
 
 def test_shutdown_puts_the_job_back(admin, enc):
     video = submit(admin, uploaded(admin)).json()["id"]
-    enc.on_job = lambda job: (_ for _ in ()).throw(encoder.Stopped())
+    enc.on_job = lambda job: (_ for _ in ()).throw(queue.Stopped())
     enc.run_once()
     assert video_row(video)[:2] == ("queued", 0)  # attempt not counted
 
 
-def test_interrupted_jobs_requeued_at_startup(admin, enc):
+def test_interrupted_jobs_requeued_at_startup(admin, enc, monkeypatch):
+    monkeypatch.setattr(queue.shutil, "which", lambda name: f"/usr/bin/{name}")  # ffmpeg "installed"
     a = submit(admin, uploaded(admin, sha="1" * 64)).json()["id"]
     b = submit(admin, uploaded(admin, sha="2" * 64)).json()["id"]
     con = sqlite3.connect(db.db_path())
     with con:  # as left by a crash during encoding
         con.execute("UPDATE video SET status = 'encoding', attempts = 1 WHERE id = ?", (a,))
-        con.execute("UPDATE video SET status = 'encoding', attempts = ? WHERE id = ?", (encoder.MAX_ATTEMPTS, b))
-    with encoder.transaction() as c:
-        encoder.queries.queue.requeue_interrupted(c, encoder.MAX_ATTEMPTS)
-    assert video_row(a)[0] == "queued"
-    assert video_row(b)[:3] == ("failed", encoder.MAX_ATTEMPTS, "Encoding interrupted too many times")
+        con.execute("UPDATE video SET status = 'encoding', attempts = ? WHERE id = ?", (queue.MAX_ATTEMPTS, b))
+    enc.stopping.set()  # no job taken: only the start's own work
+    enc.start()  # the worker's real start: requeue, heartbeat, its threads
+    try:
+        assert video_row(a)[0] == "queued"
+        assert video_row(b)[:3] == ("failed", queue.MAX_ATTEMPTS, "Encoding interrupted too many times")
+        con = db.connect()
+        try:
+            assert heartbeat.healthy(con)  # beaten at once, not after HEARTBEAT_S
+        finally:
+            con.close()
+        assert [t.name for t in (enc.thread, *enc.helpers)] == ["encoder", "thumbnails", "heartbeat"]
+    finally:
+        enc.stop()
+    assert not any(t.is_alive() for t in (enc.thread, *enc.helpers))
 
 
 def test_deleted_before_publishing(admin, enc):
@@ -496,7 +508,7 @@ def test_abandoned_uploads_expire(admin, enc, monkeypatch):
     enc.housekeeping()
     assert len(list(enc.uploads.iterdir())) == 3  # all recent
 
-    later = clock.now() + timedelta(seconds=encoder.UPLOAD_EXPIRY_S + 1)
+    later = clock.now() + timedelta(seconds=queue.UPLOAD_EXPIRY_S + 1)
     monkeypatch.setattr(clock, "now", lambda: later)
     enc.housekeeping()
     assert [p.name for p in enc.uploads.iterdir()] == [queued]
