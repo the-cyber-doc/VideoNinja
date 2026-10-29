@@ -66,13 +66,30 @@ def test_level(configured, capsys):
     assert "hidden" not in capsys.readouterr().err
 
 
-def test_access_log_off_in_json_only(configured, capsys):
-    configured(VIDEONINJA_LOG_FORMAT="json")
+@pytest.mark.parametrize("log_format", logs.FORMATS)
+def test_access_log_off(configured, capsys, log_format):
+    """The app logs its own line per request (app/middleware.py), with its ID."""
+    configured(VIDEONINJA_LOG_FORMAT=log_format)
     logging.getLogger("uvicorn.access").info("GET /api/catalog 200")
     assert capsys.readouterr().err == ""
+
+
+def test_bound_context(configured, capsys):
+    configured(VIDEONINJA_LOG_FORMAT="json")
+    with logs.bind(video_id=3):
+        logs.add(user_id=1)
+        logging.getLogger("app.encoder").info("claimed")
+    logging.getLogger("app.encoder").info("after")
+    first, after = (json.loads(line) for line in capsys.readouterr().err.strip().splitlines()[-2:])
+    assert (first["video_id"], first["user_id"]) == (3, 1)
+    assert "video_id" not in after and "_context_keys" not in first
+
+
+def test_bound_context_in_text(configured, capsys):
     configured(VIDEONINJA_LOG_FORMAT="text")
-    logging.getLogger("uvicorn.access").info("GET /api/catalog 200")
-    assert "GET /api/catalog 200" in capsys.readouterr().err
+    with logs.bind(request_id="abc"):
+        logging.getLogger("app.db").info("hello")
+    assert last_line(capsys).endswith("app.db: hello [request_id=abc]")
 
 
 def test_uvicorn_through_the_same_handler(configured, capsys):

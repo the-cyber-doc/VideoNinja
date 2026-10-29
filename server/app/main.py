@@ -5,8 +5,8 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
 from . import (
-    about, auth, comments, crypto, db, encoder, errors, health, limits, logs, media, paths, performers, procs,
-    profile, register, security, setup, snapshot, tags, tusd, users, video_mgmt, videos,
+    about, auth, comments, crypto, db, encoder, errors, health, limits, logs, media, middleware, paths, performers,
+    procs, profile, register, security, setup, snapshot, tags, tusd, users, video_mgmt, videos,
 )
 
 
@@ -62,6 +62,11 @@ async def same_origin_writes(request: Request, call_next):
 async def argon2_busy(request: Request, exc: security.Busy) -> JSONResponse:
     log.warning("Password checks: all busy, %s %s answered 503", request.method, request.url.path)
     return errors.response("busy", headers={"Retry-After": "5"})
+
+
+# Added last: the outermost, so that every answer has its ID and its line, the
+# refusals above included.
+app.add_middleware(middleware.RequestLog)
 app.include_router(setup.router)
 app.include_router(about.router)
 app.include_router(auth.router)

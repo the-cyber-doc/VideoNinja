@@ -29,7 +29,7 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, Header, Request, status
 
-from . import clock, db, errors, limits, paths, queries, security
+from . import clock, db, errors, limits, logs, middleware, paths, queries, security
 from .auth import require_access
 from .errors import ApiError
 from .children import Child
@@ -118,6 +118,10 @@ def _post_finish(con: sqlite3.Connection, event: dict[str, Any]) -> dict[str, An
 def tusd_hook(hook: dict[str, Any], con: sqlite3.Connection = Depends(db.get_db)) -> dict[str, Any]:
     """Always 200: a rejection is said in the JSON (an error status fails the upload as a 500)."""
     event = hook.get("Event") or {}
+    # tusd calls the app itself: the browser's request ID (nginx's) is in the event.
+    browser_ids = (event.get("HTTPRequest", {}).get("Header") or {}).get("X-Request-Id") or []
+    if browser_ids and middleware.VALID_ID.fullmatch(browser_ids[0].encode()):
+        logs.add(request_id=browser_ids[0])
     match hook.get("Type"):
         case "pre-create":
             return _pre_create(con, event)

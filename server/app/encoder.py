@@ -45,6 +45,7 @@ import sys
 import threading
 import time
 import urllib.request
+import uuid
 from collections.abc import Iterator
 from contextlib import contextmanager
 from datetime import datetime
@@ -192,35 +193,39 @@ class Encoder:
         for video in videos:
             if self.stopping.is_set():
                 return
-            with transaction() as con:
-                segments = queries.segment_thumbnails(con, video["id"])
-            folder = self.videos / video["sha256sum"][:2] / video["sha256sum"]
-            duration = video["duration_s"] or max((s["end_s"] for s in segments), default=0)
-            for s in segments:
-                if s["thumbnail"] is not None:
-                    continue
-                name = f"segment-{s['id']}.jpg"
-                tmp = folder / f".{name}"
-                try:
-                    thumbnail(folder / "video.mp4", middle(s["begin_s"], s["end_s"], duration), tmp)
-                    os.replace(tmp, folder / name)  # whole or not at all
-                except (OSError, JobError) as e:
-                    log.warning("Video %s: no thumbnail for segment %s: %s", video["id"], s["id"], e)
-                    continue
-                finally:
-                    tmp.unlink(missing_ok=True)
-                with transaction() as con:
-                    queries.set_new_segment_thumbnail(con, s, name)
-            keep = {f"segment-{s['id']}.jpg" for s in segments}
-            for path in folder.glob("segment-*.jpg"):
-                if path.name not in keep:
-                    path.unlink(missing_ok=True)
-            with transaction() as con:
-                queries.clear_thumbs_dirty(con, video["id"], video["thumbs_dirty"])
-            log.info("Video %s: segment thumbnails updated", video["id"])
+            with logs.bind(video_id=video["id"]):
+                self.refresh_video_thumbnails(video)
             changed = True
         if changed:
             catalog_changed()
+
+    def refresh_video_thumbnails(self, video: sqlite3.Row) -> None:
+        with transaction() as con:
+            segments = queries.segment_thumbnails(con, video["id"])
+        folder = self.videos / video["sha256sum"][:2] / video["sha256sum"]
+        duration = video["duration_s"] or max((s["end_s"] for s in segments), default=0)
+        for s in segments:
+            if s["thumbnail"] is not None:
+                continue
+            name = f"segment-{s['id']}.jpg"
+            tmp = folder / f".{name}"
+            try:
+                thumbnail(folder / "video.mp4", middle(s["begin_s"], s["end_s"], duration), tmp)
+                os.replace(tmp, folder / name)  # whole or not at all
+            except (OSError, JobError) as e:
+                log.warning("Video %s: no thumbnail for segment %s: %s", video["id"], s["id"], e)
+                continue
+            finally:
+                tmp.unlink(missing_ok=True)
+            with transaction() as con:
+                queries.set_new_segment_thumbnail(con, s, name)
+        keep = {f"segment-{s['id']}.jpg" for s in segments}
+        for path in folder.glob("segment-*.jpg"):
+            if path.name not in keep:
+                path.unlink(missing_ok=True)
+        with transaction() as con:
+            queries.clear_thumbs_dirty(con, video["id"], video["thumbs_dirty"])
+        log.info("Video %s: segment thumbnails updated", video["id"])
 
     def housekeeping(self) -> None:
         """Delete the originals of published, dropped or abandoned uploads."""
@@ -244,6 +249,11 @@ class Encoder:
                 return True
             segments = [dict(s) for s in queries.job_segments(con, row["id"])]
         video = row["id"]
+        with logs.bind(video_id=video):  # on every line of this job
+            self.run_job(video, row, segments)
+        return True
+
+    def run_job(self, video: int, row: sqlite3.Row, segments: list[dict]) -> None:
         job = {"video": video, "tus_id": row["upload"], "original_sha256": row["original_sha256"],
                "segments": segments}
         log.info("Video %s: claimed", video)
@@ -263,7 +273,6 @@ class Encoder:
             self.fail(video, f"Unexpected error: {e}", retryable=True)
         finally:
             shutil.rmtree(work, ignore_errors=True)
-        return True
 
     def fail(self, video: int, error: str, retryable: bool) -> None:
         with transaction() as con:
@@ -413,11 +422,15 @@ def catalog_changed() -> None:
     if not api:
         snapshot.rebuild_now()
         return
-    request = urllib.request.Request(f"{api}/internal/catalog-changed", method="POST")
+    # An ID of its own, in both logs: the API's line of this call and this one.
+    rid = uuid.uuid4().hex
+    request = urllib.request.Request(f"{api}/internal/catalog-changed", method="POST",
+                                     headers={"X-Request-ID": rid})
     try:
         urllib.request.urlopen(request, timeout=10).close()  # http(s) only (paths)  # nosec B310
+        log.info("Catalogue rebuild requested from the API", extra={"request_id": rid})
     except OSError as e:  # the API rebuilds at its next start anyway
-        log.warning("Catalogue rebuild not requested from the API: %s", e)
+        log.warning("Catalogue rebuild not requested from the API: %s", e, extra={"request_id": rid})
 
 
 def healthy(con: sqlite3.Connection) -> bool:

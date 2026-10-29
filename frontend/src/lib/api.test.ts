@@ -49,6 +49,21 @@ describe('api()', () => {
 		const e = (await api('/api/admin/users', { username: 'kenji', role: 'user' }).catch((e) => e)) as ApiError;
 		expect(e).toBeInstanceOf(ApiError);
 		expect([e.status, e.message]).toEqual([409, "Ce nom d'utilisateur est déjà pris."]);
+		expect(e.requestId).toBeNull(); // none in this answer
+	});
+
+	it("keeps the answer's request ID, to quote it", async () => {
+		vi.stubGlobal(
+			'fetch',
+			vi.fn(async () =>
+				Response.json(
+					{ code: 'internal', detail: 'Internal error', params: {} },
+					{ status: 500, headers: { 'X-Request-ID': '0123456789abcdef0123456789abcdef' } }
+				)
+			)
+		);
+		const e = (await api('/api/videos').catch((e) => e)) as ApiError;
+		expect(e.requestId).toBe('0123456789abcdef0123456789abcdef');
 	});
 
 	it('says the server cannot be reached when there is no answer', async () => {

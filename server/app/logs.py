@@ -7,13 +7,14 @@ or "json" (the images: one object per line, for journald / jq):
 
     {"ts": "2026-10-23T12:13:38+02:00", "level": "INFO", "logger": "app.encoder", "msg": "…"}
 
-plus the record's extra fields (logger.info(…, extra={"video_id": 3})) and "exc"
-(the traceback) when there is one. "ts": the dates' one format (app/clock.py), in
+plus the record's extra fields (logger.info(…, extra={"video_id": 3})), the
+context's (bind(): the request's "request_id" and "user_id", the encoder's
+"video_id"), and "exc" (the traceback) when there is one. In text, the context
+follows the message: "… [request_id=3f2a… user_id=1]". "ts": the dates' one format (app/clock.py), in
 the server's timezone.
 
 VIDEONINJA_LOG_LEVEL: DEBUG, INFO (default), WARNING or ERROR. uvicorn's access
-log (one line per request) is kept in text mode only: in the images nginx logs
-every request already.
+log is off: the app logs its own line per request, with its ID (app/middleware.py).
 
 A wrong value of either refuses the start (RuntimeError).
 """
@@ -23,6 +24,9 @@ import logging
 import logging.config
 import os
 import sys
+from collections.abc import Iterator
+from contextlib import contextmanager
+from contextvars import ContextVar
 from datetime import UTC, datetime
 from typing import Any
 
@@ -34,6 +38,66 @@ TEXT_FORMAT = "%(asctime)s %(levelname)-8s %(name)s: %(message)s"
 # A record's own attributes: anything else was given as extra=.
 _STANDARD = set(logging.LogRecord("", 0, "", 0, "", None, None).__dict__) | {"message", "asctime", "taskName"}
 _IGNORED = {"color_message"}  # uvicorn's copy of the message with terminal colours
+
+
+# The fields every record gets while they are bound (a request, an encoding job). One
+# dict per request or job, changed in place by add(): FastAPI runs each dependency in
+# a copy of the context, where a new value set would not reach the endpoint.
+_context: ContextVar[dict[str, Any] | None] = ContextVar("log_context", default=None)
+
+
+@contextmanager
+def bind(**fields: Any) -> Iterator[dict[str, Any]]:
+    """Add `fields` to every record logged inside (this thread or task, and the
+    threads it starts its work in: FastAPI's thread pool copies the context)."""
+    fields = {**(_context.get() or {}), **fields}
+    token = _context.set(fields)
+    try:
+        yield fields
+    finally:
+        _context.reset(token)
+
+
+def start(**fields: Any) -> dict[str, Any]:
+    """Bind `fields` for the rest of this task, without an end: a request (uvicorn runs
+    each in its own task, whose context is its own copy) until its very last line,
+    uvicorn's traceback of an unhandled exception included."""
+    _context.set(fields := dict(fields))
+    return fields
+
+
+def add(**fields: Any) -> None:
+    """Add fields to the bound context, e.g. the user once the session is checked.
+    Nothing outside a bind()."""
+    context = _context.get()
+    if context is not None:
+        context.update(fields)
+
+
+def context() -> dict[str, Any]:
+    return dict(_context.get() or {})
+
+
+class ContextFilter(logging.Filter):
+    """Copies the bound fields onto the record (an extra= of the call wins)."""
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        for key, value in (_context.get() or {}).items():
+            if not hasattr(record, key):
+                setattr(record, key, value)
+        record._context_keys = tuple(_context.get() or ())
+        return True
+
+
+class TextFormatter(logging.Formatter):
+    def format(self, record: logging.LogRecord) -> str:
+        text = super().format(record)
+        keys = getattr(record, "_context_keys", ())
+        if not keys:
+            return text
+        fields = " ".join(f"{key}={getattr(record, key)}" for key in keys)
+        first, newline, rest = text.partition("\n")  # after the message, before a traceback
+        return f"{first} [{fields}]{newline}{rest}"
 
 
 class JsonFormatter(logging.Formatter):
@@ -89,7 +153,8 @@ def log_format() -> str:
 def config(level: str, log_format: str) -> dict[str, Any]:
     """The dictConfig of these settings."""
     formatter: dict[str, Any] = (
-        {"()": JsonFormatter} if log_format == "json" else {"format": TEXT_FORMAT, "datefmt": "%H:%M:%S"}
+        {"()": JsonFormatter} if log_format == "json"
+        else {"()": TextFormatter, "fmt": TEXT_FORMAT, "datefmt": "%H:%M:%S"}
     )
     # uvicorn's loggers keep their names but lose their own handlers: through the root's.
     uvicorn = {"handlers": [], "propagate": True}
@@ -97,12 +162,13 @@ def config(level: str, log_format: str) -> dict[str, Any]:
         "version": 1,
         "disable_existing_loggers": False,
         "formatters": {"default": formatter},
-        "handlers": {"stderr": {"()": StderrHandler, "formatter": "default"}},
+        "filters": {"context": {"()": ContextFilter}},
+        "handlers": {"stderr": {"()": StderrHandler, "formatter": "default", "filters": ["context"]}},
         "root": {"level": level, "handlers": ["stderr"]},
         "loggers": {
             "uvicorn": {**uvicorn, "level": level},
             "uvicorn.error": {**uvicorn, "level": level},
-            "uvicorn.access": {**uvicorn, "level": level if log_format == "text" else "WARNING"},
+            "uvicorn.access": {**uvicorn, "level": "WARNING"},  # app/middleware.py logs each request
         },
     }
 

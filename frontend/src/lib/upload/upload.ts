@@ -22,6 +22,7 @@ export interface UploadCallbacks {
 interface TusResponse {
 	getStatus(): number;
 	getBody(): string;
+	getHeader(name: string): string | undefined;
 }
 
 /** tus-js-client's error as the API's: the answer's JSON (from the app's hooks:
@@ -35,7 +36,7 @@ export function uploadError(e: Error): ApiError {
 	} catch {
 		// not JSON: the status alone
 	}
-	return errorFromBody(response.getStatus(), body);
+	return errorFromBody(response.getStatus(), body, response.getHeader('X-Request-ID') ?? null);
 }
 
 export function startUpload(
