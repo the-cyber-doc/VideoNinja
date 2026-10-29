@@ -296,7 +296,12 @@ the encoder waits for the version; `/health` fails on a mismatch.
 - Routes: `src/routes/(app)/` = logged-in application (full-size layout, header:
   app icon + name left (phones ≤ 40rem: icon only; main nav `$lib/MainNav.svelte`
   folded into a drop-down named after the current page), user icon top right → menu: Profile first, User Management if `user_mgmt`,
-  About, Log out always last); its layout loads the user into `$lib/session.svelte.ts`.
+  About, Log out always last). `(app)/+layout.ts` loads the user (setup / login redirects; a failure is
+  returned as `data.error`, shown by the layout) into `$lib/session.svelte.ts` before any page loads; a page's
+  `+page.ts` reads it with `await parent()` (access checks redirect there, before rendering: e.g.
+  `admin/users`). Data that the server translates: `depends('app:lang')`, invalidated by the layout on a
+  language change; after a change, `invalidate('app:<name>')` (users page: `app:users`). Page logic in a
+  `<name>.svelte.ts` beside it (`admin/users/users.svelte.ts`: `UserAdmin` actions + busy/error/link).
   `/login`, `/setup`, `/register` are outside the group (no shell). `/setup`
   and `/register#<token>` share `$lib/AccountWizard.svelte`.
 - Styles: tokens in `src/app.css` (`:root`; colours per theme, sizes and media colours not). Spacing
