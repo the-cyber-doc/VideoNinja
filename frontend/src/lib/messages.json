@@ -11,6 +11,192 @@
 		"en": "The server is busy. Try again in a moment.",
 		"fr": "Le serveur est occupé. Réessayez dans un instant."
 	},
+	"error.not_found": { "en": "Not found.", "fr": "Introuvable." },
+	"error.method_not_allowed": {
+		"en": "This action is not allowed here.",
+		"fr": "Cette action n'est pas permise ici."
+	},
+	"error.http_error": {
+		"en": "The server refused the request (HTTP {status}).",
+		"fr": "Le serveur a refusé la requête (HTTP {status})."
+	},
+	"error.internal": {
+		"en": "Something went wrong on the server. Try again later.",
+		"fr": "Une erreur s'est produite sur le serveur. Réessayez plus tard."
+	},
+	"error.cross_site": {
+		"en": "Request refused: it does not come from this site.",
+		"fr": "Requête refusée : elle ne vient pas de ce site."
+	},
+	"error.auth.not_logged_in": {
+		"en": "Your session has ended. Log in again.",
+		"fr": "Votre session est terminée. Reconnectez-vous."
+	},
+	"error.auth.access_denied": {
+		"en": "You do not have access to this.",
+		"fr": "Vous n'avez pas accès à cette fonction."
+	},
+	"error.auth.invalid_credentials": {
+		"en": "Wrong username, password or code.",
+		"fr": "Nom d'utilisateur, mot de passe ou code incorrect."
+	},
+	"error.setup.required": {
+		"en": "The server is not set up yet.",
+		"fr": "Le serveur n'est pas encore configuré."
+	},
+	"error.setup.invalid_token": {
+		"en": "Wrong setup token: copy it again from the server's logs.",
+		"fr": "Jeton de configuration incorrect : copiez-le à nouveau depuis les journaux du serveur."
+	},
+	"error.totp.invalid_code": {
+		"en": "Wrong code. Check the code in your authenticator app and your device's time.",
+		"fr": "Code incorrect. Vérifiez le code de votre application d'authentification et l'heure de votre appareil."
+	},
+	"error.invite.invalid": {
+		"en": "This invitation link is invalid or has expired. Ask an administrator for a new one.",
+		"fr": "Ce lien d'invitation est invalide ou a expiré. Demandez-en un nouveau à un administrateur."
+	},
+	"error.profile.wrong_password": {
+		"en": "Wrong current password.",
+		"fr": "Mot de passe actuel incorrect."
+	},
+	"error.user.unknown": {
+		"en": "This user no longer exists.",
+		"fr": "Cet utilisateur n'existe plus."
+	},
+	"error.user.unknown_role": { "en": "Unknown role.", "fr": "Rôle inconnu." },
+	"error.user.exists": {
+		"en": "This username is already taken.",
+		"fr": "Ce nom d'utilisateur est déjà pris."
+	},
+	"error.user.reset_self": {
+		"en": "You cannot reset your own account.",
+		"fr": "Vous ne pouvez pas réinitialiser votre propre compte."
+	},
+	"error.user.no_invite": {
+		"en": "This user has no valid invitation.",
+		"fr": "Cet utilisateur n'a pas d'invitation valide."
+	},
+	"error.catalog.unavailable": {
+		"en": "The catalogue is not available yet. Try again in a moment.",
+		"fr": "Le catalogue n'est pas encore disponible. Réessayez dans un instant."
+	},
+	"error.technique.unknown": { "en": "Unknown technique.", "fr": "Technique inconnue." },
+	"error.comment.unknown": {
+		"en": "This comment no longer exists.",
+		"fr": "Ce commentaire n'existe plus."
+	},
+	"error.comment.not_author": {
+		"en": "Only its author can change this comment.",
+		"fr": "Seul son auteur peut modifier ce commentaire."
+	},
+	"error.upload.unknown": { "en": "Unknown upload.", "fr": "Envoi inconnu." },
+	"error.upload.not_finished": {
+		"en": "The upload is not finished yet.",
+		"fr": "L'envoi n'est pas encore terminé."
+	},
+	"error.upload.size_unknown": {
+		"en": "The file's size must be known before it is uploaded.",
+		"fr": "La taille du fichier doit être connue avant son envoi."
+	},
+	"error.upload.too_large": {
+		"en": "This file is too large.",
+		"fr": "Ce fichier est trop volumineux."
+	},
+	"error.upload.invalid_metadata": {
+		"en": "The upload's information is not valid.",
+		"fr": "Les informations de l'envoi ne sont pas valides."
+	},
+	"error.upload.type_refused": {
+		"en": "This type of file is not accepted.",
+		"fr": "Ce type de fichier n'est pas accepté."
+	},
+	"error.video.unknown": {
+		"en": "This video no longer exists.",
+		"fr": "Cette vidéo n'existe plus."
+	},
+	"error.video.exists": {
+		"en": "This video is already on the server.",
+		"fr": "Cette vidéo est déjà sur le serveur."
+	},
+	"error.video.not_failed": {
+		"en": "Only a failed video can be retried.",
+		"fr": "Seule une vidéo en échec peut être relancée."
+	},
+	"error.video.not_deletable": {
+		"en": "A video being encoded or already published cannot be deleted here.",
+		"fr": "Une vidéo en cours d'encodage ou déjà publiée ne peut pas être supprimée ici."
+	},
+	"error.performer.empty_name": { "en": "Enter a name.", "fr": "Saisissez un nom." },
+	"error.performer.exists": {
+		"en": "This performer already exists.",
+		"fr": "Cet exécutant existe déjà."
+	},
+	"error.segment.duplicate": {
+		"en": "A segment appears twice.",
+		"fr": "Un segment apparaît deux fois."
+	},
+	"error.segment.unknown": {
+		"en": "Segment {id} is not part of this video.",
+		"fr": "Le segment {id} ne fait pas partie de cette vidéo."
+	},
+	"error.segment.unknown_technique": {
+		"en": "Unknown technique: {technique}.",
+		"fr": "Technique inconnue : {technique}."
+	},
+	"error.segment.unknown_performer": {
+		"en": "Unknown performer: {performer}.",
+		"fr": "Exécutant inconnu : {performer}."
+	},
+	"error.segment.after_end": {
+		"en": "A segment ends after the end of the video.",
+		"fr": "Un segment se termine après la fin de la vidéo."
+	},
+	"error.tag.duplicate": {
+		"en": "A tag is given twice.",
+		"fr": "Une étiquette est donnée deux fois."
+	},
+	"error.tag.unknown": { "en": "Unknown tag: {tag}.", "fr": "Étiquette inconnue : {tag}." },
+	"error.tag.year": {
+		"en": "{tag}: enter a year from {min} to {max}.",
+		"fr": "{tag} : saisissez une année de {min} à {max}."
+	},
+	"error.tag.value": {
+		"en": "{tag}: choose one of the proposed values.",
+		"fr": "{tag} : choisissez une des valeurs proposées."
+	},
+	"error.validation.missing": {
+		"en": "A required value is missing.",
+		"fr": "Une valeur obligatoire manque."
+	},
+	"error.validation.too_short": {
+		"en": "A value is too short (at least {min_length}).",
+		"fr": "Une valeur est trop courte (au moins {min_length})."
+	},
+	"error.validation.too_long": {
+		"en": "A value is too long (at most {max_length}).",
+		"fr": "Une valeur est trop longue (au plus {max_length})."
+	},
+	"error.validation.pattern": {
+		"en": "A value contains characters that are not accepted.",
+		"fr": "Une valeur contient des caractères non acceptés."
+	},
+	"error.validation.too_small": {
+		"en": "A number is too small (at least {min}).",
+		"fr": "Un nombre est trop petit (au moins {min})."
+	},
+	"error.validation.segment_order": {
+		"en": "A segment must end after it begins.",
+		"fr": "Un segment doit finir après son début."
+	},
+	"error.validation.comment_empty": {
+		"en": "The comment is empty.",
+		"fr": "Le commentaire est vide."
+	},
+	"error.validation.invalid": {
+		"en": "A value is not valid.",
+		"fr": "Une valeur n'est pas valide."
+	},
 	"common.username": { "en": "Username", "fr": "Nom d'utilisateur" },
 	"common.username_label": { "en": "Username:", "fr": "Nom d'utilisateur :" },
 	"common.username_hint": {
