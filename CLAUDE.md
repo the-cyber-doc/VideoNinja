@@ -43,13 +43,15 @@ or ID encoding (Base62/Sqids).
   accept `upload` or `video_mgmt` (`require_access` takes several, any one).
   The annotation panel (`$lib/upload/AnnotationPanel.svelte`, type `Annotation`)
   is shared by the upload and Videos pages; on the server, `app/segments.py` (models + `check`:
-  techniques/performers looked up once for all segments) by `videos.submit` and
-  `video_mgmt.save_annotations`. Role accesses come with the session row (`security.accesses`), no
-  extra query per `require_access`. The service worker deletes saved
+  techniques/performers looked up once for all segments, `queries.known_*` with `json_each`; tag
+  rules from `tags.value_error` as error codes) by `videos.submit` (before waiting for the upload) and
+  `video_mgmt.save_annotations` (inside its write). Role accesses come with the session row
+  (`queries.session_user` JSON array, `security.accesses`): no extra query per `require_access`, tusd
+  hook or owner check. Test: `tests/test_segments.py` (query counts constant). The service worker deletes saved
   clips/thumbnails of segments removed or re-timed when the catalogue changes.
   Exception: every user edits their OWN profile (`/api/profile/…`: display name,
   password, TOTP; never the username or role). Credential changes require the
-  current password and log out the user's other sessions.
+  current password and log out the user's other sessions (same transaction).
 - Every read: session check in the app → `X-Accel-Redirect` to an nginx
   `internal` location. Never serve media or catalogue files from a public location.
 - Session cookie `HttpOnly; Secure; SameSite=Strict`: `__Host-session` (Path=/) at the
@@ -64,16 +66,16 @@ or ID encoding (Base62/Sqids).
   is no self-service recovery.
 - Request guards: nginx `limit_req` per address (credentials POSTs 60/min burst 30 — login, setup/,
   register/, profile/password|totp —, api 20/s burst 100, media 50/s burst 300, uploads 10/s
-  burst 50; nginx's own 429 = JSON `{"detail":"Too many requests"}` + Retry-After 5, frontend
-  `error.rate_limited`). Argon2 capped (`security._argon2` semaphore,
-  `VIDEONINJA_ARGON2_CONCURRENCY` 2, wait 10 s → `security.Busy` → 503 + Retry-After,
-  `error.busy`). Writes (not GET/HEAD/OPTIONS) to /api, /media and uploads (upload_auth on
+  burst 50; nginx's own 429 = JSON `{"code":"rate_limited","detail":"Too many requests","params":{}}`
+  + Retry-After 5, frontend `error.rate_limited`). Argon2 capped (`security._argon2` semaphore,
+  `VIDEONINJA_ARGON2_CONCURRENCY` 2, wait 10 s → `security.Busy` → 503 + Retry-After, code
+  `busy`). Writes (not GET/HEAD/OPTIONS) to /api, /media and uploads (upload_auth on
   X-Original-Method) refused 403 unless `Sec-Fetch-Site: same-origin`, else Origin's host = Host;
   neither header → allowed (not a browser) (`security.cross_site`, middleware in main.py).
 - Brute force: credential failures throttled per client address
   (`app/throttle.py`, dependency `credential_guard(<failure status>)` on login,
-  profile password checks, setup and invitation tokens): 10 / 15 min → 429 +
-  Retry-After, in memory, IPv6 per /64. Never other 401/403 (expired sessions,
+  profile password checks, setup and invitation tokens): 10 / 15 min → 429 code `throttled`
+  (`params.minutes`) + Retry-After, in memory, IPv6 per /64. Never other 401/403 (expired sessions,
   accesses). Client address = `request.client.host` (uvicorn's `FORWARDED_ALLOW_IPS`: production
   README compose `"*"`, no fixed IPs (user's choice: network segmentation guarantees only nginx reaches
   the API); docker-compose.dev.yaml / test-e2e-stack.sh: nginx's fixed address).
@@ -104,7 +106,8 @@ export). Versions: v1 = efae32a (v0.0.6), v2 = + `heartbeat`, `video.thumbs_dirt
 tables: none on purpose). Released `db_v<N>`
 files are frozen: a schema change = new `db_v<N+1>.sql` + `_init.sql` + `migrations/v<N>_to_v<N+1>.sql`
 and `v<N+1>_to_v<N>.sql` (one transaction each, ending with `UPDATE config … db_version`) +
-`EXPECTED_VERSION` + a test in `test_migrations.py` (migrated schema == fresh schema). The API runs
+`EXPECTED_VERSION` (`test_migrations.py` then runs every step up and down: migrated schema == fresh
+schema, index columns included, data kept). The API runs
 `db.migrate()` at startup (backup `<db>.v<old>-<time>.bak` first; missing step → no start; up or down);
 the encoder waits for the version; `/health` fails on a mismatch.
 - Catalogue (fixed, each school's own organisation): `ryu` → `category` (taijutsu, muto_dori,
@@ -390,8 +393,9 @@ the encoder waits for the version; `/health` fails on a mismatch.
 - API errors: `ApiError("<code>", **params)` with the code in `ERRORS` (`server/app/errors.py`:
   status + English `detail`), answered `{"code", "detail", "params"}` (also validation
   `validation.<kind>`, routing, 500 `internal`, tusd hook bodies, nginx 429 `rate_limited`). Each
-  code needs `error.<code>` in messages.json (en + fr; `tests/test_errors.py`). Never a bare
-  `HTTPException`; the frontend shows the translated code, never `detail`.
+  code needs `error.<code>` in messages.json (en + fr; `tests/test_errors.py`: also every code raised
+  in `app/` is in the table, no bare `HTTPException`). `detail` is never for users: the frontend shows
+  `error.<code>` (until PR 2b, `$lib/api.ts` still shows `detail`).
 - Translate everything, in every supported language (`en`, `fr`), as part of the
   change that adds it, never as a follow-up:
   - Frontend: no hard-coded user-visible text. Every string (labels, buttons,
