@@ -17,6 +17,7 @@ TOKEN_SED = r"s/.*Setup token: \([A-Za-z0-9_-]*\).*/\1/p"  # tools/test-e2e-stac
 @pytest.fixture
 def configured(monkeypatch):
     """Apply a configuration, then the default one again (the app's, at its import)."""
+
     def apply(**env):
         for name, value in env.items():
             monkeypatch.setenv(name, value)
@@ -110,6 +111,7 @@ def test_modules_log_under_their_name(configured, capsys):
     """app.<module>, not uvicorn's logger: the setup token's line, as the e2e script reads it."""
     configured(VIDEONINJA_LOG_FORMAT="json")
     from app.api import setup
+
     token = setup.new_setup_token()
     line = last_line(capsys)
     assert json.loads(line)["logger"] == "app.api.setup"

@@ -16,7 +16,7 @@ a few hundred techniques, a few thousand segments.
 | Piece | Choice |
 |---|---|
 | Reverse proxy | nginx in its own container (hardened `dhi.io/nginx:<version>-alpine3.24`, pinned; `nginx/nginx.conf`: `mp4`, `auth_request`, `gzip_static`, and `brotli_static` compiled in the Dockerfile (`-dev` variant) from pinned `ngx_brotli` + nginx sources; a new nginx version needs `NGINX_SOURCE` + `NGINX_SHA256`), behind the user's own TLS proxy |
-| Backend | Python 3.15 + FastAPI + uvicorn (pytest for tests) |
+| Backend | Python 3.15 + FastAPI + uvicorn (pytest + coverage, Ruff, mypy strict) |
 | Database | SQLite, WAL mode, on local SSD (never on NFS) |
 | Frontend | SvelteKit with `adapter-static`, PWA (service worker) |
 | i18n | One `messages.json` + own `t()` helper (UI strings, no Paraglide); `translation` table (content) |
@@ -163,7 +163,8 @@ the encoder waits for the version; `/health` fails on a mismatch.
 - Authors: `video.uploaded_by`, `segment.created_by` (set on insert, at upload or on the Videos
   page; kept on edits; `ON DELETE SET NULL`). `GET /api/videos/<id>/annotations` adds
   `original_filename`, `uploaded_by` and per segment `created_by` as display names (`name`, else
-  `username`; null = unknown), never IDs; output-only models, the PUT ignores them. Shown by the
+  `username`; null = unknown), never IDs; output-only models (`AnnotationsOut`; `Annotations` = the PUT's
+  body, both from `_AnnotationsBase`), the PUT ignores them. Shown by the
   annotation panel: file name above the video, uploader opposite, "Created by" left of each
   segment's delete button (new segments and the upload page: the current user).
 - Databases are migrated, never rebuilt (see Schema above).
@@ -174,7 +175,8 @@ the encoder waits for the version; `/health` fails on a mismatch.
   `queries.users.User` (id, username, name, role, time_zone, `access` frozenset; never credentials:
   `Credentials` for the login only), from `security.session_user` / `api.deps.current_user` / `require_access`:
   `me.id`, `me.access`; `clock.user_zone(user.time_zone, zone)`. Other rows stay `sqlite3.Row` (each read
-  in one module). Test: `tests/test_queries.py` (every query used; User without credentials).
+  in one module). `queries/rows.py`: `one(cursor)` (typed `fetchone`), `inserted(cursor)` (`lastrowid`, never
+  None). Test: `tests/test_queries.py` (every query used; User without credentials).
 - Packages (`server/app/`): `api/` (HTTP) → `domain/` (rules, stores without HTTP: security, invites,
   throttle, audit, segments, tags, catalog, snapshot, tusd) → `queries/` (SQL) and `core/` (settings, logs,
   middleware, errors, db, clock, crypto, i18n, validation, paths, limits, procs, children); `encoder/` uses
@@ -477,7 +479,14 @@ the encoder waits for the version; `/health` fails on a mismatch.
 - Python deps: edit `server/requirements{,-dev}.in`; `requirements{,-dev}.txt` are generated (`uv pip compile
   <in> --universal --python-version 3.15 --generate-hashes -o <txt>`), every transitive package pinned
   with hashes, installed with `--require-hashes` (Dockerfile, CI, README). Dev tools there too (pytest,
-  bandit, flake8).
+  pytest-cov, Ruff, mypy, bandit; no flake8).
+- Python checks (settings in `server/pyproject.toml`; pytest's own in `pytest.ini`), all in CI's server job:
+  `pytest --cov` (statements + branches over `app/`, `fail_under` = the figure when set, 93: raise it,
+  never lower it), `ruff check app tests` (E, W, F, I, B, UP, SIM, RUF; line 120; FastAPI's `Depends`/`Query`…
+  as defaults allowed), `ruff format --check app tests` (the layout: run `ruff format`, never by hand), `mypy`
+  (strict, `app/` only; `# type: ignore[<code>]` always with its code, two today). Lint exceptions on the line: `# noqa: <code> - <reason>`.
+  Tests open the database with `conftest.connect()` (closed after each test; `with con:` never closes), never
+  `sqlite3.connect(db.db_path())`.
 - Code scanning: CodeQL = GitHub's default setup (repository settings; python, javascript-typescript,
   actions). No CodeQL workflow: GitHub refuses advanced-setup results while the default setup is on.
   Bandit in CI's server job (`bandit -r app -q`, fails on a finding). Reviewed

@@ -11,6 +11,7 @@ the segment shows its video's thumbnail meanwhile.
 """
 
 import sqlite3
+from collections.abc import Iterable
 from datetime import tzinfo
 
 from fastapi import APIRouter, Depends
@@ -18,12 +19,11 @@ from pydantic import BaseModel, Field
 
 from .. import queries
 from ..core import db
-from ..domain import audit, segments
 from ..core.errors import ApiError
-from ..queries.users import User
+from ..domain import audit, segments
 from ..domain.segments import AnnotatedSegment, TagIn
-from .deps import rebuild_after_write
-from .deps import require_access, user_zone
+from ..queries.users import User
+from .deps import rebuild_after_write, require_access, user_zone
 
 router = APIRouter(prefix="/api", tags=["video management"])
 manager = require_access("video_mgmt")
@@ -38,10 +38,13 @@ class VideoOut(BaseModel):
     segment_count: int
 
 
-class Annotations(BaseModel):
+class _AnnotationsBase(BaseModel):
     all_segments_done: bool
-    segments: list[AnnotatedSegment] = Field(default=[], max_length=500)
     tags: list[TagIn] = Field(default=[], max_length=50)
+
+
+class Annotations(_AnnotationsBase):
+    segments: list[AnnotatedSegment] = Field(default=[], max_length=500)
 
 
 # Read only: who did what, by display name (never user IDs). None: user unknown.
@@ -51,7 +54,7 @@ class SegmentOut(AnnotatedSegment):
     created_by: str | None
 
 
-class AnnotationsOut(Annotations):
+class AnnotationsOut(_AnnotationsBase):
     original_filename: str
     uploaded_by: str | None
     segments: list[SegmentOut]
@@ -64,7 +67,7 @@ def _published(con: sqlite3.Connection, video_id: int) -> sqlite3.Row:
     return row
 
 
-def _tags(rows) -> list[TagIn]:
+def _tags(rows: Iterable[sqlite3.Row]) -> list[TagIn]:
     return [TagIn(id=r["tag"], value=r["value"]) for r in rows]
 
 
@@ -88,8 +91,10 @@ def get_annotations(
             original_filename=video["original_filename"],
             uploaded_by=video["uploaded_by"],
             tags=_tags(queries.videos.video_tags(con, video_id)),
-            segments=[SegmentOut(**dict(s), tags=_tags(segment_tags.get(s["id"], [])))
-                      for s in queries.segments.video_segments(con, video_id)],
+            segments=[
+                SegmentOut(**dict(s), tags=_tags(segment_tags.get(s["id"], [])))
+                for s in queries.segments.video_segments(con, video_id)
+            ],
         )
 
 
@@ -117,12 +122,14 @@ def save_annotations(
             old = existing.get(segment.id)
             if old is None:
                 segment_id = queries.segments.insert_segment(
-                    con, video_id, segment.technique, segment.begin_s, segment.end_s, segment.performer, me.id)
+                    con, video_id, segment.technique, segment.begin_s, segment.end_s, segment.performer, me.id
+                )
                 changed = True
             else:
-                segment_id = segment.id
-                queries.segments.update_segment(con, segment_id, segment.technique, segment.begin_s,
-                                                segment.end_s, segment.performer)
+                segment_id = old["id"]
+                queries.segments.update_segment(
+                    con, segment_id, segment.technique, segment.begin_s, segment.end_s, segment.performer
+                )
                 queries.segments.clear_segment_tags(con, segment_id)
                 if (old["begin_s"], old["end_s"]) != (segment.begin_s, segment.end_s):
                     queries.thumbnails.clear_segment_thumbnail(con, segment_id)

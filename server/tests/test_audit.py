@@ -23,8 +23,12 @@ def events(caplog, name=None):
 def test_every_event_in_the_table():
     for path in APP.rglob("*.py"):
         for node in ast.walk(ast.parse(path.read_text(encoding="utf-8"))):
-            if (isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) and node.func.attr == "event"
-                    and getattr(node.func.value, "id", None) == "audit"):
+            if (
+                isinstance(node, ast.Call)
+                and isinstance(node.func, ast.Attribute)
+                and node.func.attr == "event"
+                and getattr(node.func.value, "id", None) == "audit"
+            ):
                 name = node.args[0]
                 assert isinstance(name, ast.Constant), f"{path.name}:{node.lineno}: not a literal"
                 assert name.value in audit.EVENTS, f"{path.name}:{node.lineno}: {name.value!r}"
@@ -40,7 +44,11 @@ def test_message_carries_the_fields(caplog):
     audit.event("video.deleted", video_id=3)
     (record,) = events(caplog)
     assert (record.getMessage(), record.event, record.video_id, record.levelno) == (
-        "video.deleted video_id=3", "video.deleted", 3, logging.INFO)
+        "video.deleted video_id=3",
+        "video.deleted",
+        3,
+        logging.INFO,
+    )
 
 
 def test_login_failed_then_succeeded(client, admin_secret, caplog):
@@ -81,13 +89,27 @@ def test_no_secret_in_any_record(client, admin_secret, caplog):
     body = {"current_password": USER_PASSWORD, "new_password": new_password}
     assert kenji.post("/api/profile/password", json=body).status_code == 204
     new_secret = kenji.post("/api/profile/totp").json()["secret"]
-    assert kenji.post("/api/profile/totp/confirm", json={
-        "current_password": new_password, "totp_secret": new_secret,
-        "totp_code": pyotp.TOTP(new_secret).now()}).status_code == 204
+    assert (
+        kenji.post(
+            "/api/profile/totp/confirm",
+            json={
+                "current_password": new_password,
+                "totp_secret": new_secret,
+                "totp_code": pyotp.TOTP(new_secret).now(),
+            },
+        ).status_code
+        == 204
+    )
 
     names = {r.event for r in events(caplog)}
-    assert {"login.succeeded", "user.invited", "invite.shown", "user.registered", "password.changed",
-            "totp.replaced"} <= names
+    assert {
+        "login.succeeded",
+        "user.invited",
+        "invite.shown",
+        "user.registered",
+        "password.changed",
+        "totp.replaced",
+    } <= names
     secrets = {PASSWORD, USER_PASSWORD, new_password, admin_secret, secret, new_secret, token, shown, session}
     for record in caplog.records:
         text = record.getMessage() + " " + " ".join(map(str, record.__dict__.values()))
@@ -97,5 +119,5 @@ def test_no_secret_in_any_record(client, admin_secret, caplog):
 def test_readme_lists_every_event():
     """The README's Logs section names every event (for the operator's alerts)."""
     readme = (APP.parents[1] / "README.md").read_text(encoding="utf-8")
-    section = readme[readme.index("**Security events**"):readme.index("## Security")]
+    section = readme[readme.index("**Security events**") : readme.index("## Security")]
     assert [name for name in audit.EVENTS if f"`{name}`" not in section] == []

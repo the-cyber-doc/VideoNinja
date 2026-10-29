@@ -22,10 +22,7 @@ def known_performers(con: sqlite3.Connection, performer_ids: set[str]) -> set[st
 
 
 def performer_name_exists(con: sqlite3.Connection, name: str) -> bool:
-    return (
-        con.execute('SELECT 1 FROM "performer" WHERE "name" = ? COLLATE NOCASE', (name,)).fetchone()
-        is not None
-    )
+    return con.execute('SELECT 1 FROM "performer" WHERE "name" = ? COLLATE NOCASE', (name,)).fetchone() is not None
 
 
 def insert_performer(con: sqlite3.Connection, performer_id: str, name: str) -> None:

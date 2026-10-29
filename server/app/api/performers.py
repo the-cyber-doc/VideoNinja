@@ -10,8 +10,8 @@ from pydantic import BaseModel
 from .. import queries
 from ..core import db, i18n
 from ..core.errors import ApiError
-from ..queries.users import User
 from ..core.validation import field
+from ..queries.users import User
 from .deps import require_access
 
 router = APIRouter(prefix="/api", tags=["performers"])
@@ -34,9 +34,7 @@ def slug(name: str) -> str:
 
 
 @router.get("/performers")
-def list_performers(
-    _: User = Depends(uploader), con: sqlite3.Connection = Depends(db.get_db)
-) -> list[Performer]:
+def list_performers(_: User = Depends(uploader), con: sqlite3.Connection = Depends(db.get_db)) -> list[Performer]:
     """Sorted by name, ignoring case and accents."""
     performers = (Performer(**dict(r)) for r in queries.performers.performers(con))
     return sorted(performers, key=lambda p: i18n.sort_key(p.name))

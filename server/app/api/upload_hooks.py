@@ -22,15 +22,15 @@ from typing import Any
 from fastapi import APIRouter, Depends, Header, Request, status
 
 from .. import queries
-from ..core import clock, db, errors, logs, middleware, settings
-from ..domain import audit, security, tusd
+from ..core import clock, db, errors, limits, logs, middleware, settings
 from ..core.errors import ApiError
-from ..queries.users import User
 from ..core.validation import RULES
+from ..domain import audit, security, tusd
+from ..queries.users import User
 from .deps import require_access
-from ..core import limits
 
 router = APIRouter(prefix="/internal", tags=["internal"])
+uploader = require_access("upload")
 
 SHA256 = re.compile(RULES["sha256"]["pattern"])
 
@@ -128,7 +128,7 @@ def upload_auth(
     request: Request,
     x_original_uri: str = Header(default=""),
     x_original_method: str = Header(default=""),
-    user: User = Depends(require_access("upload")),
+    user: User = Depends(uploader),
     con: sqlite3.Connection = Depends(db.get_db),
 ) -> None:
     """nginx auth_request for /files/…: 204 = forward to tusd; 401/403/404 = refuse.
@@ -141,7 +141,7 @@ def upload_auth(
     base = tusd.files_path()
     if not path.startswith(base):
         raise ApiError("not_found")
-    tus_id = path[len(base):].strip("/")
+    tus_id = path[len(base) :].strip("/")
     if not tus_id:
         if x_original_method.upper() != "POST":  # only creation on the base path
             raise ApiError("not_found")

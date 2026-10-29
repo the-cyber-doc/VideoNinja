@@ -1,16 +1,26 @@
 import base64
 import os
+import sqlite3
 from datetime import UTC
 
 import pyotp
 import pytest
 from fastapi.testclient import TestClient
 
-from app.core import clock
+from app.core import clock, db
 from app.domain import snapshot, throttle
 from app.main import app
 
 PASSWORD = "correct horse battery"
+_connections: list[sqlite3.Connection] = []
+
+
+def connect() -> sqlite3.Connection:
+    """The test database, for a test's own reads and writes; closed after the test
+    (`with con:` commits but never closes)."""
+    con = sqlite3.connect(db.db_path())
+    _connections.append(con)
+    return con
 
 
 @pytest.fixture(autouse=True)
@@ -41,6 +51,13 @@ def no_throttle_carried_over():
     throttle.reset()
     yield
     throttle.reset()
+
+
+@pytest.fixture(autouse=True)
+def close_connections():
+    yield
+    while _connections:
+        _connections.pop().close()
 
 
 @pytest.fixture(autouse=True)

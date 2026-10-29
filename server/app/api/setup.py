@@ -10,12 +10,12 @@ from fastapi import APIRouter, Depends, Request, status
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
-from .auth import TotpEnrollmentOut
 from .. import encoder
 from ..core import db, errors
-from ..domain import audit, security, snapshot, throttle, tusd
 from ..core.errors import ApiError
 from ..core.validation import field
+from ..domain import audit, security, snapshot, throttle, tusd
+from .auth import TotpEnrollmentOut
 
 log = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/setup", tags=["setup"])
@@ -91,9 +91,7 @@ def complete(body: SetupCompleteIn, request: Request) -> StreamingResponse:
             if db.is_initialized():
                 yield json.dumps({"error": errors.body("setup.done")}) + "\n"
                 return
-            for step in db.create_database(
-                body.username, body.name or body.username, pw_hash, body.totp_secret
-            ):
+            for step in db.create_database(body.username, body.name or body.username, pw_hash, body.totp_secret):
                 yield json.dumps({"step": step}) + "\n"
             request.app.state.setup_token = None
             audit.event("setup.completed", admin=body.username)
@@ -107,6 +105,4 @@ def complete(body: SetupCompleteIn, request: Request) -> StreamingResponse:
             _setup_lock.release()
 
     # Tell nginx not to buffer, so each step reaches the browser as it happens.
-    return StreamingResponse(
-        progress(), media_type="application/x-ndjson", headers={"X-Accel-Buffering": "no"}
-    )
+    return StreamingResponse(progress(), media_type="application/x-ndjson", headers={"X-Accel-Buffering": "no"})

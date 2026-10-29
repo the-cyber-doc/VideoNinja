@@ -10,11 +10,12 @@ from pydantic import BaseModel
 
 from .. import queries
 from ..core import db, i18n
-from ..queries.users import User
 from ..domain.tags import year_range
+from ..queries.users import User
 from .deps import require_access, user_zone
 
 router = APIRouter(prefix="/api", tags=["tags"])
+annotator = require_access("upload", "video_mgmt")  # the upload and Videos pages
 
 
 class TagValue(BaseModel):
@@ -33,7 +34,7 @@ class Tag(BaseModel):
 
 @router.get("/tags", response_model_exclude_none=True)
 def list_tags(
-    _: User = Depends(require_access("upload", "video_mgmt")),
+    _: User = Depends(annotator),
     con: sqlite3.Connection = Depends(db.get_db),
     lang: str = Depends(i18n.language),
     zone: tzinfo = Depends(user_zone),

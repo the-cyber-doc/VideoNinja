@@ -4,6 +4,8 @@ import json
 import sqlite3
 from dataclasses import dataclass
 
+from .rows import inserted
+
 # What a user's role allows, as a JSON array (one query with the user: no other per request).
 ACCESS = '(SELECT json_group_array(a."access") FROM "role_has_access" a WHERE a."role" = u."role") AS "access"'
 USER_COLUMNS = f'u."id", u."username", u."name", u."role", u."time_zone", {ACCESS}'
@@ -21,10 +23,11 @@ class User:
     access: frozenset[str]  # e.g. {"user_mgmt", "upload"}
 
     @classmethod
-    def from_row(cls, row: sqlite3.Row) -> "User":
+    def from_row(cls, row: sqlite3.Row) -> User:
         """A row with USER_COLUMNS."""
-        return cls(row["id"], row["username"], row["name"], row["role"], row["time_zone"],
-                   frozenset(json.loads(row["access"])))
+        return cls(
+            row["id"], row["username"], row["name"], row["role"], row["time_zone"], frozenset(json.loads(row["access"]))
+        )
 
 
 @dataclass(frozen=True)
@@ -34,6 +37,7 @@ class Credentials:
     user: User
     pw_hash: str | None
     totp: str | None  # encrypted (crypto.py)
+
 
 # Dates are text with their UTC offset, "2026-10-23T12:13:38+02:00" (app/clock.py),
 # in different timezones: always compare and sort them through datetime().
@@ -46,10 +50,12 @@ def insert_user(
     name: str | None = None,
     pw_hash: str | None = None,
 ) -> int:
-    return con.execute(
-        'INSERT INTO "user" ("username", "name", "pw_hash", "role") VALUES (?, ?, ?, ?)',
-        (username, name, pw_hash, role),
-    ).lastrowid
+    return inserted(
+        con.execute(
+            'INSERT INTO "user" ("username", "name", "pw_hash", "role") VALUES (?, ?, ?, ?)',
+            (username, name, pw_hash, role),
+        )
+    )
 
 
 def user_exists(con: sqlite3.Connection, user_id: int) -> bool:
@@ -70,7 +76,8 @@ def user_for_login(con: sqlite3.Connection, username: str) -> Credentials | None
 
 
 def user_pw_hash(con: sqlite3.Connection, user_id: int) -> str | None:
-    return con.execute('SELECT "pw_hash" FROM "user" WHERE "id" = ?', (user_id,)).fetchone()[0]
+    pw_hash: str | None = con.execute('SELECT "pw_hash" FROM "user" WHERE "id" = ?', (user_id,)).fetchone()[0]
+    return pw_hash
 
 
 def list_users(con: sqlite3.Connection, now: str) -> list[sqlite3.Row]:
@@ -100,9 +107,7 @@ def set_user_totp(con: sqlite3.Connection, user_id: int, totp: str) -> None:
     con.execute('UPDATE "user" SET "totp" = ? WHERE "id" = ?', (totp, user_id))
 
 
-def set_user_registration(
-    con: sqlite3.Connection, user_id: int, name: str | None, pw_hash: str, totp: str
-) -> None:
+def set_user_registration(con: sqlite3.Connection, user_id: int, name: str | None, pw_hash: str, totp: str) -> None:
     con.execute(
         'UPDATE "user" SET "name" = ?, "pw_hash" = ?, "totp" = ? WHERE "id" = ?',
         (name, pw_hash, totp, user_id),
@@ -123,11 +128,12 @@ def roles(con: sqlite3.Connection) -> list[sqlite3.Row]:
 
 def role_name(con: sqlite3.Connection, role_id: str) -> sqlite3.Row:
     """The role's name in each language ("name_en", "name_fr")."""
-    return con.execute(
+    row: sqlite3.Row = con.execute(
         'SELECT t."en" AS "name_en", t."fr" AS "name_fr"'
         ' FROM "role" r JOIN "translation" t ON t."id" = r."name" WHERE r."id" = ?',
         (role_id,),
     ).fetchone()
+    return row
 
 
 def role_exists(con: sqlite3.Connection, role_id: str) -> bool:

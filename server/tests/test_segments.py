@@ -40,8 +40,7 @@ def segment(begin_s, technique=KOKU, performer="hatsumi"):
 @pytest.mark.parametrize("n", [1, 40])
 def test_lookups_do_not_grow_with_the_segments(admin, statements, n):  # noqa: F811 - fixture
     sql("UPDATE video SET duration_s = ?", LONG_VIDEO_S)
-    body = {"all_segments_done": True,
-            "segments": [segment(10 * i, KOKU if i % 2 else KETO) for i in range(n)]}
+    body = {"all_segments_done": True, "segments": [segment(10 * i, KOKU if i % 2 else KETO) for i in range(n)]}
     statements.clear()
     r = admin.put("/api/videos/1/annotations", json=body)
     assert r.status_code == 200, r.text
@@ -52,12 +51,17 @@ def test_lookups_do_not_grow_with_the_segments(admin, statements, n):  # noqa: F
 
 def test_unknown_ones_named_in_order(admin):  # noqa: F811 - fixture
     """The first problem in the segments' order, as before the lookups were grouped."""
-    body = {"all_segments_done": True,
-            "segments": [segment(1), segment(10, performer="nope"), segment(20, technique="nope")]}
+    body = {
+        "all_segments_done": True,
+        "segments": [segment(1), segment(10, performer="nope"), segment(20, technique="nope")],
+    }
     r = admin.put("/api/videos/1/annotations", json=body)
     assert r.status_code == 422
-    assert r.json() == {"code": "segment.unknown_performer", "detail": "Unknown performer: nope",
-                        "params": {"performer": "nope"}}
+    assert r.json() == {
+        "code": "segment.unknown_performer",
+        "detail": "Unknown performer: nope",
+        "params": {"performer": "nope"},
+    }
 
 
 def test_access_checks_cost_no_query(admin, statements):  # noqa: F811 - fixture

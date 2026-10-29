@@ -2,15 +2,15 @@
 and the catalogue rebuild after a write."""
 
 import sqlite3
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from datetime import tzinfo
 from zoneinfo import ZoneInfo
 
 from fastapi import Depends, Request
 
 from ..core import clock, db, logs
-from ..domain import audit, security, snapshot
 from ..core.errors import ApiError
+from ..domain import audit, security, snapshot
 from ..queries.users import User
 
 
@@ -32,14 +32,12 @@ def current_user(
     return user
 
 
-def user_zone(
-    user: User = Depends(current_user), zone: ZoneInfo | None = Depends(clock.zone)
-) -> tzinfo:
+def user_zone(user: User = Depends(current_user), zone: ZoneInfo | None = Depends(clock.zone)) -> tzinfo:
     """Dependency: the timezone to write this request's dates in (see clock.user_zone)."""
     return clock.user_zone(user.time_zone, zone)
 
 
-def require_access(*accesses: str):
+def require_access(*accesses: str) -> Callable[..., User]:
     """Dependency factory: 403 unless the logged-in user's role grants `access`
     (one of them, if several: e.g. performers for uploads and video management)."""
 

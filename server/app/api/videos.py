@@ -15,13 +15,12 @@ from pydantic import BaseModel, Field
 
 from .. import queries
 from ..core import clock, db, limits, settings
-from ..domain import audit, segments, tusd
 from ..core.errors import ApiError
-from ..queries.users import User
-from ..domain.segments import SegmentIn, TagIn
 from ..core.validation import RULES, field
-from .deps import rebuild_after_write
-from .deps import require_access, user_zone
+from ..domain import audit, segments, tusd
+from ..domain.segments import SegmentIn, TagIn
+from ..queries.users import User
+from .deps import rebuild_after_write, require_access, user_zone
 
 router = APIRouter(prefix="/api", tags=["videos"])
 uploader = require_access("upload")
@@ -111,8 +110,13 @@ def submit(
         if queries.videos.video_known(con, upload["original_sha256"]):
             raise ApiError("video.exists")
         video_id = queries.videos.insert_video(
-            con, upload["original_sha256"], body.original_filename, body.all_segments_done,
-            me.id, clock.at(0, zone), tus_id,
+            con,
+            upload["original_sha256"],
+            body.original_filename,
+            body.all_segments_done,
+            me.id,
+            clock.at(0, zone),
+            tus_id,
         )
         for tag in body.tags:
             queries.videos.insert_video_tag(con, video_id, tag.id, tag.value)

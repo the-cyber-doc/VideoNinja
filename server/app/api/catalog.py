@@ -6,8 +6,8 @@ from fastapi import APIRouter, Depends, Response, status
 from fastapi.responses import FileResponse
 
 from ..core import i18n, settings
-from ..domain import snapshot
 from ..core.errors import ApiError
+from ..domain import snapshot
 from ..queries.users import User
 from .deps import current_user
 

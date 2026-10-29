@@ -12,10 +12,10 @@ from pydantic import BaseModel
 
 from .. import queries
 from ..core import crypto, db, i18n
-from ..domain import audit, security, throttle
 from ..core.errors import ApiError
-from ..queries.users import User
 from ..core.validation import field
+from ..domain import audit, security, throttle
+from ..queries.users import User
 from .auth import TotpEnrollmentOut, UserOut, user_out
 from .deps import current_user, session_token
 

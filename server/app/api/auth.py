@@ -7,12 +7,11 @@ from pydantic import BaseModel
 
 from .. import queries
 from ..core import clock, crypto, db, i18n, logs
-from ..domain import audit, security, throttle
 from ..core.errors import ApiError
-from ..queries.users import Credentials, User
 from ..core.validation import field
-from .deps import session_token
-from .deps import current_user
+from ..domain import audit, security, throttle
+from ..queries.users import Credentials, User
+from .deps import current_user, session_token
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
@@ -48,7 +47,7 @@ def _totp_ok(credentials: Credentials | None, code: str) -> bool:
     user_id = credentials.user.id
     try:
         secret = crypto.decrypt(credentials.totp, crypto.totp_aad(user_id))
-    except (InvalidTag, ValueError):
+    except InvalidTag, ValueError:
         # Wrong key, or the value was tampered with / copied from another row.
         audit.event("totp.undecryptable", target_user_id=user_id)
         return False

@@ -19,7 +19,5 @@ class AboutOut(BaseModel):
 
 
 @router.get("/about")
-def about(
-    _: User = Depends(current_user), con: sqlite3.Connection = Depends(db.get_db)
-) -> AboutOut:
+def about(_: User = Depends(current_user), con: sqlite3.Connection = Depends(db.get_db)) -> AboutOut:
     return AboutOut(db_version=int(queries.config.config_value(con, "db_version") or 0), db_schema=db.EXPECTED_VERSION)

@@ -24,7 +24,7 @@ def run(stopping: threading.Event) -> None:
     while not stopping.wait(HEARTBEAT_S):
         try:
             beat()
-        except Exception:  # noqa: BLE001 - try again at the next beat
+        except Exception:
             log.exception("Encoder heartbeat failed")
 
 

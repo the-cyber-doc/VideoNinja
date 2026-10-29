@@ -9,9 +9,7 @@ from pydantic import Field
 
 SHARED = Path(__file__).resolve().parents[1] / "validation.json"  # app/validation.json
 RULES: dict[str, dict[str, Any]] = {
-    name: rule
-    for name, rule in json.loads(SHARED.read_text(encoding="utf-8")).items()
-    if not name.startswith("_")
+    name: rule for name, rule in json.loads(SHARED.read_text(encoding="utf-8")).items() if not name.startswith("_")
 }
 
 

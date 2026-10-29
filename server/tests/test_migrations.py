@@ -27,8 +27,10 @@ def schema(path):
     out = {
         t: (
             con.execute(f'PRAGMA table_info("{t}")').fetchall(),
-            sorted((name, unique, origin, partial, con.execute(f'PRAGMA index_info("{name}")').fetchall())
-                   for _, name, unique, origin, partial in con.execute(f'PRAGMA index_list("{t}")')),
+            sorted(
+                (name, unique, origin, partial, con.execute(f'PRAGMA index_info("{name}")').fetchall())
+                for _, name, unique, origin, partial in con.execute(f'PRAGMA index_list("{t}")')
+            ),
             con.execute(f'PRAGMA foreign_key_list("{t}")').fetchall(),
         )
         for t in tables
@@ -63,8 +65,11 @@ def test_every_version_has_its_scripts():
 def test_up_then_down_as_if_built_so(database, tmp_path, monkeypatch):
     """v1 → v2 gives what v2's scripts build, and back to what v1's build. Data kept."""
     build(database, 1)
-    sql(database, "INSERT INTO video (sha256sum, original_sha256, original_filename, uploaded_at, status)"
-                  " VALUES ('a', 'b', 'kata.mp4', '2026-01-01T00:00:00Z', 'published')")
+    sql(
+        database,
+        "INSERT INTO video (sha256sum, original_sha256, original_filename, uploaded_at, status)"
+        " VALUES ('a', 'b', 'kata.mp4', '2026-01-01T00:00:00Z', 'published')",
+    )
     fresh = {v: tmp_path / f"fresh-v{v}.db" for v in (1, 2)}
     for v, path in fresh.items():
         build(path, v)
@@ -90,8 +95,11 @@ def test_each_step_as_if_built_so(database, tmp_path, monkeypatch, version):
     """Every step, up then down: the schema (tables, columns, indexes, foreign keys)
     its scripts build, and the data kept."""
     build(database, version - 1)
-    sql(database, "INSERT INTO video (original_sha256, original_filename, uploaded_at)"
-                  " VALUES ('b', 'kata.mp4', '2026-01-01T00:00:00Z')")
+    sql(
+        database,
+        "INSERT INTO video (original_sha256, original_filename, uploaded_at)"
+        " VALUES ('b', 'kata.mp4', '2026-01-01T00:00:00Z')",
+    )
     fresh = {v: tmp_path / f"fresh-v{v}.db" for v in (version - 1, version)}
     for v, path in fresh.items():
         build(path, v)
@@ -133,7 +141,8 @@ def test_a_failing_step_leaves_its_version(database, tmp_path, monkeypatch):
     broken = tmp_path / "migrations"
     broken.mkdir()
     (broken / "v1_to_v2.sql").write_text(
-        'BEGIN; CREATE TABLE "heartbeat" ("name" VARCHAR); ALTER TABLE "nope" ADD COLUMN "x" INTEGER; COMMIT;')
+        'BEGIN; CREATE TABLE "heartbeat" ("name" VARCHAR); ALTER TABLE "nope" ADD COLUMN "x" INTEGER; COMMIT;'
+    )
     monkeypatch.setattr(db, "MIGRATIONS_DIR", broken)
     monkeypatch.setattr(db, "EXPECTED_VERSION", 2)
     with pytest.raises(sqlite3.OperationalError):

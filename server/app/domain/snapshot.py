@@ -28,7 +28,7 @@ import sqlite3
 import threading
 import time
 from pathlib import Path
-
+from typing import Any
 
 from ..core import db, i18n, procs, settings
 from . import catalog
@@ -48,7 +48,7 @@ def catalog_dir() -> Path:
     return settings.current().catalog_dir
 
 
-def current() -> tuple[str, dict] | None:
+def current() -> tuple[str, dict[str, Any]] | None:
     """The current version and its manifest, or None before the first snapshot."""
     link = catalog_dir() / "current"
     try:
@@ -96,7 +96,7 @@ def _prune(versions: Path, keep: str) -> None:
         shutil.rmtree(d, ignore_errors=True)
 
 
-def rebuild() -> tuple[str, dict]:
+def rebuild() -> tuple[str, dict[str, Any]]:
     """Write a new version if the catalogue changed; return the current one."""
     with _lock:
         con = db.connect()

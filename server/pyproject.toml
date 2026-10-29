@@ -1,0 +1,39 @@
+# Settings of the server's development tools (the app itself has no package metadata:
+# requirements*.in list its dependencies). pytest's: pytest.ini.
+
+[tool.ruff]
+line-length = 120
+target-version = "py314"  # Ruff's newest; the app runs on 3.15
+
+[tool.ruff.lint]
+select = [
+    "E", "W",  # pycodestyle (flake8's checks)
+    "F",       # pyflakes (flake8's: unused or undefined names)
+    "I",       # import order
+    "B",       # bugbear: likely bugs
+    "UP",      # newer syntax where the target allows it
+    "SIM",     # simpler forms
+    "RUF",     # Ruff's own
+]
+
+[tool.ruff.lint.flake8-bugbear]
+# FastAPI's dependencies and parameters are declared as defaults: its intended style.
+extend-immutable-calls = ["fastapi.Depends", "fastapi.Query", "fastapi.Header", "fastapi.Body", "fastapi.Path"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["app"]
+
+[tool.mypy]
+python_version = "3.15"
+files = ["app"]
+strict = true
+
+[tool.coverage.run]
+source = ["app"]
+branch = true
+
+[tool.coverage.report]
+# The tests' coverage when this was set (statements + branches): it may only go up.
+fail_under = 93
+show_missing = true
+skip_covered = true

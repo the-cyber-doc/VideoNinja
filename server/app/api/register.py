@@ -5,16 +5,15 @@ import sqlite3
 from fastapi import APIRouter, Depends, status
 from pydantic import BaseModel
 
-from .auth import TotpEnrollmentOut
 from .. import queries
 from ..core import crypto, db
-from ..domain import audit, invites, security, throttle
 from ..core.errors import ApiError
 from ..core.validation import field
+from ..domain import audit, invites, security, throttle
+from .auth import TotpEnrollmentOut
 
 # An unknown invitation token (404) counts as a credential failure.
-router = APIRouter(prefix="/api/register", tags=["register"],
-                   dependencies=[Depends(throttle.credential_guard(404))])
+router = APIRouter(prefix="/api/register", tags=["register"], dependencies=[Depends(throttle.credential_guard(404))])
 
 
 class TokenIn(BaseModel):

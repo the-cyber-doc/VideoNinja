@@ -1,13 +1,11 @@
-import sqlite3
-
 import pyotp
 import pytest
 from fastapi.testclient import TestClient
 
-from app.core import crypto, db
+from app.core import crypto
 from app.main import app
 
-from .conftest import PASSWORD
+from .conftest import PASSWORD, connect
 from .test_auth import login
 
 NEW_PASSWORD = "another long passphrase"
@@ -25,8 +23,9 @@ def second_session(secret, password=PASSWORD) -> TestClient:
     return other
 
 
-@pytest.mark.parametrize("path", ["/api/profile/name", "/api/profile/password", "/api/profile/totp",
-                                  "/api/profile/totp/confirm"])
+@pytest.mark.parametrize(
+    "path", ["/api/profile/name", "/api/profile/password", "/api/profile/totp", "/api/profile/totp/confirm"]
+)
 def test_needs_session(client, admin_secret, path):
     assert client.post(path, json={}).status_code == 401
 
@@ -47,8 +46,7 @@ def test_username_cannot_change(client, logged_in):
 
 def test_change_password(client, logged_in):
     other = second_session(logged_in)
-    r = client.post("/api/profile/password",
-                    json={"current_password": PASSWORD, "new_password": NEW_PASSWORD})
+    r = client.post("/api/profile/password", json={"current_password": PASSWORD, "new_password": NEW_PASSWORD})
     assert r.status_code == 204
 
     assert client.get("/api/auth/me").status_code == 200  # this session stays
@@ -58,8 +56,7 @@ def test_change_password(client, logged_in):
 
 
 def test_change_password_checks(client, logged_in):
-    r = client.post("/api/profile/password",
-                    json={"current_password": "wrong password!", "new_password": NEW_PASSWORD})
+    r = client.post("/api/profile/password", json={"current_password": "wrong password!", "new_password": NEW_PASSWORD})
     assert r.status_code == 403
     r = client.post("/api/profile/password", json={"current_password": PASSWORD, "new_password": "short"})
     assert r.status_code == 422
@@ -71,8 +68,7 @@ def test_replace_totp(client, logged_in):
     new = client.post("/api/profile/totp").json()
     assert set(new) == {"secret", "uri", "qr"} and new["secret"] != logged_in
 
-    body = {"current_password": PASSWORD, "totp_secret": new["secret"],
-            "totp_code": pyotp.TOTP(new["secret"]).now()}
+    body = {"current_password": PASSWORD, "totp_secret": new["secret"], "totp_code": pyotp.TOTP(new["secret"]).now()}
     assert client.post("/api/profile/totp/confirm", json=body).status_code == 204
 
     assert other.get("/api/auth/me").status_code == 401
@@ -82,18 +78,20 @@ def test_replace_totp(client, logged_in):
         assert login(client, logged_in, code=old).status_code == 401
 
     # Stored encrypted, bound to the user's row.
-    stored = sqlite3.connect(db.db_path()).execute("SELECT id, totp FROM user").fetchone()
+    stored = connect().execute("SELECT id, totp FROM user").fetchone()
     assert crypto.decrypt(stored[1], crypto.totp_aad(stored[0])) == new["secret"]
 
 
 def test_replace_totp_checks(client, logged_in):
     secret = client.post("/api/profile/totp").json()["secret"]
     wrong = "000000" if pyotp.TOTP(secret).now() != "000000" else "111111"
-    r = client.post("/api/profile/totp/confirm",
-                    json={"current_password": PASSWORD, "totp_secret": secret, "totp_code": wrong})
+    r = client.post(
+        "/api/profile/totp/confirm", json={"current_password": PASSWORD, "totp_secret": secret, "totp_code": wrong}
+    )
     assert r.status_code == 400
-    r = client.post("/api/profile/totp/confirm",
-                    json={"current_password": "wrong password!", "totp_secret": secret,
-                          "totp_code": pyotp.TOTP(secret).now()})
+    r = client.post(
+        "/api/profile/totp/confirm",
+        json={"current_password": "wrong password!", "totp_secret": secret, "totp_code": pyotp.TOTP(secret).now()},
+    )
     assert r.status_code == 403
     assert login(client, logged_in).status_code == 200  # old authenticator still works

@@ -33,13 +33,16 @@ def schema(app: FastAPI) -> dict[str, Any]:
         for operation in path.values():
             responses = operation["responses"]
             responses.pop("422", None)  # FastAPI's format: ours is in "default"
-            responses["default"] = {"description": "An error (core/errors.py: ERRORS)",
-                                    "content": {"application/json": {"schema": ERROR}}}
+            responses["default"] = {
+                "description": "An error (core/errors.py: ERRORS)",
+                "content": {"application/json": {"schema": ERROR}},
+            }
     return spec
 
 
 def install(app: FastAPI) -> None:
     """Serve this schema (/openapi.json, /docs) instead of FastAPI's own."""
+
     def openapi() -> dict[str, Any]:
         if app.openapi_schema is None:
             app.openapi_schema = schema(app)

@@ -1,16 +1,15 @@
 import base64
 import os
-import sqlite3
 
 import pyotp
 import pytest
 from cryptography.exceptions import InvalidTag
 from fastapi.testclient import TestClient
 
-from app.core import crypto, db
+from app.core import crypto
 from app.main import app
 
-from .conftest import PASSWORD
+from .conftest import PASSWORD, connect
 
 
 @pytest.fixture
@@ -50,17 +49,18 @@ def test_wrong_key_fails(key, key_file):
         crypto.decrypt(token, "ad")
 
 
-@pytest.mark.parametrize("content, message", [(None, "not found"), ("not base64!", "base64"),
-                                              (base64.b64encode(b"short").decode(), "32 bytes")])
+@pytest.mark.parametrize(
+    "content, message",
+    [(None, "not found"), ("not base64!", "base64"), (base64.b64encode(b"short").decode(), "32 bytes")],
+)
 def test_bad_key_file_refuses_start(key_file, tmp_path, monkeypatch, content, message):
     if content is None:
         key_file.unlink()
     else:
         key_file.write_text(content)
     monkeypatch.setenv("VIDEONINJA_DB", str(tmp_path / "videoninja.db"))
-    with pytest.raises(RuntimeError, match=message):
-        with TestClient(app):
-            pass
+    with pytest.raises(RuntimeError, match=message), TestClient(app):
+        pass
 
 
 @pytest.mark.skipif(os.getuid() == 0, reason="root reads any file")
@@ -82,8 +82,10 @@ def test_key_from_environment(key_file, monkeypatch):
     assert crypto.decrypt(token, "ad") == "secret"
 
 
-@pytest.mark.parametrize("value, message", [(None, "Both"), ("not base64!", "base64: VIDEONINJA_DB_KEY$"),
-                                            ("", "32 bytes, got 0: VIDEONINJA_DB_KEY$")])
+@pytest.mark.parametrize(
+    "value, message",
+    [(None, "Both"), ("not base64!", "base64: VIDEONINJA_DB_KEY$"), ("", "32 bytes, got 0: VIDEONINJA_DB_KEY$")],
+)
 def test_bad_key_variable_refuses_start(key_file, tmp_path, monkeypatch, value, message):
     if value is None:
         value = key_file.read_text()  # valid, but VIDEONINJA_DB_KEY_FILE is set too
@@ -91,14 +93,13 @@ def test_bad_key_variable_refuses_start(key_file, tmp_path, monkeypatch, value, 
         monkeypatch.delenv("VIDEONINJA_DB_KEY_FILE")
     monkeypatch.setenv("VIDEONINJA_DB_KEY", value)
     monkeypatch.setenv("VIDEONINJA_DB", str(tmp_path / "videoninja.db"))
-    with pytest.raises(RuntimeError, match=message):
-        with TestClient(app):
-            pass
+    with pytest.raises(RuntimeError, match=message), TestClient(app):
+        pass
 
 
 def test_login_refused_if_secret_moved_to_other_row(client, admin_secret):
     """A ciphertext copied onto another user's row must not decrypt there."""
-    con = sqlite3.connect(db.db_path())
+    con = connect()
     with con:
         con.execute("UPDATE user SET id = 7 WHERE id = 1")
     code = pyotp.TOTP(admin_secret).now()  # a valid code: only the row binding can refuse it

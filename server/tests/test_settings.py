@@ -28,12 +28,25 @@ def test_defaults():
 
 def test_every_wrong_one_named_at_once():
     with pytest.raises(RuntimeError) as e:
-        Settings.from_env({"VIDEONINJA_X265_PRESET": "p6", "VIDEONINJA_TUSD_URL": "file:///etc/passwd",
-                           "VIDEONINJA_TUSD_PORT": "99999", "VIDEONINJA_ARGON2_CONCURRENCY": "0",
-                           "VIDEONINJA_LOG_FORMAT": "xml", "VIDEONINJA_BASE_PATH": "videoninja"})
+        Settings.from_env(
+            {
+                "VIDEONINJA_X265_PRESET": "p6",
+                "VIDEONINJA_TUSD_URL": "file:///etc/passwd",
+                "VIDEONINJA_TUSD_PORT": "99999",
+                "VIDEONINJA_ARGON2_CONCURRENCY": "0",
+                "VIDEONINJA_LOG_FORMAT": "xml",
+                "VIDEONINJA_BASE_PATH": "videoninja",
+            }
+        )
     message = str(e.value)
-    for name in ("X265_PRESET='p6'", "TUSD_URL=", "TUSD_PORT='99999'", "ARGON2_CONCURRENCY='0'",
-                 "LOG_FORMAT='xml'", "BASE_PATH='videoninja'"):
+    for name in (
+        "X265_PRESET='p6'",
+        "TUSD_URL=",
+        "TUSD_PORT='99999'",
+        "ARGON2_CONCURRENCY='0'",
+        "LOG_FORMAT='xml'",
+        "BASE_PATH='videoninja'",
+    ):
         assert f"VIDEONINJA_{name}" in message
     assert len(message.splitlines()) == 7  # a title, then one line each
 

@@ -1,13 +1,12 @@
 import shutil
-import sqlite3
 from pathlib import Path
 
 import pyotp
 import pytest
 
-from app.core import db
 from app.encoder import checks
 
+from .conftest import connect
 from .test_auth import login
 from .test_catalog import SHA, add_segments
 from .test_users import USER_PASSWORD, create, register, user_login
@@ -64,7 +63,7 @@ def test_needs_segment_access(client, admin_secret, monkeypatch):
     login(admin, admin_secret)
     add_segments()
     secret = register(create(admin))
-    con = sqlite3.connect(db.db_path())
+    con = connect()
     with con:  # a role without the "segment" access
         con.execute("INSERT INTO translation (id, en) VALUES ('role.guest.name', 'Guest')")
         con.execute("INSERT INTO role (id, name) VALUES ('guest', 'role.guest.name')")
@@ -96,7 +95,7 @@ def test_clip_not_published_or_unknown(client, admin_secret, monkeypatch):
     monkeypatch.setenv("VIDEONINJA_X_ACCEL", "1")
     login(client, admin_secret)
     add_segments()
-    with sqlite3.connect(db.db_path()) as con:
+    with connect() as con:
         con.execute("UPDATE video SET sha256sum = NULL, status = 'queued'")
     assert client.get("/media/segment/1").status_code == 404
     assert client.get("/media/segment/99").status_code == 404
@@ -120,7 +119,7 @@ def test_clip_cut_by_the_app_without_nginx(client, admin_secret, tmp_path, monke
     monkeypatch.setenv("VIDEONINJA_MEDIA_DIR", str(tmp_path / "media"))
     login(client, admin_secret)
     add_segments()
-    with sqlite3.connect(db.db_path()) as con:
+    with connect() as con:
         con.execute("UPDATE segment SET begin_s = 5, end_s = 15 WHERE id = 1")
     folder = tmp_path / "media" / "video" / "ab" / SHA
     folder.mkdir(parents=True)

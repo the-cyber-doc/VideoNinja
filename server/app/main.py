@@ -1,17 +1,19 @@
 import logging
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
+from starlette.middleware.base import RequestResponseEndpoint
 
 from . import api, encoder
+from .api import openapi, setup
 from .core import crypto, db, errors, logs, middleware, settings
 from .domain import audit, security, snapshot, tusd
-from .api import openapi, setup
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     settings.current()  # refuse to start with a wrong setting (every one named)
     crypto.load_key()  # nor without the encryption key
     if db.is_initialized():
@@ -42,14 +44,22 @@ SAFE_METHODS = {"GET", "HEAD", "OPTIONS"}
 
 
 @app.middleware("http")
-async def same_origin_writes(request: Request, call_next):
+async def same_origin_writes(request: Request, call_next: RequestResponseEndpoint) -> Response:
     """A state-changing request to the API comes from this origin's own pages, or it is
     refused (security.cross_site). /internal/ (tusd's hooks, the encoder) is not a
     browser's: nginx never forwards it."""
-    if (request.method not in SAFE_METHODS and request.url.path.startswith(("/api/", "/media/"))
-            and security.cross_site(request.headers)):
-        audit.event("request.cross_site", method=request.method, path=request.url.path,
-                    sec_fetch_site=request.headers.get("sec-fetch-site"), origin=request.headers.get("origin"))
+    if (
+        request.method not in SAFE_METHODS
+        and request.url.path.startswith(("/api/", "/media/"))
+        and security.cross_site(request.headers)
+    ):
+        audit.event(
+            "request.cross_site",
+            method=request.method,
+            path=request.url.path,
+            sec_fetch_site=request.headers.get("sec-fetch-site"),
+            origin=request.headers.get("origin"),
+        )
         return errors.response("cross_site")
     return await call_next(request)
 

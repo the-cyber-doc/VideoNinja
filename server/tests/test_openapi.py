@@ -12,9 +12,11 @@ COMMITTED = Path(__file__).resolve().parents[1] / "openapi.json"
 UNTYPED = {
     ("post", "/api/setup/complete"),  # NDJSON progress stream
     ("get", "/api/catalog"),  # the snapshot file (X-Accel-Redirect)
-    ("get", "/media/segment/{segment_id}"), ("head", "/media/segment/{segment_id}"),
+    ("get", "/media/segment/{segment_id}"),
+    ("head", "/media/segment/{segment_id}"),
     ("get", "/media/segment/{segment_id}/thumbnail"),
-    ("get", "/media/video/{video_id}"), ("get", "/media/video/{video_id}/thumbnail"),
+    ("get", "/media/video/{video_id}"),
+    ("get", "/media/video/{video_id}/thumbnail"),
 }
 
 
@@ -26,7 +28,8 @@ def operations():
 
 def test_committed_schema_is_current():
     assert COMMITTED.read_text(encoding="utf-8") == openapi.text(app), (
-        "server/openapi.json is out of date: run tools/api-types.sh (it also regenerates the frontend's types)")
+        "server/openapi.json is out of date: run tools/api-types.sh (it also regenerates the frontend's types)"
+    )
 
 
 def test_every_operation_says_how_it_fails():
@@ -60,10 +63,14 @@ def test_json_answers_are_typed():
 def test_no_open_dictionaries():
     """An answer the frontend reads has a model, not dict[str, …] (any key would
     type-check there). tusd's hook answers tusd's own protocol."""
-    open_ = {(method, path) for method, path, operation in operations()
-             for code, response in operation["responses"].items() if code.startswith("2")
-             for schema in [response.get("content", {}).get("application/json", {}).get("schema", {})]
-             if "additionalProperties" in schema and "properties" not in schema}
+    open_ = {
+        (method, path)
+        for method, path, operation in operations()
+        for code, response in operation["responses"].items()
+        if code.startswith("2")
+        for schema in [response.get("content", {}).get("application/json", {}).get("schema", {})]
+        if "additionalProperties" in schema and "properties" not in schema
+    }
     assert open_ == {("post", "/internal/tusd-hook")}
 
 

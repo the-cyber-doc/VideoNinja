@@ -43,6 +43,7 @@ import subprocess  # only through procs.py: argument lists, no shell  # nosec B4
 import threading
 import time
 from pathlib import Path
+from typing import Any
 
 from .. import queries
 from ..core import clock, db, logs, paths, procs, settings
@@ -74,7 +75,7 @@ class Encoder:
         self.preset = settings.current().x265_preset
         self.script = str(settings.current().encode_script)
         self.stopping = threading.Event()
-        self.process: subprocess.Popen | None = None
+        self.process: subprocess.Popen[Any] | None = None
         self.thread: threading.Thread | None = None
         self.helpers: list[threading.Thread] = []  # thumbnails, heartbeat
 
@@ -89,8 +90,10 @@ class Encoder:
             queries.queue.requeue_interrupted(con, MAX_ATTEMPTS)
         heartbeat.beat()  # healthy from the start
         self.thread = threading.Thread(target=self.run, name="encoder", daemon=True)
-        self.helpers = [threading.Thread(target=self.run_thumbnails, name="thumbnails", daemon=True),
-                        threading.Thread(target=heartbeat.run, args=(self.stopping,), name="heartbeat", daemon=True)]
+        self.helpers = [
+            threading.Thread(target=self.run_thumbnails, name="thumbnails", daemon=True),
+            threading.Thread(target=heartbeat.run, args=(self.stopping,), name="heartbeat", daemon=True),
+        ]
         for thread in (self.thread, *self.helpers):
             thread.start()
         log.info("Encoder started (x265 preset %s)", self.preset)
@@ -114,7 +117,7 @@ class Encoder:
                 self.housekeeping()
                 if not self.run_once():
                     self.stopping.wait(POLL_S)
-            except Exception:  # noqa: BLE001 - keep the queue alive
+            except Exception:
                 log.exception("Encoder error")
                 self.stopping.wait(POLL_S)
 
@@ -122,7 +125,7 @@ class Encoder:
         while not self.stopping.wait(POLL_S):
             try:
                 self.refresh_thumbnails()
-            except Exception:  # noqa: BLE001 - keep the loop alive
+            except Exception:
                 log.exception("Thumbnails error")
 
     def refresh_thumbnails(self) -> None:
@@ -158,9 +161,8 @@ class Encoder:
             self.run_job(video, row, segments)
         return True
 
-    def run_job(self, video: int, row: sqlite3.Row, segments: list[dict]) -> None:
-        job = {"video": video, "tus_id": row["upload"], "original_sha256": row["original_sha256"],
-               "segments": segments}
+    def run_job(self, video: int, row: sqlite3.Row, segments: list[dict[str, Any]]) -> None:
+        job = {"video": video, "tus_id": row["upload"], "original_sha256": row["original_sha256"], "segments": segments}
         log.info("Video %s: claimed", video)
         work = self.work / str(video)
         try:
@@ -173,7 +175,7 @@ class Encoder:
             log.info("Video %s: back in the queue (shutdown)", video)
         except JobError as e:
             self.fail(video, str(e), e.retryable)
-        except Exception as e:  # noqa: BLE001 - report anything, keep the queue alive
+        except Exception as e:
             log.exception("Video %s: unexpected error", video)
             self.fail(video, f"Unexpected error: {e}", retryable=True)
         finally:
@@ -186,15 +188,16 @@ class Encoder:
             queries.queue.requeue_or_fail(con, video, error[:2000], requeue)
         log.warning("Video %s: encoding failed (%s): %s", video, "retry" if requeue else "final", error)
 
-    def publish(self, video: int, result: dict) -> None:
+    def publish(self, video: int, result: dict[str, Any]) -> None:
         sha256 = result["sha256"]
         folder = self.videos / sha256[:2] / sha256
         try:
             with db.transaction() as con:
                 row = queries.videos.video(con, video)
                 published = row is not None and queries.queue.publish_video(
-                    con, video, sha256, f"{sha256[:2]}/{sha256}", result["thumbnail"], result["duration_s"])
-                if published:
+                    con, video, sha256, f"{sha256[:2]}/{sha256}", result["thumbnail"], result["duration_s"]
+                )
+                if published and row is not None:
                     for segment_id, name in result["segment_thumbnails"].items():
                         queries.queue.set_segment_thumbnail(con, segment_id, video, name)
                     queries.uploads.set_upload_state(con, row["upload"], "deleted")  # original: no longer needed
@@ -221,7 +224,7 @@ class Encoder:
             raise JobError(f"Invalid upload ID {tus_id!r}")
         return [self.uploads / tus_id, self.uploads / f"{tus_id}.info", self.uploads / f"{tus_id}.lock"]
 
-    def process_job(self, job: dict, work: Path) -> dict:
+    def process_job(self, job: dict[str, Any], work: Path) -> dict[str, Any]:
         video = job["video"]
         original, info = self.upload_files(job["tus_id"])[:2]
         checks.check_complete(original, info)
@@ -257,8 +260,12 @@ class Encoder:
         for name in ["thumb.jpg", *segment_thumbnails.values()]:
             os.replace(work / name, folder / name)
         os.replace(encoded, folder / "video.mp4")
-        return {"sha256": sha256, "duration_s": duration, "thumbnail": "thumb.jpg",
-                "segment_thumbnails": segment_thumbnails}
+        return {
+            "sha256": sha256,
+            "duration_s": duration,
+            "thumbnail": "thumb.jpg",
+            "segment_thumbnails": segment_thumbnails,
+        }
 
     def check_hash(self, video: int, original: Path, expected: str) -> None:
         size = original.stat().st_size or 1
@@ -277,10 +284,27 @@ class Encoder:
         progress_file = work / "progress"
         out = work / "out"
         limit = settings.current().ffmpeg_timeout_s
-        cmd = ["nice", "-n", "10", self.script, "-c", "-x", self.preset, "-P", str(progress_file),
-               "-W", ",".join(settings.current().input_formats), "-T", str(int(limit)),
-               "-L", str(int(settings.current().ffprobe_timeout_s)),
-               "-o", str(out), "-f", str(original)]
+        cmd = [
+            "nice",
+            "-n",
+            "10",
+            self.script,
+            "-c",
+            "-x",
+            self.preset,
+            "-P",
+            str(progress_file),
+            "-W",
+            ",".join(settings.current().input_formats),
+            "-T",
+            str(int(limit)),
+            "-L",
+            str(int(settings.current().ffprobe_timeout_s)),
+            "-o",
+            str(out),
+            "-f",
+            str(original),
+        ]
         with (work / "encode.log").open("wb") as log_file:
             # Own process group: stopping it stops ffmpeg too (kill_encoding).
             self.process = procs.popen(cmd, stdout=log_file, stderr=subprocess.STDOUT)

@@ -19,7 +19,7 @@ class Child:
     def __init__(self, binary: str | None) -> None:
         self.binary = binary
         self.stopping = threading.Event()
-        self.process: subprocess.Popen | None = None
+        self.process: subprocess.Popen[str] | None = None
         self.thread: threading.Thread | None = None
 
     def command(self) -> list[str]:
@@ -44,10 +44,16 @@ class Child:
         while not self.stopping.is_set():
             started = time.monotonic()
             self.process = subprocess.Popen(  # command(): the app's argument list  # nosec B603
-                self.command(), stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                text=True, encoding="utf-8", errors="replace",
+                self.command(),
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
             )
             log.info("%s started (pid %s)", self.name, self.process.pid)
+            if self.process.stdout is None:  # never: stdout=PIPE
+                raise RuntimeError(f"{self.name}: no output pipe")
             for line in self.process.stdout:  # until it exits
                 self.log_line(line.rstrip())
             code = self.process.wait()

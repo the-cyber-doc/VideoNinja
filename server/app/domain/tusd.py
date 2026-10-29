@@ -20,7 +20,6 @@ import shutil
 import urllib.error
 import urllib.request
 
-
 from ..core import paths, settings
 from ..core.children import Child
 
@@ -55,13 +54,28 @@ class Tusd(Child):
         self.app_port = config.app_port
 
     def command(self) -> list[str]:
+        if self.binary is None:  # never: started only when it was found
+            raise RuntimeError(self.missing)
         return [
-            self.binary, "-host", self.host, "-port", self.port,
-            "-upload-dir", str(paths.upload_dir()), "-base-path", files_path(),
-            "-behind-proxy", "-disable-download", "-max-size", str(settings.current().max_upload_bytes),
-            "-hooks-http", f"http://127.0.0.1:{self.app_port}/internal/tusd-hook",
-            "-hooks-enabled-events", "pre-create,post-finish",
-            "-hooks-http-forward-headers", "Cookie",
+            self.binary,
+            "-host",
+            self.host,
+            "-port",
+            self.port,
+            "-upload-dir",
+            str(paths.upload_dir()),
+            "-base-path",
+            files_path(),
+            "-behind-proxy",
+            "-disable-download",
+            "-max-size",
+            str(settings.current().max_upload_bytes),
+            "-hooks-http",
+            f"http://127.0.0.1:{self.app_port}/internal/tusd-hook",
+            "-hooks-enabled-events",
+            "pre-create,post-finish",
+            "-hooks-http-forward-headers",
+            "Cookie",
         ]
 
     def prepare(self) -> None:
@@ -108,5 +122,5 @@ def _answers(url: str) -> bool:
         request = urllib.request.Request(url, method="OPTIONS")
         with urllib.request.urlopen(request, timeout=2) as r:  # http(s) only (paths)  # nosec B310
             return bool(r.headers.get("Tus-Version"))
-    except (OSError, urllib.error.URLError):
+    except OSError, urllib.error.URLError:
         return False

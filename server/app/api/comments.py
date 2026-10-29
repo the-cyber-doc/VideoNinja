@@ -14,10 +14,10 @@ from pydantic_core import PydanticCustomError
 
 from .. import queries
 from ..core import clock, db, i18n
-from ..domain import audit
 from ..core.errors import ApiError
-from ..queries.users import User
 from ..core.validation import field
+from ..domain import audit
+from ..queries.users import User
 from .deps import current_user, require_access, user_zone
 
 router = APIRouter(prefix="/api", tags=["comments"])
@@ -67,6 +67,14 @@ def _technique(con: sqlite3.Connection, technique_id: str) -> None:
         raise ApiError("technique.unknown")
 
 
+def _written(con: sqlite3.Connection, comment_id: int, me: User) -> sqlite3.Row:
+    """The comment just written (in this request's transaction: it exists)."""
+    row = queries.comments.comment(con, comment_id, me.id)
+    if row is None:
+        raise ApiError("comment.unknown")
+    return row
+
+
 @router.get("/techniques/{technique_id}/comments")
 def technique_comments(
     technique_id: str,
@@ -88,10 +96,9 @@ def add_comment(
 ) -> CommentOut:
     with db.write(con):
         _technique(con, technique_id)
-        comment_id = queries.comments.insert_comment(con, technique_id, me.id, body.lang, body.text,
-                                                     clock.at(0, zone))
+        comment_id = queries.comments.insert_comment(con, technique_id, me.id, body.lang, body.text, clock.at(0, zone))
     audit.event("comment.created", comment_id=comment_id, technique_id=technique_id)
-    return _out(queries.comments.comment(con, comment_id, me.id))
+    return _out(_written(con, comment_id, me))
 
 
 @router.patch("/comments/{comment_id}")
@@ -106,7 +113,7 @@ def edit_comment(
         _own(con, comment_id, me)
         queries.comments.update_comment(con, comment_id, body.lang, body.text, clock.at(0, zone))
     audit.event("comment.edited", comment_id=comment_id)
-    return _out(queries.comments.comment(con, comment_id, me.id))
+    return _out(_written(con, comment_id, me))
 
 
 @router.delete("/comments/{comment_id}", status_code=status.HTTP_204_NO_CONTENT)

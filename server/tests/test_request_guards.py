@@ -10,18 +10,21 @@ from .test_auth import login
 from .test_upload import admin, auth, uploaded  # noqa: F401 (fixture)
 
 
-@pytest.mark.parametrize("headers, refused", [
-    ({"Sec-Fetch-Site": "same-origin"}, False),
-    ({"Sec-Fetch-Site": "same-site"}, True),  # another subdomain of the domain
-    ({"Sec-Fetch-Site": "cross-site"}, True),
-    ({"Sec-Fetch-Site": "none"}, True),  # typed or bookmarked: never a write
-    ({"Sec-Fetch-Site": "same-origin", "Origin": "https://evil.example"}, False),  # Sec-Fetch-Site decides
-    ({"Origin": "https://testserver"}, False),  # older browsers: Origin
-    ({"Origin": "https://testserver:8443"}, False),  # nginx forwards the host without its port
-    ({"Origin": "https://evil.example"}, True),
-    ({"Origin": "null"}, True),  # sandboxed or opaque origin
-    ({}, False),  # no browser: tools, server calls (the cookie is SameSite=Strict anyway)
-])
+@pytest.mark.parametrize(
+    "headers, refused",
+    [
+        ({"Sec-Fetch-Site": "same-origin"}, False),
+        ({"Sec-Fetch-Site": "same-site"}, True),  # another subdomain of the domain
+        ({"Sec-Fetch-Site": "cross-site"}, True),
+        ({"Sec-Fetch-Site": "none"}, True),  # typed or bookmarked: never a write
+        ({"Sec-Fetch-Site": "same-origin", "Origin": "https://evil.example"}, False),  # Sec-Fetch-Site decides
+        ({"Origin": "https://testserver"}, False),  # older browsers: Origin
+        ({"Origin": "https://testserver:8443"}, False),  # nginx forwards the host without its port
+        ({"Origin": "https://evil.example"}, True),
+        ({"Origin": "null"}, True),  # sandboxed or opaque origin
+        ({}, False),  # no browser: tools, server calls (the cookie is SameSite=Strict anyway)
+    ],
+)
 def test_cross_site_writes_refused(client, admin_secret, headers, refused):
     assert login(client, admin_secret).status_code == 200
     r = client.post("/api/profile/name", json={"name": "Sensei"}, headers=headers)
@@ -39,8 +42,11 @@ def test_reads_are_not_checked(client, admin_secret):
 
 def test_cross_site_login_refused(client, admin_secret):
     """Before any session too: login, setup and registration are writes."""
-    r = client.post("/api/auth/login", json={"username": "admin", "password": "x", "totp_code": "123456"},
-                    headers={"Sec-Fetch-Site": "cross-site"})
+    r = client.post(
+        "/api/auth/login",
+        json={"username": "admin", "password": "x", "totp_code": "123456"},
+        headers={"Sec-Fetch-Site": "cross-site"},
+    )
     assert r.status_code == 403
 
 

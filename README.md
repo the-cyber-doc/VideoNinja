@@ -18,6 +18,7 @@ Self-hosted on a Raspberry Pi 5 with Docker behind nginx.
 |---|---|
 | `server/app/` | Backend: Python 3.15 + FastAPI. `main.py` assembles it from `api/` (the HTTP endpoints, one router per module), `domain/` (the rules: sessions, invitations, annotations, catalogue snapshots, the audit log…), `queries/` (every SQL statement, one module per table), `core/` (settings, logs, errors, database connection and migrations, time, encryption, processes) and `encoder/` (the encoding queue, its own container in production) |
 | `server/tests/` | Backend tests (pytest) |
+| `server/pyproject.toml` | Settings of the backend's development tools: Ruff (lint, format), mypy, coverage |
 | `server/database/` | `db_vN.sql` (schema) + `db_vN_init.sql` (initial data) of each version, `migrations/` between versions |
 | `server/database/catalog/techniques.json`, `tools/catalog-sql.py` | The schools' techniques (source) and the generator of their block in the newest `db_v<N>_init.sql` (see [The catalogue of techniques](#the-catalogue-of-techniques)) |
 | `frontend/` | SvelteKit PWA (`adapter-static`, Svelte 5, TypeScript) |
@@ -224,8 +225,10 @@ sudo docker compose up -d && sudo rm videoninja.db
 
 ```bash
 # Backend, in server/ with the venv active
-pytest
-flake8 --max-line-length=120 app tests
+pytest --cov              # coverage below its floor (pyproject.toml) fails
+ruff check app tests      # lint (settings: pyproject.toml)
+ruff format --check app tests   # layout; `ruff format app tests` applies it
+mypy                      # types, strict, over app/
 bandit -r app -q          # Python security linter: no finding allowed (see Security)
 
 # Frontend, in frontend/
@@ -1551,8 +1554,8 @@ To update every dependency within the pins (dependencies of dependencies), add
 A Bandit finding that is reviewed and harmless is marked on its line, the
 reason first: `import subprocess  # only through procs.py  # nosec B404`. Never
 mark a whole file or test as ignored. Today's marks: `subprocess` (argument lists
-built by the app, no shell), one SQL statement naming the module's own tables,
-and the two internal URLs (`VIDEONINJA_API_URL`, `VIDEONINJA_TUSD_URL`), which
+built by the app, no shell), SQL statements whose table or column names are the
+module's own constants, and the two internal URLs (`VIDEONINJA_API_URL`, `VIDEONINJA_TUSD_URL`), which
 the app now only accepts as `http(s)` (a `file:` URL would read local files).
 
 ### Known vulnerabilities

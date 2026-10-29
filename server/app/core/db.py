@@ -5,7 +5,7 @@ from collections.abc import Iterator
 from contextlib import contextmanager
 from datetime import UTC, datetime
 from pathlib import Path
-
+from typing import NoReturn
 
 from .. import queries
 from . import crypto, settings
@@ -35,7 +35,7 @@ class Connection(sqlite3.Connection):
     are no-ops in autocommit mode): refused, so no block is left silently
     without a transaction."""
 
-    def __enter__(self):
+    def __enter__(self) -> NoReturn:
         raise TypeError("Use db.write(con) or db.read(con), not `with con:`")
 
 
@@ -155,7 +155,7 @@ def migrate() -> None:
             return
         if start == 0:
             raise RuntimeError("The database has no version (config.db_version): not migrated")
-        step = 1 if EXPECTED_VERSION > start else -1
+        step = 1 if start < EXPECTED_VERSION else -1
         steps = [migration(v, v + step) for v in range(start, EXPECTED_VERSION, step)]  # all present first
         backup = db_path().with_name(f"{db_path().name}.v{start}-{_stamp()}.bak")
         target = sqlite3.connect(backup)
@@ -163,9 +163,13 @@ def migrate() -> None:
             con.backup(target)
         finally:
             target.close()
-        log.warning("Database version %s, this release needs %s: migrating (copy kept: %s)",
-                    start, EXPECTED_VERSION, backup.name)
-        for script, end in zip(steps, range(start + step, EXPECTED_VERSION + step, step)):
+        log.warning(
+            "Database version %s, this release needs %s: migrating (copy kept: %s)",
+            start,
+            EXPECTED_VERSION,
+            backup.name,
+        )
+        for script, end in zip(steps, range(start + step, EXPECTED_VERSION + step, step), strict=True):
             con.executescript(script.read_text(encoding="utf-8"))
             if version(con) != end:
                 raise RuntimeError(f"{script.name} did not set the database version to {end}")

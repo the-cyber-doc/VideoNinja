@@ -2,17 +2,17 @@ import gzip
 import json
 import os
 import shutil
-import sqlite3
 import subprocess
 
 import pytest
 from fastapi import APIRouter, Depends, FastAPI, HTTPException
 from fastapi.testclient import TestClient
 
+from app.api import deps
 from app.core import db
 from app.domain import snapshot
-from app.api import deps
 
+from .conftest import connect
 from .test_auth import login
 
 
@@ -24,7 +24,7 @@ def logged_in(client, admin_secret):
 
 
 def add_school(school_id="new_ryu"):
-    con = sqlite3.connect(db.db_path())
+    con = connect()
     with con:
         con.execute("INSERT INTO ryu (id, kanji, romaji) VALUES (?, '新流', 'Shin Ryu')", (school_id,))
 
@@ -94,8 +94,9 @@ def test_old_versions_pruned(logged_in):
     assert not list((snapshot.catalog_dir()).glob("versions/.tmp-*"))
 
 
-@pytest.mark.skipif(not (shutil.which("brotli") and shutil.which("zopfli")),
-                    reason="brotli/zopfli command-line tools not installed")
+@pytest.mark.skipif(
+    not (shutil.which("brotli") and shutil.which("zopfli")), reason="brotli/zopfli command-line tools not installed"
+)
 @pytest.mark.compress
 def test_precompressed(logged_in):
     version, manifest = snapshot.current()

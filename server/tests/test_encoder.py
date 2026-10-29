@@ -17,18 +17,18 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
-from app.core import db, limits, procs, settings
+from app.core import limits, procs, settings
 from app.domain import snapshot
 from app.encoder import checks, notify, thumbnails
 from app.encoder import queue as encoding  # "queue" is this file's helper
 from app.main import app
 
-from .test_upload import admin, hook, session, submit, uploaded  # noqa: F401 (fixture)
+from .conftest import connect
 from .test_catalog import KOKU
 from .test_procs import gone
+from .test_upload import admin, hook, session, submit, uploaded  # noqa: F401 (fixture)
 
-pytestmark = pytest.mark.skipif(not (shutil.which("ffmpeg") and shutil.which("ffprobe")),
-                                reason="ffmpeg not installed")
+pytestmark = pytest.mark.skipif(not (shutil.which("ffmpeg") and shutil.which("ffprobe")), reason="ffmpeg not installed")
 
 
 @pytest.fixture
@@ -44,13 +44,45 @@ def enc(client, tmp_path, monkeypatch):
 
 def clip(path, seconds=3, interlaced=False):
     vf = ["-vf", "tinterlace=interleave_top,fieldorder=tff", "-flags", "+ilme+ildct", "-top", "1"] if interlaced else []
-    subprocess.run(["ffmpeg", "-v", "error", "-y", "-f", "lavfi", "-i", "testsrc=size=160x120:rate=25",
-                    "-f", "lavfi", "-i", "sine=frequency=440", "-t", str(seconds), *vf,
-                    "-c:v", "libx264", "-c:a", "aac", "-shortest", "-f", "mp4", str(path)], check=True)
+    subprocess.run(
+        [
+            "ffmpeg",
+            "-v",
+            "error",
+            "-y",
+            "-f",
+            "lavfi",
+            "-i",
+            "testsrc=size=160x120:rate=25",
+            "-f",
+            "lavfi",
+            "-i",
+            "sine=frequency=440",
+            "-t",
+            str(seconds),
+            *vf,
+            "-c:v",
+            "libx264",
+            "-c:a",
+            "aac",
+            "-shortest",
+            "-f",
+            "mp4",
+            str(path),
+        ],
+        check=True,
+    )
 
 
-def queue(admin, enc, data: bytes | None = None, seconds=3, interlaced=False, complete=True,  # noqa: F811
-          segments=({"begin_s": 0, "end_s": 2},)):
+def queue(
+    admin,  # noqa: F811 - fixture
+    enc,
+    data: bytes | None = None,
+    seconds=3,
+    interlaced=False,
+    complete=True,
+    segments=({"begin_s": 0, "end_s": 2},),
+):
     """Upload (as tusd would) and submit a clip; returns the video ID."""
     scratch = enc.uploads / "scratch"
     if data is None:
@@ -66,8 +98,7 @@ def queue(admin, enc, data: bytes | None = None, seconds=3, interlaced=False, co
 
 
 def row(video):
-    return sqlite3.connect(db.db_path()).execute(
-        "SELECT status, error, sha256sum, thumbnail FROM video WHERE id = ?", (video,)).fetchone()
+    return connect().execute("SELECT status, error, sha256sum, thumbnail FROM video WHERE id = ?", (video,)).fetchone()
 
 
 @pytest.mark.parametrize("interlaced", [False, True])
@@ -99,7 +130,7 @@ def failing_script(tmp_path) -> tuple[str, Path]:
     """An encode-videos.sh stand-in that only records that it was called."""
     called = tmp_path / "called"
     script = tmp_path / "encode.sh"
-    script.write_text(f"#!/bin/sh\necho \"$@\" >> {called}\nexit 1\n")
+    script.write_text(f'#!/bin/sh\necho "$@" >> {called}\nexit 1\n')
     script.chmod(0o755)
     return str(script), called
 
@@ -118,11 +149,27 @@ def remuxed(tmp_path, *options, chapters=False) -> Path:
     out = tmp_path / "remuxed.mp4"
     extra = []
     if chapters:
-        (tmp_path / "chapters.txt").write_text(";FFMETADATA1\n[CHAPTER]\nTIMEBASE=1/1\nSTART=0\nEND=10\n"
-                                               "title=Omote\n")
+        (tmp_path / "chapters.txt").write_text(";FFMETADATA1\n[CHAPTER]\nTIMEBASE=1/1\nSTART=0\nEND=10\ntitle=Omote\n")
         extra = ["-f", "ffmetadata", "-i", str(tmp_path / "chapters.txt"), "-map_chapters", "1"]
-    subprocess.run(["ffmpeg", "-v", "error", "-nostdin", "-y", "-i", f"file:{READY}", *extra, "-c", "copy",
-                    "-tag:v", "hvc1", *options, f"file:{out}"], check=True)
+    subprocess.run(
+        [
+            "ffmpeg",
+            "-v",
+            "error",
+            "-nostdin",
+            "-y",
+            "-i",
+            f"file:{READY}",
+            *extra,
+            "-c",
+            "copy",
+            "-tag:v",
+            "hvc1",
+            *options,
+            f"file:{out}",
+        ],
+        check=True,
+    )
     return out
 
 
@@ -133,17 +180,22 @@ def test_detects_what_needs_encoding():
 
 
 @samples
-@pytest.mark.parametrize("options, reason", [
-    (["-movflags", "+faststart"], None),  # same as READY
-    ([], "no faststart (index after the media data)"),
-    # Only the format counts: metadata (e.g. a phone's GPS location) is removed when published.
-    (["-movflags", "+faststart", "-metadata", "location=+46.2044+006.1432/", "-metadata", "title=Kata"], None),
-    (["-movflags", "+faststart", "-map", "0:v", "-map", "0:a", "-map", "0:a"], "more than one audio stream"),
-    # Mono is fine (a phone's microphone); more than stereo is not.
-    (["-movflags", "+faststart", "-c:a", "aac", "-ac", "1"], None),
-    (["-movflags", "+faststart", "-c:a", "aac", "-ac", "6"],
-     "audio is aac LC with 6 channels, not AAC mono or stereo"),
-])
+@pytest.mark.parametrize(
+    "options, reason",
+    [
+        (["-movflags", "+faststart"], None),  # same as READY
+        ([], "no faststart (index after the media data)"),
+        # Only the format counts: metadata (e.g. a phone's GPS location) is removed when published.
+        (["-movflags", "+faststart", "-metadata", "location=+46.2044+006.1432/", "-metadata", "title=Kata"], None),
+        (["-movflags", "+faststart", "-map", "0:v", "-map", "0:a", "-map", "0:a"], "more than one audio stream"),
+        # Mono is fine (a phone's microphone); more than stereo is not.
+        (["-movflags", "+faststart", "-c:a", "aac", "-ac", "1"], None),
+        (
+            ["-movflags", "+faststart", "-c:a", "aac", "-ac", "6"],
+            "audio is aac LC with 6 channels, not AAC mono or stereo",
+        ),
+    ],
+)
 def test_published_as_it_is_when_the_format_is_right(tmp_path, options, reason):
     assert checks.needs_encoding(remuxed(tmp_path, *options)) == reason
 
@@ -151,8 +203,12 @@ def test_published_as_it_is_when_the_format_is_right(tmp_path, options, reason):
 @samples
 def test_chapters_are_ignored(tmp_path):
     with_chapters = remuxed(tmp_path, "-movflags", "+faststart", chapters=True)
-    assert "Omote" in subprocess.run(["ffprobe", "-v", "error", "-show_chapters", str(with_chapters)],
-                                     capture_output=True, text=True, check=True).stdout
+    assert (
+        "Omote"
+        in subprocess.run(
+            ["ffprobe", "-v", "error", "-show_chapters", str(with_chapters)], capture_output=True, text=True, check=True
+        ).stdout
+    )
     assert checks.needs_encoding(with_chapters) is None
 
 
@@ -166,8 +222,7 @@ def test_original_in_the_target_format_is_not_encoded(admin, enc, tmp_path):  # 
     assert (status, error, thumb) == ("published", None, "thumb.jpg")
     assert not called.exists()  # the encoding script never ran
     # Its streams copied without the metadata: another file, so another hash.
-    original_sha = sqlite3.connect(db.db_path()).execute(
-        "SELECT original_sha256 FROM video WHERE id = ?", (video,)).fetchone()[0]
+    original_sha = connect().execute("SELECT original_sha256 FROM video WHERE id = ?", (video,)).fetchone()[0]
     assert original_sha == checks.file_sha256(READY) != sha
     published = enc.videos / sha[:2] / sha / "video.mp4"
     assert checks.file_sha256(published) == sha
@@ -176,22 +231,55 @@ def test_original_in_the_target_format_is_not_encoded(admin, enc, tmp_path):  # 
 
 
 def probe(path: Path, entries: str) -> str:
-    return subprocess.run(["ffprobe", "-v", "error", "-show_entries", entries, "-show_chapters", "-of", "compact",
-                           f"file:{path}"], capture_output=True, text=True, check=True).stdout
+    return subprocess.run(
+        ["ffprobe", "-v", "error", "-show_entries", entries, "-show_chapters", "-of", "compact", f"file:{path}"],
+        capture_output=True,
+        text=True,
+        check=True,
+    ).stdout
 
 
 @samples
 def test_metadata_stripped_rotation_kept(tmp_path):
     """A phone's recording: GPS location, title, device names, chapters (with their data track)
     and a portrait rotation. Published: only the rotation is left."""
-    (tmp_path / "chapters.txt").write_text(";FFMETADATA1\n[CHAPTER]\nTIMEBASE=1/1\nSTART=0\nEND=10\n"
-                                           "title=Omote\n")
+    (tmp_path / "chapters.txt").write_text(";FFMETADATA1\n[CHAPTER]\nTIMEBASE=1/1\nSTART=0\nEND=10\ntitle=Omote\n")
     phone = tmp_path / "phone.mp4"
-    subprocess.run(["ffmpeg", "-v", "error", "-nostdin", "-y", "-display_rotation", "90", "-i", f"file:{READY}",
-                    "-f", "ffmetadata", "-i", str(tmp_path / "chapters.txt"), "-map", "0", "-map_chapters", "1",
-                    "-c", "copy", "-tag:v", "hvc1", "-movflags", "+faststart",
-                    "-metadata", "location=+46.2044+006.1432/", "-metadata", "title=Kata",
-                    "-metadata:s:v", "handler_name=Kenji's phone", f"file:{phone}"], check=True)
+    subprocess.run(
+        [
+            "ffmpeg",
+            "-v",
+            "error",
+            "-nostdin",
+            "-y",
+            "-display_rotation",
+            "90",
+            "-i",
+            f"file:{READY}",
+            "-f",
+            "ffmetadata",
+            "-i",
+            str(tmp_path / "chapters.txt"),
+            "-map",
+            "0",
+            "-map_chapters",
+            "1",
+            "-c",
+            "copy",
+            "-tag:v",
+            "hvc1",
+            "-movflags",
+            "+faststart",
+            "-metadata",
+            "location=+46.2044+006.1432/",
+            "-metadata",
+            "title=Kata",
+            "-metadata:s:v",
+            "handler_name=Kenji's phone",
+            f"file:{phone}",
+        ],
+        check=True,
+    )
     before = probe(phone, "format_tags:stream_tags:stream=codec_type")
     assert all(text in before for text in ("46.2044", "Kata", "Kenji's phone", "Omote", "codec_type=data"))
 
@@ -200,7 +288,9 @@ def test_metadata_stripped_rotation_kept(tmp_path):
     after = probe(out, "format_tags:stream_tags:stream=codec_type:stream_side_data=rotation")
     assert not any(text in after for text in ("46.2044", "Kata", "Kenji", "Omote", "data", "Lav"))
     assert [line.split("|")[1] for line in after.splitlines() if line.startswith("stream")] == [
-        "codec_type=video", "codec_type=audio"]
+        "codec_type=video",
+        "codec_type=audio",
+    ]
     assert "rotation=90" in after  # side data, not metadata: the picture stays upright
     assert checks.needs_encoding(out) is None
 
@@ -208,9 +298,11 @@ def test_metadata_stripped_rotation_kept(tmp_path):
 def copying_script(tmp_path, result: Path) -> str:
     """An encode-videos.sh stand-in that "encodes" by copying `result` (fast)."""
     script = tmp_path / "encode.sh"
-    script.write_text("#!/bin/sh\n"
-                      'while [ $# -gt 1 ]; do [ "$1" = -o ] && out=$2; shift; done\n'
-                      f'mkdir -p "$out" && cp {result} "$out/$(basename "$1").mp4"\n')
+    script.write_text(
+        "#!/bin/sh\n"
+        'while [ $# -gt 1 ]; do [ "$1" = -o ] && out=$2; shift; done\n'
+        f'mkdir -p "$out" && cp {result} "$out/$(basename "$1").mp4"\n'
+    )
     script.chmod(0o755)
     return str(script)
 
@@ -328,7 +420,7 @@ def test_stopping_kills_ffmpeg_too(enc, tmp_path):
     def encode():
         try:
             enc.encode(1, tmp_path / "original", work, 60.0)
-        except Exception as e:  # noqa: BLE001
+        except Exception as e:
             errors.append(e)
 
     thread = threading.Thread(target=encode)
@@ -356,37 +448,83 @@ def test_invalid_x265_preset_refuses_start(tmp_path, monkeypatch, value):
     """Checked at startup with the value received, not at the first encoding."""
     monkeypatch.setenv("VIDEONINJA_DB", str(tmp_path / "videoninja.db"))
     monkeypatch.setenv("VIDEONINJA_X265_PRESET", value)
-    with pytest.raises(RuntimeError, match=rf"VIDEONINJA_X265_PRESET={value!r}: must be one of ultrafast"):
-        with TestClient(app):
-            pass
+    with (
+        pytest.raises(RuntimeError, match=re.escape(f"VIDEONINJA_X265_PRESET={value!r}: must be one of ultrafast")),
+        TestClient(app),
+    ):
+        pass
 
 
-@pytest.mark.parametrize("keep, present, absent", [
-    (False, ["-map_metadata -1", "-map_chapters -1", "+bitexact"], ["-map_metadata 0"]),
-    (True, ["-map_metadata 0", "-map_chapters 0"], ["-map_metadata -1", "+bitexact"]),
-])
+@pytest.mark.parametrize(
+    "keep, present, absent",
+    [
+        (False, ["-map_metadata -1", "-map_chapters -1", "+bitexact"], ["-map_metadata 0"]),
+        (True, ["-map_metadata 0", "-map_chapters 0"], ["-map_metadata -1", "+bitexact"]),
+    ],
+)
 def test_script_strips_metadata_unless_asked(tmp_path, keep, present, absent):
     """encode-videos.sh: metadata removed by default, kept with -m (dry run: the ffmpeg command)."""
     clip = tmp_path / "clip.mp4"
-    subprocess.run(["ffmpeg", "-v", "error", "-y", "-f", "lavfi", "-i", "testsrc=size=160x120:rate=25:d=1",
-                    "-c:v", "libx264", f"file:{clip}"], check=True)
-    out = subprocess.run([str(settings.DEFAULT_SCRIPT), "-c", "-n", *(["-m"] if keep else []), "-o",
-                          str(tmp_path / "out"), str(clip)], capture_output=True, text=True, check=True).stdout
+    subprocess.run(
+        [
+            "ffmpeg",
+            "-v",
+            "error",
+            "-y",
+            "-f",
+            "lavfi",
+            "-i",
+            "testsrc=size=160x120:rate=25:d=1",
+            "-c:v",
+            "libx264",
+            f"file:{clip}",
+        ],
+        check=True,
+    )
+    out = subprocess.run(
+        [str(settings.DEFAULT_SCRIPT), "-c", "-n", *(["-m"] if keep else []), "-o", str(tmp_path / "out"), str(clip)],
+        capture_output=True,
+        text=True,
+        check=True,
+    ).stdout
     assert all(option in out for option in present), out
     assert not any(option in out for option in absent), out
 
 
-@pytest.mark.parametrize("rate, options, every", [
-    (25, [], "1"), (30, [], "1"), (60, [], "0.5"),  # auto: 1 s up to 30 fps, 0.5 s above
-    (60, ["-g", "2"], "2"),  # -g sets it
-])
+@pytest.mark.parametrize(
+    "rate, options, every",
+    [
+        (25, [], "1"),
+        (30, [], "1"),
+        (60, [], "0.5"),  # auto: 1 s up to 30 fps, 0.5 s above
+        (60, ["-g", "2"], "2"),  # -g sets it
+    ],
+)
 def test_script_keyframe_interval(tmp_path, rate, options, every):
     """encode-videos.sh: a keyframe every second, every half second above 30 fps (dry run)."""
     clip = tmp_path / "clip.mp4"
-    subprocess.run(["ffmpeg", "-v", "error", "-y", "-f", "lavfi", "-i", f"testsrc=size=160x120:rate={rate}:d=1",
-                    "-c:v", "libx264", f"file:{clip}"], check=True)
-    result = subprocess.run([str(settings.DEFAULT_SCRIPT), "-c", "-n", *options, "-o", str(tmp_path / "out"),
-                             str(clip)], capture_output=True, text=True, check=True)
+    subprocess.run(
+        [
+            "ffmpeg",
+            "-v",
+            "error",
+            "-y",
+            "-f",
+            "lavfi",
+            "-i",
+            f"testsrc=size=160x120:rate={rate}:d=1",
+            "-c:v",
+            "libx264",
+            f"file:{clip}",
+        ],
+        check=True,
+    )
+    result = subprocess.run(
+        [str(settings.DEFAULT_SCRIPT), "-c", "-n", *options, "-o", str(tmp_path / "out"), str(clip)],
+        capture_output=True,
+        text=True,
+        check=True,
+    )
     assert f"{rate} fps, keyframe every {every} s" in result.stderr
     # The dry run prints the ffmpeg command shell-escaped: expr:gte\(t\,n_forced\*1\)
     assert re.search(rf"n_forced\\?\*{re.escape(every)}\\?\)", result.stdout), result.stdout
@@ -447,11 +585,18 @@ def test_only_allowed_formats_are_read(tmp_path, monkeypatch):
 
 def test_script_refuses_other_formats(tmp_path):
     sample = Path(__file__).parent / "video_test_need_encoding.webm"
-    result = subprocess.run([str(settings.DEFAULT_SCRIPT), "-c", "-n", "-W", "mov", "-o", str(tmp_path / "out"),
-                             str(sample)], capture_output=True, text=True)
+    result = subprocess.run(
+        [str(settings.DEFAULT_SCRIPT), "-c", "-n", "-W", "mov", "-o", str(tmp_path / "out"), str(sample)],
+        capture_output=True,
+        text=True,
+    )
     assert "FAIL" in result.stderr, result.stderr
-    result = subprocess.run([str(settings.DEFAULT_SCRIPT), "-c", "-n", "-o", str(tmp_path / "out"), str(sample)],
-                            capture_output=True, text=True, check=True)
+    result = subprocess.run(
+        [str(settings.DEFAULT_SCRIPT), "-c", "-n", "-o", str(tmp_path / "out"), str(sample)],
+        capture_output=True,
+        text=True,
+        check=True,
+    )
     assert "-protocol_whitelist file -format_whitelist mov\\,matroska" in result.stdout, result.stdout
 
 
@@ -464,8 +609,9 @@ def test_catalogue_rebuilt_by_the_api(client, admin_secret, monkeypatch):
 
     requests = []
     monkeypatch.setenv("VIDEONINJA_API_URL", "http://api:8000/")
-    monkeypatch.setattr(urllib.request, "urlopen",
-                        lambda r, timeout: requests.append((r.method, r.full_url)) or io.BytesIO())
+    monkeypatch.setattr(
+        urllib.request, "urlopen", lambda r, timeout: requests.append((r.method, r.full_url)) or io.BytesIO()
+    )
     notify.catalog_changed()
     assert requests == [("POST", "http://api:8000/internal/catalog-changed")]
     assert scheduled == [True]  # not in the encoder itself
@@ -473,10 +619,15 @@ def test_catalogue_rebuilt_by_the_api(client, admin_secret, monkeypatch):
 
 def test_container_waits_for_the_setup_and_stops_on_sigterm(tmp_path):
     """python -m app.encoder before the setup: waits for the database; SIGTERM: exits at once."""
-    env = {**os.environ, "VIDEONINJA_DB": str(tmp_path / "none.db"), "VIDEONINJA_MEDIA_DIR": str(tmp_path / "m"),
-           "VIDEONINJA_UPLOAD_DIR": str(tmp_path / "u")}
-    process = subprocess.Popen([sys.executable, "-m", "app.encoder"], env=env, cwd=Path(__file__).parents[1],
-                               stderr=subprocess.PIPE, text=True)
+    env = {
+        **os.environ,
+        "VIDEONINJA_DB": str(tmp_path / "none.db"),
+        "VIDEONINJA_MEDIA_DIR": str(tmp_path / "m"),
+        "VIDEONINJA_UPLOAD_DIR": str(tmp_path / "u"),
+    }
+    process = subprocess.Popen(
+        [sys.executable, "-m", "app.encoder"], env=env, cwd=Path(__file__).parents[1], stderr=subprocess.PIPE, text=True
+    )
     time.sleep(1)
     assert process.poll() is None  # waiting
     process.terminate()
@@ -485,19 +636,31 @@ def test_container_waits_for_the_setup_and_stops_on_sigterm(tmp_path):
 
 def test_container_refuses_wrong_settings(tmp_path):
     env = {**os.environ, "VIDEONINJA_DB": str(tmp_path / "none.db"), "VIDEONINJA_INPUT_FORMATS": "hls"}
-    result = subprocess.run([sys.executable, "-m", "app.encoder"], env=env, cwd=Path(__file__).parents[1],
-                            capture_output=True, text=True, timeout=10)
+    result = subprocess.run(
+        [sys.executable, "-m", "app.encoder"],
+        env=env,
+        cwd=Path(__file__).parents[1],
+        capture_output=True,
+        text=True,
+        timeout=10,
+    )
     assert result.returncode != 0 and "VIDEONINJA_INPUT_FORMATS" in result.stderr
 
 
 def test_container_waits_for_the_expected_database_version(tmp_path):
     """A database not migrated yet (the API migrates it at its start): the encoder waits."""
     from .test_migrations import build
+
     build(tmp_path / "v1.db", 1)
-    env = {**os.environ, "VIDEONINJA_DB": str(tmp_path / "v1.db"), "VIDEONINJA_MEDIA_DIR": str(tmp_path / "m"),
-           "VIDEONINJA_UPLOAD_DIR": str(tmp_path / "u")}
-    process = subprocess.Popen([sys.executable, "-m", "app.encoder"], env=env, cwd=Path(__file__).parents[1],
-                               stderr=subprocess.PIPE, text=True)
+    env = {
+        **os.environ,
+        "VIDEONINJA_DB": str(tmp_path / "v1.db"),
+        "VIDEONINJA_MEDIA_DIR": str(tmp_path / "m"),
+        "VIDEONINJA_UPLOAD_DIR": str(tmp_path / "u"),
+    }
+    process = subprocess.Popen(
+        [sys.executable, "-m", "app.encoder"], env=env, cwd=Path(__file__).parents[1], stderr=subprocess.PIPE, text=True
+    )
     time.sleep(1)
     assert process.poll() is None  # waiting, not encoding on the old schema
     process.terminate()

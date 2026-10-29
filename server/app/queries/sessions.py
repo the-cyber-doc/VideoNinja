@@ -12,16 +12,14 @@ class ActiveSession:
     created_at: str
     last_seen_at: str
 
+
 # Dates are text with their UTC offset, "2026-10-23T12:13:38+02:00" (app/clock.py),
 # in different timezones: always compare and sort them through datetime().
 
 
-def insert_session(
-    con: sqlite3.Connection, session_id: str, user_id: int, now: str, expires_at: str
-) -> None:
+def insert_session(con: sqlite3.Connection, session_id: str, user_id: int, now: str, expires_at: str) -> None:
     con.execute(
-        'INSERT INTO "session" ("id", "user", "created_at", "last_seen_at", "expires_at")'
-        " VALUES (?, ?, ?, ?, ?)",
+        'INSERT INTO "session" ("id", "user", "created_at", "last_seen_at", "expires_at") VALUES (?, ?, ?, ?, ?)',
         (session_id, user_id, now, now, expires_at),
     )
 

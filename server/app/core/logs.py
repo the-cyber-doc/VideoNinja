@@ -27,7 +27,7 @@ from collections.abc import Iterator
 from contextlib import contextmanager
 from contextvars import ContextVar
 from datetime import UTC, datetime
-from typing import Any
+from typing import Any, TextIO
 
 from . import clock, settings
 
@@ -115,26 +115,27 @@ class JsonFormatter(logging.Formatter):
         return json.dumps(line, ensure_ascii=False, default=str)
 
 
-class StderrHandler(logging.StreamHandler):
+class StderrHandler(logging.StreamHandler[TextIO]):
     """Writes to sys.stderr as it is at each record (pytest and uvicorn's reloader
     replace it), not the one of the configuration's time."""
 
     def __init__(self) -> None:
         super().__init__(sys.stderr)
 
-    @property  # type: ignore[override]
-    def stream(self):
+    @property
+    def stream(self) -> TextIO:
         return sys.stderr
 
     @stream.setter
-    def stream(self, _value) -> None:
+    def stream(self, _value: TextIO) -> None:
         pass
 
 
 def config(level: str, log_format: str) -> dict[str, Any]:
     """The dictConfig of these settings."""
     formatter: dict[str, Any] = (
-        {"()": JsonFormatter} if log_format == "json"
+        {"()": JsonFormatter}
+        if log_format == "json"
         else {"()": TextFormatter, "fmt": TEXT_FORMAT, "datefmt": "%H:%M:%S"}
     )
     # uvicorn's loggers keep their names but lose their own handlers: through the root's.

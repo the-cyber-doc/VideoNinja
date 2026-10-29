@@ -8,10 +8,10 @@ from pydantic import BaseModel
 
 from .. import queries
 from ..core import clock, db, i18n
-from ..domain import audit, invites
 from ..core.errors import ApiError
-from ..queries.users import User
 from ..core.validation import field
+from ..domain import audit, invites
+from ..queries.users import User
 from .deps import require_access
 
 router = APIRouter(prefix="/api/admin", tags=["users"])
@@ -73,9 +73,7 @@ def _invite_out(con: sqlite3.Connection, user_id: int, token: str) -> InviteOut:
 
 
 @router.post("/users", status_code=status.HTTP_201_CREATED)
-def create_user(
-    body: CreateIn, me: User = Depends(admin), con: sqlite3.Connection = Depends(db.get_db)
-) -> InviteOut:
+def create_user(body: CreateIn, me: User = Depends(admin), con: sqlite3.Connection = Depends(db.get_db)) -> InviteOut:
     """Create a user without credentials, and its invitation."""
     with db.write(con):  # checked and created at once: two admins, one username
         if not queries.users.role_exists(con, body.role):
@@ -89,9 +87,7 @@ def create_user(
 
 
 @router.get("/users/{user_id}/invite")
-def get_invite(
-    user_id: int, _: User = Depends(admin), con: sqlite3.Connection = Depends(db.get_db)
-) -> InviteOut:
+def get_invite(user_id: int, _: User = Depends(admin), con: sqlite3.Connection = Depends(db.get_db)) -> InviteOut:
     """The current invitation, to copy the link again."""
     token = invites.token_of(con, user_id)
     if token is None:
@@ -101,9 +97,7 @@ def get_invite(
 
 
 @router.post("/users/{user_id}/reset")
-def reset_user(
-    user_id: int, me: User = Depends(admin), con: sqlite3.Connection = Depends(db.get_db)
-) -> InviteOut:
+def reset_user(user_id: int, me: User = Depends(admin), con: sqlite3.Connection = Depends(db.get_db)) -> InviteOut:
     """Issue a new invitation, then remove the password, TOTP and sessions.
 
     One transaction: either the user has a new link AND no old credentials, or
