@@ -96,10 +96,38 @@ test('About offline: the database version is unknown, the rest is there', async 
 	await expect(page.getByRole('link', { name: 'Source code on GitHub' })).toBeVisible();
 });
 
-test('user management page is not reachable without access', async ({ page }) => {
+test('user management page is not reachable without access, not even for a moment', async ({ page }) => {
 	await loggedInAs(page, USER);
+	let listed = false; // the page's API calls: never made without the access
+	await page.route('/api/admin/**', (r) => ((listed = true), r.fulfill({ json: [] })));
+	// Records whether the page's heading ever appears, before the redirect.
+	await page.addInitScript(() => {
+		const seen = () => [...document.querySelectorAll('h1')].some((h) => h.textContent === 'User Management');
+		new MutationObserver(() => {
+			if (seen()) (window as unknown as { flashed: boolean }).flashed = true;
+		}).observe(document, { childList: true, subtree: true });
+	});
 	await page.goto('/admin/users');
 	await expect(page).toHaveURL('/');
+	expect(await page.evaluate(() => (window as unknown as { flashed?: boolean }).flashed ?? false)).toBe(false);
+	expect(listed).toBe(false);
+});
+
+test('user list: the role names follow the language (translated by the server)', async ({ page }) => {
+	await loggedInAs(page, ADMIN);
+	const NAMES: Record<string, string> = { en: 'User', fr: 'Utilisateur' };
+	await page.route('/api/admin/roles', (r) =>
+		r.fulfill({ json: [{ id: 'user', name: NAMES[r.request().headers()['accept-language']] }] })
+	);
+	await page.route('/api/admin/users', (r) =>
+		r.fulfill({ json: [{ id: 2, username: 'kenji', name: null, role: 'user', status: 'registered' }] })
+	);
+	await page.goto('/admin/users');
+	const row = page.getByRole('row', { name: /kenji/ });
+	await expect(row).toContainText('User');
+	await page.getByRole('button', { name: 'Language: English' }).click();
+	await page.getByRole('menuitemradio', { name: 'Français' }).click();
+	await expect(row).toContainText('Utilisateur'); // loaded again (depends('app:lang'))
 });
 
 test('user list: status icons and actions', async ({ page }) => {

@@ -1,96 +1,30 @@
 <script lang="ts">
-	// User management: needs the 'user_mgmt' access. Hidden from the menu otherwise,
-	// and the API refuses every call (403) whatever the page does.
+	// User management: the list (this page's data, +page.ts: access checked there) and
+	// its actions (users.svelte.ts). Markup only, and the confirmation of a reset.
 	import ErrorMessage from '#lib/ErrorMessage.svelte';
-	import { goto } from '$app/navigation';
-	import { url } from '#lib/base.js';
-	import type { Invite, Role, UserRow } from '#lib/api/types.js';
-	import { createUser, getInvite, listRoles, listUsers, resetUser } from '#lib/api/users.js';
+	import type { UserRow } from '#lib/api/types.js';
 	import { i18n, t } from '#lib/i18n.svelte.js';
 	import IconButton from '#lib/IconButton.svelte';
 	import Icon from '#lib/Icon.svelte';
-	import { hasAccess, session } from '#lib/session.svelte.js';
+	import { session } from '#lib/session.svelte.js';
 	import { rules } from '#lib/validation.js';
+	import type { PageProps } from './$types';
+	import { UserAdmin } from './users.svelte';
 
-	const allowed = $derived(hasAccess('user_mgmt'));
-	let users = $state<UserRow[]>([]);
-	let roles = $state<Role[]>([]);
-	let error = $state<unknown>(null);
-
+	let { data }: PageProps = $props();
+	const admin = new UserAdmin();
 	let username = $state('');
 	let role = $state('user');
-	let busy = $state(false);
 
-	/** Last invitation link handed out, shown so it can be copied by hand too. */
-	let link = $state<{ username: string; url: string; expires_at: string; copied: boolean } | null>(
-		null
-	);
-
-	$effect(() => {
-		if (!allowed) {
-			goto(url('/'), { replace: true });
-			return;
-		}
-		void i18n.lang; // reload on language change: role names are translated by the server
-		load();
-	});
-
-	async function load() {
-		try {
-			[users, roles] = await Promise.all([
-				listUsers(),
-				listRoles()
-			]);
-		} catch (e) {
-			error = e;
-		}
-	}
-
-	async function action(fn: () => Promise<void>) {
-		busy = true;
-		error = null;
-		try {
-			await fn();
-		} catch (e) {
-			error = e;
-		} finally {
-			busy = false;
-		}
-	}
-
-	/** Show the invitation link and try to copy it to the clipboard. */
-	async function showLink(user: string, invite: Invite) {
-		const href = `${location.origin}${url('/register')}#${invite.token}`;
-		let copied = false;
-		try {
-			await navigator.clipboard.writeText(href);
-			copied = true;
-		} catch {
-			// No clipboard access: the link stays visible to copy by hand.
-		}
-		link = { username: user, url: href, expires_at: invite.expires_at, copied };
-	}
-
-	const create = (e: SubmitEvent) => {
+	const create = async (e: SubmitEvent) => {
 		e.preventDefault();
-		action(async () => {
-			const invite = await createUser({ username, role });
-			await showLink(username, invite);
-			username = '';
-			await load();
-		});
+		if (await admin.create(username, role)) username = '';
 	};
-
-	const copyInvite = (user: UserRow) =>
-		action(async () => showLink(user.username, await getInvite(user.id)));
 
 	const reset = (user: UserRow) => {
 		if (user.status === 'registered' && !confirm(t('users.reset_confirm', { username: user.username })))
 			return;
-		action(async () => {
-			await showLink(user.username, await resetUser(user.id));
-			await load();
-		});
+		admin.reset(user);
 	};
 
 	const STATUS = {
@@ -100,95 +34,93 @@
 	} as const;
 </script>
 
-{#if allowed}
-	<main class="page">
-		<h1>{t('menu.user_mgmt')}</h1>
+<main class="page">
+	<h1>{t('menu.user_mgmt')}</h1>
 
-		<section aria-labelledby="h-new">
-			<h2 id="h-new">{t('users.new_user')}</h2>
-			<form class="inline" onsubmit={create}>
-				<label>
-					{t('common.username')}
-					<input
-						bind:value={username}
-						autocomplete="off"
-						autocapitalize="none"
-						minlength={rules.username.min_length}
-						maxlength={rules.username.max_length}
-						pattern={rules.username.pattern}
-						title={t('common.username_hint', {
-							min: rules.username.min_length,
-							max: rules.username.max_length
-						})}
-						required
-					/>
-				</label>
-				<label>
-					{t('users.role')}
-					<select bind:value={role} required>
-						{#each roles as r (r.id)}
-							<option value={r.id}>{r.name}</option>
-						{/each}
-					</select>
-				</label>
-				<button disabled={busy}>{t('common.create')}</button>
-			</form>
-			{#if link}
-				<div class="link" role="status">
-					<p>
-						{t('users.invite_link_for')} <strong>{link.username}</strong>{t('users.valid_until', {
-							expires: new Date(link.expires_at).toLocaleString(i18n.lang)
-						})}
-						{link.copied ? t('users.copied') : t('users.copy_it')}
-					</p>
-					<input
-						aria-label={t('users.invite_link')}
-						value={link.url}
-						readonly
-						onfocus={(e) => e.currentTarget.select()}
-					/>
-				</div>
-			{/if}
-			<ErrorMessage error={error} />
-		</section>
-
-		<section aria-labelledby="h-users">
-			<h2 id="h-users">{t('users.users')}</h2>
-			<table>
-				<thead>
-					<tr>
-						<th><span class="visually-hidden">{t('users.status')}</span></th>
-						<th>{t('common.username')}</th>
-						<th>{t('users.name')}</th>
-						<th>{t('users.role')}</th>
-						<th><span class="visually-hidden">{t('users.actions')}</span></th>
-					</tr>
-				</thead>
-				<tbody>
-					{#each users as user (user.id)}
-						{@const status = STATUS[user.status]}
-						<tr>
-							<td class="status {status.class}" title={t(status.label)}>
-								{#if status.icon}<Icon name={status.icon} />{/if}
-								<span class="visually-hidden">{t(status.label)}</span>
-							</td>
-							<td>{user.username}</td>
-							<td>{user.name ?? ''}</td>
-							<td>{roles.find((r) => r.id === user.role)?.name ?? user.role}</td>
-							<td class="actions">
-								{#if user.status === 'invited'}
-									<IconButton label={t('users.copy_invite')} icon="copy" onclick={() => copyInvite(user)} disabled={busy} />
-								{:else if user.username !== session.user?.username}
-									<IconButton label={t('users.reset')} icon="refresh" onclick={() => reset(user)} disabled={busy} />
-								{/if}
-							</td>
-						</tr>
+	<section aria-labelledby="h-new">
+		<h2 id="h-new">{t('users.new_user')}</h2>
+		<form class="inline" onsubmit={create}>
+			<label>
+				{t('common.username')}
+				<input
+					bind:value={username}
+					autocomplete="off"
+					autocapitalize="none"
+					minlength={rules.username.min_length}
+					maxlength={rules.username.max_length}
+					pattern={rules.username.pattern}
+					title={t('common.username_hint', {
+						min: rules.username.min_length,
+						max: rules.username.max_length
+					})}
+					required
+				/>
+			</label>
+			<label>
+				{t('users.role')}
+				<select bind:value={role} required>
+					{#each data.roles as r (r.id)}
+						<option value={r.id}>{r.name}</option>
 					{/each}
-				</tbody>
-			</table>
-		</section>
-	</main>
-{/if}
+				</select>
+			</label>
+			<button disabled={admin.busy}>{t('common.create')}</button>
+		</form>
+		{#if admin.link}
+			<div class="link" role="status">
+				<p>
+					{t('users.invite_link_for')} <strong>{admin.link.username}</strong>{t('users.valid_until', {
+						expires: new Date(admin.link.expires_at).toLocaleString(i18n.lang)
+					})}
+					{admin.link.copied ? t('users.copied') : t('users.copy_it')}
+				</p>
+				<input
+					aria-label={t('users.invite_link')}
+					value={admin.link.url}
+					readonly
+					onfocus={(e) => e.currentTarget.select()}
+				/>
+			</div>
+		{/if}
+		<ErrorMessage error={admin.error ?? data.error} />
+	</section>
+
+	<section aria-labelledby="h-users">
+		<h2 id="h-users">{t('users.users')}</h2>
+		<table>
+			<thead>
+				<tr>
+					<th><span class="visually-hidden">{t('users.status')}</span></th>
+					<th>{t('common.username')}</th>
+					<th>{t('users.name')}</th>
+					<th>{t('users.role')}</th>
+					<th><span class="visually-hidden">{t('users.actions')}</span></th>
+				</tr>
+			</thead>
+			<tbody>
+				{#each data.users as user (user.id)}
+					{@const status = STATUS[user.status]}
+					<tr>
+						<td class="status {status.class}" title={t(status.label)}>
+							{#if status.icon}<Icon name={status.icon} />{/if}
+							<span class="visually-hidden">{t(status.label)}</span>
+						</td>
+						<td>{user.username}</td>
+						<td>{user.name ?? ''}</td>
+						<td>{data.roles.find((r) => r.id === user.role)?.name ?? user.role}</td>
+						<td class="actions">
+							{#if user.status === 'invited'}
+								<IconButton label={t('users.copy_invite')} icon="copy" onclick={() => admin.copyInvite(user)} disabled={admin.busy} />
+							{:else if user.username !== session.user?.username}
+								<IconButton label={t('users.reset')} icon="refresh" onclick={() => reset(user)} disabled={admin.busy} />
+							{/if}
+						</td>
+					</tr>
+				{/each}
+			</tbody>
+		</table>
+	</section>
+</main>
 
 <style>
 	.page {

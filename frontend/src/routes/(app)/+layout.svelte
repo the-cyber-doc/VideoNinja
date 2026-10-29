@@ -3,10 +3,9 @@
 	// Login, setup and registration pages are outside this group and have no shell.
 	import ErrorMessage from '#lib/ErrorMessage.svelte';
 	import { untrack } from 'svelte';
-	import { goto } from '$app/navigation';
+	import { goto, invalidate } from '$app/navigation';
 	import { page } from '$app/state';
 	import * as auth from '#lib/api/auth.js';
-	import { isInitialized } from '#lib/api/setup.js';
 	import { url } from '#lib/base.js';
 	import { i18n, t } from '#lib/i18n.svelte.js';
 	import Icon from '#lib/Icon.svelte';
@@ -17,26 +16,19 @@
 	import { hasAccess, session } from '#lib/session.svelte.js';
 	import type { LayoutProps } from './$types';
 
-	let { children }: LayoutProps = $props();
-	let error = $state<unknown>(null);
+	// The user: loaded (and the redirects to setup or login done) by +layout.ts.
+	let { children, data }: LayoutProps = $props();
 	let menuOpen = $state(false);
 	let menu = $state<HTMLElement>();
 
 	$effect(() => {
-		(async () => {
-			try {
-				if (!(await isInitialized())) return goto(url('/setup'), { replace: true });
-				session.user = await auth.currentUser();
-				if (!session.user) return goto(url('/login'), { replace: true });
-				persistStorage();
-				watchSavedMedia();
-			} catch (e) {
-				error = e;
-			}
-		})();
+		if (!data.user) return;
+		persistStorage();
+		watchSavedMedia();
 	});
 
-	// Language changed: reload the user, whose role name is translated by the server.
+	// Language changed: reload the user, whose role name is translated by the server,
+	// and the pages' data in the same case (load functions with depends('app:lang')).
 	$effect(() => {
 		void i18n.lang;
 		if (!untrack(() => session.user)) return;
@@ -45,6 +37,7 @@
 				if (user) session.user = user; // a statement: an object assigned to state is proxied
 			})
 			.catch(() => {}); // keep the current name: only the role label is stale
+		invalidate('app:lang');
 	});
 
 	// Close the menu on navigation.
@@ -108,8 +101,8 @@
 			{@render children()}
 		</div>
 	</div>
-{:else if error}
-	<main class="card"><ErrorMessage {error} /></main>
+{:else if data.error}
+	<main class="card"><ErrorMessage error={data.error} /></main>
 {/if}
 
 <style>
