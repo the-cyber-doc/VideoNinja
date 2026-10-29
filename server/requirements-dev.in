@@ -18,3 +18,12 @@ pytest-cov==7.1.0
 # the newest were days old when these were added.
 coverage==7.16.2
 ast-serialize==0.13.0
+# Git hooks (.pre-commit-config.yaml): the framework, and its hygiene checks run from here.
+pre-commit==4.7.0
+pre-commit-hooks==6.0.0
+# pre-commit's, held back the same way (the newest were days old):
+distlib==0.4.3
+filelock==4.2.0
+platformdirs==4.13.0
+python-discovery==1.6.2
+virtualenv==21.14.7

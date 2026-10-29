@@ -110,6 +110,13 @@ VIDEONINJA_DB=dev.db VIDEONINJA_DB_KEY_FILE=dev.key uvicorn app.main:app --reloa
 The API listens on `http://localhost:8000`. `dev.db`, `dev.key` and the
 catalogue snapshots in `catalog/` are ignored by git.
 
+Git hooks (once, after the frontend's `npm ci` too): `server/.venv/bin/pre-commit install`
+in the repository. Each commit then checks its staged files with the tools of
+`server/.venv` and `frontend/node_modules` (`.pre-commit-config.yaml`; nothing
+downloaded): no large files or private keys, whitespace, Ruff, mypy, Prettier,
+ESLint. The formatters fix the files themselves: `git add` them and commit again.
+`server/.venv/bin/pre-commit run --all-files` checks everything.
+
 Every setting is read and checked at startup (`server/app/core/settings.py`): a wrong
 value stops the API or the encoder, and the error names every wrong variable at
 once.
@@ -224,6 +231,9 @@ sudo docker compose up -d && sudo rm videoninja.db
 ### 5. Checks (same as CI)
 
 ```bash
+# Every hook of .pre-commit-config.yaml on every file (CI: the hygiene ones)
+server/.venv/bin/pre-commit run --all-files
+
 # Backend, in server/ with the venv active
 pytest --cov              # coverage below its floor (pyproject.toml) fails
 ruff check app tests      # lint (settings: pyproject.toml)
