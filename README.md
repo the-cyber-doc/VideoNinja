@@ -675,6 +675,24 @@ INSERT INTO "tag_value" ("tag", "id", "name") VALUES
 	('place', 'outdoor', 'tag_value.place.outdoor.name');
 ```
 
+### API errors
+
+Every error the API (and nginx's own 429) answers with has one JSON shape:
+
+```json
+{"code": "segment.unknown_technique", "detail": "Unknown technique: x", "params": {"technique": "x"}}
+```
+
+`code` is stable and the frontend shows `error.<code>` from
+`frontend/src/lib/messages.json` in the user's language, `params` filling its
+placeholders. `detail` is English, for logs, curl and tests only. All codes,
+with their HTTP status and English text, are in one table, `ERRORS` in
+`server/app/errors.py`: raise `ApiError("<code>", param=value)`, never a bare
+`HTTPException`. A new code needs its `error.<code>` message in every language;
+`server/tests/test_errors.py` fails otherwise (and on a code missing from the
+table). Request validation answers `validation.<kind>` (`VALIDATION` in the same
+file), with the field's name in `params.field`.
+
 ### Releasing
 
 ```bash

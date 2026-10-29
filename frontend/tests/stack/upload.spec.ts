@@ -146,6 +146,10 @@ test('a burst of login requests is cut by nginx (429, Retry-After), before the a
 	const limited = answers.filter((r) => r.status() === 429);
 	expect(limited.length).toBeGreaterThan(20);
 	expect(answers.filter((r) => r.status() === 422).length).toBeLessThanOrEqual(40);
-	expect(await limited[0].json()).toEqual({ detail: 'Too many requests' });
+	expect(await limited[0].json()).toEqual({
+		code: 'rate_limited',
+		detail: 'Too many requests',
+		params: {}
+	});
 	expect(limited[0].headers()['retry-after']).toBe('5');
 });
