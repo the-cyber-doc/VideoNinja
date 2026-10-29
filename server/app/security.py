@@ -14,7 +14,7 @@ import segno
 from argon2 import PasswordHasher
 from argon2.exceptions import InvalidHashError, VerificationError
 
-from . import clock, paths, queries
+from . import clock, db, paths, queries
 
 SESSION_IDLE_S = 30 * 24 * 3600  # sliding: each visit extends to 30 days from now
 SESSION_MAX_S = 365 * 24 * 3600  # absolute cap, whatever the activity
@@ -118,7 +118,7 @@ def _session_id(token: str) -> str:
 
 
 def purge_expired_sessions(con: sqlite3.Connection) -> None:
-    with con:
+    with db.write(con):
         queries.delete_expired_sessions(con, clock.at())
 
 
@@ -126,7 +126,7 @@ def create_session(con: sqlite3.Connection, user: sqlite3.Row, zone: tzinfo | No
     """Store a new session and return the cookie token. `zone`: the browser's timezone."""
     token = secrets.token_urlsafe(32)
     tz = clock.user_zone(user, zone)
-    with con:
+    with db.write(con):
         remember_zone(con, user, zone)
         queries.insert_session(con, _session_id(token), user["id"], clock.at(0, tz), clock.at(SESSION_IDLE_S, tz))
     return token
@@ -146,22 +146,25 @@ def session_user(con: sqlite3.Connection, token: str, zone: ZoneInfo | None = No
     row = queries.session_user(con, sid, clock.text(now))
     if row is None:
         return None
-    with con:
-        remember_zone(con, row, zone)
-        if now - clock.parse(row["last_seen_at"]) >= timedelta(seconds=SESSION_REFRESH_S):
-            expires = min(now + timedelta(seconds=SESSION_IDLE_S),
-                          clock.parse(row["created_at"]) + timedelta(seconds=SESSION_MAX_S))
-            tz = clock.user_zone(row, zone)
-            queries.touch_session(con, sid, clock.text(now, tz), clock.text(expires, tz))
+    new_zone = zone is not None and zone.key != row["time_zone"]
+    refresh = now - clock.parse(row["last_seen_at"]) >= timedelta(seconds=SESSION_REFRESH_S)
+    if new_zone or refresh:  # every request reads this: the write lock only when something changes
+        with db.write(con):
+            remember_zone(con, row, zone)
+            if refresh:
+                expires = min(now + timedelta(seconds=SESSION_IDLE_S),
+                              clock.parse(row["created_at"]) + timedelta(seconds=SESSION_MAX_S))
+                tz = clock.user_zone(row, zone)
+                queries.touch_session(con, sid, clock.text(now, tz), clock.text(expires, tz))
     return row
 
 
 def delete_session(con: sqlite3.Connection, token: str) -> None:
-    with con:
+    with db.write(con):
         queries.delete_session(con, _session_id(token))
 
 
 def delete_other_sessions(con: sqlite3.Connection, user_id: int, token: str) -> None:
-    """Log the user out everywhere else, e.g. after a credential change."""
-    with con:
-        queries.delete_user_sessions(con, user_id, except_id=_session_id(token))
+    """Log the user out everywhere else, e.g. after a credential change: call inside
+    the transaction that changes the credential, so both happen or neither."""
+    queries.delete_user_sessions(con, user_id, except_id=_session_id(token))

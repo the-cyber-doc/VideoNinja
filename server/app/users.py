@@ -75,11 +75,11 @@ def create_user(
     body: CreateIn, me: sqlite3.Row = Depends(admin), con: sqlite3.Connection = Depends(db.get_db)
 ) -> InviteOut:
     """Create a user without credentials, and its invitation."""
-    if not queries.role_exists(con, body.role):
-        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "Unknown role")
-    if queries.username_exists(con, body.username):
-        raise HTTPException(status.HTTP_409_CONFLICT, "This username already exists")
-    with con:
+    with db.write(con):  # checked and created at once: two admins, one username
+        if not queries.role_exists(con, body.role):
+            raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "Unknown role")
+        if queries.username_exists(con, body.username):
+            raise HTTPException(status.HTTP_409_CONFLICT, "This username already exists")
         user_id = queries.insert_user(con, body.username, body.role)
         token = invites.create(con, user_id)
     log.warning("User management: user id %s created %r (%s)", me["id"], body.username, body.role)
@@ -108,9 +108,9 @@ def reset_user(
     """
     if user_id == me["id"]:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "You cannot reset your own account")
-    if not queries.user_exists(con, user_id):
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "No such user")
-    with con:
+    with db.write(con):
+        if not queries.user_exists(con, user_id):
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "No such user")
         token = invites.create(con, user_id)
         queries.clear_user_credentials(con, user_id)
         queries.delete_user_sessions(con, user_id)

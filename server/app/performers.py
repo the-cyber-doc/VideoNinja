@@ -45,7 +45,7 @@ def create_performer(
     name = " ".join(body.name.split())
     if not name:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "Empty name")
-    with con:
+    with db.write(con):
         if queries.performer_name_exists(con, name):
             raise HTTPException(status.HTTP_409_CONFLICT, "This performer already exists")
         base = performer_id = slug(name)

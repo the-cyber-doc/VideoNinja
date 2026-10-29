@@ -1,8 +1,8 @@
 """Every SQL statement of the application, one function each.
 
 Values are always bound as parameters (?), never formatted into the SQL.
-These functions never commit: the caller opens the transaction (`with con:`),
-so one transaction can span several of them.
+These functions never commit: the caller opens the transaction (db.write, or
+db.read for several reads), so one transaction can span several of them.
 """
 
 import sqlite3

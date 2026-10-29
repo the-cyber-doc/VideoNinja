@@ -619,6 +619,14 @@ database as failing otherwise.
 | 1 | v0.0.6 (efae32a) | — |
 | 2 | the four containers | `heartbeat` (the encoder's liveness, for `/health`), `video.thumbs_dirty` (segment thumbnails made by the encoder) |
 
+Transactions: the API and the encoder write to the same file from two
+processes. Connections (`db.connect`) are in autocommit mode; every change of
+several rows, or a check followed by a write, goes in `with db.write(con):`
+(`BEGIN IMMEDIATE`: the write lock from the first read, committed at the end,
+rolled back on any exception), several reads that must agree in
+`with db.read(con):` (one snapshot). `with con:` raises: in autocommit mode it
+would not be a transaction. Keep slow work (Argon2, ffmpeg) out of a write.
+
 Changing the schema: never edit a released `db_v<N>` file. Add `db_v<N+1>.sql`
 and `db_v<N+1>_init.sql` (the new complete schema and data), the two migration
 scripts, raise `EXPECTED_VERSION`, and add the version's row above.

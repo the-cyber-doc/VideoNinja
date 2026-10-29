@@ -2,6 +2,7 @@ import logging
 import os
 import sqlite3
 from collections.abc import Iterator
+from contextlib import contextmanager
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -28,15 +29,55 @@ def is_initialized() -> bool:
     return db_path().exists()
 
 
+class Connection(sqlite3.Connection):
+    """Autocommit: each statement is its own transaction unless the caller opens one
+    with write() or read(). `with con:` would then do nothing (commit and rollback
+    are no-ops in autocommit mode): refused, so no block is left silently
+    without a transaction."""
+
+    def __enter__(self):
+        raise TypeError("Use db.write(con) or db.read(con), not `with con:`")
+
+
 def connect(path: Path | None = None, create: bool = False) -> sqlite3.Connection:
     path = (path or db_path()).resolve()
     # mode=rw: never create the file by accident (its existence means "initialized").
     target = str(path) if create else path.as_uri() + "?mode=rw"
-    con = sqlite3.connect(target, uri=not create, check_same_thread=False)
+    con = sqlite3.connect(target, uri=not create, check_same_thread=False, autocommit=True, factory=Connection)
     con.row_factory = sqlite3.Row
     con.execute("PRAGMA foreign_keys = ON")
     con.execute("PRAGMA busy_timeout = 5000")
     return con
+
+
+@contextmanager
+def write(con: sqlite3.Connection) -> Iterator[sqlite3.Connection]:
+    """One write transaction: BEGIN IMMEDIATE takes the write lock at once (waiting
+    up to busy_timeout), so the reads inside see the data the writes change, and a
+    read never has to be upgraded to a write later (with WAL, that fails at once,
+    SQLITE_BUSY, when another connection, e.g. the encoder's, wrote meanwhile).
+    Committed at the end, rolled back on any exception. Keep slow work (Argon2,
+    ffmpeg, network) out of it: other writers wait meanwhile."""
+    con.execute("BEGIN IMMEDIATE")
+    try:
+        yield con
+    except BaseException:
+        if con.in_transaction:  # SQLite may have rolled back already (e.g. disk full)
+            con.execute("ROLLBACK")
+        raise
+    con.execute("COMMIT")
+
+
+@contextmanager
+def read(con: sqlite3.Connection) -> Iterator[sqlite3.Connection]:
+    """Several reads from one snapshot of the database (no write lock): what a
+    concurrent write commits meanwhile is either entirely seen or not at all."""
+    con.execute("BEGIN DEFERRED")
+    try:
+        yield con
+    finally:
+        if con.in_transaction:
+            con.execute("ROLLBACK")  # nothing to commit
 
 
 def get_db() -> Iterator[sqlite3.Connection]:
@@ -139,7 +180,7 @@ def create_database(username: str, name: str, pw_hash: str, totp_secret: str) ->
             yield "schema"
             con.executescript(seed.read_text(encoding="utf-8"))
             yield "data"
-            with con:
+            with write(con):
                 user_id = queries.insert_user(con, username, "admin", name, pw_hash)
                 # Encrypted with the row's ID as associated data, so the ID must exist first.
                 queries.set_user_totp(con, user_id, crypto.encrypt(totp_secret, crypto.totp_aad(user_id)))

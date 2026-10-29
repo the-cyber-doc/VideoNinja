@@ -125,7 +125,7 @@ def submit(
         _check_tags(segment.tags, known_tags, zone)
 
     _wait_finished(con, tus_id)
-    with con:
+    with db.write(con):
         upload = queries.upload(con, tus_id)
         if upload is None or upload["user"] != me["id"] or upload["state"] == "deleted":
             raise HTTPException(status.HTTP_404_NOT_FOUND, "Unknown upload")
@@ -178,7 +178,7 @@ def my_uploads(me: sqlite3.Row = Depends(uploader), con: sqlite3.Connection = De
 @router.post("/videos/{video_id}/retry", status_code=status.HTTP_204_NO_CONTENT)
 def retry(video_id: int, me: sqlite3.Row = Depends(uploader), con: sqlite3.Connection = Depends(db.get_db)) -> None:
     """Queue a failed video again (its original is still on the server)."""
-    with con:
+    with db.write(con):
         _may_manage(con, me, queries.video(con, video_id))
         if not queries.retry_video(con, video_id):
             raise HTTPException(status.HTTP_409_CONFLICT, "Only a failed video can be retried")
@@ -187,7 +187,7 @@ def retry(video_id: int, me: sqlite3.Row = Depends(uploader), con: sqlite3.Conne
 @router.delete("/videos/{video_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete(video_id: int, me: sqlite3.Row = Depends(uploader), con: sqlite3.Connection = Depends(db.get_db)) -> None:
     """Drop a video that is not published yet. The encoder deletes its original."""
-    with con:
+    with db.write(con):
         video = _may_manage(con, me, queries.video(con, video_id))
         if video["status"] in ("published", "encoding"):
             raise HTTPException(status.HTTP_409_CONFLICT, "Published or encoding videos cannot be deleted here")

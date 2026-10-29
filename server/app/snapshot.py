@@ -115,7 +115,8 @@ def rebuild() -> tuple[str, dict]:
     with _lock:
         con = db.connect()
         try:
-            files = _files(con)
+            with db.read(con):  # every language from the same data
+                files = _files(con)
         finally:
             con.close()
         manifest = {"catalog": {lang: name for lang, (name, _) in files.items()}}

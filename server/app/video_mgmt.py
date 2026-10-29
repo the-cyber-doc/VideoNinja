@@ -79,18 +79,19 @@ def list_videos(_: sqlite3.Row = Depends(manager), con: sqlite3.Connection = Dep
 def get_annotations(
     video_id: int, _: sqlite3.Row = Depends(manager), con: sqlite3.Connection = Depends(db.get_db)
 ) -> AnnotationsOut:
-    video = _published(con, video_id)
-    segment_tags: dict[int, list[sqlite3.Row]] = {}
-    for r in queries.video_segment_tags(con, video_id):
-        segment_tags.setdefault(r["segment"], []).append(r)
-    return AnnotationsOut(
-        all_segments_done=video["all_segments_done"],
-        original_filename=video["original_filename"],
-        uploaded_by=video["uploaded_by"],
-        tags=_tags(queries.video_tags(con, video_id)),
-        segments=[SegmentOut(**dict(s), tags=_tags(segment_tags.get(s["id"], [])))
-                  for s in queries.video_segments(con, video_id)],
-    )
+    with db.read(con):  # segments and their tags from the same save
+        video = _published(con, video_id)
+        segment_tags: dict[int, list[sqlite3.Row]] = {}
+        for r in queries.video_segment_tags(con, video_id):
+            segment_tags.setdefault(r["segment"], []).append(r)
+        return AnnotationsOut(
+            all_segments_done=video["all_segments_done"],
+            original_filename=video["original_filename"],
+            uploaded_by=video["uploaded_by"],
+            tags=_tags(queries.video_tags(con, video_id)),
+            segments=[SegmentOut(**dict(s), tags=_tags(segment_tags.get(s["id"], [])))
+                      for s in queries.video_segments(con, video_id)],
+        )
 
 
 @router.put("/videos/{video_id}/annotations", dependencies=[Depends(rebuild_after_write)])
@@ -101,27 +102,29 @@ def save_annotations(
     con: sqlite3.Connection = Depends(db.get_db),
     zone: tzinfo = Depends(user_zone),
 ) -> AnnotationsOut:
-    video = _published(con, video_id)
-    existing = {s["id"]: s for s in queries.video_segments(con, video_id)}
-    known_tags = tag_rules(con)
-    _check_tags(body.tags, known_tags, zone)
-    sent_ids = [s.id for s in body.segments if s.id is not None]
-    if len(set(sent_ids)) != len(sent_ids):
-        raise _unprocessable("A segment is given twice")
-    for segment in body.segments:
-        if segment.id is not None and segment.id not in existing:
-            raise _unprocessable(f"Unknown segment of this video: {segment.id}")
-        if not queries.technique_exists(con, segment.technique):
-            raise _unprocessable(f"Unknown technique: {segment.technique}")
-        if not queries.performer_exists(con, segment.performer):
-            raise _unprocessable(f"Unknown performer: {segment.performer}")
-        if video["duration_s"] is not None and segment.end_s > video["duration_s"] + 1:
-            raise _unprocessable("A segment ends after the end of the video")
-        _check_tags(segment.tags, known_tags, zone)
+    # One write transaction from the first read: two editors saving the same video
+    # at once are applied one after the other, never mixed.
+    with db.write(con):
+        video = _published(con, video_id)
+        existing = {s["id"]: s for s in queries.video_segments(con, video_id)}
+        known_tags = tag_rules(con)
+        _check_tags(body.tags, known_tags, zone)
+        sent_ids = [s.id for s in body.segments if s.id is not None]
+        if len(set(sent_ids)) != len(sent_ids):
+            raise _unprocessable("A segment is given twice")
+        for segment in body.segments:
+            if segment.id is not None and segment.id not in existing:
+                raise _unprocessable(f"Unknown segment of this video: {segment.id}")
+            if not queries.technique_exists(con, segment.technique):
+                raise _unprocessable(f"Unknown technique: {segment.technique}")
+            if not queries.performer_exists(con, segment.performer):
+                raise _unprocessable(f"Unknown performer: {segment.performer}")
+            if video["duration_s"] is not None and segment.end_s > video["duration_s"] + 1:
+                raise _unprocessable("A segment ends after the end of the video")
+            _check_tags(segment.tags, known_tags, zone)
 
-    changed = False  # a segment added, moved or removed: thumbnails to make or delete
-    removed = [i for i in existing if i not in sent_ids]
-    with con:
+        changed = False  # a segment added, moved or removed: thumbnails to make or delete
+        removed = [i for i in existing if i not in sent_ids]
         for segment_id in removed:
             queries.delete_segment(con, segment_id)
         for segment in body.segments:
