@@ -3,17 +3,7 @@ import { GENERIC } from '../cards/emblems';
 import { schoolEmblems } from './emblems';
 
 // The schools of db_v1_init.sql.
-const SCHOOLS = [
-	'togakure',
-	'gyokko',
-	'kukishinden',
-	'koto',
-	'shinden',
-	'takagi',
-	'gikan',
-	'gyokushin',
-	'kumogakure'
-];
+const SCHOOLS = ['togakure', 'gyokko', 'kukishinden', 'koto', 'shinden', 'takagi', 'gikan', 'gyokushin', 'kumogakure'];
 
 describe('school emblems', () => {
 	it.each(SCHOOLS)('%s has its own emblem', (id) => {

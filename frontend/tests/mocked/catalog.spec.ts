@@ -6,8 +6,24 @@ import { CATALOG, KETO, KOKU } from '../catalog';
 const KOKU_PAGE = '/schools/gyokko/taijutsu/jo_ryaku/koku';
 const COMMENTS = [
 	// Newest first, as sent by the server.
-	{ id: 3, user: 'Hana', created_at: '2027-01-15T09:00:00+01:00', modified_at: '2027-01-15T09:00:00+01:00', lang: 'fr', text: 'Très bien', mine: false },
-	{ id: 1, user: 'kenji', created_at: '2023-11-14T23:13:20+01:00', modified_at: '2023-11-14T23:13:20+01:00', lang: 'en', text: 'First\nsecond line', mine: true }
+	{
+		id: 3,
+		user: 'Hana',
+		created_at: '2027-01-15T09:00:00+01:00',
+		modified_at: '2027-01-15T09:00:00+01:00',
+		lang: 'fr',
+		text: 'Très bien',
+		mine: false
+	},
+	{
+		id: 1,
+		user: 'kenji',
+		created_at: '2023-11-14T23:13:20+01:00',
+		modified_at: '2023-11-14T23:13:20+01:00',
+		lang: 'en',
+		text: 'First\nsecond line',
+		mine: true
+	}
 ];
 
 async function loggedIn(page: Page) {
@@ -64,7 +80,11 @@ test('school → category → section → techniques → technique, breadcrumbs 
 	await expect(page).toHaveURL('/schools/gyokko/taijutsu/jo_ryaku');
 	await expect(crumbs(page)).toHaveText(['Schools', 'Gyokko Ryu', 'Taijutsu', 'Jo Ryaku no Maki']);
 	await expect(cards(page)).toHaveText(['虚空 Koku', '闕倒 Keto']);
-	expect(await cards(page).first().evaluate((e) => getComputedStyle(e).backgroundImage)).toBe('none');
+	expect(
+		await cards(page)
+			.first()
+			.evaluate((e) => getComputedStyle(e).backgroundImage)
+	).toBe('none');
 	await cards(page).first().click();
 
 	// Technique page.
@@ -104,7 +124,14 @@ test('weapons: school → Buki → weapon → section → technique', async ({ p
 	await cards(page).first().click();
 
 	await expect(page).toHaveURL('/schools/kukishinden/buki/rokushakubo/shoden/chudan_kangi');
-	await expect(crumbs(page)).toHaveText(['Schools', 'Kukishin Ryu', 'Buki', 'Rokushakubo', 'Shoden Gata', 'Chudan Kangi']);
+	await expect(crumbs(page)).toHaveText([
+		'Schools',
+		'Kukishin Ryu',
+		'Buki',
+		'Rokushakubo',
+		'Shoden Gata',
+		'Chudan Kangi'
+	]);
 	await expect(page.getByRole('heading', { level: 1 })).toHaveText('中段扞打 Chudan Kangi');
 	await crumbs(page).getByRole('link', { name: 'Rokushakubo' }).click();
 	await expect(page).toHaveURL('/schools/kukishinden/buki/rokushakubo');
@@ -190,7 +217,6 @@ test('clicking a segment plays its clip in a dialog', async ({ page }) => {
 // Exact frame steps need the frame duration, measured from the frame callbacks
 // (requestVideoFrameCallback; $lib/frames.ts: also WebKit's extra one on a speed change).
 test.describe('frame by frame', () => {
-
 	test('the player: slow motion and frame by frame', async ({ page }) => {
 		await loggedIn(page);
 		await page.route('/media/segment/*', fulfillClip);
@@ -277,7 +303,12 @@ test('the player in French: speeds with a decimal comma', async ({ page }) => {
 	await page.goto(KOKU_PAGE);
 	await page.getByRole('button', { name: 'Lire le segment (0:15)' }).first().click();
 	const player = page.getByRole('dialog');
-	await expect(player.getByRole('group', { name: 'Vitesse' }).getByRole('button')).toHaveText(['1×', '0,5×', '0,25×', '0,125×']);
+	await expect(player.getByRole('group', { name: 'Vitesse' }).getByRole('button')).toHaveText([
+		'1×',
+		'0,5×',
+		'0,25×',
+		'0,125×'
+	]);
 	await expect(player.getByRole('button', { name: 'Image suivante' })).toBeVisible();
 });
 
@@ -340,7 +371,13 @@ test('in French', async ({ page }) => {
 	await page.addInitScript(() => localStorage.setItem('lang', 'fr'));
 	await loggedIn(page);
 	await page.goto(KOKU_PAGE);
-	await expect(crumbs(page, "Fil d'Ariane")).toHaveText(['Écoles', 'Gyokko Ryu', 'Taijutsu', 'Jo Ryaku no Maki', 'Koku']);
+	await expect(crumbs(page, "Fil d'Ariane")).toHaveText([
+		'Écoles',
+		'Gyokko Ryu',
+		'Taijutsu',
+		'Jo Ryaku no Maki',
+		'Koku'
+	]);
 	await expect(page.getByRole('heading', { level: 2 })).toHaveText(['Vidéos', 'Commentaires']);
 	await expect(page.locator('.comment').first().getByRole('img', { name: 'Langue : Français' })).toBeVisible();
 });
@@ -358,5 +395,10 @@ test('a segment published later shows without reloading the app', async ({ page 
 	await crumbs(page).getByRole('link', { name: 'Jo Ryaku no Maki' }).click();
 	await page.clock.fastForward('00:31');
 	await page.getByRole('link', { name: /Koku/ }).click();
-	await expect(page.locator('section').first().getByRole('button', { name: /Play the segment/ })).toHaveCount(2);
+	await expect(
+		page
+			.locator('section')
+			.first()
+			.getByRole('button', { name: /Play the segment/ })
+	).toHaveCount(2);
 });

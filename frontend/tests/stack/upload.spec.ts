@@ -91,7 +91,10 @@ test('the segment plays: its clip cut by nginx, its thumbnail served', async ({ 
 
 	await page.goto('schools/gyokko/taijutsu/jo_ryaku/koku');
 	const clip = page.waitForResponse((r) => new URL(r.url()).pathname.endsWith(`/media/segment/${segment.id}`));
-	await page.getByRole('button', { name: /Play the segment/ }).first().click();
+	await page
+		.getByRole('button', { name: /Play the segment/ })
+		.first()
+		.click();
 	const response = await clip;
 	expect(response.status()).toBeLessThan(300);
 	expect(response.headers()['content-type']).toBe('video/mp4');
@@ -133,7 +136,10 @@ test('a segment added on the Videos page gets its thumbnail from the encoder', a
 test('a write from another origin is refused, through nginx', async ({ page }) => {
 	await logIn(page);
 	const name = { data: { name: 'From elsewhere' } };
-	const elsewhere = await page.request.post('api/profile/name', { ...name, headers: { 'Sec-Fetch-Site': 'cross-site' } });
+	const elsewhere = await page.request.post('api/profile/name', {
+		...name,
+		headers: { 'Sec-Fetch-Site': 'cross-site' }
+	});
 	expect(elsewhere.status()).toBe(403);
 	const evil = await page.request.post('api/profile/name', { ...name, headers: { Origin: 'https://evil.example' } });
 	expect(evil.status()).toBe(403);

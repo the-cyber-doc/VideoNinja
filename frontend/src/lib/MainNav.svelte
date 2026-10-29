@@ -10,8 +10,7 @@
 	import { hasAccess } from './session.svelte';
 
 	const entries = $derived(NAV.filter((e) => !e.access || hasAccess(e.access)));
-	const isCurrent = (href: string) =>
-		page.url.pathname === href || page.url.pathname.startsWith(href + '/');
+	const isCurrent = (href: string) => page.url.pathname === href || page.url.pathname.startsWith(href + '/');
 	const current = $derived(entries.find((e) => isCurrent(e.href)));
 
 	let open = $state(false);

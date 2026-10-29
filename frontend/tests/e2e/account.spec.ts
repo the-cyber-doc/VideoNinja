@@ -222,7 +222,9 @@ test('a user without user management access sees no menu entry and gets 403', as
 	await page.goto('admin/users');
 	await expect(page).toHaveURL('./');
 	expect((await page.request.get('api/admin/users')).status()).toBe(403);
-	expect((await page.request.post('api/admin/users', { data: { username: 'evil', role: 'admin' } })).status()).toBe(403);
+	expect((await page.request.post('api/admin/users', { data: { username: 'evil', role: 'admin' } })).status()).toBe(
+		403
+	);
 });
 
 test('user management: reset a registered account', async ({ page }) => {

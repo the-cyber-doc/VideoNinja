@@ -123,7 +123,8 @@ const saving = new Map<string, AbortController>();
  * saved, or without a service worker to play it from there later). Its requests
  * meanwhile go to the network: nginx allows 4 per user, the editor uses 3. */
 export function saveVideo(path: string) {
-	if (saved.has(path) || saving.has(path) || typeof caches === 'undefined' || !navigator.serviceWorker?.controller) return;
+	if (saved.has(path) || saving.has(path) || typeof caches === 'undefined' || !navigator.serviceWorker?.controller)
+		return;
 	const abort = new AbortController();
 	saving.set(path, abort);
 	(async () => {

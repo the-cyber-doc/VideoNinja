@@ -133,7 +133,12 @@ test('user list: the role names follow the language (translated by the server)',
 test('user list: status icons and actions', async ({ page }) => {
 	await loggedInAs(page, ADMIN);
 	await page.route('/api/admin/roles', (r) =>
-		r.fulfill({ json: [{ id: 'admin', name: 'Admin' }, { id: 'user', name: 'User' }] })
+		r.fulfill({
+			json: [
+				{ id: 'admin', name: 'Admin' },
+				{ id: 'user', name: 'User' }
+			]
+		})
 	);
 	await page.route('/api/admin/users', (r) =>
 		r.fulfill({
@@ -153,10 +158,7 @@ test('user list: status icons and actions', async ({ page }) => {
 	// Registered: green check + reset (not for one's own account).
 	await expect(cell('hana')).toHaveAttribute('title', 'Registered');
 	await expect(cell('hana').locator('svg')).toHaveCount(1);
-	await expect(row('hana').getByRole('button', { name: 'Reset account' })).toHaveAttribute(
-		'title',
-		'Reset account'
-	);
+	await expect(row('hana').getByRole('button', { name: 'Reset account' })).toHaveAttribute('title', 'Reset account');
 	await expect(row('admin').getByRole('button')).toHaveCount(0);
 
 	// Invited: no icon + copy link.

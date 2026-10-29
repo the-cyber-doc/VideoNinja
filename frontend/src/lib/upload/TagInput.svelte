@@ -6,11 +6,7 @@
 	import { t } from '../i18n.svelte';
 	import type { Tag, TagIn } from '../api/types';
 
-	let {
-		available,
-		value = $bindable(),
-		label
-	}: { available: Tag[]; value: TagIn[]; label: string } = $props();
+	let { available, value = $bindable(), label }: { available: Tag[]; value: TagIn[]; label: string } = $props();
 
 	const id = $props.id();
 	let name = $state('');
@@ -52,7 +48,15 @@
 			{#each value as tag, i (tag.id)}
 				<li class="chip">
 					{chip(tag)}
-					<IconButton label={t('upload.tag.remove', { name: tagName(tag.id) })} icon="cross" iconSize={14} variant="quiet" size="sm" round onclick={() => value.splice(i, 1)} />
+					<IconButton
+						label={t('upload.tag.remove', { name: tagName(tag.id) })}
+						icon="cross"
+						iconSize={14}
+						variant="quiet"
+						size="sm"
+						round
+						onclick={() => value.splice(i, 1)}
+					/>
 				</li>
 			{/each}
 		</ul>
@@ -94,7 +98,12 @@
 					aria-label={t('upload.tag.year', { min: chosen.min!, max: chosen.max! })}
 				/>
 			{:else if chosen}
-				<input bind:value={tagValue} placeholder={t('upload.tag.value')} aria-label={t('upload.tag.value')} maxlength="64" />
+				<input
+					bind:value={tagValue}
+					placeholder={t('upload.tag.value')}
+					aria-label={t('upload.tag.value')}
+					maxlength="64"
+				/>
 			{/if}
 			<button type="button" class="secondary" disabled={!valueOk} onclick={add}>
 				{t('upload.add')}

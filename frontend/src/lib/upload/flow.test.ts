@@ -20,7 +20,11 @@ const draftOf = (sha256: string, f: File): Draft => ({
 
 /** Fakes for every dependency; `callbacks` holds the upload's, to drive it. */
 function fakes(over: Partial<FlowDeps> = {}) {
-	const state = { callbacks: null as UploadCallbacks | null, aborted: [] as (boolean | undefined)[], deleted: [] as string[] };
+	const state = {
+		callbacks: null as UploadCallbacks | null,
+		aborted: [] as (boolean | undefined)[],
+		deleted: [] as string[]
+	};
 	const deps: FlowDeps = {
 		sha256File: async (_f, progress) => (progress(1), 'a'.repeat(64)),
 		videoExists: async () => false,
@@ -92,7 +96,10 @@ describe('the upload flow', () => {
 		flow.proceed();
 		state.callbacks!.onError(new ApiError(404, 'not_found'));
 		expect(flow.draft?.uploadUrl).toBeUndefined();
-		expect([flow.step, String(flow.error)]).toEqual(['edit', 'The upload failed. Not found. Proceed again to continue where it stopped.']);
+		expect([flow.step, String(flow.error)]).toEqual([
+			'edit',
+			'The upload failed. Not found. Proceed again to continue where it stopped.'
+		]);
 	});
 
 	it('cancel deletes what was uploaded and the draft', async () => {

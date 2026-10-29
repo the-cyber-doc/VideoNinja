@@ -20,8 +20,24 @@ async function setup(page: Page, access = ['segment', 'comment']) {
 	let now = Date.parse('2027-01-15T09:00:00Z');
 	const stamp = () => new Date((now += 60_000)).toISOString().replace('.000Z', '+00:00');
 	const comments: Comment[] = [
-		{ id: 1, user: 'Hana', created_at: '2027-01-10T09:00:00+00:00', modified_at: '2027-01-10T09:00:00+00:00', lang: 'fr', text: "Celui d'Hana", mine: false },
-		{ id: 2, user: 'kenji', created_at: '2027-01-12T09:00:00+00:00', modified_at: '2027-01-12T09:00:00+00:00', lang: 'en', text: 'My old one', mine: true }
+		{
+			id: 1,
+			user: 'Hana',
+			created_at: '2027-01-10T09:00:00+00:00',
+			modified_at: '2027-01-10T09:00:00+00:00',
+			lang: 'fr',
+			text: "Celui d'Hana",
+			mine: false
+		},
+		{
+			id: 2,
+			user: 'kenji',
+			created_at: '2027-01-12T09:00:00+00:00',
+			modified_at: '2027-01-12T09:00:00+00:00',
+			lang: 'en',
+			text: 'My old one',
+			mine: true
+		}
 	];
 	const sent: { method: string; url: string; body: unknown }[] = [];
 	const sorted = () => [...comments].sort((a, b) => Date.parse(b.modified_at) - Date.parse(a.modified_at));
@@ -75,7 +91,11 @@ test('add a comment: the button comes first, the new comment on top', async ({ p
 	await expect(section.locator('form')).toHaveCount(0);
 	await expect(list(page)).toHaveText([/Keep the elbow low/, /My old one/, /Celui d'Hana/]);
 	expect(sent).toEqual([
-		{ method: 'POST', url: expect.stringMatching(new RegExp(`/api/techniques/${KOKU}/comments$`)), body: { text: 'Keep the elbow low.\nThen turn.', lang: 'fr' } }
+		{
+			method: 'POST',
+			url: expect.stringMatching(new RegExp(`/api/techniques/${KOKU}/comments$`)),
+			body: { text: 'Keep the elbow low.\nThen turn.', lang: 'fr' }
+		}
 	]);
 	const added = list(page).first();
 	await expect(added.getByRole('img', { name: 'Language: Français' })).toBeVisible();
@@ -135,7 +155,9 @@ test('without the comment access: no add, edit or delete', async ({ page }) => {
 test('a failed save keeps the text and says why', async ({ page }) => {
 	await setup(page);
 	await page.route(`/api/techniques/${KOKU}/comments`, (r) =>
-		r.request().method() === 'POST' ? r.fulfill({ status: 403, json: { code: 'auth.access_denied', detail: 'Access denied', params: {} } }) : r.fallback()
+		r.request().method() === 'POST'
+			? r.fulfill({ status: 403, json: { code: 'auth.access_denied', detail: 'Access denied', params: {} } })
+			: r.fallback()
 	);
 	await page.goto(PAGE);
 	await page.getByRole('button', { name: 'Add a comment' }).click();

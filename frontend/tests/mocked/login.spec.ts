@@ -1,9 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { expect, test } from '@playwright/test';
 
-const rules = JSON.parse(
-	readFileSync(new URL('../../../server/app/validation.json', import.meta.url), 'utf8')
-);
+const rules = JSON.parse(readFileSync(new URL('../../../server/app/validation.json', import.meta.url), 'utf8'));
 
 // The API is faked: these tests check the page only, in Chromium and WebKit.
 test.beforeEach(async ({ page }) => {
@@ -20,17 +18,11 @@ test('a pasted TOTP code keeps its digits only', async ({ page }) => {
 });
 
 test('fields follow the shared length rules', async ({ page }) => {
-	await expect(page.getByLabel('Username')).toHaveAttribute(
-		'maxlength',
-		String(rules.username.max_length)
-	);
-	await expect(page.getByLabel('Password')).toHaveAttribute(
-		'maxlength',
-		String(rules.password.max_length)
-	);
+	await expect(page.getByLabel('Username')).toHaveAttribute('maxlength', String(rules.username.max_length));
+	await expect(page.getByLabel('Password')).toHaveAttribute('maxlength', String(rules.password.max_length));
 });
 
-test('a refused login says why, in the user\'s language, and clears the code', async ({ page }) => {
+test("a refused login says why, in the user's language, and clears the code", async ({ page }) => {
 	await page.route('/api/auth/login', (r) =>
 		r.fulfill({
 			status: 401,
@@ -52,7 +44,7 @@ test('a refused login says why, in the user\'s language, and clears the code', a
 	await expect(page.getByRole('alert')).toHaveText("Nom d'utilisateur, mot de passe ou code incorrect.");
 });
 
-test('too many failed attempts (429): the wait, in the user\'s language', async ({ page }) => {
+test("too many failed attempts (429): the wait, in the user's language", async ({ page }) => {
 	await page.route('/api/auth/login', (r) =>
 		r.fulfill({
 			status: 429,
@@ -75,10 +67,34 @@ test('too many failed attempts (429): the wait, in the user\'s language', async 
 });
 
 for (const [name, status, body, en, fr] of [
-	['nginx rate limit (429 "rate_limited")', 429, { code: 'rate_limited', detail: 'Too many requests', params: {} }, 'Too many requests at once. Try again in a moment.', 'Trop de requêtes à la fois. Réessayez dans un instant.'],
-	['every password check busy (503 "busy")', 503, { code: 'busy', detail: 'The server is busy, try again in a moment', params: {} }, 'The server is busy. Try again in a moment.', 'Le serveur est occupé. Réessayez dans un instant.'],
-	['an error this version does not know (a newer server)', 409, { code: 'auth.something_new', detail: 'New', params: {} }, 'The server refused the request (HTTP 409).', 'Le serveur a refusé la requête (HTTP 409).'],
-	['an answer without JSON (a proxy\'s page)', 502, '<html>Bad Gateway</html>', 'The server refused the request (HTTP 502).', 'Le serveur a refusé la requête (HTTP 502).']
+	[
+		'nginx rate limit (429 "rate_limited")',
+		429,
+		{ code: 'rate_limited', detail: 'Too many requests', params: {} },
+		'Too many requests at once. Try again in a moment.',
+		'Trop de requêtes à la fois. Réessayez dans un instant.'
+	],
+	[
+		'every password check busy (503 "busy")',
+		503,
+		{ code: 'busy', detail: 'The server is busy, try again in a moment', params: {} },
+		'The server is busy. Try again in a moment.',
+		'Le serveur est occupé. Réessayez dans un instant.'
+	],
+	[
+		'an error this version does not know (a newer server)',
+		409,
+		{ code: 'auth.something_new', detail: 'New', params: {} },
+		'The server refused the request (HTTP 409).',
+		'Le serveur a refusé la requête (HTTP 409).'
+	],
+	[
+		"an answer without JSON (a proxy's page)",
+		502,
+		'<html>Bad Gateway</html>',
+		'The server refused the request (HTTP 502).',
+		'Le serveur a refusé la requête (HTTP 502).'
+	]
 ] as const) {
 	test(`${name}: said in the user's language`, async ({ page }) => {
 		await page.route('/api/auth/login', (r) =>
@@ -108,7 +124,11 @@ test('a server failure shows its request ID to quote; a refusal does not', async
 		r.fulfill(
 			status === 500
 				? { status, json: { code: 'internal', detail: 'Internal error', params: {} }, headers: { 'X-Request-ID': ID } }
-				: { status, json: { code: 'auth.invalid_credentials', detail: '…', params: {} }, headers: { 'X-Request-ID': ID } }
+				: {
+						status,
+						json: { code: 'auth.invalid_credentials', detail: '…', params: {} },
+						headers: { 'X-Request-ID': ID }
+					}
 		)
 	);
 	const logIn = async () => {

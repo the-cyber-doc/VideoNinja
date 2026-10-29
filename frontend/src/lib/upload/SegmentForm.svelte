@@ -4,14 +4,7 @@
 	// a single choice is filled in), performer (or a new one), tags. All but tags are
 	// mandatory.
 	import ErrorMessage from '../ErrorMessage.svelte';
-	import {
-		BUKI,
-		categoriesOf,
-		sectionsOf,
-		techniquesOf,
-		weaponsOf,
-		type Catalog
-	} from '../catalog.svelte';
+	import { BUKI, categoriesOf, sectionsOf, techniquesOf, weaponsOf, type Catalog } from '../catalog.svelte';
 	import IconButton from '../IconButton.svelte';
 	import { t } from '../i18n.svelte';
 	import { displayName } from '../session.svelte';
@@ -162,8 +155,15 @@
 			{t('upload.segment.performer')}
 			{#if adding}
 				<span class="add">
-					<input bind:value={newName} placeholder={t('upload.segment.performer_name')} aria-label={t('upload.segment.performer_name')} maxlength="64" />
-					<button type="button" class="secondary" disabled={!newName.trim()} onclick={addPerformer}>{t('upload.add')}</button>
+					<input
+						bind:value={newName}
+						placeholder={t('upload.segment.performer_name')}
+						aria-label={t('upload.segment.performer_name')}
+						maxlength="64"
+					/>
+					<button type="button" class="secondary" disabled={!newName.trim()} onclick={addPerformer}
+						>{t('upload.add')}</button
+					>
 					<button type="button" class="secondary" onclick={() => (adding = false)}>{t('common.cancel')}</button>
 				</span>
 			{:else}

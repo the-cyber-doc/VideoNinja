@@ -140,7 +140,12 @@
 		if (!playable) return;
 		const url = src;
 		frame = await measureFrame(url, frame);
-		makeStrip(url, duration, (images) => (strip = images), () => url === src);
+		makeStrip(
+			url,
+			duration,
+			(images) => (strip = images),
+			() => url === src
+		);
 	}
 </script>
 
@@ -164,7 +169,11 @@
 		<div class="controls">
 			<div class="buttons">
 				<IconButton label={t('player.back_frame')} icon="frame-back" onclick={() => step(-1)} />
-				<IconButton label={t(paused ? 'player.play' : 'player.pause')} icon={paused ? 'play' : 'pause'} onclick={toggle} />
+				<IconButton
+					label={t(paused ? 'player.play' : 'player.pause')}
+					icon={paused ? 'play' : 'pause'}
+					onclick={toggle}
+				/>
 				<IconButton label={t('player.stop')} icon="stop" onclick={stop} />
 				<IconButton label={t('player.forward_frame')} icon="frame-forward" onclick={() => step(1)} />
 			</div>

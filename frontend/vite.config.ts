@@ -18,7 +18,9 @@ const toBackend = (target: string) => ({ target, rewrite: (path: string) => path
 // "dev") and APP_COMMIT (a full SHA is shortened); elsewhere they come from git, if there is one.
 function git(command: string): string | undefined {
 	try {
-		return execSync(`git ${command}`, { stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim();
+		return execSync(`git ${command}`, { stdio: ['ignore', 'pipe', 'ignore'] })
+			.toString()
+			.trim();
 	} catch {
 		return undefined;
 	}
@@ -45,13 +47,17 @@ export default defineConfig({
 		sveltekit({
 			compilerOptions: {
 				// Force runes mode for the project, except for libraries. Can be removed in svelte 6.
-				runes: ({ filename }) =>
-					filename.split(/[/\\]/).includes('node_modules') ? undefined : true
+				runes: ({ filename }) => (filename.split(/[/\\]/).includes('node_modules') ? undefined : true)
 			},
 
 			// Static SPA shell (no data in it); nginx serves it, the app serves data.
 			// precompress: .br + .gz next to each file, for gzip_static/brotli_static.
-			adapter: adapter({ pages: `build${suffix}`, assets: `build${suffix}`, fallback: 'index.html', precompress: true }),
+			adapter: adapter({
+				pages: `build${suffix}`,
+				assets: `build${suffix}`,
+				fallback: 'index.html',
+				precompress: true
+			}),
 			outDir: `.svelte-kit${suffix}`,
 
 			// Registered by the app, in production builds only ($lib/pwa.ts).
@@ -83,6 +89,17 @@ export default defineConfig({
 	},
 	test: {
 		// Unit tests next to the code; browser tests (tests/) run with Playwright.
-		include: ['src/**/*.test.ts']
+		include: ['src/**/*.test.ts'],
+		// `npm run test:coverage` (CI): the logic modules unit-tested here; components and
+		// pages are the browser tests' (no coverage there).
+		coverage: {
+			provider: 'v8',
+			include: ['src/**/*.ts'],
+			exclude: ['src/**/*.test.ts', 'src/**/*.d.ts'],
+			reporter: ['text-summary', 'text'],
+			skipFull: true,
+			// The figures when set: raise them as tests are added, never lower them.
+			thresholds: { statements: 44, branches: 52, functions: 39, lines: 47 }
+		}
 	}
 });

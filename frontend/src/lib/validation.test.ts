@@ -9,12 +9,9 @@ describe('totpDigits', () => {
 
 describe('shared rules', () => {
 	// Browsers compile the HTML pattern attribute with the 'v' flag, stricter than Python.
-	it.each(Object.entries(rules).filter(([, r]) => 'pattern' in r))(
-		'%s pattern compiles as in a browser',
-		(_, rule) => {
-			expect(() => new RegExp(`^(?:${(rule as { pattern: string }).pattern})$`, 'v')).not.toThrow();
-		}
-	);
+	it.each(Object.entries(rules).filter(([, r]) => 'pattern' in r))('%s pattern compiles as in a browser', (_, rule) => {
+		expect(() => new RegExp(`^(?:${(rule as { pattern: string }).pattern})$`, 'v')).not.toThrow();
+	});
 
 	it('accepts and refuses usernames like the backend', () => {
 		const re = new RegExp(`^(?:${rules.username.pattern})$`, 'v');

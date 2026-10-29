@@ -43,71 +43,71 @@ export default defineConfig({
 	projects: STACK
 		? STACK_PROJECTS
 		: [
-			{
-				name: 'chromium',
-				testDir: 'tests/mocked',
-				use: { ...devices['Desktop Chrome'], serviceWorkers: 'block' }
-			},
-			{
-				name: 'webkit',
-				testDir: 'tests/mocked',
-				use: { ...devices['Desktop Safari'], serviceWorkers: 'block' }
-			},
-			{
-				name: 'pwa',
-				testDir: 'tests/pwa',
-				use: {
-					...devices['Desktop Chrome'],
-					// ignoreHTTPSErrors is not enough: Chrome refuses to register a service
-					// worker served with a self-signed certificate without this flag.
-					launchOptions: { args: ['--ignore-certificate-errors'] }
+				{
+					name: 'chromium',
+					testDir: 'tests/mocked',
+					use: { ...devices['Desktop Chrome'], serviceWorkers: 'block' }
+				},
+				{
+					name: 'webkit',
+					testDir: 'tests/mocked',
+					use: { ...devices['Desktop Safari'], serviceWorkers: 'block' }
+				},
+				{
+					name: 'pwa',
+					testDir: 'tests/pwa',
+					use: {
+						...devices['Desktop Chrome'],
+						// ignoreHTTPSErrors is not enough: Chrome refuses to register a service
+						// worker served with a self-signed certificate without this flag.
+						launchOptions: { args: ['--ignore-certificate-errors'] }
+					}
+				},
+				{
+					name: 'e2e',
+					testDir: 'tests/e2e',
+					use: devices['Desktop Chrome'],
+					fullyParallel: false,
+					// No retry: the first attempt already changed the database (a retried setup
+					// finds it done and fails at /setup, hiding the real error).
+					retries: 0
+				},
+				{
+					// The service worker tests again, and the links and API paths, under a base path.
+					name: 'subpath',
+					testDir: 'tests',
+					testMatch: ['pwa/**/*.spec.ts', 'subpath/**/*.spec.ts'],
+					use: {
+						...devices['Desktop Chrome'],
+						baseURL: `https://localhost:${SUBPATH_PORT}${SUBPATH}/`,
+						launchOptions: { args: ['--ignore-certificate-errors'] }
+					}
 				}
-			},
-			{
-				name: 'e2e',
-				testDir: 'tests/e2e',
-				use: devices['Desktop Chrome'],
-				fullyParallel: false,
-				// No retry: the first attempt already changed the database (a retried setup
-				// finds it done and fails at /setup, hiding the real error).
-				retries: 0
-			},
-			{
-				// The service worker tests again, and the links and API paths, under a base path.
-				name: 'subpath',
-				testDir: 'tests',
-				testMatch: ['pwa/**/*.spec.ts', 'subpath/**/*.spec.ts'],
-				use: {
-					...devices['Desktop Chrome'],
-					baseURL: `https://localhost:${SUBPATH_PORT}${SUBPATH}/`,
-					launchOptions: { args: ['--ignore-certificate-errors'] }
-				}
-			}
 			],
 	webServer: STACK
 		? undefined
 		: [
-			{
-				// Built app over https, /api proxied to the test backend.
-				command: `npm run build && npm run preview -- --port ${APP_PORT} --strictPort`,
-				url: `https://localhost:${APP_PORT}`,
-				ignoreHTTPSErrors: true,
-				env: { API_URL: `http://localhost:${API_PORT}` },
-				reuseExistingServer: false, // always the current code
-				timeout: 120_000
-			},
-			{
-				command: `npm run build && npm run preview -- --port ${SUBPATH_PORT} --strictPort`,
-				url: `https://localhost:${SUBPATH_PORT}${SUBPATH}/`,
-				ignoreHTTPSErrors: true,
-				env: { BASE_PATH: SUBPATH, BUILD_NAME: 'subpath', API_URL: `http://localhost:${API_PORT}` },
-				reuseExistingServer: false,
-				timeout: 120_000
-			},
-			{
-				command: `sh tests/e2e/backend.sh ${API_PORT}`,
-				url: `http://localhost:${API_PORT}/health`,
-				reuseExistingServer: false // always a fresh database
-			}
+				{
+					// Built app over https, /api proxied to the test backend.
+					command: `npm run build && npm run preview -- --port ${APP_PORT} --strictPort`,
+					url: `https://localhost:${APP_PORT}`,
+					ignoreHTTPSErrors: true,
+					env: { API_URL: `http://localhost:${API_PORT}` },
+					reuseExistingServer: false, // always the current code
+					timeout: 120_000
+				},
+				{
+					command: `npm run build && npm run preview -- --port ${SUBPATH_PORT} --strictPort`,
+					url: `https://localhost:${SUBPATH_PORT}${SUBPATH}/`,
+					ignoreHTTPSErrors: true,
+					env: { BASE_PATH: SUBPATH, BUILD_NAME: 'subpath', API_URL: `http://localhost:${API_PORT}` },
+					reuseExistingServer: false,
+					timeout: 120_000
+				},
+				{
+					command: `sh tests/e2e/backend.sh ${API_PORT}`,
+					url: `http://localhost:${API_PORT}/health`,
+					reuseExistingServer: false // always a fresh database
+				}
 			]
 });

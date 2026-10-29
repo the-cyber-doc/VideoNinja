@@ -30,11 +30,14 @@ describe('styles', () => {
 	});
 
 	it('every gap, margin, padding and offset is on the spacing scale (--space-*)', () => {
-		const SPACING = /^\s*(gap|row-gap|column-gap|margin(?:-[a-z]+)?|padding(?:-[a-z]+)?|inset|top|right|bottom|left)\s*:\s*([^;]+);/gm;
+		const SPACING =
+			/^\s*(gap|row-gap|column-gap|margin(?:-[a-z]+)?|padding(?:-[a-z]+)?|inset|top|right|bottom|left)\s*:\s*([^;]+);/gm;
 		const files = [...svelteFiles(SRC).map((path) => relative(SRC, path)), 'app.css'];
 		const offenders = files.flatMap((path) => {
 			const text = readFileSync(join(SRC, path), 'utf8');
-			const style = path.endsWith('.css') ? text.slice(text.indexOf('* {')) : (/<style[^>]*>([\s\S]*?)<\/style>/.exec(text)?.[1] ?? '');
+			const style = path.endsWith('.css')
+				? text.slice(text.indexOf('* {'))
+				: (/<style[^>]*>([\s\S]*?)<\/style>/.exec(text)?.[1] ?? '');
 			return [...style.matchAll(SPACING)]
 				.filter(([, , value]) => /(^|[\s(,-])\d*\.?\d+(rem|px|em)\b/.test(value.replace(/var\([^)]*\)/g, '')))
 				.map(([line]) => `${path}: ${line.trim()}`);
@@ -46,7 +49,9 @@ describe('styles', () => {
 		const files = [...svelteFiles(SRC).map((path) => relative(SRC, path)), 'app.css'];
 		const offenders = files.flatMap((path) => {
 			const text = readFileSync(join(SRC, path), 'utf8');
-			const style = path.endsWith('.css') ? text.slice(text.indexOf('* {')) : (/<style[^>]*>([\s\S]*?)<\/style>/.exec(text)?.[1] ?? '');
+			const style = path.endsWith('.css')
+				? text.slice(text.indexOf('* {'))
+				: (/<style[^>]*>([\s\S]*?)<\/style>/.exec(text)?.[1] ?? '');
 			return [...style.matchAll(/^\s*font-size\s*:\s*([^;]+);/gm)]
 				.filter(([, value]) => !/^(var\(--text-[a-z]+\)|inherit)$/.test(value.trim()))
 				.map(([line]) => `${path}: ${line.trim()}`);

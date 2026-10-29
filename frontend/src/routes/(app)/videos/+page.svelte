@@ -29,7 +29,10 @@
 			goto(url('/'), { replace: true });
 			return;
 		}
-		listVideos().then((list) => (videos = list), (e) => (error = e));
+		listVideos().then(
+			(list) => (videos = list),
+			(e) => (error = e)
+		);
 	});
 
 	const groups = $derived(
@@ -55,12 +58,21 @@
 			<h1>{t('videos.title')}</h1>
 			{#if offline.available}
 				{@const label = stored ? t('videos.remove_saved', { n: stored }) : t('videos.none_saved')}
-				<IconButton label={label} icon="phone" iconSize={22} size="lg" round class="remove" disabled={!stored} onclick={removeSaved} />
+				<IconButton
+					{label}
+					icon="phone"
+					iconSize={22}
+					size="lg"
+					round
+					class="remove"
+					disabled={!stored}
+					onclick={removeSaved}
+				/>
 			{/if}
 		</header>
 		{#if saved}<p class="ok" role="status">{t('videos.saved')}</p>{/if}
 		{#if removed}<p class="ok" role="status">{t('videos.removed')}</p>{/if}
-		<ErrorMessage error={error} />
+		<ErrorMessage {error} />
 
 		{#if videos === null && !error}
 			<p class="hint centered">{t('common.loading')}</p>

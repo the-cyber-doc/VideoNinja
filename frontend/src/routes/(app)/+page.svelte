@@ -7,8 +7,7 @@
 	<main class="card">
 		<h1>Video Ninja</h1>
 		<p>
-			{t('home.logged_in_as')} <strong>{session.user.name ?? session.user.username}</strong> ({session
-				.user.role_name}).
+			{t('home.logged_in_as')} <strong>{session.user.name ?? session.user.username}</strong> ({session.user.role_name}).
 		</p>
 	</main>
 {/if}

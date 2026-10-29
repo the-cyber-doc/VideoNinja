@@ -23,9 +23,27 @@ export const CATALOG = {
 	],
 	sections: [
 		{ id: 'togakure.taijutsu.kamae', kanji: '構', romaji: 'Kamae', ryu: 'togakure', category: 'taijutsu' },
-		{ id: 'gyokko.taijutsu.jo_ryaku', kanji: '上略之巻', romaji: 'Jo Ryaku no Maki', ryu: 'gyokko', category: 'taijutsu' },
-		{ id: 'gyokko.taijutsu.ge_ryaku', kanji: '下略之巻', romaji: 'Ge Ryaku no Maki', ryu: 'gyokko', category: 'taijutsu' },
-		{ id: 'kukishinden.taijutsu.shoden', kanji: '初伝型', romaji: 'Shoden Gata', ryu: 'kukishinden', category: 'taijutsu' },
+		{
+			id: 'gyokko.taijutsu.jo_ryaku',
+			kanji: '上略之巻',
+			romaji: 'Jo Ryaku no Maki',
+			ryu: 'gyokko',
+			category: 'taijutsu'
+		},
+		{
+			id: 'gyokko.taijutsu.ge_ryaku',
+			kanji: '下略之巻',
+			romaji: 'Ge Ryaku no Maki',
+			ryu: 'gyokko',
+			category: 'taijutsu'
+		},
+		{
+			id: 'kukishinden.taijutsu.shoden',
+			kanji: '初伝型',
+			romaji: 'Shoden Gata',
+			ryu: 'kukishinden',
+			category: 'taijutsu'
+		},
 		{
 			id: 'kukishinden.buki.rokushakubo.shoden',
 			kanji: '初伝型',
@@ -34,16 +52,33 @@ export const CATALOG = {
 			category: 'buki',
 			weapon: 'rokushakubo'
 		},
-		{ id: 'kukishinden.buki.hanbo.okuden', kanji: '奥伝之型', romaji: 'Okuden no Kata', ryu: 'kukishinden', category: 'buki', weapon: 'hanbo' },
+		{
+			id: 'kukishinden.buki.hanbo.okuden',
+			kanji: '奥伝之型',
+			romaji: 'Okuden no Kata',
+			ryu: 'kukishinden',
+			category: 'buki',
+			weapon: 'hanbo'
+		},
 		{ id: 'koto.muto_dori.hekito', kanji: '劈刀型', romaji: 'Hekito Gata', ryu: 'koto', category: 'muto_dori' }
 	],
 	techniques: [
 		{ id: KOKU, kanji: '虚空', romaji: 'Koku', section: 'gyokko.taijutsu.jo_ryaku', description: 'Empty space' },
 		{ id: KETO, kanji: '闕倒', romaji: 'Keto', section: 'gyokko.taijutsu.jo_ryaku' },
-		{ id: 'togakure.taijutsu.kamae.ichi', kanji: '一之構', romaji: 'Ichi no Kamae', section: 'togakure.taijutsu.kamae' },
+		{
+			id: 'togakure.taijutsu.kamae.ichi',
+			kanji: '一之構',
+			romaji: 'Ichi no Kamae',
+			section: 'togakure.taijutsu.kamae'
+		},
 		{ id: 'kukishinden.taijutsu.shoden.seion', kanji: '生音', romaji: 'Seion', section: 'kukishinden.taijutsu.shoden' },
 		{ id: STAFF, kanji: '中段扞打', romaji: 'Chudan Kangi', section: 'kukishinden.buki.rokushakubo.shoden' },
-		{ id: 'kukishinden.buki.hanbo.okuden.hane_otoshi', kanji: '跳落', romaji: 'Hane Otoshi', section: 'kukishinden.buki.hanbo.okuden' },
+		{
+			id: 'kukishinden.buki.hanbo.okuden.hane_otoshi',
+			kanji: '跳落',
+			romaji: 'Hane Otoshi',
+			section: 'kukishinden.buki.hanbo.okuden'
+		},
 		{ id: 'koto.muto_dori.hekito.kibo', kanji: '跂望', romaji: 'Kibo', section: 'koto.muto_dori.hekito' }
 	],
 	segments: [

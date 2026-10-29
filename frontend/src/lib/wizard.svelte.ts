@@ -117,7 +117,12 @@ export class Wizard {
 	/** A code from the new authenticator: the account is created (setup: and the database). */
 	submitTotp = () =>
 		this.#run(async () => {
-			const credentials = { name: this.name, password: this.password, totp_secret: this.totp!.secret, totp_code: this.totpCode };
+			const credentials = {
+				name: this.name,
+				password: this.password,
+				totp_secret: this.totp!.secret,
+				totp_code: this.totpCode
+			};
 			if (!this.setup) {
 				await this.deps.completeRegistration({ token: this.invite!, ...credentials });
 				this.#forgetPasswords();

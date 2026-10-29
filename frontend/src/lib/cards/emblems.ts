@@ -15,10 +15,7 @@ export interface Emblems {
 /** `files`: import.meta.glob('./emblems/*.svg', { eager: true, query: '?url', import: 'default' }). */
 export function emblemLookup(files: Record<string, string>): Emblems {
 	const urls = Object.fromEntries(
-		Object.entries(files).map(([path, url]) => [
-			path.slice(path.lastIndexOf('/') + 1, -'.svg'.length),
-			url
-		])
+		Object.entries(files).map(([path, url]) => [path.slice(path.lastIndexOf('/') + 1, -'.svg'.length), url])
 	);
 	const has = (id: string) => id !== GENERIC && Object.hasOwn(urls, id);
 	return { has, url: (id) => urls[has(id) ? id : GENERIC] };

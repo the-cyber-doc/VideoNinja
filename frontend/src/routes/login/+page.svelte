@@ -72,7 +72,7 @@
 				placeholder="123456"
 			/>
 		</label>
-		<ErrorMessage error={error} />
+		<ErrorMessage {error} />
 		<button disabled={busy}>{busy ? t('login.busy') : t('login.submit')}</button>
 	</form>
 </main>

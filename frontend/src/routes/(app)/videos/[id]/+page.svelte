@@ -53,13 +53,19 @@
 				(e) => (error = e)
 			)
 		);
-		loadPerformers().then((list) => (performers = list), (e) => (error = e));
+		loadPerformers().then(
+			(list) => (performers = list),
+			(e) => (error = e)
+		);
 	});
 
 	$effect(() => {
 		if (!allowed) return;
 		void i18n.lang; // tag names are translated by the server
-		loadTags().then((list) => (tags = list), (e) => (error = e));
+		loadTags().then(
+			(list) => (tags = list),
+			(e) => (error = e)
+		);
 	});
 
 	const changed = () => !!annotation && JSON.stringify(annotation) !== saved;
@@ -95,7 +101,7 @@
 {#if allowed}
 	<div class="page">
 		<a class="back" href={url('/videos')}>← {t('videos.back')}</a>
-		<ErrorMessage error={error} />
+		<ErrorMessage {error} />
 		{#if annotation && catalog}
 			<AnnotationPanel
 				src={videoUrl(id)}

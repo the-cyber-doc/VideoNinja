@@ -21,9 +21,7 @@
 	let editing = $state(false);
 	const date = $derived(new Date(comment.modified_at));
 	const edited = $derived(Date.parse(comment.modified_at) !== Date.parse(comment.created_at));
-	const when = $derived(
-		new Intl.DateTimeFormat(i18n.lang, { dateStyle: 'medium', timeStyle: 'short' }).format(date)
-	);
+	const when = $derived(new Intl.DateTimeFormat(i18n.lang, { dateStyle: 'medium', timeStyle: 'short' }).format(date));
 	const language = $derived(
 		t('language.current', {
 			name: isLang(comment.lang) ? LANGUAGES[comment.lang] : comment.lang
@@ -50,7 +48,11 @@
 		</span>
 	</header>
 	{#if editing && isLang(comment.lang)}
-		<CommentForm initial={{ text: comment.text, lang: comment.lang }} onsave={save} oncancel={() => (editing = false)} />
+		<CommentForm
+			initial={{ text: comment.text, lang: comment.lang }}
+			onsave={save}
+			oncancel={() => (editing = false)}
+		/>
 	{:else}
 		<p lang={comment.lang}>{comment.text}</p>
 		{#if editable}

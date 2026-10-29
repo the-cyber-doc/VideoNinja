@@ -3,8 +3,7 @@
 	// with `current` (default) the last one is this page, shown as plain text.
 	import { t } from './i18n.svelte';
 
-	let { items, current = true }: { items: { label: string; href: string }[]; current?: boolean } =
-		$props();
+	let { items, current = true }: { items: { label: string; href: string }[]; current?: boolean } = $props();
 </script>
 
 <nav aria-label={t('nav.breadcrumbs')}>

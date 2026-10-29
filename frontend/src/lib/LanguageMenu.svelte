@@ -35,11 +35,7 @@
 	{#if open}
 		<div class="menu" role="menu">
 			{#each langs as lang (lang)}
-				<button
-					role="menuitemradio"
-					aria-checked={lang === i18n.lang}
-					onclick={() => choose(lang)}
-				>
+				<button role="menuitemradio" aria-checked={lang === i18n.lang} onclick={() => choose(lang)}>
 					<Flag {lang} />
 					<span {lang}>{LANGUAGES[lang]}</span>
 				</button>

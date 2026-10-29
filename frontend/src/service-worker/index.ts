@@ -39,9 +39,7 @@ const ROOT = `${BASE}/`; // the single-page app's shell
 const escaped = BASE.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const path = (pattern: string) => new RegExp(`^${escaped}${pattern}$`);
 // Manifest paths are relative to the base path, where the service worker is.
-const ASSETS = new Set(
-	[...immutable, ...assets].map((file) => new URL(file.path, sw.location.href).pathname)
-);
+const ASSETS = new Set([...immutable, ...assets].map((file) => new URL(file.path, sw.location.href).pathname));
 // API reads also kept for offline use (network first).
 const OFFLINE_API = [path('/api/setup/status'), path('/api/auth/me'), path('/api/techniques/[^/]+/comments')];
 const CATALOG = `${BASE}/api/catalog`;
@@ -81,8 +79,7 @@ sw.addEventListener('fetch', (event) => {
 	else if (CLIP.test(url.pathname)) event.respondWith(clip(event));
 	else if (VIDEO.test(url.pathname)) {
 		if (savedVideos.has(request.url)) event.respondWith(savedVideo(request));
-	}
-	else if (THUMBNAIL.test(url.pathname)) event.respondWith(thumbnail(event));
+	} else if (THUMBNAIL.test(url.pathname)) event.respondWith(thumbnail(event));
 });
 
 // ignoreVary: the server's Vary (Origin, Accept-Encoding) would make a module
@@ -179,7 +176,9 @@ function download(event: FetchEvent, key: string, cache: Cache) {
 	// Cloned in the first callback of `response`: before the caller can read its body.
 	const saved = response
 		.then((whole) =>
-			whole.status === 200 ? cache.put(key, whole.clone()).then(() => tell({ type: 'media-saved', url: key })) : undefined
+			whole.status === 200
+				? cache.put(key, whole.clone()).then(() => tell({ type: 'media-saved', url: key }))
+				: undefined
 		)
 		.catch(() => {}) // offline, storage full, or the download cut: saved next time
 		.finally(() => saving.delete(key));

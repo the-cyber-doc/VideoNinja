@@ -84,7 +84,7 @@
 <dialog
 	bind:this={dialog}
 	aria-label={t('player.label', { title, duration: formatTime(segmentDuration(segment)) })}
-	onclose={onclose}
+	{onclose}
 	onclick={(e) => e.target === dialog && dialog.close()}
 	onkeydowncapture={onkeydown}
 >
@@ -113,8 +113,20 @@
 		></video>
 		<div class="tools">
 			<IconButton label={t('player.back_frame')} icon="frame-back" iconSize={18} size="sm" onclick={() => step(-1)} />
-			<IconButton label={t(paused ? 'player.play' : 'player.pause')} icon={paused ? 'play' : 'pause'} iconSize={18} size="sm" onclick={toggle} />
-			<IconButton label={t('player.forward_frame')} icon="frame-forward" iconSize={18} size="sm" onclick={() => step(1)} />
+			<IconButton
+				label={t(paused ? 'player.play' : 'player.pause')}
+				icon={paused ? 'play' : 'pause'}
+				iconSize={18}
+				size="sm"
+				onclick={toggle}
+			/>
+			<IconButton
+				label={t('player.forward_frame')}
+				icon="frame-forward"
+				iconSize={18}
+				size="sm"
+				onclick={() => step(1)}
+			/>
 			<div class="speeds" role="group" aria-label={t('player.speed')}>
 				{#each SPEEDS as value (value)}
 					<button type="button" class="speed" aria-pressed={speed === value} onclick={() => (speed = value)}>

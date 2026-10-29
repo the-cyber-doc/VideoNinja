@@ -20,19 +20,47 @@ const catalog: Catalog = {
 	sections: [
 		{ ...named('gyokko.taijutsu.jo_ryaku', 'Jo Ryaku no Maki'), ryu: 'gyokko', category: 'taijutsu' },
 		{ ...named('kukishinden.taijutsu.shoden'), ryu: 'kukishinden', category: 'taijutsu' },
-		{ ...named('kukishinden.buki.rokushakubo.shoden', 'Shoden Gata'), ryu: 'kukishinden', category: 'buki', weapon: 'rokushakubo' }
+		{
+			...named('kukishinden.buki.rokushakubo.shoden', 'Shoden Gata'),
+			ryu: 'kukishinden',
+			category: 'buki',
+			weapon: 'rokushakubo'
+		}
 	],
 	techniques: [
 		{ ...named('gyokko.taijutsu.jo_ryaku.koku', 'Koku'), section: 'gyokko.taijutsu.jo_ryaku' },
-		{ ...named('kukishinden.buki.rokushakubo.shoden.chudan_kangi', 'Chudan Kangi'), section: 'kukishinden.buki.rokushakubo.shoden' }
+		{
+			...named('kukishinden.buki.rokushakubo.shoden.chudan_kangi', 'Chudan Kangi'),
+			section: 'kukishinden.buki.rokushakubo.shoden'
+		}
 	],
 	segments: [
 		{ id: 1, video: 1, technique: 'gyokko.taijutsu.jo_ryaku.koku', begin_s: 0, end_s: 5, performer: 'p' },
-		{ id: 2, video: 1, technique: 'kukishinden.buki.rokushakubo.shoden.chudan_kangi', begin_s: 0, end_s: 5, performer: 'p' },
-		{ id: 3, video: 2, technique: 'kukishinden.buki.rokushakubo.shoden.chudan_kangi', begin_s: 5, end_s: 9, performer: 'p' }
+		{
+			id: 2,
+			video: 1,
+			technique: 'kukishinden.buki.rokushakubo.shoden.chudan_kangi',
+			begin_s: 0,
+			end_s: 5,
+			performer: 'p'
+		},
+		{
+			id: 3,
+			video: 2,
+			technique: 'kukishinden.buki.rokushakubo.shoden.chudan_kangi',
+			begin_s: 5,
+			end_s: 9,
+			performer: 'p'
+		}
 	]
 };
-const staff = { ryu: 'kukishinden', category: 'buki', weapon: 'rokushakubo', section: 'shoden', technique: 'chudan_kangi' };
+const staff = {
+	ryu: 'kukishinden',
+	category: 'buki',
+	weapon: 'rokushakubo',
+	section: 'shoden',
+	technique: 'chudan_kangi'
+};
 
 describe('catalogue paths', () => {
 	it('lists only what a school has, in the catalogue order', () => {
@@ -75,11 +103,9 @@ describe('catalogue paths', () => {
 			'Shoden Gata',
 			'Chudan Kangi'
 		]);
-		expect(catalogCrumbs(catalog, { ryu: 'gyokko', category: 'taijutsu', section: 'nope' }).map((c) => c.href)).toEqual([
-			'/schools',
-			'/schools/gyokko',
-			'/schools/gyokko/taijutsu'
-		]);
+		expect(catalogCrumbs(catalog, { ryu: 'gyokko', category: 'taijutsu', section: 'nope' }).map((c) => c.href)).toEqual(
+			['/schools', '/schools/gyokko', '/schools/gyokko/taijutsu']
+		);
 	});
 });
 

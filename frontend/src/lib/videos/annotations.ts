@@ -2,7 +2,7 @@
 // (../api/videos.ts), converted to and from the annotation panel's form, and the
 // page's sections.
 import { pathOf, sectionId, type Catalog } from '../catalog.svelte';
-import type { Annotations, AnnotationsOut, SegmentIn, TagIn, VideoRow } from '../api/types';
+import type { Annotations, AnnotationsOut, TagIn, VideoRow } from '../api/types';
 import type { Annotation, Mode } from '../upload/draft.svelte';
 import { allSegmentsDone, wholeSeconds } from '../upload/rules';
 

@@ -80,11 +80,8 @@ test('a school without its own emblem gets the generic one', async ({ page }) =>
 	await page.goto('/schools');
 	await expect(page.locator('.catalog-card')).toHaveCount(4);
 	// Small emblems are inlined (data: URLs): compare the images, not their file names.
-	const image = (id: string) =>
-		page.locator(`[data-id="${id}"]`).evaluate((e) => getComputedStyle(e).backgroundImage);
-	const [togakure, gyokko, newA, newB] = await Promise.all(
-		['togakure', 'gyokko', 'new_a', 'new_b'].map(image)
-	);
+	const image = (id: string) => page.locator(`[data-id="${id}"]`).evaluate((e) => getComputedStyle(e).backgroundImage);
+	const [togakure, gyokko, newA, newB] = await Promise.all(['togakure', 'gyokko', 'new_a', 'new_b'].map(image));
 	for (const img of [togakure, gyokko, newA]) expect(img).toMatch(/^url\(/);
 	expect(togakure).not.toBe(gyokko);
 	expect(newA).toBe(newB);

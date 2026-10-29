@@ -19,7 +19,6 @@ export class ApiError extends Error {
 	}
 }
 
-
 /** The text of an error code in the current language. A code this version does not
  * know (a newer server than this cached app) falls back to the HTTP status. */
 export function errorText(code: string, params: Params = {}, status = 0): string {

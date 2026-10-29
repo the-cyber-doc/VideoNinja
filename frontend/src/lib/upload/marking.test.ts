@@ -7,13 +7,27 @@ const none = { selected: null, marker: null };
 const keys = { ctrlKey: false, metaKey: false, altKey: false };
 
 describe('marking segments', () => {
-	it('a new segment takes the previous one\'s place in the catalogue and performer, not its technique', () => {
+	it("a new segment takes the previous one's place in the catalogue and performer, not its technique", () => {
 		const a = annotation();
 		addSegment(a, 0, 2);
-		Object.assign(a.segments[0], { school: 'gyokko', category: 'taijutsu', section: 's', technique: 'koku', performer: 'hatsumi' });
+		Object.assign(a.segments[0], {
+			school: 'gyokko',
+			category: 'taijutsu',
+			section: 's',
+			technique: 'koku',
+			performer: 'hatsumi'
+		});
 		const key = addSegment(a, 3, 5);
 		expect(key).toBe(2);
-		expect(a.segments[1]).toMatchObject({ begin: 3, end: 5, school: 'gyokko', category: 'taijutsu', section: 's', technique: '', performer: 'hatsumi' });
+		expect(a.segments[1]).toMatchObject({
+			begin: 3,
+			end: 5,
+			school: 'gyokko',
+			category: 'taijutsu',
+			section: 's',
+			technique: '',
+			performer: 'hatsumi'
+		});
 	});
 
 	it('keys are never reused, even after a deletion', () => {
@@ -40,7 +54,7 @@ describe('marking segments', () => {
 		expect(a.segments).toEqual([]);
 	});
 
-	it('I and O move the selected segment\'s edges, never past each other', () => {
+	it("I and O move the selected segment's edges, never past each other", () => {
 		const a = annotation();
 		const selected = addSegment(a, 2, 6);
 		const m = { selected, marker: null };

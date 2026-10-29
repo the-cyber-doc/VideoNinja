@@ -29,7 +29,10 @@ describe('shared components', () => {
 			.filter((path) => path !== 'lib/IconButton.svelte' && !OWN_BUTTONS.includes(path))
 			.flatMap((path) =>
 				[...markup(path).matchAll(/<button\b([^>]*?)>/gs)]
-					.map(([, attrs]) => [/\btitle=(\{[^}]*\}|"[^"]*")/.exec(attrs)?.[1], /\baria-label=(\{[^}]*\}|"[^"]*")/.exec(attrs)?.[1]])
+					.map(([, attrs]) => [
+						/\btitle=(\{[^}]*\}|"[^"]*")/.exec(attrs)?.[1],
+						/\baria-label=(\{[^}]*\}|"[^"]*")/.exec(attrs)?.[1]
+					])
 					.filter(([title, label]) => title && title === label)
 					.map(([title]) => `${path}: ${title}`)
 			);
