@@ -22,8 +22,7 @@
 	};
 
 	const reset = (user: UserRow) => {
-		if (user.status === 'registered' && !confirm(t('users.reset_confirm', { username: user.username })))
-			return;
+		if (user.status === 'registered' && !confirm(t('users.reset_confirm', { username: user.username }))) return;
 		admin.reset(user);
 	};
 
@@ -110,7 +109,12 @@
 						<td>{data.roles.find((r) => r.id === user.role)?.name ?? user.role}</td>
 						<td class="actions">
 							{#if user.status === 'invited'}
-								<IconButton label={t('users.copy_invite')} icon="copy" onclick={() => admin.copyInvite(user)} disabled={admin.busy} />
+								<IconButton
+									label={t('users.copy_invite')}
+									icon="copy"
+									onclick={() => admin.copyInvite(user)}
+									disabled={admin.busy}
+								/>
 							{:else if user.username !== session.user?.username}
 								<IconButton label={t('users.reset')} icon="refresh" onclick={() => reset(user)} disabled={admin.busy} />
 							{/if}

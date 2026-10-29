@@ -42,13 +42,7 @@
 			</li>
 		{/each}
 	</ol>
-	<div
-		class="bar"
-		role="progressbar"
-		aria-valuemin="0"
-		aria-valuemax={w.labels.length}
-		aria-valuenow={w.position}
-	>
+	<div class="bar" role="progressbar" aria-valuemin="0" aria-valuemax={w.labels.length} aria-valuenow={w.position}>
 		<div style:width="{(w.position / w.labels.length) * 100}%"></div>
 	</div>
 

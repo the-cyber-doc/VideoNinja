@@ -42,7 +42,12 @@ export async function measureFrame(url: string, fallback: number): Promise<numbe
  * video. `onImages` gets the pictures so far after each one; it stops when `wanted()`
  * turns false (another file opened) or at an error (e.g. the server's limit of
  * parallel requests for one video: 429). */
-export async function makeStrip(url: string, total: number, onImages: (images: string[]) => void, wanted: () => boolean) {
+export async function makeStrip(
+	url: string,
+	total: number,
+	onImages: (images: string[]) => void,
+	wanted: () => boolean
+) {
 	const probe = document.createElement('video');
 	probe.muted = true;
 	probe.preload = 'auto';

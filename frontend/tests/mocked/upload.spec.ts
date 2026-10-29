@@ -34,11 +34,25 @@ interface Fake {
 const TAGS: Record<string, object[]> = {
 	en: [
 		{ id: 'note', name: 'Note' },
-		{ id: 'place', name: 'Place', values: [{ id: 'dojo', name: 'Dojo' }, { id: 'outdoor', name: 'Outdoor' }] },
+		{
+			id: 'place',
+			name: 'Place',
+			values: [
+				{ id: 'dojo', name: 'Dojo' },
+				{ id: 'outdoor', name: 'Outdoor' }
+			]
+		},
 		{ id: 'year', name: 'Year', format: 'year', min: 1926, max: 2026 }
 	],
 	fr: [
-		{ id: 'place', name: 'Lieu', values: [{ id: 'dojo', name: 'Dojo' }, { id: 'outdoor', name: 'Extérieur' }] },
+		{
+			id: 'place',
+			name: 'Lieu',
+			values: [
+				{ id: 'dojo', name: 'Dojo' },
+				{ id: 'outdoor', name: 'Extérieur' }
+			]
+		},
 		{ id: 'note', name: 'Remarque' },
 		{ id: 'year', name: 'Année', format: 'year', min: 1926, max: 2026 }
 	]
@@ -199,7 +213,9 @@ test('the file name above the video, me as uploader and as the author of my segm
 	await expect(page.locator('.about .filename')).toHaveText('clip.webm');
 	await expect(page.locator('.about .uploader')).toHaveText('Uploaded by kenji');
 	await drag(page, 0.1, 0.4);
-	await expect(page.getByRole('article', { name: 'Segment 1' }).locator('header .author')).toHaveText('Created by kenji');
+	await expect(page.getByRole('article', { name: 'Segment 1' }).locator('header .author')).toHaveText(
+		'Created by kenji'
+	);
 });
 
 test('segments by drag and by I/O, complete them, proceed: upload then submit', async ({ page }) => {
@@ -251,7 +267,11 @@ test('segments by drag and by I/O, complete them, proceed: upload then submit', 
 	expect(body).toMatchObject({ original_filename: 'clip.webm', all_segments_done: true, tags: [] });
 	const segments = body.segments as { begin_s: number; end_s: number }[];
 	expect(segments).toHaveLength(2);
-	expect(segments[0]).toMatchObject({ technique: KOKU, performer: 'noguchi', tags: [{ id: 'place', value: 'outdoor' }] }); // the ID, not the name
+	expect(segments[0]).toMatchObject({
+		technique: KOKU,
+		performer: 'noguchi',
+		tags: [{ id: 'place', value: 'outdoor' }]
+	}); // the ID, not the name
 	// Whole seconds, begin down, end up; drag 10–40 % of 4 s ≈ 0.4–1.6 s.
 	expect(segments[0].begin_s).toBe(0);
 	expect(segments[0].end_s).toBe(2);
@@ -313,7 +333,7 @@ test('in French: the steps of the technique', async ({ page }) => {
 test('server cannot receive uploads: warned at once, annotating still possible', async ({ page }) => {
 	await setup(page, UPLOADER, { available: false });
 	await openClip(page);
-	await expect(page.getByRole('alert')).toContainText('the server\'s upload service (tusd) is not running');
+	await expect(page.getByRole('alert')).toContainText("the server's upload service (tusd) is not running");
 	await page.getByLabel('Define segments later').check();
 	await expect(proceed(page)).toBeDisabled();
 	await expect(page.getByText('Proceed is possible once the server can receive uploads again.')).toBeVisible();
@@ -373,9 +393,33 @@ test('cancel forgets the work and resets the page', async ({ page }) => {
 test('my uploads: queue position, encoding progress, failure with retry', async ({ page }) => {
 	await setup(page, UPLOADER, {
 		mine: [
-			{ id: 3, original_filename: 'c.mov', status: 'failed', progress: 10, error: 'Encoding failed', uploaded_at: '2027-01-15T09:00:00+01:00', queue_position: null },
-			{ id: 2, original_filename: 'b.mov', status: 'queued', progress: 0, error: null, uploaded_at: '2027-01-15T09:00:00+01:00', queue_position: 2 },
-			{ id: 1, original_filename: 'a.mov', status: 'encoding', progress: 42, error: null, uploaded_at: '2027-01-15T09:00:00+01:00', queue_position: null }
+			{
+				id: 3,
+				original_filename: 'c.mov',
+				status: 'failed',
+				progress: 10,
+				error: 'Encoding failed',
+				uploaded_at: '2027-01-15T09:00:00+01:00',
+				queue_position: null
+			},
+			{
+				id: 2,
+				original_filename: 'b.mov',
+				status: 'queued',
+				progress: 0,
+				error: null,
+				uploaded_at: '2027-01-15T09:00:00+01:00',
+				queue_position: 2
+			},
+			{
+				id: 1,
+				original_filename: 'a.mov',
+				status: 'encoding',
+				progress: 42,
+				error: null,
+				uploaded_at: '2027-01-15T09:00:00+01:00',
+				queue_position: null
+			}
 		]
 	});
 	let retried = '';
@@ -397,8 +441,24 @@ test('nothing queued or encoding: my uploads are not polled', async ({ page }) =
 	await page.clock.install();
 	await setup(page, UPLOADER, {
 		mine: [
-			{ id: 2, original_filename: 'b.mov', status: 'failed', progress: 10, error: 'Encoding failed', uploaded_at: '2027-01-15T09:00:00+01:00', queue_position: null },
-			{ id: 1, original_filename: 'a.mov', status: 'published', progress: 100, error: null, uploaded_at: '2027-01-15T09:00:00+01:00', queue_position: null }
+			{
+				id: 2,
+				original_filename: 'b.mov',
+				status: 'failed',
+				progress: 10,
+				error: 'Encoding failed',
+				uploaded_at: '2027-01-15T09:00:00+01:00',
+				queue_position: null
+			},
+			{
+				id: 1,
+				original_filename: 'a.mov',
+				status: 'published',
+				progress: 100,
+				error: null,
+				uploaded_at: '2027-01-15T09:00:00+01:00',
+				queue_position: null
+			}
 		]
 	});
 	let requests = 0;
@@ -415,7 +475,15 @@ test('nothing queued or encoding: my uploads are not polled', async ({ page }) =
 });
 
 test('a video just published: the catalogue is fetched again at once', async ({ page }) => {
-	const status = { id: 1, original_filename: 'a.mov', status: 'encoding', progress: 90, error: null, uploaded_at: '2027-01-15T09:00:00+01:00', queue_position: null };
+	const status = {
+		id: 1,
+		original_filename: 'a.mov',
+		status: 'encoding',
+		progress: 90,
+		error: null,
+		uploaded_at: '2027-01-15T09:00:00+01:00',
+		queue_position: null
+	};
 	const fake = await setup(page, UPLOADER, { mine: [status] });
 	let catalogRequests = 0;
 	await page.route('/api/catalog', (r) => {
@@ -478,7 +546,6 @@ test('the timeline shows the frame under the pointer; the seek marker stays', as
 // Exact frame steps need the frame duration, measured from the frame callbacks
 // (requestVideoFrameCallback) of a hidden video ($lib/frames.ts).
 test.describe('frame by frame', () => {
-
 	test('→ steps one frame of the video (measured: 25 fps here)', async ({ page }) => {
 		await setup(page);
 		await openClip(page);

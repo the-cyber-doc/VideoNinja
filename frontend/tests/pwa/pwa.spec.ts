@@ -14,7 +14,15 @@ const test = base.extend<{ at: (path: string) => string }>({
 const USER = { username: 'kenji', name: null, role: 'user', role_name: 'User', access: ['segment'] };
 const school = (id: string) => ({ id, kanji: `${id}流`, romaji: `${id} Ryu` });
 const COMMENTS = [
-	{ id: 1, user: 'Hana', created_at: '2027-01-15T09:00:00+01:00', modified_at: '2027-01-15T09:00:00+01:00', lang: 'fr', text: 'Très bien', mine: false }
+	{
+		id: 1,
+		user: 'Hana',
+		created_at: '2027-01-15T09:00:00+01:00',
+		modified_at: '2027-01-15T09:00:00+01:00',
+		lang: 'fr',
+		text: 'Très bien',
+		mine: false
+	}
 ];
 const CATEGORY = { id: 'taijutsu', kanji: '体術', romaji: 'Taijutsu' };
 const SECTION = { id: 'togakure.taijutsu.kamae', kanji: '構', romaji: 'Kamae', ryu: 'togakure', category: 'taijutsu' };
@@ -165,7 +173,10 @@ test('a refused clip (429: another one downloading) is passed on, not saved', as
 	await context.route('**/media/segment/7', (route) => route.fulfill({ status: 429 }));
 	await controlled(page, at(TECHNIQUE_PAGE));
 	const statuses = await page.evaluate(
-		(clip) => Promise.all(['bytes=0-', 'bytes=0-1'].map(async (range) => (await fetch(clip, { headers: { Range: range } })).status)),
+		(clip) =>
+			Promise.all(
+				['bytes=0-', 'bytes=0-1'].map(async (range) => (await fetch(clip, { headers: { Range: range } })).status)
+			),
 		at('/media/segment/7')
 	);
 	expect(statuses).toEqual([429, 429]);
@@ -213,7 +224,10 @@ test('logout deletes the cached user data', async ({ page, context, at }) => {
 	await expect(cards(page)).toHaveCount(2);
 	const cached = () => cachedPaths(page, 'data');
 	expect(await cached()).toEqual(expect.arrayContaining([at('/api/auth/me'), at('/api/catalog')]));
-	await page.evaluate(async (clip) => (await caches.open('media')).put(clip, new Response('clip')), at('/media/segment/7'));
+	await page.evaluate(
+		async (clip) => (await caches.open('media')).put(clip, new Response('clip')),
+		at('/media/segment/7')
+	);
 
 	await page.getByRole('button', { name: 'User menu' }).click();
 	await page.getByRole('menuitem', { name: 'Log out' }).click();
@@ -228,11 +242,22 @@ test('logout deletes the cached user data', async ({ page, context, at }) => {
 	);
 });
 
-test('Videos page: the phone right of the title removes every saved video, their badges back to the cloud', async ({ page, context, at }) => {
+test('Videos page: the phone right of the title removes every saved video, their badges back to the cloud', async ({
+	page,
+	context,
+	at
+}) => {
 	await fakeApi(context);
 	const MANAGER = { ...USER, role: 'video_mgmt', access: ['segment', 'upload', 'video_mgmt'] };
 	await context.route('**/api/auth/me', (r) => r.fulfill({ json: MANAGER }));
-	const row = (id: number) => ({ id, original_filename: `kata-${id}.mp4`, uploaded_at: '2027-01-15T09:00:00+01:00', duration_s: 4, all_segments_done: false, segment_count: 1 });
+	const row = (id: number) => ({
+		id,
+		original_filename: `kata-${id}.mp4`,
+		uploaded_at: '2027-01-15T09:00:00+01:00',
+		duration_s: 4,
+		all_segments_done: false,
+		segment_count: 1
+	});
 	await context.route('**/api/videos', (r) => r.fulfill({ json: [row(1), row(2)] }));
 	await context.route('**/media/video/*/thumbnail', (r) => r.fulfill({ contentType: 'image/png', body: PNG }));
 
@@ -240,10 +265,13 @@ test('Videos page: the phone right of the title removes every saved video, their
 	const remove = page.getByRole('button', { name: 'No video saved on this device' });
 	await expect(remove).toBeDisabled();
 	// Two whole videos saved while annotating, a video thumbnail and a clip.
-	await page.evaluate(async (paths) => {
-		const cache = await caches.open('media');
-		for (const path of paths) await cache.put(path, new Response('saved'));
-	}, [at('/media/video/1'), at('/media/video/2'), at('/media/video/1/thumbnail'), at('/media/segment/7')]);
+	await page.evaluate(
+		async (paths) => {
+			const cache = await caches.open('media');
+			for (const path of paths) await cache.put(path, new Response('saved'));
+		},
+		[at('/media/video/1'), at('/media/video/2'), at('/media/video/1/thumbnail'), at('/media/segment/7')]
+	);
 	await page.reload();
 
 	const badge = (id: number) => page.getByRole('link', { name: new RegExp(`kata-${id}\\.mp4`) }).getByRole('img');
@@ -267,7 +295,11 @@ test('Videos page: the phone right of the title removes every saved video, their
 	expect(left).toEqual(expect.arrayContaining([at('/media/segment/7'), at('/media/video/1/thumbnail')]));
 });
 
-test('whole videos: the service worker never stands between the network and the editor', async ({ page, context, at }) => {
+test('whole videos: the service worker never stands between the network and the editor', async ({
+	page,
+	context,
+	at
+}) => {
 	// A service worker is stopped by the browser after a while (Firefox: about 30 s,
 	// whatever waitUntil says): a video of hundreds of MB passing through it would
 	// be cut. Not saved: its requests are not touched. Saved by the page: answered
@@ -275,10 +307,19 @@ test('whole videos: the service worker never stands between the network and the 
 	await fakeApi(context);
 	const MANAGER = { ...USER, role: 'video_mgmt', access: ['segment', 'upload', 'video_mgmt'] };
 	await context.route('**/api/auth/me', (r) => r.fulfill({ json: MANAGER }));
-	const row = { id: 1, original_filename: 'kata.mp4', uploaded_at: '2027-01-15T09:00:00+01:00', duration_s: 4, all_segments_done: false, segment_count: 0 };
+	const row = {
+		id: 1,
+		original_filename: 'kata.mp4',
+		uploaded_at: '2027-01-15T09:00:00+01:00',
+		duration_s: 4,
+		all_segments_done: false,
+		segment_count: 0
+	};
 	await context.route('**/api/videos', (r) => r.fulfill({ json: [row] }));
 	await context.route('**/api/videos/1/annotations', (r) =>
-		r.fulfill({ json: { all_segments_done: false, original_filename: 'kata.mp4', uploaded_by: 'Hana', tags: [], segments: [] } })
+		r.fulfill({
+			json: { all_segments_done: false, original_filename: 'kata.mp4', uploaded_by: 'Hana', tags: [], segments: [] }
+		})
 	);
 	await context.route('**/api/performers', (r) => r.fulfill({ json: [] }));
 	await context.route('**/api/tags', (r) => r.fulfill({ json: [] }));
@@ -379,7 +420,11 @@ test('a new version took over: the app offers to reload, never on the first inst
 
 /** The togakure branch with `count` segments on two techniques; clips answered after
  * `delay` ms, counting how many are being sent at once (nginx allows one). */
-async function branchApi(context: BrowserContext, count: number, refuse: (id: number, n: number) => boolean = () => false) {
+async function branchApi(
+	context: BrowserContext,
+	count: number,
+	refuse: (id: number, n: number) => boolean = () => false
+) {
 	await fakeApi(context);
 	const other = { id: 'togakure.taijutsu.kamae.u', kanji: '別', romaji: 'Other', section: SECTION.id };
 	const segments = Array.from({ length: count }, (_, i) => ({
@@ -391,7 +436,10 @@ async function branchApi(context: BrowserContext, count: number, refuse: (id: nu
 		performer: 'p'
 	}));
 	await context.route('**/api/catalog', (r) =>
-		r.fulfill({ json: { ...catalog(['togakure', 'gyokko']), techniques: [technique, other], segments }, headers: { ETag: `"b${count}"` } })
+		r.fulfill({
+			json: { ...catalog(['togakure', 'gyokko']), techniques: [technique, other], segments },
+			headers: { ETag: `"b${count}"` }
+		})
 	);
 	const stats = { inFlight: 0, maxInFlight: 0, requests: [] as number[] };
 	await context.route(/\/media\/segment\/\d+$/, async (route) => {
@@ -409,7 +457,8 @@ async function branchApi(context: BrowserContext, count: number, refuse: (id: nu
 }
 
 const offlineButton = (page: Page, id: string) => page.locator(`[data-id="${id}"]`).getByRole('button');
-const savedClips = async (page: Page) => (await cachedPaths(page, 'media')).filter((p) => /\/media\/segment\/\d+$/.test(p)).length;
+const savedClips = async (page: Page) =>
+	(await cachedPaths(page, 'media')).filter((p) => /\/media\/segment\/\d+$/.test(p)).length;
 
 test('a card downloads every clip of its branch, one at a time, and removes them', async ({ page, context, at }) => {
 	const { stats } = await branchApi(context, 4);
@@ -425,11 +474,15 @@ test('a card downloads every clip of its branch, one at a time, and removes them
 
 	// Deeper cards agree; a technique's own segments too.
 	await page.goto(at('/schools/togakure/taijutsu/kamae'));
-	await expect(offlineButton(page, 'togakure.taijutsu.kamae.t')).toHaveAccessibleName('Remove from this device (2 video(s))');
+	await expect(offlineButton(page, 'togakure.taijutsu.kamae.t')).toHaveAccessibleName(
+		'Remove from this device (2 video(s))'
+	);
 
 	// The phone removes them: every card is a cloud again.
 	await offlineButton(page, 'togakure.taijutsu.kamae.u').click();
-	await expect(offlineButton(page, 'togakure.taijutsu.kamae.u')).toHaveAccessibleName('Download for offline use (2 video(s))');
+	await expect(offlineButton(page, 'togakure.taijutsu.kamae.u')).toHaveAccessibleName(
+		'Download for offline use (2 video(s))'
+	);
 	expect(await savedClips(page)).toBe(2);
 	await page.goto(at('/schools'));
 	await expect(school).toHaveAccessibleName('Download for offline use (4 video(s))');
@@ -442,7 +495,9 @@ test('a clip refused because another one is playing is tried again', async ({ pa
 	await branchApi(context, 2, (id, n) => id === 101 && n === 1); // 429 the first time
 	await controlled(page, at('/schools'));
 	await offlineButton(page, 'togakure').click();
-	await expect(offlineButton(page, 'togakure')).toHaveAccessibleName('Remove from this device (2 video(s))', { timeout: 10_000 });
+	await expect(offlineButton(page, 'togakure')).toHaveAccessibleName('Remove from this device (2 video(s))', {
+		timeout: 10_000
+	});
 });
 
 test('many clips: asked first; the ring shows the progress and stops the download', async ({ page, context, at }) => {

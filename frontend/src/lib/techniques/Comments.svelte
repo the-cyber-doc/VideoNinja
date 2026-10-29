@@ -53,7 +53,7 @@
 		<button type="button" class="add" onclick={() => (adding = true)}>{t('comments.add')}</button>
 	{/if}
 {/if}
-<ErrorMessage error={error} />
+<ErrorMessage {error} />
 
 {#await comments}
 	<p class="hint">{t('common.loading')}</p>

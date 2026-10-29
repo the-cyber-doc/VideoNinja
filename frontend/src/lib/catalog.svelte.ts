@@ -197,7 +197,9 @@ export function resolvePath(catalog: Catalog, p: CatalogPath) {
 	const school = findSchool(catalog, p.ryu);
 	const category = school && p.category ? categoriesOf(catalog, school.id).find((c) => c.id === p.category) : undefined;
 	const weapon =
-		school && category?.id === BUKI && p.weapon ? weaponsOf(catalog, school.id).find((w) => w.id === p.weapon) : undefined;
+		school && category?.id === BUKI && p.weapon
+			? weaponsOf(catalog, school.id).find((w) => w.id === p.weapon)
+			: undefined;
 	const sectionParent = category && (category.id !== BUKI || weapon);
 	const section = sectionParent && p.section ? catalog.sections.find((s) => s.id === sectionId(p)) : undefined;
 	const technique = section && p.technique ? catalog.techniques.find((t) => t.id === techniqueId(p)) : undefined;
@@ -233,7 +235,13 @@ export const schoolHref = (ryu: string) => url(`/schools/${part(ryu)}`);
 export function catalogHref(p: CatalogPath) {
 	const steps = [p.ryu, p.category, p.category === BUKI ? p.weapon : undefined, p.section, p.technique];
 	const last = steps.findLastIndex((s) => s);
-	return url(`/schools/${steps.slice(0, last + 1).filter((s) => s !== undefined).map((s) => part(s!)).join('/')}`);
+	return url(
+		`/schools/${steps
+			.slice(0, last + 1)
+			.filter((s) => s !== undefined)
+			.map((s) => part(s!))
+			.join('/')}`
+	);
 }
 
 /** Breadcrumbs: Schools › school › category › weapon › section › technique, as far as they exist. */

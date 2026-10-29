@@ -84,11 +84,17 @@ export class UploadFlow {
 	}
 
 	reloadDrafts() {
-		this.deps.listDrafts().then((list) => (this.drafts = list), () => {});
+		this.deps.listDrafts().then(
+			(list) => (this.drafts = list),
+			() => {}
+		);
 	}
 
 	checkAvailable() {
-		this.deps.uploadsAvailable().then((ok) => (this.unavailable = !ok), () => {});
+		this.deps.uploadsAvailable().then(
+			(ok) => (this.unavailable = !ok),
+			() => {}
+		);
 	}
 
 	/** Back to picking a file (the draft stays saved). */

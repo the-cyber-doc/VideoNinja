@@ -8,7 +8,9 @@
 	// Reloaded when the language changes (descriptions are translated by the server).
 	// Each with the segments of its branch (download / remove for offline use).
 	const schools = $derived(
-		loadCatalog().then((c) => c.schools.map((school) => ({ ...school, segments: segmentsUnder(c, { ryu: school.id }) })))
+		loadCatalog().then((c) =>
+			c.schools.map((school) => ({ ...school, segments: segmentsUnder(c, { ryu: school.id }) }))
+		)
 	); // reads i18n.lang
 </script>
 

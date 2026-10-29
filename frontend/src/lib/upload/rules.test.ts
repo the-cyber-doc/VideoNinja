@@ -66,9 +66,7 @@ describe('proceed', () => {
 		expect(canProceed(draft({ mode: 'none' }), 60, true)).toBe(true);
 	});
 	it('every segment must be complete, even when defining the rest later', () =>
-		expect(canProceed(draft({ mode: 'later', segments: [segment({ technique: '' })] }), 60, true)).toBe(
-			false
-		));
+		expect(canProceed(draft({ mode: 'later', segments: [segment({ technique: '' })] }), 60, true)).toBe(false));
 	it('a video the browser cannot play only goes with a mode', () => {
 		expect(canProceed(draft({ segments: [segment()] }), 60, false)).toBe(false);
 		expect(canProceed(draft({ mode: 'later' }), 0, false)).toBe(true);

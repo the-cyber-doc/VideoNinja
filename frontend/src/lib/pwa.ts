@@ -10,9 +10,7 @@ import { DATA, MEDIA, UPLOAD_DB } from './pwa-caches';
 export function registerServiceWorker() {
 	if (!('serviceWorker' in navigator)) return;
 	if (dev) {
-		navigator.serviceWorker
-			.getRegistrations()
-			.then((all) => all.forEach((registration) => registration.unregister()));
+		navigator.serviceWorker.getRegistrations().then((all) => all.forEach((registration) => registration.unregister()));
 	} else {
 		navigator.serviceWorker
 			.register(url('/service-worker.js'), { scope: url('/') })

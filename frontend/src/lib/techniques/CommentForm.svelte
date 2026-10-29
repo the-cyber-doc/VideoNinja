@@ -49,8 +49,7 @@
 		required
 		maxlength={rules.comment_text.max_length}
 		rows="3"
-		autofocus
-	></textarea>
+		autofocus></textarea>
 	<div class="row">
 		<label>
 			{t('comments.language')}
@@ -65,7 +64,7 @@
 			<button type="submit" disabled={busy || !text.trim()}>{t('comments.save')}</button>
 		</span>
 	</div>
-	<ErrorMessage error={error} />
+	<ErrorMessage {error} />
 </form>
 
 <style>

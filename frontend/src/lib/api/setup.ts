@@ -2,7 +2,8 @@
 import { api, ndjson } from './client';
 import type { Answer, SetupComplete } from './types';
 
-export const isInitialized = async () => (await api<Answer<'/api/setup/status', 'get'>>('/api/setup/status')).initialized;
+export const isInitialized = async () =>
+	(await api<Answer<'/api/setup/status', 'get'>>('/api/setup/status')).initialized;
 export const verifyToken = (token: string) => api<void>('/api/setup/verify', { token });
 export const newTotp = (token: string, username: string) =>
 	api<Answer<'/api/setup/totp', 'post'>>('/api/setup/totp', { token, username });

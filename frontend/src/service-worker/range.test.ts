@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { rangeResponse } from './range';
 
-const clip = () => new Response(new Uint8Array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9]), { headers: { 'Content-Type': 'video/mp4' } });
+const clip = () =>
+	new Response(new Uint8Array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9]), { headers: { 'Content-Type': 'video/mp4' } });
 const bytes = async (r: Response) => [...new Uint8Array(await r.arrayBuffer())];
 
 describe('rangeResponse', () => {

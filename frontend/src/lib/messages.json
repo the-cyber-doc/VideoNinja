@@ -257,7 +257,10 @@
 
 	"schools.title": { "en": "Schools", "fr": "Écoles" },
 	"categories.title": { "en": "Categories", "fr": "Catégories" },
-	"categories.none": { "en": "No techniques known yet for this school.", "fr": "Aucune technique connue pour cette école pour l'instant." },
+	"categories.none": {
+		"en": "No techniques known yet for this school.",
+		"fr": "Aucune technique connue pour cette école pour l'instant."
+	},
 	"weapons.title": { "en": "Weapons", "fr": "Armes" },
 	"sections.title": { "en": "Scrolls and forms", "fr": "Rouleaux et formes" },
 	"techniques.title": { "en": "Techniques", "fr": "Techniques" },
@@ -272,10 +275,22 @@
 	"videos.section.to_annotate": { "en": "To annotate", "fr": "À annoter" },
 	"videos.section.complete": { "en": "Complete", "fr": "Terminées" },
 	"videos.section.no_technique": { "en": "No technique", "fr": "Sans technique" },
-	"videos.section.in_progress.hint": { "en": "Some techniques identified, not all yet.", "fr": "Quelques techniques identifiées, pas encore toutes." },
-	"videos.section.to_annotate.hint": { "en": "No technique identified yet.", "fr": "Aucune technique identifiée pour l'instant." },
-	"videos.section.complete.hint": { "en": "All the techniques identified.", "fr": "Toutes les techniques identifiées." },
-	"videos.section.no_technique.hint": { "en": "Marked as containing no technique.", "fr": "Marquées comme ne contenant aucune technique." },
+	"videos.section.in_progress.hint": {
+		"en": "Some techniques identified, not all yet.",
+		"fr": "Quelques techniques identifiées, pas encore toutes."
+	},
+	"videos.section.to_annotate.hint": {
+		"en": "No technique identified yet.",
+		"fr": "Aucune technique identifiée pour l'instant."
+	},
+	"videos.section.complete.hint": {
+		"en": "All the techniques identified.",
+		"fr": "Toutes les techniques identifiées."
+	},
+	"videos.section.no_technique.hint": {
+		"en": "Marked as containing no technique.",
+		"fr": "Marquées comme ne contenant aucune technique."
+	},
 	"videos.count": { "en": "{n} video(s)", "fr": "{n} vidéo(s)" },
 	"videos.none": { "en": "No published video yet.", "fr": "Pas encore de vidéo publiée." },
 	"videos.empty_section": { "en": "No video here.", "fr": "Aucune vidéo ici." },
@@ -510,12 +525,21 @@
 	"upload.segment.created_by": { "en": "Created by {name}", "fr": "Créé par {name}" },
 	"upload.uploaded_by": { "en": "Uploaded by {name}", "fr": "Envoyée par {name}" },
 	"upload.deleted_user": { "en": "a deleted user", "fr": "un utilisateur supprimé" },
-	"app.update_available": { "en": "A new version of the app is available.", "fr": "Une nouvelle version de l'application est disponible." },
+	"app.update_available": {
+		"en": "A new version of the app is available.",
+		"fr": "Une nouvelle version de l'application est disponible."
+	},
 	"app.reload": { "en": "Reload", "fr": "Recharger" },
 	"media.saved": { "en": "Saved on this device", "fr": "Enregistré sur cet appareil" },
 	"media.not_saved": { "en": "Not downloaded", "fr": "Pas téléchargé" },
-	"offline.download": { "en": "Download for offline use ({n} video(s))", "fr": "Télécharger pour l'usage hors ligne ({n} vidéo(s))" },
-	"offline.remove": { "en": "Remove from this device ({n} video(s))", "fr": "Supprimer de cet appareil ({n} vidéo(s))" },
+	"offline.download": {
+		"en": "Download for offline use ({n} video(s))",
+		"fr": "Télécharger pour l'usage hors ligne ({n} vidéo(s))"
+	},
+	"offline.remove": {
+		"en": "Remove from this device ({n} video(s))",
+		"fr": "Supprimer de cet appareil ({n} vidéo(s))"
+	},
 	"offline.progress": {
 		"en": "Downloading: {done} of {total}. Click to stop",
 		"fr": "Téléchargement : {done} sur {total}. Cliquer pour arrêter"

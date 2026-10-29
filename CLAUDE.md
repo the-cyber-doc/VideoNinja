@@ -18,7 +18,7 @@ a few hundred techniques, a few thousand segments.
 | Reverse proxy | nginx in its own container (hardened `dhi.io/nginx:<version>-alpine3.24`, pinned; `nginx/nginx.conf`: `mp4`, `auth_request`, `gzip_static`, and `brotli_static` compiled in the Dockerfile (`-dev` variant) from pinned `ngx_brotli` + nginx sources; a new nginx version needs `NGINX_SOURCE` + `NGINX_SHA256`), behind the user's own TLS proxy |
 | Backend | Python 3.15 + FastAPI + uvicorn (pytest + coverage, Ruff, mypy strict) |
 | Database | SQLite, WAL mode, on local SSD (never on NFS) |
-| Frontend | SvelteKit with `adapter-static`, PWA (service worker) |
+| Frontend | SvelteKit with `adapter-static`, PWA (service worker); Vitest (+ coverage), Playwright, ESLint, Prettier |
 | i18n | One `messages.json` + own `t()` helper (UI strings, no Paraglide); `translation` table (content) |
 | Search | Client-side (MiniSearch) over the catalogue snapshot |
 | Uploads | tus resumable uploads (tusd, its own container; a child of the app in development), originals checked (SHA-256, `ffprobe`) and encoded by the encoder (its own container; a thread of the app in development) with `tools/encode-videos/encode-videos.sh` |
@@ -487,6 +487,15 @@ the encoder waits for the version; `/health` fails on a mismatch.
   (strict, `app/` only; `# type: ignore[<code>]` always with its code, two today). Lint exceptions on the line: `# noqa: <code> - <reason>`.
   Tests open the database with `conftest.connect()` (closed after each test; `with con:` never closes), never
   `sqlite3.connect(db.db_path())`.
+- Frontend checks, all in CI's frontend job: `npm run lint` = `prettier --check .` (`.prettierrc`: tabs, single
+  quotes, no trailing commas, width 120 like Ruff; `.prettierignore`: generated `schema.d.ts`, `static/`, the
+  `build-*`/`.svelte-kit-*` folders, which only the root .gitignore lists) + `eslint .` (`eslint.config.js`:
+  js/typescript-eslint/svelte recommended + prettier; off on purpose: `no-undef` (TS),
+  `svelte/no-navigation-without-resolve` (links go through `url()`), `svelte/no-unused-svelte-ignore` (misreads
+  the reason after the codes), `svelte/prefer-svelte-reactivity` in `.svelte.ts` only; unused `_x` / rest
+  siblings allowed); `npm run format` applies both. `npm run test:coverage` (v8, `src/**/*.ts`, thresholds in
+  `vite.config.ts` = the figures when set: raise, never lower; components are covered by Playwright, not
+  measured).
 - Code scanning: CodeQL = GitHub's default setup (repository settings; python, javascript-typescript,
   actions). No CodeQL workflow: GitHub refuses advanced-setup results while the default setup is on.
   Bandit in CI's server job (`bandit -r app -q`, fails on a finding). Reviewed

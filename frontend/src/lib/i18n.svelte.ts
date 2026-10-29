@@ -14,8 +14,7 @@ export const isMessageKey = (key: string): key is MessageKey => Object.hasOwn(me
 const DEFAULT: Lang = 'en';
 const STORAGE_KEY = 'lang';
 
-export const isLang = (value: unknown): value is Lang =>
-	typeof value === 'string' && Object.hasOwn(LANGUAGES, value);
+export const isLang = (value: unknown): value is Lang => typeof value === 'string' && Object.hasOwn(LANGUAGES, value);
 
 /** The language chosen in the menu, else the browser's (system's) first supported one, else English. */
 export function detect(saved: string | null, preferred: readonly string[]): Lang {

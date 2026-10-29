@@ -76,7 +76,7 @@
 
 <section class="mine">
 	<h2>{t('upload.mine')}</h2>
-	<ErrorMessage error={error} />
+	<ErrorMessage {error} />
 	{#if list.length}
 		<ul>
 			{#each list as u (u.id)}
@@ -89,7 +89,9 @@
 						<span class="status">{label(u)}</span>
 						{#if u.status === 'failed'}
 							<span class="actions">
-								<button type="button" class="secondary" onclick={() => act(() => retry(u.id))}>{t('upload.retry')}</button>
+								<button type="button" class="secondary" onclick={() => act(() => retry(u.id))}
+									>{t('upload.retry')}</button
+								>
 								<button
 									type="button"
 									class="secondary"

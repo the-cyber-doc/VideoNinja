@@ -8,10 +8,8 @@
 	import { catalogCrumbs, loadCatalog, resolvePath, type Catalog, type CatalogPath } from '../catalog.svelte';
 	import { t } from '../i18n.svelte';
 
-	let {
-		path,
-		children
-	}: { path: CatalogPath; children: Snippet<[Catalog, ReturnType<typeof resolvePath>]> } = $props();
+	let { path, children }: { path: CatalogPath; children: Snippet<[Catalog, ReturnType<typeof resolvePath>]> } =
+		$props();
 	const catalog = $derived(loadCatalog()); // reads i18n.lang
 </script>
 

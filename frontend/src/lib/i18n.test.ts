@@ -21,8 +21,7 @@ describe('messages.json', () => {
 describe('detect', () => {
 	it('prefers the saved choice', () => expect(detect('fr', ['en-US'])).toBe('fr'));
 	it('ignores an unknown saved value', () => expect(detect('xx', ['fr-CA'])).toBe('fr'));
-	it('takes the first supported browser language', () =>
-		expect(detect(null, ['de-DE', 'fr-FR', 'en'])).toBe('fr'));
+	it('takes the first supported browser language', () => expect(detect(null, ['de-DE', 'fr-FR', 'en'])).toBe('fr'));
 	it('defaults to English', () => expect(detect(null, ['de', 'ja'])).toBe('en'));
 });
 

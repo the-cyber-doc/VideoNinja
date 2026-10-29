@@ -30,21 +30,63 @@ describe('frameStep', () => {
 	});
 });
 
-const samples = (pairs: [number, number][]) => pairs.map(([mediaTime, presentedFrames]) => ({ mediaTime, presentedFrames }));
+const samples = (pairs: [number, number][]) =>
+	pairs.map(([mediaTime, presentedFrames]) => ({ mediaTime, presentedFrames }));
 
 describe('frameDuration', () => {
 	it('regular frames: their duration', () => {
-		expect(ms(frameDuration(samples([[0.04, 2], [0.08, 3], [0.12, 4], [0.16, 5], [0.2, 6]]))!)).toBe(40);
+		expect(
+			ms(
+				frameDuration(
+					samples([
+						[0.04, 2],
+						[0.08, 3],
+						[0.12, 4],
+						[0.16, 5],
+						[0.2, 6]
+					])
+				)!
+			)
+		).toBe(40);
 	});
 	it("WebKit's extra callback when the speed changes does not count (measured)", () => {
-		const webkit = samples([[0, 1], [0.16, 5], [0.175645, 6], [0.2, 7], [0.24, 8], [0.28, 9], [0.32, 10], [0.36, 11], [0.4, 12]]);
+		const webkit = samples([
+			[0, 1],
+			[0.16, 5],
+			[0.175645, 6],
+			[0.2, 7],
+			[0.24, 8],
+			[0.28, 9],
+			[0.32, 10],
+			[0.36, 11],
+			[0.4, 12]
+		]);
 		expect(ms(frameDuration(webkit)!)).toBe(40);
 	});
 	it('a skipped frame (two presented between callbacks) counts as two', () => {
-		expect(ms(frameDuration(samples([[0, 1], [0.08, 3], [0.12, 4], [0.2, 6], [0.24, 7]]))!)).toBe(40);
+		expect(
+			ms(
+				frameDuration(
+					samples([
+						[0, 1],
+						[0.08, 3],
+						[0.12, 4],
+						[0.2, 6],
+						[0.24, 7]
+					])
+				)!
+			)
+		).toBe(40);
 	});
 	it('nothing to tell: null', () => {
 		expect(frameDuration(samples([[0.5, 3]]))).toBeNull();
-		expect(frameDuration(samples([[0.5, 3], [0.5, 3]]))).toBeNull(); // same frame twice (paused)
+		expect(
+			frameDuration(
+				samples([
+					[0.5, 3],
+					[0.5, 3]
+				])
+			)
+		).toBeNull(); // same frame twice (paused)
 	});
 });

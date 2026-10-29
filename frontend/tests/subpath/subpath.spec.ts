@@ -4,7 +4,13 @@ import { CATALOG as FULL } from '../catalog';
 // The app built under /videoninja (BASE_PATH), as served at https://example.org/videoninja/:
 // every request and link stays under it. The API is faked with context.route.
 const BASE = '/videoninja';
-const USER = { username: 'kenji', name: null, role: 'admin', role_name: 'Admin', access: ['segment', 'upload', 'user_mgmt'] };
+const USER = {
+	username: 'kenji',
+	name: null,
+	role: 'admin',
+	role_name: 'Admin',
+	access: ['segment', 'upload', 'user_mgmt']
+};
 const CATALOG = { ...FULL, segments: FULL.segments.filter((s) => s.id === 7) };
 
 test('every request, link and the service worker stay under the base path', async ({ page, context }) => {
@@ -20,7 +26,10 @@ test('every request, link and the service worker stay under the base path', asyn
 	await expect(page.getByText('Logged in as')).toBeVisible(); // the home page, under the base path
 	const header = page.getByRole('banner');
 	await expect(header.getByRole('link', { name: 'Video Ninja' })).toHaveAttribute('href', `${BASE}/`);
-	await expect(page.getByRole('navigation', { name: 'Main navigation' }).getByRole('link')).toHaveText(['Schools', 'Upload']);
+	await expect(page.getByRole('navigation', { name: 'Main navigation' }).getByRole('link')).toHaveText([
+		'Schools',
+		'Upload'
+	]);
 	for (const link of await page.getByRole('navigation', { name: 'Main navigation' }).getByRole('link').all()) {
 		expect(await link.getAttribute('href')).toMatch(new RegExp(`^${BASE}/`));
 	}
@@ -29,8 +38,14 @@ test('every request, link and the service worker stay under the base path', asyn
 	await expect(page.getByRole('link', { name: 'Schools' })).toHaveAttribute('aria-current', 'page');
 
 	await page.getByRole('link', { name: /Gyokko Ryu/ }).click();
-	await page.getByRole('link', { name: /Taijutsu/ }).last().click();
-	await page.getByRole('link', { name: /Jo Ryaku no Maki/ }).last().click();
+	await page
+		.getByRole('link', { name: /Taijutsu/ })
+		.last()
+		.click();
+	await page
+		.getByRole('link', { name: /Jo Ryaku no Maki/ })
+		.last()
+		.click();
 	await page.getByRole('link', { name: /Koku/ }).click();
 	await expect(page).toHaveURL(`${BASE}/schools/gyokko/taijutsu/jo_ryaku/koku`);
 	const clip = page.waitForRequest((r) => new URL(r.url()).pathname === `${BASE}/media/segment/7`);

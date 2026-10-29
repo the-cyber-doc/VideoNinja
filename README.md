@@ -233,7 +233,8 @@ bandit -r app -q          # Python security linter: no finding allowed (see Secu
 
 # Frontend, in frontend/
 npm run check
-npm run test:unit
+npm run lint              # Prettier --check + ESLint; `npm run format` applies both
+npm run test:coverage     # unit tests; coverage below its floors (vite.config.ts) fails
 npm run build
 npm run test:browser      # see Frontend tests below
 ```
@@ -247,7 +248,10 @@ Two levels, both run by CI on every push:
 | `npm run test:unit` | [Vitest](https://vitest.dev) | Plain functions, files `src/**/*.test.ts` next to the code | milliseconds |
 | `npm run test:browser` | [Playwright](https://playwright.dev) | Pages in real browsers, files in `tests/` | seconds |
 
-`npm test` runs both.
+`npm test` runs both. `npm run test:coverage` (CI) runs the unit tests with
+coverage of `src/**/*.ts`; components and pages are the browser tests' (no
+coverage measured there), so the figure is low by design: the floors in
+`vite.config.ts` only stop it from going down.
 
 Browser tests come in two kinds:
 

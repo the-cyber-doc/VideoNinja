@@ -8,7 +8,9 @@ test.beforeEach(async ({ page }) => {
 });
 
 test('not logged in: redirects to login', async ({ page }) => {
-	await page.route('/api/auth/me', (r) => r.fulfill({ status: 401, json: { code: 'auth.not_logged_in', detail: 'Not logged in', params: {} } }));
+	await page.route('/api/auth/me', (r) =>
+		r.fulfill({ status: 401, json: { code: 'auth.not_logged_in', detail: 'Not logged in', params: {} } })
+	);
 	await page.goto('/profile');
 	await expect(page).toHaveURL('/login');
 });
@@ -21,9 +23,7 @@ test.describe('logged in', () => {
 
 	test('shows the username, read-only, and the current name', async ({ page }) => {
 		await expect(page.getByText('Username: kenji')).toBeVisible();
-		await expect(page.getByRole('region', { name: 'Display name' }).getByLabel('Name')).toHaveValue(
-			'Kenji'
-		);
+		await expect(page.getByRole('region', { name: 'Display name' }).getByLabel('Name')).toHaveValue('Kenji');
 	});
 
 	test('new passwords must match, nothing is sent', async ({ page }) => {

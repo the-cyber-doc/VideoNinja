@@ -14,7 +14,8 @@
 		'frame-forward': 'M7 6v12l9-6zM17 6v12',
 		'chevron-down': 'M6 9l6 6 6-6',
 		cloud: 'M7 18a4.5 4.5 0 0 1-.6-9 6 6 0 0 1 11.4 1.6A3.7 3.7 0 0 1 17.5 18Z',
-		phone: 'M8 2.5h8a1.5 1.5 0 0 1 1.5 1.5v16a1.5 1.5 0 0 1-1.5 1.5H8A1.5 1.5 0 0 1 6.5 20V4A1.5 1.5 0 0 1 8 2.5ZM11 18.5h2'
+		phone:
+			'M8 2.5h8a1.5 1.5 0 0 1 1.5 1.5v16a1.5 1.5 0 0 1-1.5 1.5H8A1.5 1.5 0 0 1 6.5 20V4A1.5 1.5 0 0 1 8 2.5ZM11 18.5h2'
 	};
 
 	let { name, size = 20 }: { name: keyof typeof PATHS; size?: number } = $props();

@@ -32,7 +32,8 @@
 	$effect(() => {
 		void i18n.lang;
 		if (!untrack(() => session.user)) return;
-		auth.currentUser()
+		auth
+			.currentUser()
 			.then((user) => {
 				if (user) session.user = user; // a statement: an object assigned to state is proxied
 			})

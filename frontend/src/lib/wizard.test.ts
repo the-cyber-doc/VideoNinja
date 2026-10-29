@@ -31,7 +31,9 @@ async function account(w: Wizard) {
 
 describe('setup (first start)', () => {
 	it('token → admin → authenticator → the database built, task by task', async () => {
-		const completeSetup = vi.fn(() => stream({ step: 'schema' }, { step: 'data' }, { step: 'admin' }, { step: 'done' }));
+		const completeSetup = vi.fn(() =>
+			stream({ step: 'schema' }, { step: 'data' }, { step: 'admin' }, { step: 'done' })
+		);
 		const w = new Wizard(undefined, fakes({ completeSetup }));
 		expect([w.setup, w.username, w.step, w.position]).toEqual([true, 'admin', 'token', 0]);
 		expect(await w.start()).toBeNull();
@@ -41,8 +43,15 @@ describe('setup (first start)', () => {
 		await account(w);
 		expect([w.step, w.totp]).toEqual(['authenticator', TOTP]);
 		await w.submitTotp();
-		expect(completeSetup).toHaveBeenCalledWith(expect.objectContaining({ token: 'tok', username: 'admin', totp_code: '123456' }));
-		expect([w.step, w.completed, w.finished, w.position]).toEqual(['done', ['schema', 'data', 'admin', 'done'], true, 4]);
+		expect(completeSetup).toHaveBeenCalledWith(
+			expect.objectContaining({ token: 'tok', username: 'admin', totp_code: '123456' })
+		);
+		expect([w.step, w.completed, w.finished, w.position]).toEqual([
+			'done',
+			['schema', 'data', 'admin', 'done'],
+			true,
+			4
+		]);
 		expect(w.password).toBe(''); // not kept in memory once used
 	});
 
@@ -68,9 +77,12 @@ describe('setup (first start)', () => {
 	});
 
 	it('a failure during the build: shown, not finished', async () => {
-		const w = new Wizard(undefined, fakes({
-			completeSetup: () => stream({ step: 'schema' }, { error: { code: 'setup.failed', detail: '…', params: {} } })
-		}));
+		const w = new Wizard(
+			undefined,
+			fakes({
+				completeSetup: () => stream({ step: 'schema' }, { error: { code: 'setup.failed', detail: '…', params: {} } })
+			})
+		);
 		await account(w);
 		await w.submitTotp();
 		expect(w.completed).toEqual(['schema']);

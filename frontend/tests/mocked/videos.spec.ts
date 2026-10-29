@@ -43,7 +43,8 @@ async function setup(page: Page, access = MANAGER) {
 	};
 	page.on('request', (r) => {
 		const path = new URL(r.url()).pathname;
-		if (path.startsWith('/api/') || path.startsWith('/files')) sent.push({ method: r.method(), path, body: r.postDataJSON?.() ?? undefined });
+		if (path.startsWith('/api/') || path.startsWith('/files'))
+			sent.push({ method: r.method(), path, body: r.postDataJSON?.() ?? undefined });
 	});
 	await page.route('/api/setup/status', (r) => r.fulfill({ json: { initialized: true } }));
 	await page.route('/api/auth/me', (r) =>
@@ -62,7 +63,8 @@ async function setup(page: Page, access = MANAGER) {
 	return sent;
 }
 
-const section = (page: Page, name: string) => page.locator('details.section', { has: page.locator('summary', { hasText: name }) });
+const section = (page: Page, name: string) =>
+	page.locator('details.section', { has: page.locator('summary', { hasText: name }) });
 
 test('Videos: in the menu after Upload, only with the video_mgmt access', async ({ page }) => {
 	await setup(page);
@@ -134,16 +136,23 @@ test.describe('header on a phone', () => {
 		await page.addInitScript(() => localStorage.setItem('lang', 'fr'));
 		await setup(page);
 		await page.goto('/profile');
-		await expect(page.getByRole('navigation', { name: 'Navigation principale' }).getByRole('button')).toHaveText('Menu');
+		await expect(page.getByRole('navigation', { name: 'Navigation principale' }).getByRole('button')).toHaveText(
+			'Menu'
+		);
 		await page.goto('/videos');
-		await expect(page.getByRole('navigation', { name: 'Navigation principale' }).getByRole('button')).toHaveText('Vidéos');
+		await expect(page.getByRole('navigation', { name: 'Navigation principale' }).getByRole('button')).toHaveText(
+			'Vidéos'
+		);
 	});
 });
 
 test('without the access: no entry, page not reachable', async ({ page }) => {
 	await setup(page, ['segment', 'upload']);
 	await page.goto('/');
-	await expect(page.getByRole('navigation', { name: 'Main navigation' }).getByRole('link')).toHaveText(['Schools', 'Upload']);
+	await expect(page.getByRole('navigation', { name: 'Main navigation' }).getByRole('link')).toHaveText([
+		'Schools',
+		'Upload'
+	]);
 	await page.goto('/videos');
 	await expect(page).toHaveURL('/');
 });
@@ -151,9 +160,21 @@ test('without the access: no entry, page not reachable', async ({ page }) => {
 test('four sections in order, the first open, each scrolling by itself', async ({ page }) => {
 	await setup(page);
 	await page.goto('/videos');
-	await expect(page.locator('details.section summary .name')).toHaveText(['In progress', 'To annotate', 'Complete', 'No technique']);
-	await expect(page.locator('details.section summary .count')).toHaveText(['1 video(s)', '2 video(s)', '1 video(s)', '1 video(s)']);
-	const open = await page.locator('details.section').evaluateAll((all) => all.map((d) => (d as HTMLDetailsElement).open));
+	await expect(page.locator('details.section summary .name')).toHaveText([
+		'In progress',
+		'To annotate',
+		'Complete',
+		'No technique'
+	]);
+	await expect(page.locator('details.section summary .count')).toHaveText([
+		'1 video(s)',
+		'2 video(s)',
+		'1 video(s)',
+		'1 video(s)'
+	]);
+	const open = await page
+		.locator('details.section')
+		.evaluateAll((all) => all.map((d) => (d as HTMLDetailsElement).open));
 	expect(open).toEqual([true, false, false, false]);
 
 	// Collapsible.
@@ -175,22 +196,30 @@ test('each section: an arrow on the right, pointing right when collapsed, down w
 	await page.goto('/videos');
 	/** The arrow's rotation in degrees (0: down) and its place on the section's title line. */
 	const arrow = (name: string) =>
-		section(page, name).locator('summary').evaluate((summary) => {
-			const icon = summary.querySelector('.arrow')!;
-			const { a, b } = new DOMMatrix(getComputedStyle(icon).transform === 'none' ? undefined : getComputedStyle(icon).transform);
-			const box = icon.getBoundingClientRect();
-			const line = summary.getBoundingClientRect();
-			const count = summary.querySelector('.count')!.getBoundingClientRect();
-			return {
-				degrees: Math.round((Math.atan2(b, a) * 180) / Math.PI),
-				right: line.right - box.right < 24, // at the right end
-				titleLine: box.top < count.bottom && box.bottom > count.top // on the title's line, not the hint's
-			};
-		});
+		section(page, name)
+			.locator('summary')
+			.evaluate((summary) => {
+				const icon = summary.querySelector('.arrow')!;
+				const { a, b } = new DOMMatrix(
+					getComputedStyle(icon).transform === 'none' ? undefined : getComputedStyle(icon).transform
+				);
+				const box = icon.getBoundingClientRect();
+				const line = summary.getBoundingClientRect();
+				const count = summary.querySelector('.count')!.getBoundingClientRect();
+				return {
+					degrees: Math.round((Math.atan2(b, a) * 180) / Math.PI),
+					right: line.right - box.right < 24, // at the right end
+					titleLine: box.top < count.bottom && box.bottom > count.top // on the title's line, not the hint's
+				};
+			});
 	await expect.poll(() => arrow('In progress')).toEqual({ degrees: 0, right: true, titleLine: true }); // open: down
 	await expect.poll(() => arrow('To annotate')).toEqual({ degrees: -90, right: true, titleLine: true }); // closed: right
 	// The browser's own marker is hidden: one arrow only.
-	expect(await section(page, 'To annotate').locator('summary').evaluate((s) => getComputedStyle(s).listStyleType)).toBe('none');
+	expect(
+		await section(page, 'To annotate')
+			.locator('summary')
+			.evaluate((s) => getComputedStyle(s).listStyleType)
+	).toBe('none');
 
 	await section(page, 'To annotate').locator('summary').click(); // expanded
 	await expect.poll(() => arrow('To annotate').then((a) => a.degrees)).toBe(0);
@@ -256,7 +285,7 @@ test('annotate a published video: its segments loaded, Proceed saves them, nothi
 	expect(sent.filter((s) => s.path.startsWith('/files') || s.path.includes('/submit'))).toEqual([]); // no upload
 });
 
-test('who did what: the file name, its uploader, each segment\'s author (mine for a new one)', async ({ page }) => {
+test("who did what: the file name, its uploader, each segment's author (mine for a new one)", async ({ page }) => {
 	await setup(page);
 	await page.goto('/videos/1');
 	const about = page.locator('.about');
@@ -315,11 +344,22 @@ test('in French', async ({ page }) => {
 	await page.addInitScript(() => localStorage.setItem('lang', 'fr'));
 	await setup(page);
 	await page.goto('/videos');
-	await expect(page.locator('details.section summary .name')).toHaveText(['En cours', 'À annoter', 'Terminées', 'Sans technique']);
-	await expect(page.getByRole('navigation', { name: 'Navigation principale' }).getByRole('link')).toHaveText(['Écoles', 'Téléverser', 'Vidéos']);
+	await expect(page.locator('details.section summary .name')).toHaveText([
+		'En cours',
+		'À annoter',
+		'Terminées',
+		'Sans technique'
+	]);
+	await expect(page.getByRole('navigation', { name: 'Navigation principale' }).getByRole('link')).toHaveText([
+		'Écoles',
+		'Téléverser',
+		'Vidéos'
+	]);
 	await expect(section(page, 'En cours').getByRole('img', { name: 'Pas téléchargé' })).toBeVisible();
 	await page.goto('/videos/1');
 	await expect(page.locator('.about .uploader')).toHaveText('Envoyée par Hana');
 	await expect(page.getByRole('article', { name: 'Segment 1' }).locator('header .author')).toHaveText('Créé par Hana');
-	await expect(page.getByRole('article', { name: 'Segment 2' }).locator('header .author')).toHaveText('Créé par un utilisateur supprimé');
+	await expect(page.getByRole('article', { name: 'Segment 2' }).locator('header .author')).toHaveText(
+		'Créé par un utilisateur supprimé'
+	);
 });
