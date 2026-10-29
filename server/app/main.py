@@ -5,9 +5,8 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
 from . import (
-    about, auth, comments, crypto, db, encoder, errors, health, limits, media, paths, performers, procs, profile,
-    register,
-    security, setup, snapshot, tags, tusd, users, video_mgmt, videos,
+    about, auth, comments, crypto, db, encoder, errors, health, limits, logs, media, paths, performers, procs,
+    profile, register, security, setup, snapshot, tags, tusd, users, video_mgmt, videos,
 )
 
 
@@ -38,7 +37,9 @@ async def lifespan(app: FastAPI):
     snapshot.flush()  # don't lose a pending rebuild
 
 
-log = logging.getLogger("uvicorn.error")
+# Before anything logs: uvicorn has imported this module, its startup lines come after.
+logs.configure()  # refuses to start with an invalid VIDEONINJA_LOG_LEVEL / VIDEONINJA_LOG_FORMAT
+log = logging.getLogger(__name__)
 app = FastAPI(title="Video Ninja", lifespan=lifespan)
 errors.install(app)
 SAFE_METHODS = {"GET", "HEAD", "OPTIONS"}

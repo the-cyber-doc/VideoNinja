@@ -10,7 +10,7 @@ from . import crypto, db, invites, queries, security, throttle
 from .errors import ApiError
 from .validation import field
 
-log = logging.getLogger("uvicorn.error")
+log = logging.getLogger(__name__)
 # An unknown invitation token (404) counts as a credential failure.
 router = APIRouter(prefix="/api/register", tags=["register"],
                    dependencies=[Depends(throttle.credential_guard(404))])

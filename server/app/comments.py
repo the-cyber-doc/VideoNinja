@@ -18,7 +18,7 @@ from .errors import ApiError
 from .auth import current_user, require_access, user_zone
 from .validation import field
 
-log = logging.getLogger("uvicorn.error")
+log = logging.getLogger(__name__)
 router = APIRouter(prefix="/api", tags=["comments"])
 commenter = require_access("comment")
 

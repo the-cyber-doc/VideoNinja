@@ -351,6 +351,13 @@ the encoder waits for the version; `/health` fails on a mismatch.
   git, else `dev`/`unknown`); database version at runtime from `GET /api/about` (`config.db_version`,
   and the latest `db_vN.sql` shipped). GitHub, Docker Hub (hub.docker.com/u/thecyberdoc) and GPL-3.0 links.
 - `sw.js` served `no-cache`; hashed assets `immutable`.
+- Logging (`app/logs.py`): every module `logging.getLogger(__name__)` (never uvicorn's logger);
+  `logs.configure()` at the import of `app.main` and in the encoder's `main()`, uvicorn's loggers
+  through the same root handler (`StderrHandler`: `sys.stderr` at each write). `VIDEONINJA_LOG_FORMAT`
+  `text` (default, dev) | `json` (images: `ts` in clock's format, `level`, `logger`, `msg`, extras,
+  `exc`); `VIDEONINJA_LOG_LEVEL` (INFO); bad value → no start. uvicorn's access log off in json (nginx
+  logs requests). The setup token's line is read by tools/test-e2e-stack.sh (sed on the token's
+  characters). Test: `tests/test_logs.py`.
 - Buffering: nginx buffers app responses by default; an app endpoint that
   streams progress sends `X-Accel-Buffering: no` (the app decides, nginx
   follows). Media bytes never go through the app: nginx streams them itself

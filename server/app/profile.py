@@ -15,7 +15,7 @@ from .errors import ApiError
 from .auth import UserOut, current_user, session_token, user_out
 from .validation import field
 
-log = logging.getLogger("uvicorn.error")
+log = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/profile", tags=["profile"])
 # A wrong current password (403) counts as a credential failure.
 password_guard = Depends(throttle.credential_guard(403))

@@ -14,7 +14,7 @@ from . import db, encoder, errors, security, snapshot, throttle, tusd
 from .errors import ApiError
 from .validation import field
 
-log = logging.getLogger("uvicorn.error")
+log = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/setup", tags=["setup"])
 # A wrong setup token (403) counts as a credential failure.
 token_guard = Depends(throttle.credential_guard(403))

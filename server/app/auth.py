@@ -11,7 +11,7 @@ from . import clock, crypto, db, i18n, queries, security, throttle
 from .errors import ApiError
 from .validation import field
 
-log = logging.getLogger("uvicorn.error")
+log = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
 

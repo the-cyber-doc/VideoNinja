@@ -35,7 +35,7 @@ from .errors import ApiError
 from .children import Child
 from .validation import RULES
 
-log = logging.getLogger("uvicorn.error")
+log = logging.getLogger(__name__)
 router = APIRouter(prefix="/internal", tags=["internal"])
 SHA256 = re.compile(RULES["sha256"]["pattern"])
 FILENAME = re.compile(RULES["original_filename"]["pattern"])

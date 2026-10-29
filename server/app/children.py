@@ -6,7 +6,7 @@ import subprocess  # tusd in development: its own command line, no shell  # nose
 import threading
 import time
 
-log = logging.getLogger("uvicorn.error")
+log = logging.getLogger(__name__)
 
 
 class Child:
