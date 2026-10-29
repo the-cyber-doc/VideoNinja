@@ -54,7 +54,7 @@ def test_parsed_once_per_environment(monkeypatch):
 
 
 def test_only_settings_and_crypto_read_the_environment():
-    for path in APP.glob("*.py"):
+    for path in APP.rglob("*.py"):
         if path.name in ("settings.py", "crypto.py"):
             continue
         for node in ast.walk(ast.parse(path.read_text(encoding="utf-8"))):

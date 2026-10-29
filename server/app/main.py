@@ -4,10 +4,8 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
-from . import (
-    about, audit, auth, comments, crypto, db, encoder, errors, health, logs, media, middleware, performers, profile,
-    register, security, settings, setup, snapshot, tags, tusd, users, video_mgmt, videos,
-)
+from . import api, audit, crypto, db, encoder, errors, logs, middleware, security, settings, snapshot, tusd
+from .api import setup
 
 
 @asynccontextmanager
@@ -63,19 +61,5 @@ async def argon2_busy(request: Request, exc: security.Busy) -> JSONResponse:
 # Added last: the outermost, so that every answer has its ID and its line, the
 # refusals above included.
 app.add_middleware(middleware.RequestLog)
-app.include_router(setup.router)
-app.include_router(about.router)
-app.include_router(auth.router)
-app.include_router(profile.router)
-app.include_router(register.router)
-app.include_router(users.router)
-app.include_router(snapshot.router)
-app.include_router(comments.router)
-app.include_router(media.router)
-app.include_router(performers.router)
-app.include_router(tags.router)
-app.include_router(videos.router)
-app.include_router(video_mgmt.router)
-app.include_router(tusd.router)
-app.include_router(snapshot.internal_router)
-app.include_router(health.router)
+for router in api.ROUTERS:
+    app.include_router(router)

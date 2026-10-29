@@ -10,7 +10,8 @@ import pyotp
 import pytest
 from fastapi.testclient import TestClient
 
-from app import clock, db, i18n, security, snapshot, videos
+from app import clock, db, i18n, security, snapshot
+from app.api import videos
 from app.encoder import checks, heartbeat, queue
 
 from .test_auth import login

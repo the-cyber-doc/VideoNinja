@@ -44,8 +44,8 @@ or ID encoding (Base62/Sqids).
   The annotation panel (`$lib/upload/AnnotationPanel.svelte`, type `Annotation`)
   is shared by the upload and Videos pages; on the server, `app/segments.py` (models + `check`:
   techniques/performers looked up once for all segments, `queries.catalog.known_techniques` / `queries.performers.known_performers` with `json_each`; tag
-  rules from `tags.value_error` as error codes) by `videos.submit` (before waiting for the upload) and
-  `video_mgmt.save_annotations` (inside its write). Role accesses come with the session row
+  rules from `tags.value_error` as error codes) by `api.videos.submit` (before waiting for the upload) and
+  `api.video_mgmt.save_annotations` (inside its write). Role accesses come with the session row
   (`queries.sessions.session_user`: `User.access`, from a JSON array): no extra query per `require_access`, tusd
   hook or owner check. Test: `tests/test_segments.py` (query counts constant). The service worker deletes saved
   clips/thumbnails of segments removed or re-timed when the catalogue changes.
@@ -56,7 +56,7 @@ or ID encoding (Base62/Sqids).
   `internal` location. Never serve media or catalogue files from a public location.
 - Session cookie `HttpOnly; Secure; SameSite=Strict`: `__Host-session` (Path=/) at the
   domain's root, `__Secure-session` with Path=<base path> under a subfolder
-  (`security.session_cookie()`; read via the `auth.session_token` dependency). The `session`
+  (`security.session_cookie()`; read via the `api.deps.session_token` dependency). The `session`
   table stores only the SHA-256 of the token. Sliding 30-day idle expiry, 1-year
   absolute cap; expired rows purged at startup and on login.
 - TOTP is mandatory for every user, no exception and no bypass: login always
@@ -172,9 +172,16 @@ the encoder waits for the version; `/health` fails on a mismatch.
   `queries.users.insert_user(…)` (no flat re-export). Every SQL statement there, `?` parameters only
   (column lists built from constants carry `# nosec B608` with the reason). The logged-in user is the frozen
   `queries.users.User` (id, username, name, role, time_zone, `access` frozenset; never credentials:
-  `Credentials` for the login only), from `security.session_user` / `auth.current_user` / `require_access`:
+  `Credentials` for the login only), from `security.session_user` / `api.deps.current_user` / `require_access`:
   `me.id`, `me.access`; `clock.user_zone(user.time_zone, zone)`. Other rows stay `sqlite3.Row` (each read
   in one module). Test: `tests/test_queries.py` (every query used; User without credentials).
+- HTTP layer (`app/api/`): one router per module (about, auth, catalog, comments, health, media,
+  performers, profile, register, setup, tags, upload_hooks, users, video_mgmt, videos), `api.ROUTERS`
+  included by main.py in that order; `api/deps.py` = the dependencies (`session_token`, `current_user`,
+  `user_zone`, `require_access`, `rebuild_after_write`). Rules and storage stay outside (`app/snapshot.py`,
+  `tusd.py` (the process), `tags.py` (rules), `segments.py`…) and never import `api` (only main.py does).
+  Routers call those modules qualified (`snapshot.rebuild_now()`), so tests patch the owning module.
+  Loggers `app.api.<module>` (the setup token's: `app.api.setup`).
 - Encoder package (`app/encoder/`): `queue.py` (`Encoder` worker: job loop, encode, publish, fail;
   module `start`/`stop`/`running`), `checks.py` (ffprobe/ffmpeg runs, `needs_encoding`, `strip_metadata`,
   `JobError`…), `thumbnails.py` (`thumbnail`, `middle`, `refresh` of marked videos), `heartbeat.py`
@@ -327,7 +334,7 @@ the encoder waits for the version; `/health` fails on a mismatch.
   `/internal/`. The encoder asks the API to rebuild the catalogue (`POST /internal/catalog-changed`,
   harmless: only schedules). API and encoder share SQLite (same host, local disk). In development
   the API runs tusd (`children.py`) and the encoder thread itself; the api image sets both off.
-- `/health` (`app/health.py`): database (query + version every call; `quick_check` at the first call then
+- `/health` (`app/api/health.py`): database (query + version every call; `quick_check` at the first call then
   hourly, `INTEGRITY_EVERY_S`, result cached per file), encoder (heartbeat table, < 2 min,
   written every 30 s by the encoder), tusd (tus OPTIONS at `VIDEONINJA_TUSD_URL`); 503 if one fails,
   `not_set_up` before the setup. nginx serves the
@@ -389,7 +396,7 @@ the encoder waits for the version; `/health` fails on a mismatch.
   the rest of the task (uvicorn's traceback included), one line per request (`app.middleware`:
   method, route TEMPLATE, status, `duration_ms`; healthy /health DEBUG); uvicorn's access log off.
   Context: `logs.start` / `logs.bind(**f)` (contextmanager) / `logs.add(**f)` (mutates the bound dict:
-  FastAPI's sync dependencies run in context copies) + `ContextFilter`; `auth.current_user` and login
+  FastAPI's sync dependencies run in context copies) + `ContextFilter`; `api.deps.current_user` and login
   `add(user_id=…)`; tusd hook adopts the event's `X-Request-Id`; encoder jobs and thumbnails
   `bind(video_id=…)`; `catalog_changed` sends its own ID. Frontend: `ApiError.requestId` (answer header,
   tus too; shown later by the shared error display). Test: `tests/test_middleware.py`.

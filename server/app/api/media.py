@@ -32,10 +32,10 @@ import tempfile
 from fastapi import APIRouter, Depends, Response
 from fastapi.responses import FileResponse
 
-from . import db, limits, paths, procs, queries, settings
-from .errors import ApiError
-from .auth import require_access
-from .queries.users import User
+from .. import db, limits, paths, procs, queries, settings
+from ..errors import ApiError
+from ..queries.users import User
+from .deps import require_access
 
 log = logging.getLogger(__name__)
 router = APIRouter(prefix="/media", tags=["media"])
@@ -65,6 +65,8 @@ def _published(con: sqlite3.Connection, segment_id: int) -> sqlite3.Row:
 
 
 # HEAD too: the player asks it after a failed load (429 = another clip still downloading).
+
+
 @router.api_route("/segment/{segment_id}", methods=["GET", "HEAD"])
 def segment_clip(
     segment_id: int,

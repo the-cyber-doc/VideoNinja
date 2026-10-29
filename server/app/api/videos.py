@@ -13,13 +13,13 @@ from typing import Literal
 from fastapi import APIRouter, Depends, Query, status
 from pydantic import BaseModel, Field
 
-from . import audit, clock, db, limits, queries, segments, settings, tusd
-from .errors import ApiError
-from .auth import require_access, user_zone
-from .segments import SegmentIn, TagIn
-from .snapshot import rebuild_after_write
-from .validation import RULES, field
-from .queries.users import User
+from .. import audit, clock, db, limits, queries, segments, settings, tusd
+from ..errors import ApiError
+from ..queries.users import User
+from ..segments import SegmentIn, TagIn
+from ..validation import RULES, field
+from .deps import rebuild_after_write
+from .deps import require_access, user_zone
 
 router = APIRouter(prefix="/api", tags=["videos"])
 uploader = require_access("upload")

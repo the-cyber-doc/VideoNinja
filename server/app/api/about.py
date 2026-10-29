@@ -5,9 +5,9 @@ import sqlite3
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 
-from . import db, queries
-from .auth import current_user
-from .queries.users import User
+from .. import db, queries
+from ..queries.users import User
+from .deps import current_user
 
 router = APIRouter(prefix="/api", tags=["about"])
 

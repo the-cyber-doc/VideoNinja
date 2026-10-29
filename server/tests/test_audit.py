@@ -21,7 +21,7 @@ def events(caplog, name=None):
 
 
 def test_every_event_in_the_table():
-    for path in APP.glob("*.py"):
+    for path in APP.rglob("*.py"):
         for node in ast.walk(ast.parse(path.read_text(encoding="utf-8"))):
             if (isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) and node.func.attr == "event"
                     and getattr(node.func.value, "id", None) == "audit"):
