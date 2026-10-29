@@ -1,6 +1,7 @@
 <script lang="ts">
 	// Writing a comment (new or edited): its text and its language (default: the
 	// UI's). onsave throws on failure: the message is shown and the text kept.
+	import ErrorMessage from '../ErrorMessage.svelte';
 	import { i18n, LANGUAGES, t, type Lang } from '../i18n.svelte';
 	import { rules } from '../validation';
 	import type { CommentIn } from '../api/types';
@@ -22,16 +23,16 @@
 	// svelte-ignore state_referenced_locally
 	let lang = $state<Lang>(initial?.lang ?? i18n.lang);
 	let busy = $state(false);
-	let error = $state('');
+	let error = $state<unknown>(null);
 
 	async function submit(e: SubmitEvent) {
 		e.preventDefault();
 		busy = true;
-		error = '';
+		error = null;
 		try {
 			await onsave({ text: text.trim(), lang });
 		} catch (err) {
-			error = navigator.onLine ? (err as Error).message : t('comments.offline');
+			error = navigator.onLine ? err : t('comments.offline');
 		} finally {
 			busy = false;
 		}
@@ -64,7 +65,7 @@
 			<button type="submit" disabled={busy || !text.trim()}>{t('comments.save')}</button>
 		</span>
 	</div>
-	{#if error}<p class="error" role="alert">{error}</p>{/if}
+	<ErrorMessage error={error} />
 </form>
 
 <style>
@@ -93,9 +94,6 @@
 	.buttons {
 		display: flex;
 		gap: var(--space-2);
-	}
-	.error {
-		margin: 0;
 	}
 	.visually-hidden {
 		position: absolute;

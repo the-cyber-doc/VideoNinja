@@ -1,6 +1,7 @@
 <script lang="ts">
 	// Shell of the logged-in application: full-size layout, header with the user menu.
 	// Login, setup and registration pages are outside this group and have no shell.
+	import ErrorMessage from '#lib/ErrorMessage.svelte';
 	import { untrack } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
@@ -17,7 +18,7 @@
 	import type { LayoutProps } from './$types';
 
 	let { children }: LayoutProps = $props();
-	let error = $state('');
+	let error = $state<unknown>(null);
 	let menuOpen = $state(false);
 	let menu = $state<HTMLElement>();
 
@@ -30,7 +31,7 @@
 				persistStorage();
 				watchSavedMedia();
 			} catch (e) {
-				error = (e as Error).message;
+				error = e;
 			}
 		})();
 	});
@@ -108,7 +109,7 @@
 		</div>
 	</div>
 {:else if error}
-	<main class="card"><p class="error">{error}</p></main>
+	<main class="card"><ErrorMessage {error} /></main>
 {/if}
 
 <style>

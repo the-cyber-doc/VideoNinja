@@ -3,6 +3,7 @@
 	// later" / "no technique segment", the segment forms, "all segments done",
 	// Cancel / Proceed. Used by the upload page (a local file) and the Videos page
 	// (a published video); what Proceed does is the page's.
+	import ErrorMessage from '../ErrorMessage.svelte';
 	import type { Snippet } from 'svelte';
 	import type { Catalog } from '../catalog.svelte';
 	import { t } from '../i18n.svelte';
@@ -80,7 +81,7 @@
 	</div>
 	<Editor {src} bind:draft={annotation} bind:duration bind:playable bind:selected />
 	{#if !playable}
-		<p class="error">{t('upload.not_playable')}</p>
+		<ErrorMessage error={t('upload.not_playable')} role={null} />
 	{/if}
 </section>
 

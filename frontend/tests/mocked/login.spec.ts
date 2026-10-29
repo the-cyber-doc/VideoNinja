@@ -101,6 +101,31 @@ for (const [name, status, body, en, fr] of [
 	});
 }
 
+test('a server failure shows its request ID to quote; a refusal does not', async ({ page }) => {
+	const ID = '0123456789abcdef0123456789abcdef';
+	let status = 500;
+	await page.route('/api/auth/login', (r) =>
+		r.fulfill(
+			status === 500
+				? { status, json: { code: 'internal', detail: 'Internal error', params: {} }, headers: { 'X-Request-ID': ID } }
+				: { status, json: { code: 'auth.invalid_credentials', detail: '…', params: {} }, headers: { 'X-Request-ID': ID } }
+		)
+	);
+	const logIn = async () => {
+		await page.getByLabel('Username').fill('admin');
+		await page.getByLabel('Password').fill('x'.repeat(rules.password.min_length));
+		await page.getByLabel('Authenticator code').fill('123456');
+		await page.getByRole('button', { name: 'Log in' }).click();
+	};
+	await logIn();
+	const alert = page.getByRole('alert');
+	await expect(alert).toContainText('Something went wrong on the server. Try again later.');
+	await expect(alert).toContainText(`Reference: ${ID}`);
+	status = 401;
+	await logIn();
+	await expect(alert).toHaveText('Wrong username, password or code.'); // a 4xx: no reference
+});
+
 test('not set up yet: redirects to the setup wizard', async ({ page }) => {
 	await page.route('/api/setup/status', (r) => r.fulfill({ json: { initialized: false } }));
 	await page.goto('/login');

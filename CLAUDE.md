@@ -310,8 +310,17 @@ the encoder waits for the version; `/health` fails on a mismatch.
   `hsl(var(--hue) …)` is computed, fine), no raw spacing value, no font size off the scale. Breakpoints: 30rem and 40rem only
   (in app.css; media queries can't use variables). The player's speed buttons: `--text-xs` (four fit one
   line on a phone).
-- Icons: inline SVG via `$lib/Icon.svelte` (no icon library); icon-only buttons
-  have `title` (tooltip) + `aria-label`. Flags: inline SVG via `$lib/Flag.svelte`
+- Icons: inline SVG via `$lib/Icon.svelte` (no icon library); icon-only buttons are
+  `$lib/IconButton.svelte` (`label` = its `title` AND `aria-label`; `variant` outlined|quiet, `size`
+  sm|md|lg, `round`; a parent places it via `:global(.class)`). LanguageMenu and OfflineToggle label their
+  own buttons.
+- Errors on screen: `$lib/ErrorMessage.svelte` (`error`: an ApiError, an Error or a t() string; nothing
+  when empty; `role` alert by default, `"status"`, or `null` for a note that stays (inline validation, load
+  failures in place of content); a 5xx ApiError adds "Reference: <request ID>" (`common.reference`)). Pages
+  keep the error itself (`$state<unknown>(null)`, `error = e`), never only `e.message`. Tests
+  `src/lib/components.test.ts`: no `class="error"` outside it, no button repeating title/aria-label
+  outside IconButton. No Spinner/EmptyState/Field components on purpose (nothing to share: no spinner
+  exists; empties are one hint line; fields are implicit `<label>` + input). Flags: inline SVG via `$lib/Flag.svelte`
   (never emoji: Windows shows them as letters).
 - UI strings: `src/lib/messages.json`, one entry per message with every language
   (`{"key": {"en": …, "fr": …}}`, `{name}` placeholders), via `t()` from
@@ -432,7 +441,7 @@ the encoder waits for the version; `/health` fails on a mismatch.
   FastAPI's sync dependencies run in context copies) + `ContextFilter`; `api.deps.current_user` and login
   `add(user_id=…)`; tusd hook adopts the event's `X-Request-Id`; encoder jobs and thumbnails
   `bind(video_id=…)`; `catalog_changed` sends its own ID. Frontend: `ApiError.requestId` (answer header,
-  tus too; shown later by the shared error display). Test: `tests/test_middleware.py`.
+  tus too; shown by ErrorMessage on a 5xx). Test: `tests/test_middleware.py`.
 - Audit (`app/domain/audit.py`): security events only through `audit.event("<name>", **fields)` on logger
   `app.audit`, names fixed in `EVENTS` (with their level; KeyError otherwise; AST test). Who = the
   request's `user_id` (context) or a field (registration, logout: `security.delete_session` returns the

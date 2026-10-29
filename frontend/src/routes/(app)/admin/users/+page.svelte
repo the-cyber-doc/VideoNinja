@@ -1,11 +1,13 @@
 <script lang="ts">
 	// User management: needs the 'user_mgmt' access. Hidden from the menu otherwise,
 	// and the API refuses every call (403) whatever the page does.
+	import ErrorMessage from '#lib/ErrorMessage.svelte';
 	import { goto } from '$app/navigation';
 	import { url } from '#lib/base.js';
 	import type { Invite, Role, UserRow } from '#lib/api/types.js';
 	import { createUser, getInvite, listRoles, listUsers, resetUser } from '#lib/api/users.js';
 	import { i18n, t } from '#lib/i18n.svelte.js';
+	import IconButton from '#lib/IconButton.svelte';
 	import Icon from '#lib/Icon.svelte';
 	import { hasAccess, session } from '#lib/session.svelte.js';
 	import { rules } from '#lib/validation.js';
@@ -13,7 +15,7 @@
 	const allowed = $derived(hasAccess('user_mgmt'));
 	let users = $state<UserRow[]>([]);
 	let roles = $state<Role[]>([]);
-	let error = $state('');
+	let error = $state<unknown>(null);
 
 	let username = $state('');
 	let role = $state('user');
@@ -40,17 +42,17 @@
 				listRoles()
 			]);
 		} catch (e) {
-			error = (e as Error).message;
+			error = e;
 		}
 	}
 
 	async function action(fn: () => Promise<void>) {
 		busy = true;
-		error = '';
+		error = null;
 		try {
 			await fn();
 		} catch (e) {
-			error = (e as Error).message;
+			error = e;
 		} finally {
 			busy = false;
 		}
@@ -147,7 +149,7 @@
 					/>
 				</div>
 			{/if}
-			{#if error}<p class="error" role="alert">{error}</p>{/if}
+			<ErrorMessage error={error} />
 		</section>
 
 		<section aria-labelledby="h-users">
@@ -175,25 +177,9 @@
 							<td>{roles.find((r) => r.id === user.role)?.name ?? user.role}</td>
 							<td class="actions">
 								{#if user.status === 'invited'}
-									<button
-										class="icon"
-										title={t('users.copy_invite')}
-										aria-label={t('users.copy_invite')}
-										onclick={() => copyInvite(user)}
-										disabled={busy}
-									>
-										<Icon name="copy" />
-									</button>
+									<IconButton label={t('users.copy_invite')} icon="copy" onclick={() => copyInvite(user)} disabled={busy} />
 								{:else if user.username !== session.user?.username}
-									<button
-										class="icon"
-										title={t('users.reset')}
-										aria-label={t('users.reset')}
-										onclick={() => reset(user)}
-										disabled={busy}
-									>
-										<Icon name="refresh" />
-									</button>
+									<IconButton label={t('users.reset')} icon="refresh" onclick={() => reset(user)} disabled={busy} />
 								{/if}
 							</td>
 						</tr>
@@ -276,16 +262,6 @@
 	td.actions {
 		width: 3rem;
 		text-align: right;
-	}
-	button.icon {
-		display: inline-grid;
-		place-items: center;
-		width: 2.2rem;
-		height: 2.2rem;
-		padding: 0;
-		color: var(--text);
-		background: transparent;
-		border: 1px solid var(--border);
 	}
 	.visually-hidden {
 		position: absolute;

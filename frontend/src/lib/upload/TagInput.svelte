@@ -2,7 +2,7 @@
 	// Tags as removable chips. Add: type or pick a tag name (only existing tags:
 	// admins define them), then its value: one of its fixed values, or free text.
 	// Shown by their (translated) names, kept by ID: a language change relabels them.
-	import Icon from '../Icon.svelte';
+	import IconButton from '../IconButton.svelte';
 	import { t } from '../i18n.svelte';
 	import type { Tag, TagIn } from '../api/types';
 
@@ -52,14 +52,7 @@
 			{#each value as tag, i (tag.id)}
 				<li class="chip">
 					{chip(tag)}
-					<button
-						type="button"
-						title={t('upload.tag.remove', { name: tagName(tag.id) })}
-						aria-label={t('upload.tag.remove', { name: tagName(tag.id) })}
-						onclick={() => value.splice(i, 1)}
-					>
-						<Icon name="cross" size={14} />
-					</button>
+					<IconButton label={t('upload.tag.remove', { name: tagName(tag.id) })} icon="cross" iconSize={14} variant="quiet" size="sm" round onclick={() => value.splice(i, 1)} />
 				</li>
 			{/each}
 		</ul>
@@ -141,14 +134,6 @@
 		background: var(--bg);
 		border: 1px solid var(--border);
 		border-radius: var(--radius-pill);
-	}
-	.chip button {
-		display: grid;
-		place-items: center;
-		padding: var(--space-0);
-		color: var(--muted);
-		background: none;
-		border-radius: 50%;
 	}
 	.add {
 		display: flex;

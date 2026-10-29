@@ -3,6 +3,7 @@
 	// published, failed (Retry / Delete). Refreshed every few seconds while one
 	// is queued or encoding and the page is visible; otherwise only when shown,
 	// after a submit or an action, and when the page becomes visible again.
+	import ErrorMessage from '../ErrorMessage.svelte';
 	import { refreshCatalog } from '../catalog.svelte';
 	import { i18n, t } from '../i18n.svelte';
 	import type { UploadStatus } from '../api/types';
@@ -10,7 +11,7 @@
 
 	let { refresh = 0 }: { refresh?: number } = $props();
 	let list = $state<UploadStatus[]>([]);
-	let error = $state('');
+	let error = $state<unknown>(null);
 	const POLL_MS = 5000;
 
 	let published = new Set<number>(); // seen published: a new one means new segments
@@ -18,12 +19,12 @@
 	async function load() {
 		try {
 			list = await myUploads();
-			error = '';
+			error = null;
 			const now = new Set(list.filter((u) => u.status === 'published').map((u) => u.id));
 			if ([...now].some((id) => !published.has(id))) refreshCatalog();
 			published = now;
 		} catch (e) {
-			error = (e as Error).message;
+			error = e;
 		}
 	}
 
@@ -49,7 +50,7 @@
 		try {
 			await action();
 		} catch (e) {
-			error = (e as Error).message;
+			error = e;
 		}
 		load();
 	}
@@ -75,7 +76,7 @@
 
 <section class="mine">
 	<h2>{t('upload.mine')}</h2>
-	{#if error}<p class="error">{error}</p>{/if}
+	<ErrorMessage error={error} />
 	{#if list.length}
 		<ul>
 			{#each list as u (u.id)}

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import ErrorMessage from '#lib/ErrorMessage.svelte';
 	import { goto } from '$app/navigation';
 	import { url } from '#lib/base.js';
 	import { login } from '#lib/api/auth.js';
@@ -10,7 +11,7 @@
 	let username = $state('');
 	let password = $state('');
 	let totpCode = $state('');
-	let error = $state('');
+	let error = $state<unknown>(null);
 	let busy = $state(false);
 
 	$effect(() => {
@@ -22,13 +23,13 @@
 	async function submit(event: SubmitEvent) {
 		event.preventDefault();
 		busy = true;
-		error = '';
+		error = null;
 		try {
 			await login({ username, password, totp_code: totpCode });
 			await clearUserData(); // nothing cached from a previous user
 			goto(url('/'), { replace: true });
 		} catch (e) {
-			error = (e as Error).message;
+			error = e;
 			totpCode = '';
 		} finally {
 			busy = false;
@@ -71,7 +72,7 @@
 				placeholder="123456"
 			/>
 		</label>
-		{#if error}<p class="error" role="alert">{error}</p>{/if}
+		<ErrorMessage error={error} />
 		<button disabled={busy}>{busy ? t('login.busy') : t('login.submit')}</button>
 	</form>
 </main>
