@@ -17,11 +17,10 @@ from datetime import tzinfo
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 
-from . import db, queries
+from . import db, queries, segments
 from .auth import require_access, user_zone
+from .segments import AnnotatedSegment, TagIn
 from .snapshot import rebuild_after_write
-from .tags import tag_rules
-from .videos import SegmentIn, TagIn, _check_tags, _unprocessable
 
 log = logging.getLogger("uvicorn.error")
 router = APIRouter(prefix="/api", tags=["video management"])
@@ -35,10 +34,6 @@ class VideoOut(BaseModel):
     duration_s: float | None  # None: published before durations were kept
     all_segments_done: bool
     segment_count: int
-
-
-class AnnotatedSegment(SegmentIn):
-    id: int | None = None  # None: a new segment
 
 
 class Annotations(BaseModel):
@@ -107,21 +102,8 @@ def save_annotations(
     with db.write(con):
         video = _published(con, video_id)
         existing = {s["id"]: s for s in queries.video_segments(con, video_id)}
-        known_tags = tag_rules(con)
-        _check_tags(body.tags, known_tags, zone)
-        sent_ids = [s.id for s in body.segments if s.id is not None]
-        if len(set(sent_ids)) != len(sent_ids):
-            raise _unprocessable("A segment is given twice")
-        for segment in body.segments:
-            if segment.id is not None and segment.id not in existing:
-                raise _unprocessable(f"Unknown segment of this video: {segment.id}")
-            if not queries.technique_exists(con, segment.technique):
-                raise _unprocessable(f"Unknown technique: {segment.technique}")
-            if not queries.performer_exists(con, segment.performer):
-                raise _unprocessable(f"Unknown performer: {segment.performer}")
-            if video["duration_s"] is not None and segment.end_s > video["duration_s"] + 1:
-                raise _unprocessable("A segment ends after the end of the video")
-            _check_tags(segment.tags, known_tags, zone)
+        segments.check(con, body.tags, body.segments, zone, existing=existing, duration_s=video["duration_s"])
+        sent_ids = {s.id for s in body.segments if s.id is not None}
 
         changed = False  # a segment added, moved or removed: thumbnails to make or delete
         removed = [i for i in existing if i not in sent_ids]

@@ -1,4 +1,5 @@
 import hashlib
+import json
 import os
 import secrets
 import sqlite3
@@ -157,6 +158,11 @@ def session_user(con: sqlite3.Connection, token: str, zone: ZoneInfo | None = No
                 tz = clock.user_zone(row, zone)
                 queries.touch_session(con, sid, clock.text(now, tz), clock.text(expires, tz))
     return row
+
+
+def accesses(user: sqlite3.Row) -> frozenset[str]:
+    """What the user's role allows, from the session_user() row (no other query)."""
+    return frozenset(json.loads(user["access"]))
 
 
 def delete_session(con: sqlite3.Connection, token: str) -> None:

@@ -11,12 +11,12 @@ from datetime import tzinfo
 from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field
 
-from . import clock, db, limits, queries, tusd
+from . import clock, db, limits, queries, security, segments, tusd
 from .auth import require_access, user_zone
+from .segments import SegmentIn, TagIn
 from .snapshot import rebuild_after_write
-from .tags import Rule, tag_rules, value_error
 from .validation import RULES, field
 
 router = APIRouter(prefix="/api", tags=["videos"])
@@ -25,25 +25,6 @@ RECENT_S = 7 * 24 * 3600  # published videos stay in "my uploads" for a week
 # tusd answers the last chunk before its post-finish hook has marked the upload
 # finished: a submit sent at once waits for it, this long at most.
 FINISH_WAIT_S = 5.0
-
-
-class TagIn(BaseModel):
-    id: str = field("catalog_id")
-    value: str | None = field("tag_value", default=None)
-
-
-class SegmentIn(BaseModel):
-    begin_s: int = Field(ge=0)
-    end_s: int = Field(gt=0)
-    technique: str = field("catalog_id")
-    performer: str = field("catalog_id")
-    tags: list[TagIn] = []
-
-    @model_validator(mode="after")
-    def ordered(self):
-        if self.end_s <= self.begin_s:
-            raise ValueError("A segment must end after it begins")
-        return self
 
 
 class SubmitIn(BaseModel):
@@ -63,25 +44,9 @@ class UploadStatus(BaseModel):
     queue_position: int | None  # 1 = next to be encoded
 
 
-def _unprocessable(detail: str) -> HTTPException:
-    return HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, detail)
-
-
-def _check_tags(tags: list[TagIn], known: dict[str, Rule], zone: tzinfo) -> None:
-    if len({t.id for t in tags}) != len(tags):
-        raise _unprocessable("A tag is given twice")
-    for tag in tags:
-        if tag.id not in known:
-            raise _unprocessable(f"Unknown tag: {tag.id}")
-        if error := value_error(known[tag.id], tag.value, zone):
-            raise _unprocessable(f"Tag {tag.id}: {error}")
-
-
-def _may_manage(con: sqlite3.Connection, me: sqlite3.Row, video: sqlite3.Row | None) -> sqlite3.Row:
+def _may_manage(me: sqlite3.Row, video: sqlite3.Row | None) -> sqlite3.Row:
     """The video, if `me` uploaded it or is an admin (user_mgmt access); else 404."""
-    if video is None or (
-        video["uploaded_by"] != me["id"] and "user_mgmt" not in queries.role_access(con, me["role"])
-    ):
+    if video is None or (video["uploaded_by"] != me["id"] and "user_mgmt" not in security.accesses(me)):
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Unknown video")
     return video
 
@@ -115,14 +80,10 @@ def submit(
     zone: tzinfo = Depends(user_zone),
 ) -> dict[str, int]:
     """Queue a finished upload for encoding, with its segments and tags."""
-    known_tags = tag_rules(con)
-    _check_tags(body.tags, known_tags, zone)
-    for segment in body.segments:
-        if not queries.technique_exists(con, segment.technique):
-            raise _unprocessable(f"Unknown technique: {segment.technique}")
-        if not queries.performer_exists(con, segment.performer):
-            raise _unprocessable(f"Unknown performer: {segment.performer}")
-        _check_tags(segment.tags, known_tags, zone)
+    # Before waiting for the upload: a wrong annotation is refused at once. Outside the
+    # write: techniques, tags and performers are never deleted (the foreign keys would
+    # refuse the insert anyway).
+    segments.check(con, body.tags, body.segments, zone)
 
     _wait_finished(con, tus_id)
     with db.write(con):
@@ -179,7 +140,7 @@ def my_uploads(me: sqlite3.Row = Depends(uploader), con: sqlite3.Connection = De
 def retry(video_id: int, me: sqlite3.Row = Depends(uploader), con: sqlite3.Connection = Depends(db.get_db)) -> None:
     """Queue a failed video again (its original is still on the server)."""
     with db.write(con):
-        _may_manage(con, me, queries.video(con, video_id))
+        _may_manage(me, queries.video(con, video_id))
         if not queries.retry_video(con, video_id):
             raise HTTPException(status.HTTP_409_CONFLICT, "Only a failed video can be retried")
 
@@ -188,7 +149,7 @@ def retry(video_id: int, me: sqlite3.Row = Depends(uploader), con: sqlite3.Conne
 def delete(video_id: int, me: sqlite3.Row = Depends(uploader), con: sqlite3.Connection = Depends(db.get_db)) -> None:
     """Drop a video that is not published yet. The encoder deletes its original."""
     with db.write(con):
-        video = _may_manage(con, me, queries.video(con, video_id))
+        video = _may_manage(me, queries.video(con, video_id))
         if video["status"] in ("published", "encoding"):
             raise HTTPException(status.HTTP_409_CONFLICT, "Published or encoding videos cannot be deleted here")
         queries.delete_video(con, video_id)
