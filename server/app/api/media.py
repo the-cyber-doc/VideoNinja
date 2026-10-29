@@ -68,7 +68,8 @@ def _published(con: sqlite3.Connection, segment_id: int) -> sqlite3.Row:
 # HEAD too: the player asks it after a failed load (429 = another clip still downloading).
 
 
-@router.api_route("/segment/{segment_id}", methods=["GET", "HEAD"])
+@router.get("/segment/{segment_id}")
+@router.head("/segment/{segment_id}")  # its own route: one operation ID each (OpenAPI)
 def segment_clip(
     segment_id: int,
     user: User = Depends(segment_access),

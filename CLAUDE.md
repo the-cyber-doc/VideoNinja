@@ -183,6 +183,12 @@ the encoder waits for the version; `/health` fails on a mismatch.
   follow module paths, except two fixed operator names: `app.audit`, `app.middleware`. Module-level state kept
   on purpose (callers without a request: the encoder thread, the setup stream): snapshot timer, throttle
   counters (`throttle.reset()`), Argon2 semaphore, tusd/encoder singletons, health's cache.
+- API types: `server/openapi.json` (committed) = `app/api/openapi.py` `schema(app)` (FastAPI's, 422 removed,
+  every operation's `default` = `ApiError` from `core/errors.ErrorOut`; also served at /openapi.json) →
+  `frontend/src/lib/api/schema.d.ts` (openapi-typescript 7.13.0, exact; `overrides` lets it use TS 6). After any
+  endpoint/model change: `tools/api-types.sh`, commit both. Checks: `tests/test_openapi.py` (file current,
+  errors declared, unique operation IDs, every JSON answer typed but the files/streams in `UNTYPED`) and
+  `npm run check` (`--check`). GET+HEAD = two decorators (one operation ID each).
 - HTTP layer (`app/api/`): one router per module (about, auth, catalog, comments, health, media,
   performers, profile, register, setup, tags, upload_hooks, users, video_mgmt, videos), `api.ROUTERS`
   included by main.py in that order; `api/deps.py` = the dependencies (`session_token`, `current_user`,
