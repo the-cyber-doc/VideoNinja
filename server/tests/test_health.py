@@ -7,7 +7,8 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 import pytest
 from fastapi.testclient import TestClient
 
-from app import clock, db, encoder, settings
+from app import clock, db, settings
+from app.encoder import cli, heartbeat
 from app.main import app
 
 from .test_auth import login
@@ -56,7 +57,7 @@ def test_everything_ok(client, admin_secret, tusd_server):
     assert (r.status_code, r.json()) == (200, ALL_OK)
 
 
-@pytest.mark.parametrize("seconds_ago", [None, encoder.HEARTBEAT_MAX_AGE_S + 1])
+@pytest.mark.parametrize("seconds_ago", [None, heartbeat.HEARTBEAT_MAX_AGE_S + 1])
 def test_encoder_down(client, admin_secret, seconds_ago):
     """No heartbeat yet, or too old (its container stopped or stuck): 503."""
     if seconds_ago is not None:
@@ -98,9 +99,9 @@ def test_database_failing(client, admin_secret, monkeypatch):
 
 def test_encoder_container_healthcheck(client, admin_secret):
     """python -m app.encoder --health: exit status from the heartbeat."""
-    assert encoder.main(["--health"]) == 1
+    assert cli.main(["--health"]) == 1
     beat()
-    assert encoder.main(["--health"]) == 0
+    assert cli.main(["--health"]) == 0
 
 
 def test_database_on_another_version(client, admin_secret):

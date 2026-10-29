@@ -9,7 +9,8 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from app import encoder, errors, middleware
+from app import errors, middleware
+from app.encoder import notify
 
 from .test_auth import login
 
@@ -119,6 +120,6 @@ def test_encoder_call_carries_an_id(monkeypatch, caplog):
     caplog.set_level(logging.INFO)
     monkeypatch.setenv("VIDEONINJA_API_URL", "http://api:8000")
     monkeypatch.setattr(urllib.request, "urlopen", urlopen)
-    encoder.catalog_changed()
+    notify.catalog_changed()
     assert re.fullmatch(r"[0-9a-f]{32}", sent["id"])
-    assert lines(caplog, "app.encoder")[-1].request_id == sent["id"]
+    assert lines(caplog, "app.encoder.notify")[-1].request_id == sent["id"]

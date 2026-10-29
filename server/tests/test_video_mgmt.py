@@ -7,7 +7,8 @@ from pathlib import Path
 import pyotp
 import pytest
 
-from app import db, encoder, snapshot
+from app import db, snapshot
+from app.encoder import notify, queue, thumbnails
 
 from .test_auth import login
 from .test_catalog import SHA, add_segments
@@ -100,7 +101,7 @@ def test_authors_by_display_name(admin, tmp_path, monkeypatch):
     """A new segment is its creator's; an edited one keeps its author, whatever the client sends."""
     monkeypatch.setenv("VIDEONINJA_MEDIA_DIR", str(tmp_path / "media"))
     (tmp_path / "media" / "video" / "ab" / SHA).mkdir(parents=True)
-    monkeypatch.setattr("app.encoder.thumbnail", lambda video, at, out: out.write_bytes(b"jpg"))
+    monkeypatch.setattr("app.encoder.thumbnails.thumbnail", lambda video, at, out: out.write_bytes(b"jpg"))
     sql("UPDATE segment SET created_by = 1")
     sql("UPDATE user SET name = NULL WHERE id = 1")  # no display name: the username
     secret = register(create(admin, role="video_mgmt"))  # kenji, display name "Kenji"
@@ -206,8 +207,8 @@ def test_real_thumbnails_and_video(admin, tmp_path, monkeypatch):
     assert not list(folder.glob("segment-3.jpg"))  # not by the API
 
     notified = []
-    monkeypatch.setattr(encoder, "catalog_changed", lambda: notified.append(True))
-    encoder.Encoder().refresh_thumbnails()
+    monkeypatch.setattr(notify, "catalog_changed", lambda: notified.append(True))
+    queue.Encoder().refresh_thumbnails()
     assert (folder / "segment-3.jpg").read_bytes()[:2] == b"\xff\xd8"  # a JPEG
     assert sorted(p.name for p in folder.iterdir()) == ["segment-3.jpg", "video.mp4"]  # no temporary file left
     assert sql("SELECT thumbnail FROM segment WHERE id = 3") == [("segment-3.jpg",)]
@@ -232,8 +233,8 @@ def test_thumbnail_of_a_segment_retimed_meanwhile_is_not_kept(admin, tmp_path, m
             sql("UPDATE video SET thumbs_dirty = thumbs_dirty + 1")
         out.write_bytes(b"jpg")
 
-    monkeypatch.setattr(encoder, "thumbnail", thumbnail)
-    monkeypatch.setattr(encoder, "catalog_changed", lambda: None)
-    encoder.Encoder().refresh_thumbnails()
+    monkeypatch.setattr(thumbnails, "thumbnail", thumbnail)
+    monkeypatch.setattr(notify, "catalog_changed", lambda: None)
+    queue.Encoder().refresh_thumbnails()
     assert sql("SELECT id, thumbnail FROM segment ORDER BY id") == [(1, None), (2, "segment-2.jpg")]
     assert sql("SELECT thumbs_dirty FROM video") == [(1,)]

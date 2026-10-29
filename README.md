@@ -128,7 +128,7 @@ once.
 | `VIDEONINJA_ARGON2_CONCURRENCY` | `2` | Password checks (Argon2: 64 MiB and a CPU core each) running at once; the others wait up to 10 s, then get `503` with `Retry-After` ("the server is busy"). |
 | `VIDEONINJA_X265_PRESET` | `medium` | libx265 preset of the encoding queue (`ultrafast` … `veryslow`; slower = smaller files). Case, spaces and quotes are ignored; any other value stops the app at start, naming the value received. |
 | `VIDEONINJA_LOG_LEVEL` | `INFO` | `DEBUG`, `INFO`, `WARNING` or `ERROR`, for the app and uvicorn (API and encoder). `DEBUG` adds tusd's own output in development. |
-| `VIDEONINJA_LOG_FORMAT` | `text` (images: `json`) | `text`: one readable line per message (`12:13:38 INFO     app.encoder: …`). `json`: one JSON object per line (`ts`, `level`, `logger`, `msg`, and `exc` with the traceback), for `journalctl` and `jq`. Every line of a request carries its `request_id` (nginx's `$request_id`: `rid=` in nginx's log, `X-Request-ID` in the answer) and, once the session is checked, `user_id`; the encoder's lines of a video carry `video_id`. The app logs one line per request (`app.middleware`: method, route template, status, `duration_ms`; a healthy `/health` only at `DEBUG`) instead of uvicorn's access log. Any other value of either stops the start. |
+| `VIDEONINJA_LOG_FORMAT` | `text` (images: `json`) | `text`: one readable line per message (`12:13:38 INFO     app.encoder.queue: …`). `json`: one JSON object per line (`ts`, `level`, `logger`, `msg`, and `exc` with the traceback), for `journalctl` and `jq`. Every line of a request carries its `request_id` (nginx's `$request_id`: `rid=` in nginx's log, `X-Request-ID` in the answer) and, once the session is checked, `user_id`; the encoder's lines of a video carry `video_id`. The app logs one line per request (`app.middleware`: method, route template, status, `duration_ms`; a healthy `/health` only at `DEBUG`) instead of uvicorn's access log. Any other value of either stops the start. |
 | `TZ` | system timezone (image: UTC) | Server's timezone (IANA name, e.g. `Europe/Zurich`), for dates written without a user: invitations. Users' dates are in their browser's timezone. |
 | `VIDEONINJA_BASE_PATH` | `''` (image: `/videoninja`) | Where the browser sees the app (a subfolder of the domain). The session cookie's name and path and tusd's upload URLs follow it; the frontend is built with the same value (`BASE_PATH`). |
 | `VIDEONINJA_TUSD` / `VIDEONINJA_ENCODER` | on (api image: `0`) | `0`: don't start tusd / the encoding thread in the app (their own containers in production; tests). tusd also needs the binary (`PATH` or `VIDEONINJA_TUSD_BIN`), encoding needs `ffmpeg`. |
@@ -1440,7 +1440,7 @@ log as text.
 
 | Field | What |
 |---|---|
-| `ts`, `level`, `logger`, `msg` | Time (with its UTC offset), level, where (`app.encoder`, `app.audit`, `uvicorn.error`…), the message |
+| `ts`, `level`, `logger`, `msg` | Time (with its UTC offset), level, where (`app.encoder.queue`, `app.audit`, `uvicorn.error`…), the message |
 | `request_id` | The request's ID: nginx's `$request_id`, also `rid=` in nginx's log and `X-Request-ID` in the answer the browser got |
 | `user_id` | Who, once the session is checked (IDs, never usernames) |
 | `video_id` | The encoder's lines of a video (encoding, thumbnails) |

@@ -175,6 +175,14 @@ the encoder waits for the version; `/health` fails on a mismatch.
   `Credentials` for the login only), from `security.session_user` / `auth.current_user` / `require_access`:
   `me.id`, `me.access`; `clock.user_zone(user.time_zone, zone)`. Other rows stay `sqlite3.Row` (each read
   in one module). Test: `tests/test_queries.py` (every query used; User without credentials).
+- Encoder package (`app/encoder/`): `queue.py` (`Encoder` worker: job loop, encode, publish, fail;
+  module `start`/`stop`/`running`), `checks.py` (ffprobe/ffmpeg runs, `needs_encoding`, `strip_metadata`,
+  `JobError`…), `thumbnails.py` (`thumbnail`, `middle`, `refresh` of marked videos), `heartbeat.py`
+  (`beat`, `run`, `healthy`), `notify.py` (`catalog_changed`), `cli.py` (`main`; `__main__.py` calls it:
+  `python -m app.encoder [--health]`). The API uses `encoder.start/stop/healthy` (package exports). Calls
+  between them are module-qualified (`checks.probe_duration(…)`), so tests patch the owning module
+  (`monkeypatch.setattr(thumbnails, "thumbnail", …)`, `"app.encoder.thumbnails.thumbnail"`). Loggers
+  `app.encoder.<module>`. `db.transaction()`: own connection + write (not a request).
 - Transactions: `db.connect()` is autocommit (`autocommit=True`, `db.Connection` makes `with con:`
   raise). Writes / check-then-write: `with db.write(con):` (BEGIN IMMEDIATE, rollback on any
   exception); consistent multi-reads: `with db.read(con):`. No nesting; Argon2 and other slow work
@@ -237,8 +245,8 @@ the encoder waits for the version; `/health` fails on a mismatch.
   stays mono, more → stereo), `+faststart`, IDR keyframe every 1 s (0.5 s above 30 fps; `-g` sets it), metadata stripped (global +
   stream tags, chapters, bitexact; `-m` keeps them, never used by the server), original dimensions,
   HDR tone-mapped to BT.709, interlaced sources deinterlaced with NNEDI3.
-- An original already in that format (`encoder.needs_encoding`: format only,
-  incl. faststart, AAC mono or stereo; metadata ignored) is not encoded: `encoder.strip_metadata`
+- An original already in that format (`encoder.checks.needs_encoding`: format only,
+  incl. faststart, AAC mono or stereo; metadata ignored) is not encoded: `encoder.checks.strip_metadata`
   copies its first video + audio streams into a new MP4 without metadata, chapters or other
   streams (rotation side data kept), then the format is checked again. Published files never keep
   metadata (GPS!), so `sha256sum` ≠ `original_sha256`; duplicates are refused on either hash.

@@ -5,7 +5,8 @@ from pathlib import Path
 import pyotp
 import pytest
 
-from app import db, encoder
+from app import db
+from app.encoder import checks
 
 from .test_auth import login
 from .test_catalog import SHA, add_segments
@@ -130,7 +131,7 @@ def test_clip_cut_by_the_app_without_nginx(client, admin_secret, tmp_path, monke
     assert r.headers["accept-ranges"] == "bytes"  # without it, browsers cannot seek in a 200 answer
     clip = tmp_path / "clip.mp4"
     clip.write_bytes(r.content)
-    assert 9.5 < encoder.probe_duration(clip) < 11.5  # from the keyframe at or before 5 s
+    assert 9.5 < checks.probe_duration(clip) < 11.5  # from the keyframe at or before 5 s
     assert len(r.content) < READY.stat().st_size * 0.7  # only the clip, not the whole video
     # Range requests (seeking, Safari): 206 with the asked bytes.
     part = client.get("/media/segment/1", headers={"Range": "bytes=0-99"})
