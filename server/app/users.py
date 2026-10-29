@@ -12,7 +12,7 @@ from .errors import ApiError
 from .auth import require_access
 from .validation import field
 
-log = logging.getLogger("uvicorn.error")
+log = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/admin", tags=["users"])
 admin = require_access("user_mgmt")
 

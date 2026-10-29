@@ -190,7 +190,8 @@ ENV PATH=/opt/venv/bin:$PATH \
     VIDEONINJA_TUSD=0 \
     VIDEONINJA_TUSD_URL=http://tusd:1080 \
     VIDEONINJA_ENCODER=0 \
-    VIDEONINJA_BASE_PATH=${BASE_PATH}
+    VIDEONINJA_BASE_PATH=${BASE_PATH} \
+    VIDEONINJA_LOG_FORMAT=json
 VOLUME ["/data", "/srv/catalog"]
 USER 10001:10001
 # On the compose file's internal network only: nginx is the way in.
@@ -212,7 +213,8 @@ ENV PATH=/opt/venv/bin:$PATH \
     VIDEONINJA_UPLOAD_DIR=/srv/uploads \
     VIDEONINJA_MEDIA_DIR=/srv/media \
     VIDEONINJA_ENCODE_SCRIPT=/app/encode/encode-videos.sh \
-    VIDEONINJA_API_URL=http://api:8000
+    VIDEONINJA_API_URL=http://api:8000 \
+    VIDEONINJA_LOG_FORMAT=json
 VOLUME ["/data", "/srv/uploads", "/srv/media"]
 USER 10001:10001
 ENTRYPOINT ["tini", "--"]

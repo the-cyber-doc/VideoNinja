@@ -16,7 +16,7 @@ from fastapi.responses import JSONResponse
 
 from . import db, encoder, tusd
 
-log = logging.getLogger("uvicorn.error")
+log = logging.getLogger(__name__)
 router = APIRouter(tags=["health"])
 State = Literal["ok", "failing", "not_set_up"]
 

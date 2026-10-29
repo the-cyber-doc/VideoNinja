@@ -50,9 +50,9 @@ from contextlib import contextmanager
 from datetime import datetime
 from pathlib import Path
 
-from . import clock, db, limits, paths, procs, queries, snapshot
+from . import clock, db, limits, logs, paths, procs, queries, snapshot
 
-log = logging.getLogger("uvicorn.error")
+log = logging.getLogger(__name__)
 
 MAX_ATTEMPTS = 3
 UPLOAD_EXPIRY_S = 7 * 24 * 3600  # an upload not submitted within a week is deleted
@@ -614,7 +614,7 @@ def file_sha256(path: Path) -> str:
 
 def main(argv: list[str]) -> int:
     """The encoder's container. --health: exit 0 if the heartbeat is recent (healthcheck)."""
-    logging.basicConfig(level=logging.INFO, format="%(levelname)s:     %(message)s")
+    logs.configure()
     if argv == ["--health"]:
         if not db.is_initialized():
             return 0  # before the setup there is nothing to encode

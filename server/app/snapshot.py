@@ -37,7 +37,7 @@ from . import catalog, db, i18n, procs
 from .errors import ApiError
 from .auth import current_user
 
-log = logging.getLogger("uvicorn.error")
+log = logging.getLogger(__name__)
 router = APIRouter(prefix="/api", tags=["catalog"])
 # Called by the encoder's container (no catalogue there). Never forwarded by nginx;
 # a call from elsewhere only costs a rebuild (one at a time, no new version if nothing changed).

@@ -123,6 +123,8 @@ catalogue snapshots in `catalog/` are ignored by git.
 | `VIDEONINJA_FFPROBE_TIMEOUT_MIN` | `10` | The same for each ffprobe run, in minutes: it only reads the file's headers and index. |
 | `VIDEONINJA_ARGON2_CONCURRENCY` | `2` | Password checks (Argon2: 64 MiB and a CPU core each) running at once; the others wait up to 10 s, then get `503` with `Retry-After` ("the server is busy"). |
 | `VIDEONINJA_X265_PRESET` | `medium` | libx265 preset of the encoding queue (`ultrafast` … `veryslow`; slower = smaller files). Case, spaces and quotes are ignored; any other value stops the app at start, naming the value received. |
+| `VIDEONINJA_LOG_LEVEL` | `INFO` | `DEBUG`, `INFO`, `WARNING` or `ERROR`, for the app and uvicorn (API and encoder). `DEBUG` adds tusd's own output in development. |
+| `VIDEONINJA_LOG_FORMAT` | `text` (images: `json`) | `text`: one readable line per message (`12:13:38 INFO     app.encoder: …`). `json`: one JSON object per line (`ts`, `level`, `logger`, `msg`, and `exc` with the traceback), for `journalctl` and `jq`; uvicorn's access log is then off (nginx logs every request). Any other value of either stops the start. |
 | `TZ` | system timezone (image: UTC) | Server's timezone (IANA name, e.g. `Europe/Zurich`), for dates written without a user: invitations. Users' dates are in their browser's timezone. |
 | `VIDEONINJA_BASE_PATH` | `''` (image: `/videoninja`) | Where the browser sees the app (a subfolder of the domain). The session cookie's name and path and tusd's upload URLs follow it; the frontend is built with the same value (`BASE_PATH`). |
 | `VIDEONINJA_TUSD` / `VIDEONINJA_ENCODER` | on (api image: `0`) | `0`: don't start tusd / the encoding thread in the app (their own containers in production; tests). tusd also needs the binary (`PATH` or `VIDEONINJA_TUSD_BIN`), encoding needs `ffmpeg`. |
@@ -161,7 +163,7 @@ production. It forwards `/api` to the backend on port 8000.
 With no database, the backend prints a one-time setup token in terminal 1:
 
 ```
-WARNING:  Video Ninja is not set up yet. Setup token: 3q2-…
+12:13:38 WARNING  app.setup: Video Ninja is not set up yet. Setup token: 3q2-…
 ```
 
 The app opens the setup wizard: enter the token, create the admin account

@@ -10,7 +10,7 @@ from pathlib import Path
 from . import crypto, queries
 from .errors import ApiError
 
-log = logging.getLogger("uvicorn.error")
+log = logging.getLogger(__name__)
 
 SQL_DIR = Path(__file__).resolve().parent.parent / "database"
 MIGRATIONS_DIR = SQL_DIR / "migrations"

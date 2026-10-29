@@ -23,7 +23,7 @@ from .auth import require_access, user_zone
 from .segments import AnnotatedSegment, TagIn
 from .snapshot import rebuild_after_write
 
-log = logging.getLogger("uvicorn.error")
+log = logging.getLogger(__name__)
 router = APIRouter(prefix="/api", tags=["video management"])
 manager = require_access("video_mgmt")
 

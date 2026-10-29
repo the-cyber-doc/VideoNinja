@@ -109,7 +109,8 @@ curl -sf -o /dev/null http://127.0.0.1:8080/videoninja/health || {
 	run_compose ps >&2
 	exit 1
 }
-token=$(run_compose logs api 2>&1 | sed -n 's/.*Setup token: \([^ ]*\).*/\1/p' | tail -n 1)
+# The token's characters only (token_urlsafe): the log line is JSON, a quote follows it.
+token=$(run_compose logs api 2>&1 | sed -n 's/.*Setup token: \([A-Za-z0-9_-]*\).*/\1/p' | tail -n 1)
 [[ -n $token ]] || {
 	echo "No setup token in the API's log." >&2
 	exit 1

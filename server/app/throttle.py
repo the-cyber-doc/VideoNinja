@@ -27,7 +27,7 @@ from fastapi import HTTPException, Request
 
 from .errors import ApiError
 
-log = logging.getLogger("uvicorn.error")
+log = logging.getLogger(__name__)
 
 MAX_FAILURES = 10
 WINDOW_S = 15 * 60

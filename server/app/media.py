@@ -36,7 +36,7 @@ from . import db, limits, paths, procs, queries, snapshot
 from .errors import ApiError
 from .auth import require_access
 
-log = logging.getLogger("uvicorn.error")
+log = logging.getLogger(__name__)
 router = APIRouter(prefix="/media", tags=["media"])
 segment_access = require_access("segment")
 
