@@ -13,7 +13,7 @@ from typing import Literal
 from fastapi import APIRouter, Depends, Query, status
 from pydantic import BaseModel, Field
 
-from . import audit, clock, db, limits, queries, security, segments, tusd
+from . import audit, clock, db, limits, queries, security, segments, settings, tusd
 from .errors import ApiError
 from .auth import require_access, user_zone
 from .segments import SegmentIn, TagIn
@@ -120,7 +120,7 @@ class UploadLimits(BaseModel):
 def upload_limits(_: sqlite3.Row = Depends(uploader)) -> UploadLimits:
     """What the upload page may send (checked again by the pre-create hook, and the
     content by ffprobe before encoding): the page refuses other files at once."""
-    return UploadLimits(max_bytes=limits.max_upload_bytes(), extensions=limits.extensions())
+    return UploadLimits(max_bytes=settings.current().max_upload_bytes, extensions=limits.extensions())
 
 
 def _wait_finished(con: sqlite3.Connection, tus_id: str) -> None:

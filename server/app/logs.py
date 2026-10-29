@@ -22,7 +22,6 @@ A wrong value of either refuses the start (RuntimeError).
 import json
 import logging
 import logging.config
-import os
 import sys
 from collections.abc import Iterator
 from contextlib import contextmanager
@@ -30,10 +29,8 @@ from contextvars import ContextVar
 from datetime import UTC, datetime
 from typing import Any
 
-from . import clock
+from . import clock, settings
 
-LEVELS = ("DEBUG", "INFO", "WARNING", "ERROR")
-FORMATS = ("text", "json")
 TEXT_FORMAT = "%(asctime)s %(levelname)-8s %(name)s: %(message)s"
 # A record's own attributes: anything else was given as extra=.
 _STANDARD = set(logging.LogRecord("", 0, "", 0, "", None, None).__dict__) | {"message", "asctime", "taskName"}
@@ -134,22 +131,6 @@ class StderrHandler(logging.StreamHandler):
         pass
 
 
-def _setting(name: str, default: str, allowed: tuple[str, ...], normalise) -> str:
-    raw = os.environ.get(name, default)
-    value = normalise(raw.strip().strip("\"'").strip())
-    if value not in allowed:
-        raise RuntimeError(f"{name}={raw!r}: must be one of {', '.join(allowed)}")
-    return value
-
-
-def level() -> str:
-    return _setting("VIDEONINJA_LOG_LEVEL", "INFO", LEVELS, str.upper)
-
-
-def log_format() -> str:
-    return _setting("VIDEONINJA_LOG_FORMAT", "text", FORMATS, str.lower)
-
-
 def config(level: str, log_format: str) -> dict[str, Any]:
     """The dictConfig of these settings."""
     formatter: dict[str, Any] = (
@@ -174,5 +155,7 @@ def config(level: str, log_format: str) -> dict[str, Any]:
 
 
 def configure() -> None:
-    """Apply VIDEONINJA_LOG_LEVEL and VIDEONINJA_LOG_FORMAT (RuntimeError if invalid)."""
-    logging.config.dictConfig(config(level(), log_format()))
+    """Apply VIDEONINJA_LOG_LEVEL and VIDEONINJA_LOG_FORMAT (settings.py: RuntimeError if
+    a setting is wrong)."""
+    current = settings.current()
+    logging.config.dictConfig(config(current.log_level, current.log_format))

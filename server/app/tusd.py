@@ -17,7 +17,6 @@ SHA-256) before encoding it.
 
 import json
 import logging
-import os
 import re
 import secrets
 import shutil
@@ -29,7 +28,7 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, Header, Request, status
 
-from . import audit, clock, db, errors, limits, logs, middleware, paths, queries, security
+from . import audit, clock, db, errors, limits, logs, middleware, paths, queries, security, settings
 from .auth import require_access
 from .errors import ApiError
 from .children import Child
@@ -43,7 +42,7 @@ FILENAME = re.compile(RULES["original_filename"]["pattern"])
 
 def files_path() -> str:
     """tusd's -base-path: where the browser sends uploads, nginx forwarding it as is."""
-    return f"{paths.base_path()}/files/"
+    return f"{settings.current().base_path}/files/"
 
 
 def _reject(code: str) -> dict[str, Any]:
@@ -88,7 +87,7 @@ def _pre_create(con: sqlite3.Connection, event: dict[str, Any]) -> dict[str, Any
     size = upload.get("Size")
     if upload.get("SizeIsDeferred") or not isinstance(size, int) or size <= 0:
         return _reject("upload.size_unknown")
-    if size > limits.max_upload_bytes():
+    if size > settings.current().max_upload_bytes:
         return _reject("upload.too_large")
     # "filename": the tus metadata convention (tus-js-client); stored as video.original_filename.
     if not SHA256.fullmatch(original_sha256) or not FILENAME.fullmatch(meta.get("filename", "")):
@@ -176,17 +175,17 @@ class Tusd(Child):
     missing = "not found: uploads are not possible (set VIDEONINJA_TUSD_BIN)"
 
     def __init__(self) -> None:
-        env = os.environ.get
-        super().__init__(env("VIDEONINJA_TUSD_BIN") or shutil.which("tusd"))
-        self.host = env("VIDEONINJA_TUSD_HOST", "127.0.0.1")
-        self.port = env("VIDEONINJA_TUSD_PORT", "1080")
-        self.app_port = env("VIDEONINJA_APP_PORT", "8000")
+        config = settings.current()
+        super().__init__(config.tusd_bin or shutil.which("tusd"))
+        self.host = config.tusd_host
+        self.port = str(config.tusd_port)
+        self.app_port = config.app_port
 
     def command(self) -> list[str]:
         return [
             self.binary, "-host", self.host, "-port", self.port,
             "-upload-dir", str(paths.upload_dir()), "-base-path", files_path(),
-            "-behind-proxy", "-disable-download", "-max-size", str(limits.max_upload_bytes()),
+            "-behind-proxy", "-disable-download", "-max-size", str(settings.current().max_upload_bytes),
             "-hooks-http", f"http://127.0.0.1:{self.app_port}/internal/tusd-hook",
             "-hooks-enabled-events", "pre-create,post-finish",
             "-hooks-http-forward-headers", "Cookie",
@@ -208,7 +207,7 @@ process = Tusd()
 def start() -> None:
     """Start tusd (app startup, or after setup). VIDEONINJA_TUSD=0: off."""
     global process
-    if os.environ.get("VIDEONINJA_TUSD", "1") == "0" or (process.thread and process.thread.is_alive()):
+    if not settings.current().run_tusd or (process.thread and process.thread.is_alive()):
         return
     process = Tusd()  # settings from the current environment
     process.start()
@@ -223,10 +222,10 @@ def available() -> bool:
     answers a tus OPTIONS request. Run by the app: its process is running (False
     when the binary is missing, or it crashed and is restarting). Neither (tests,
     tusd run by hand): assumed up."""
-    url = paths.service_url("VIDEONINJA_TUSD_URL")
+    url = settings.current().tusd_url
     if url:
         return _answers(url + files_path())
-    if os.environ.get("VIDEONINJA_TUSD", "1") == "0":
+    if not settings.current().run_tusd:
         return True
     return process.running()
 

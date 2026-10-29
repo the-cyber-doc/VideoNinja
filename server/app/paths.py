@@ -1,55 +1,23 @@
-"""Folders of uploads and media. Docker: /srv/uploads and /srv/media (volumes,
-media read-only for nginx). Development default: next to the database."""
+"""Folders of uploads and media (settings.py: VIDEONINJA_UPLOAD_DIR, VIDEONINJA_MEDIA_DIR;
+Docker: /srv/uploads and /srv/media, media read-only for nginx; development:
+next to the database)."""
 
-import os
-import re
 from pathlib import Path
-from urllib.parse import urlsplit
 
-from . import db
-
-
-def _dir(variable: str, name: str) -> Path:
-    path = os.environ.get(variable)
-    return Path(path) if path else db.db_path().parent / name
+from . import settings
 
 
 def upload_dir() -> Path:
     """tusd's folder: <tus_id> (the original) + <tus_id>.info."""
-    return _dir("VIDEONINJA_UPLOAD_DIR", "uploads")
+    return settings.current().upload_dir
 
 
 def media_dir() -> Path:
     """video/ (video_dir) and, in development, clips/ (media.py)."""
-    return _dir("VIDEONINJA_MEDIA_DIR", "media")
+    return settings.current().media_dir
 
 
 def video_dir() -> Path:
     """<h2>/<sha256>/{video.mp4, thumb.jpg, segment-<id>.jpg}: one folder per video,
     named after the encoded file's SHA-256 (the original would go alongside)."""
     return media_dir() / "video"
-
-
-_BASE_PATH = re.compile(r"(/[A-Za-z0-9._~-]+)*")
-
-
-def base_path() -> str:
-    """VIDEONINJA_BASE_PATH: where the browser sees the app, e.g. "/videoninja"
-    ("": the domain's root). nginx removes it before /api and /media reach the
-    app; tusd's upload URLs and the session cookie's path include it."""
-    value = os.environ.get("VIDEONINJA_BASE_PATH", "").rstrip("/")
-    if not _BASE_PATH.fullmatch(value):
-        raise RuntimeError(f"VIDEONINJA_BASE_PATH must look like /videoninja, not {value!r}")
-    return value
-
-
-def service_url(variable: str) -> str | None:
-    """Another container's address (VIDEONINJA_API_URL, VIDEONINJA_TUSD_URL), without
-    a trailing slash; None if not set. http(s) only: urllib would also open file: or
-    ftp: URLs. RuntimeError otherwise: checked at startup."""
-    value = os.environ.get(variable)
-    if not value:
-        return None
-    if urlsplit(value).scheme not in ("http", "https") or not urlsplit(value).hostname:
-        raise RuntimeError(f"{variable}={value!r}: must be an http(s) URL, e.g. http://api:8000")
-    return value.rstrip("/")

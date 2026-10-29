@@ -108,6 +108,10 @@ VIDEONINJA_DB=dev.db VIDEONINJA_DB_KEY_FILE=dev.key uvicorn app.main:app --reloa
 The API listens on `http://localhost:8000`. `dev.db`, `dev.key` and the
 catalogue snapshots in `catalog/` are ignored by git.
 
+Every setting is read and checked at startup (`server/app/settings.py`): a wrong
+value stops the API or the encoder, and the error names every wrong variable at
+once.
+
 | Variable | Default | Purpose |
 |---|---|---|
 | `VIDEONINJA_DB` | `/data/videoninja.db` | SQLite database file. If missing, the app starts in setup mode. |
@@ -128,6 +132,9 @@ catalogue snapshots in `catalog/` are ignored by git.
 | `TZ` | system timezone (image: UTC) | Server's timezone (IANA name, e.g. `Europe/Zurich`), for dates written without a user: invitations. Users' dates are in their browser's timezone. |
 | `VIDEONINJA_BASE_PATH` | `''` (image: `/videoninja`) | Where the browser sees the app (a subfolder of the domain). The session cookie's name and path and tusd's upload URLs follow it; the frontend is built with the same value (`BASE_PATH`). |
 | `VIDEONINJA_TUSD` / `VIDEONINJA_ENCODER` | on (api image: `0`) | `0`: don't start tusd / the encoding thread in the app (their own containers in production; tests). tusd also needs the binary (`PATH` or `VIDEONINJA_TUSD_BIN`), encoding needs `ffmpeg`. |
+| `VIDEONINJA_TUSD_HOST` / `VIDEONINJA_TUSD_PORT` | `127.0.0.1` / `1080` | Where the tusd the app runs itself (development) listens. |
+| `VIDEONINJA_APP_PORT` | `8000` | The app's port, where that tusd calls its hooks. |
+| `VIDEONINJA_ENCODE_SCRIPT` | `tools/encode-videos/encode-videos.sh` of the repository (encoder image: `/app/encode/encode-videos.sh`) | The encoding script the queue runs. |
 | `VIDEONINJA_TUSD_URL` | unset (api image: `http://tusd:1080`) | tusd in another container: the app checks that it answers (`/health`, the upload page's warning). |
 | `VIDEONINJA_API_URL` | unset (encoder image: `http://api:8000`) | The encoder in its own container: where it asks for a catalogue rebuild after publishing a video or making thumbnails. Unset: it runs in the app and rebuilds directly. |
 

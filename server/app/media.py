@@ -32,7 +32,7 @@ import tempfile
 from fastapi import APIRouter, Depends, Response
 from fastapi.responses import FileResponse
 
-from . import db, limits, paths, procs, queries, snapshot
+from . import db, limits, paths, procs, queries, settings
 from .errors import ApiError
 from .auth import require_access
 
@@ -72,7 +72,7 @@ def segment_clip(
 ) -> Response:
     row = _published(con, segment_id)
     sha, begin, end = row["sha256sum"], row["begin_s"], row["end_s"]
-    if snapshot.x_accel():
+    if settings.current().x_accel:
         return Response(headers={
             "X-Accel-Redirect": f"{CLIP_PREFIX}/{user['id']}/{sha[:2]}/{sha}/video.mp4?start={begin}&end={end}"})
     video = paths.video_dir() / sha[:2] / sha / "video.mp4"
@@ -120,7 +120,7 @@ def segment_thumbnail(
         raise _not_found()
     relative = f"{sha[:2]}/{sha}/{name}"
 
-    if snapshot.x_accel():
+    if settings.current().x_accel:
         return Response(headers={"X-Accel-Redirect": f"{INTERNAL_PREFIX}/{relative}"})
     path = paths.video_dir() / relative
     if not path.is_file():
@@ -138,7 +138,7 @@ def _video_file(con: sqlite3.Connection, video_id: int, name: str | None, prefix
     if row is None or not name or not SHA256.fullmatch(row["sha256sum"]) or not FILE_NAME.fullmatch(name):
         raise _not_found()
     relative = f"{row['sha256sum'][:2]}/{row['sha256sum']}/{name}"
-    if snapshot.x_accel():  # no start/end: nginx sends the whole file, with Range requests
+    if settings.current().x_accel:  # no start/end: nginx sends the whole file, with Range requests
         return Response(headers={"X-Accel-Redirect": f"{prefix}/{relative}"})
     path = paths.video_dir() / relative
     if not path.is_file():

@@ -12,13 +12,14 @@ which converts to UTC. Columns and fields holding a date end in _at. Durations
 stay plain seconds (…_S constants, segment begin_s / end_s).
 """
 
-import os
 import re
 import sqlite3
 from datetime import UTC, datetime, timedelta, tzinfo
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from fastapi import Header
+
+from . import settings
 
 # IANA names: "Europe/Zurich", "America/Argentina/Buenos_Aires", "Etc/GMT+2", "UTC".
 _ZONE_NAME = re.compile(r"[A-Za-z0-9_+\-]{1,32}(/[A-Za-z0-9_+\-]{1,32}){0,2}")
@@ -36,7 +37,7 @@ def zone_named(name: str | None) -> ZoneInfo | None:
 
 def server_zone() -> tzinfo:
     """TZ (an IANA name), else the system's timezone: UTC in the container by default."""
-    return zone_named(os.environ.get("TZ")) or datetime.now().astimezone().tzinfo or UTC
+    return zone_named(settings.current().time_zone) or datetime.now().astimezone().tzinfo or UTC
 
 
 def zone(time_zone: str | None = Header(default=None)) -> ZoneInfo | None:

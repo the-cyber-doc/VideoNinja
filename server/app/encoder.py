@@ -51,7 +51,7 @@ from contextlib import contextmanager
 from datetime import datetime
 from pathlib import Path
 
-from . import clock, db, limits, logs, paths, procs, queries, snapshot
+from . import clock, db, limits, logs, paths, procs, queries, settings, snapshot
 
 log = logging.getLogger(__name__)
 
@@ -66,7 +66,6 @@ THUMB_WIDTH = 320
 # Longest keyframe interval accepted without encoding, needed by the nginx mp4 module's cuts.
 # encode-videos.sh makes 1 s up to 30 fps, 0.5 s above (smoother seeking at high frame rates).
 GOP_S = 1
-DEFAULT_SCRIPT = Path(__file__).resolve().parents[2] / "tools" / "encode-videos" / "encode-videos.sh"
 
 
 @contextmanager
@@ -94,30 +93,13 @@ class JobError(Exception):
         self.retryable = retryable
 
 
-X265_PRESETS = ("ultrafast", "superfast", "veryfast", "faster", "fast", "medium", "slow", "slower", "veryslow",
-                "placebo")
-
-
-def x265_preset() -> str:
-    """VIDEONINJA_X265_PRESET (default medium), case and spaces ignored. RuntimeError if it
-    is not a libx265 preset: checked at startup, not at the first encoding."""
-    value = os.environ.get("VIDEONINJA_X265_PRESET", "medium")
-    preset = value.strip().strip("\"'").strip().lower()
-    if preset not in X265_PRESETS:
-        raise RuntimeError(f"VIDEONINJA_X265_PRESET={value!r}: must be one of {', '.join(X265_PRESETS)}")
-    return preset
-
-
 class Encoder:
     def __init__(self) -> None:
         self.uploads = paths.upload_dir()
         self.videos = paths.video_dir()
         self.work = self.videos / ".work"  # same filesystem as video/: moves are renames
-        try:
-            self.preset = x265_preset()
-        except RuntimeError:
-            self.preset = ""  # the app refuses to start with it (main.lifespan): never used
-        self.script = os.environ.get("VIDEONINJA_ENCODE_SCRIPT", str(DEFAULT_SCRIPT))
+        self.preset = settings.current().x265_preset
+        self.script = str(settings.current().encode_script)
         self.stopping = threading.Event()
         self.process: subprocess.Popen | None = None
         self.thread: threading.Thread | None = None
@@ -371,10 +353,10 @@ class Encoder:
     def encode(self, video: int, original: Path, work: Path, duration: float) -> Path:
         progress_file = work / "progress"
         out = work / "out"
-        limit = procs.timeout_s()
+        limit = settings.current().ffmpeg_timeout_s
         cmd = ["nice", "-n", "10", self.script, "-c", "-x", self.preset, "-P", str(progress_file),
-               "-W", ",".join(limits.input_formats()), "-T", str(int(limit)),
-               "-L", str(int(procs.probe_timeout_s())),
+               "-W", ",".join(settings.current().input_formats), "-T", str(int(limit)),
+               "-L", str(int(settings.current().ffprobe_timeout_s)),
                "-o", str(out), "-f", str(original)]
         with (work / "encode.log").open("wb") as log_file:
             # Own process group: stopping it stops ffmpeg too (kill_encoding).
@@ -403,7 +385,7 @@ encoder = Encoder()
 def start() -> None:
     """Start the queue (app startup, or after setup). VIDEONINJA_ENCODER=0: off."""
     global encoder
-    if os.environ.get("VIDEONINJA_ENCODER", "1") == "0" or (encoder.thread and encoder.thread.is_alive()):
+    if not settings.current().run_encoder or (encoder.thread and encoder.thread.is_alive()):
         return
     encoder = Encoder()  # folders from the current environment
     encoder.start()
@@ -418,7 +400,7 @@ def catalog_changed() -> None:
     container the encoder has no catalogue: the API rebuilds it (an internal call).
     In the API: directly. At once, not debounced: the upload page fetches the
     catalogue as soon as it sees the video published."""
-    api = paths.service_url("VIDEONINJA_API_URL")
+    api = settings.current().api_url
     if not api:
         snapshot.rebuild_now()
         return
@@ -636,10 +618,7 @@ def main(argv: list[str]) -> int:
             return 0 if healthy(con) else 1
         finally:
             con.close()
-    limits.check()
-    procs.check()
-    x265_preset()
-    paths.service_url("VIDEONINJA_API_URL")
+    settings.current()  # refuse to start with a wrong setting
     stopping = threading.Event()
     signal.signal(signal.SIGTERM, lambda *_: stopping.set())
     signal.signal(signal.SIGINT, lambda *_: stopping.set())

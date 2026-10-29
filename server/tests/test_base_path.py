@@ -3,7 +3,7 @@
 
 import pytest
 
-from app import paths, tusd
+from app import settings, tusd
 
 from .test_auth import login
 from .test_upload import admin, hook, uploaded  # noqa: F401 (fixture)
@@ -18,11 +18,11 @@ def test_base_path_values(monkeypatch):
     for value, expected in [("", ""), ("/", ""), ("/videoninja", "/videoninja"), ("/videoninja/", "/videoninja"),
                             ("/a/b-c_d.e", "/a/b-c_d.e")]:
         monkeypatch.setenv("VIDEONINJA_BASE_PATH", value)
-        assert paths.base_path() == expected
+        assert settings.current().base_path == expected
     for bad in ("videoninja", "/video ninja", "/a//b", "/a?b", "/%2e%2e"):
         monkeypatch.setenv("VIDEONINJA_BASE_PATH", bad)
         with pytest.raises(RuntimeError):
-            paths.base_path()
+            settings.current()
 
 
 def test_session_cookie_only_for_the_app(client, admin_secret, base):
