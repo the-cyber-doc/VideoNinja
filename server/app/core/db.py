@@ -7,12 +7,13 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 
-from . import crypto, queries, settings
+from .. import queries
+from . import crypto, settings
 from .errors import ApiError
 
 log = logging.getLogger(__name__)
 
-SQL_DIR = Path(__file__).resolve().parent.parent / "database"
+SQL_DIR = Path(__file__).resolve().parents[2] / "database"
 MIGRATIONS_DIR = SQL_DIR / "migrations"
 # The database version this release runs on (config.db_version). A new database is
 # built from db_v<N>.sql + db_v<N>_init.sql; an existing one of another version is

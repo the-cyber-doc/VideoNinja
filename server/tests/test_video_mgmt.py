@@ -7,7 +7,8 @@ from pathlib import Path
 import pyotp
 import pytest
 
-from app import db, snapshot
+from app.core import db
+from app.domain import snapshot
 from app.encoder import notify, queue, thumbnails
 
 from .test_auth import login

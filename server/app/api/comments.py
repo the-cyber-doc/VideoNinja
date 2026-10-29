@@ -12,10 +12,12 @@ from fastapi import APIRouter, Depends, status
 from pydantic import BaseModel, field_validator
 from pydantic_core import PydanticCustomError
 
-from .. import audit, clock, db, i18n, queries
-from ..errors import ApiError
+from .. import queries
+from ..core import clock, db, i18n
+from ..domain import audit
+from ..core.errors import ApiError
 from ..queries.users import User
-from ..validation import field
+from ..core.validation import field
 from .deps import current_user, require_access, user_zone
 
 router = APIRouter(prefix="/api", tags=["comments"])

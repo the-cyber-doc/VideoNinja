@@ -8,8 +8,9 @@ from zoneinfo import ZoneInfo
 
 from fastapi import Depends, Request
 
-from .. import audit, clock, db, logs, security, snapshot
-from ..errors import ApiError
+from ..core import clock, db, logs
+from ..domain import audit, security, snapshot
+from ..core.errors import ApiError
 from ..queries.users import User
 
 

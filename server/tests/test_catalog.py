@@ -1,6 +1,7 @@
 import sqlite3
 
-from app import db, snapshot
+from app.core import db
+from app.domain import snapshot
 
 from .test_auth import login
 

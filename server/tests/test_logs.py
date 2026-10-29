@@ -9,7 +9,7 @@ import subprocess  # the e2e script's own sed  # nosec B404
 
 import pytest
 
-from app import logs, settings
+from app.core import logs, settings
 
 TOKEN_SED = r"s/.*Setup token: \([A-Za-z0-9_-]*\).*/\1/p"  # tools/test-e2e-stack.sh
 

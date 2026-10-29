@@ -7,7 +7,7 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 import pytest
 from fastapi.testclient import TestClient
 
-from app import clock, db, settings
+from app.core import clock, db, settings
 from app.encoder import cli, heartbeat
 from app.main import app
 

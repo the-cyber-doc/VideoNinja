@@ -16,10 +16,12 @@ from datetime import tzinfo
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
 
-from .. import audit, db, queries, segments
-from ..errors import ApiError
+from .. import queries
+from ..core import db
+from ..domain import audit, segments
+from ..core.errors import ApiError
 from ..queries.users import User
-from ..segments import AnnotatedSegment, TagIn
+from ..domain.segments import AnnotatedSegment, TagIn
 from .deps import rebuild_after_write
 from .deps import require_access, user_zone
 

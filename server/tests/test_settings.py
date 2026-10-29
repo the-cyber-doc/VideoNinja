@@ -6,8 +6,8 @@ from pathlib import Path
 
 import pytest
 
-from app import settings
-from app.settings import Settings
+from app.core import settings
+from app.core.settings import Settings
 
 APP = Path(__file__).resolve().parents[1] / "app"
 README = Path(__file__).resolve().parents[2] / "README.md"

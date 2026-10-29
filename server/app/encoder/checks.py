@@ -8,7 +8,7 @@ import json
 import os
 from pathlib import Path
 
-from .. import limits, procs
+from ..core import limits, procs
 
 # Longest keyframe interval accepted without encoding, needed by the nginx mp4 module's cuts.
 # encode-videos.sh makes 1 s up to 30 fps, 0.5 s above (smoother seeking at high frame rates).

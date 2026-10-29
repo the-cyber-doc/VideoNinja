@@ -2,7 +2,7 @@
 
 import time
 
-from app import tusd
+from app.domain import tusd
 
 
 def stub(tmp_path, exit_code=None):

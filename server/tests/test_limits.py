@@ -2,7 +2,7 @@
 
 import pytest
 
-from app import limits, settings
+from app.core import limits, settings
 
 from .test_upload import admin  # noqa: F401 (fixture)
 

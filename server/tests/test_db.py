@@ -7,7 +7,7 @@ import time
 
 import pytest
 
-from app import db
+from app.core import db
 
 
 @pytest.fixture

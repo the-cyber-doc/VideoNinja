@@ -13,8 +13,9 @@ import segno
 from argon2 import PasswordHasher
 from argon2.exceptions import InvalidHashError, VerificationError
 
-from . import clock, db, queries, settings
-from .queries.users import User
+from .. import queries
+from ..core import clock, db, settings
+from ..queries.users import User
 
 SESSION_IDLE_S = 30 * 24 * 3600  # sliding: each visit extends to 30 days from now
 SESSION_MAX_S = 365 * 24 * 3600  # absolute cap, whatever the activity

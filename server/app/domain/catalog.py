@@ -8,7 +8,8 @@ database, nulls omitted, names stored once and referenced by ID.
 import sqlite3
 from typing import Any
 
-from . import i18n, queries
+from .. import queries
+from ..core import i18n
 
 
 def _named(row: sqlite3.Row, lang: str) -> dict[str, Any]:

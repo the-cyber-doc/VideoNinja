@@ -6,7 +6,7 @@ import re
 
 import pytest
 
-from app import db
+from app.core import db
 
 from .test_catalog import KETO, KOKU
 from .test_video_mgmt import admin, sql  # noqa: F401 - fixture

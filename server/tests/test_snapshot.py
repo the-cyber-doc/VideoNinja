@@ -9,7 +9,8 @@ import pytest
 from fastapi import APIRouter, Depends, FastAPI, HTTPException
 from fastapi.testclient import TestClient
 
-from app import db, snapshot
+from app.core import db
+from app.domain import snapshot
 from app.api import deps
 
 from .test_auth import login

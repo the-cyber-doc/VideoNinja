@@ -35,7 +35,7 @@ LOG_FORMATS = ("text", "json")
 DEFAULT_DB = "/data/videoninja.db"
 DEFAULT_KEY_FILE = "/run/secrets/videoninja_key"
 DEFAULT_MAX_UPLOAD_BYTES = 20 * 1024**3
-DEFAULT_SCRIPT = Path(__file__).resolve().parents[2] / "tools" / "encode-videos" / "encode-videos.sh"
+DEFAULT_SCRIPT = Path(__file__).resolve().parents[3] / "tools" / "encode-videos" / "encode-videos.sh"
 _BASE_PATH = re.compile(r"(/[A-Za-z0-9._~-]+)*")
 
 

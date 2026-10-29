@@ -1,4 +1,5 @@
-"""Input rules shared with the frontend: validation.json, imported there at build time."""
+"""Input rules shared with the frontend: app/validation.json (where the frontend
+imports it at build time), read here."""
 
 import json
 from pathlib import Path
@@ -6,9 +7,10 @@ from typing import Any
 
 from pydantic import Field
 
+SHARED = Path(__file__).resolve().parents[1] / "validation.json"  # app/validation.json
 RULES: dict[str, dict[str, Any]] = {
     name: rule
-    for name, rule in json.loads(Path(__file__).with_name("validation.json").read_text(encoding="utf-8")).items()
+    for name, rule in json.loads(SHARED.read_text(encoding="utf-8")).items()
     if not name.startswith("_")
 }
 

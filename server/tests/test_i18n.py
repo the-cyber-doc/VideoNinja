@@ -2,7 +2,7 @@ import sqlite3
 
 import pytest
 
-from app import db, i18n
+from app.core import db, i18n
 
 from .test_users import admin  # noqa: F401 (fixture)
 

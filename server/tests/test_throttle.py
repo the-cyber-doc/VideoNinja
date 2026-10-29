@@ -4,7 +4,7 @@ import pyotp
 import pytest
 from fastapi.testclient import TestClient
 
-from app import throttle
+from app.domain import throttle
 from app.main import app
 
 from .conftest import PASSWORD

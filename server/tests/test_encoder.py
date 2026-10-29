@@ -17,7 +17,8 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
-from app import db, limits, procs, settings, snapshot
+from app.core import db, limits, procs, settings
+from app.domain import snapshot
 from app.encoder import checks, notify, thumbnails
 from app.encoder import queue as encoding  # "queue" is this file's helper
 from app.main import app

@@ -9,7 +9,7 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from app import errors, middleware
+from app.core import errors, middleware
 from app.encoder import notify
 
 from .test_auth import login

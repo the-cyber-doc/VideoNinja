@@ -7,7 +7,7 @@ import pytest
 from cryptography.exceptions import InvalidTag
 from fastapi.testclient import TestClient
 
-from app import crypto, db
+from app.core import crypto, db
 from app.main import app
 
 from .conftest import PASSWORD

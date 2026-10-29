@@ -24,7 +24,7 @@ from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from . import logs
 
-log = logging.getLogger(__name__)
+log = logging.getLogger("app.middleware")  # a fixed name, as documented (README: Logs)
 HEADER = b"x-request-id"
 VALID_ID = re.compile(rb"[A-Za-z0-9-]{1,64}")
 

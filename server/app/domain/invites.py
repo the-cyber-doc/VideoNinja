@@ -10,7 +10,8 @@ import hashlib
 import secrets
 import sqlite3
 
-from . import clock, crypto, queries
+from .. import queries
+from ..core import clock, crypto
 
 INVITE_TTL_S = 7 * 24 * 3600
 

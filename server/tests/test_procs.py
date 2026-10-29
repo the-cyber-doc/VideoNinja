@@ -7,7 +7,7 @@ import time
 
 import pytest
 
-from app import procs, settings
+from app.core import procs, settings
 
 
 def gone(pid: int, timeout=5.0) -> bool:
@@ -49,7 +49,7 @@ def test_dies_with_the_app(tmp_path):
         pytest.skip("setpriv (util-linux) missing")
     pid_file = tmp_path / "child"
     worker = subprocess.Popen([sys.executable, "-c", (
-        "import time; from app import procs\n"
+        "import time; from app.core import procs\n"
         f"p = procs.popen(['sleep', '60']); open({str(pid_file)!r}, 'w').write(str(p.pid)); time.sleep(60)")])
     for _ in range(100):
         if pid_file.exists() and pid_file.read_text():

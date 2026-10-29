@@ -8,7 +8,8 @@ import sqlite3
 import threading
 from pathlib import Path
 
-from .. import db, limits, logs, queries
+from .. import queries
+from ..core import db, limits, logs
 from .checks import JobError, run
 
 log = logging.getLogger(__name__)

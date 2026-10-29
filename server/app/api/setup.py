@@ -10,9 +10,11 @@ from fastapi import APIRouter, Depends, Request, status
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
-from .. import audit, db, encoder, errors, security, snapshot, throttle, tusd
-from ..errors import ApiError
-from ..validation import field
+from .. import encoder
+from ..core import db, errors
+from ..domain import audit, security, snapshot, throttle, tusd
+from ..core.errors import ApiError
+from ..core.validation import field
 
 log = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/setup", tags=["setup"])

@@ -6,7 +6,8 @@ import sqlite3
 import threading
 from datetime import datetime
 
-from .. import clock, db, queries
+from .. import queries
+from ..core import clock, db
 
 log = logging.getLogger(__name__)
 HEARTBEAT_S = 30

@@ -25,7 +25,7 @@ from collections.abc import Iterator
 from fastapi import HTTPException, Request
 
 from . import audit
-from .errors import ApiError
+from ..core.errors import ApiError
 
 
 MAX_FAILURES = 10

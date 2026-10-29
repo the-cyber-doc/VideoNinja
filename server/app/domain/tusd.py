@@ -21,8 +21,8 @@ import urllib.error
 import urllib.request
 
 
-from . import paths, settings
-from .children import Child
+from ..core import paths, settings
+from ..core.children import Child
 
 log = logging.getLogger(__name__)
 

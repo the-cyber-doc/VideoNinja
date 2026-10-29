@@ -21,12 +21,14 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, Header, Request, status
 
-from .. import audit, clock, db, errors, logs, middleware, queries, security, settings, tusd
-from ..errors import ApiError
+from .. import queries
+from ..core import clock, db, errors, logs, middleware, settings
+from ..domain import audit, security, tusd
+from ..core.errors import ApiError
 from ..queries.users import User
-from ..validation import RULES
+from ..core.validation import RULES
 from .deps import require_access
-from .. import limits
+from ..core import limits
 
 router = APIRouter(prefix="/internal", tags=["internal"])
 

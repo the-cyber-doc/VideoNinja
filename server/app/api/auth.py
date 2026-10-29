@@ -5,10 +5,12 @@ from cryptography.exceptions import InvalidTag
 from fastapi import APIRouter, Depends, Request, Response, status
 from pydantic import BaseModel
 
-from .. import audit, clock, crypto, db, i18n, logs, queries, security, throttle
-from ..errors import ApiError
+from .. import queries
+from ..core import clock, crypto, db, i18n, logs
+from ..domain import audit, security, throttle
+from ..core.errors import ApiError
 from ..queries.users import Credentials, User
-from ..validation import field
+from ..core.validation import field
 from .deps import session_token
 from .deps import current_user
 

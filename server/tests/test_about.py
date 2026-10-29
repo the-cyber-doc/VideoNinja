@@ -2,7 +2,7 @@
 
 import sqlite3
 
-from app import db
+from app.core import db
 
 from .test_auth import login
 

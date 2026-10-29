@@ -7,7 +7,8 @@ db.read for several reads), so one transaction can span several of them.
 """
 
 from . import (
-    catalog, comments, config, invites, performers, queue, segments, sessions, tags, thumbnails, uploads, users, videos,
+    catalog, comments, config, invites, performers, queue, segments, sessions, tags, thumbnails, uploads, users,
+    videos,
 )
 
 __all__ = ["catalog", "comments", "config", "invites", "performers", "queue", "segments", "sessions", "tags",

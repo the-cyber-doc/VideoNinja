@@ -35,7 +35,7 @@ def fail(message: str) -> None:
 
 def check(name: str, value: str) -> None:
     """The app's own input rules (validation.json): the wizard would refuse anything else."""
-    from app.validation import RULES
+    from app.core.validation import RULES
 
     rule = RULES[name]
     if not rule.get("min_length", 0) <= len(value) <= rule["max_length"] or not re.fullmatch(
@@ -59,7 +59,8 @@ def main() -> None:
     os.environ["VIDEONINJA_DB_KEY_FILE"] = str(args.key.resolve())
     os.environ["VIDEONINJA_DB"] = str(args.db.resolve())
 
-    from app import crypto, db, security
+    from app.core import crypto, db
+    from app.domain import security
 
     try:
         crypto.load_key()

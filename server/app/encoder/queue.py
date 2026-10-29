@@ -44,7 +44,8 @@ import threading
 import time
 from pathlib import Path
 
-from .. import clock, db, logs, paths, procs, queries, settings
+from .. import queries
+from ..core import clock, db, logs, paths, procs, settings
 from . import checks, heartbeat, notify, thumbnails
 from .checks import JobError
 

@@ -10,10 +10,12 @@ import sqlite3
 from fastapi import APIRouter, Depends, status
 from pydantic import BaseModel
 
-from .. import audit, crypto, db, i18n, queries, security, throttle
-from ..errors import ApiError
+from .. import queries
+from ..core import crypto, db, i18n
+from ..domain import audit, security, throttle
+from ..core.errors import ApiError
 from ..queries.users import User
-from ..validation import field
+from ..core.validation import field
 from .auth import UserOut, user_out
 from .deps import current_user, session_token
 

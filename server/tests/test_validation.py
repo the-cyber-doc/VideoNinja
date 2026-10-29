@@ -3,7 +3,7 @@ import re
 import pytest
 from pydantic import BaseModel, ValidationError
 
-from app.validation import RULES, field
+from app.core.validation import RULES, field
 
 KEYS = {"min_length", "max_length", "pattern"}
 
