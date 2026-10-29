@@ -113,7 +113,7 @@ class Encoder:
             return
         self.work.mkdir(parents=True, exist_ok=True)
         with transaction() as con:
-            queries.requeue_interrupted(con, MAX_ATTEMPTS)
+            queries.queue.requeue_interrupted(con, MAX_ATTEMPTS)
         self.beat()  # healthy from the start
         self.thread = threading.Thread(target=self.run, name="encoder", daemon=True)
         self.helpers = [threading.Thread(target=self.run_thumbnails, name="thumbnails", daemon=True),
@@ -157,7 +157,7 @@ class Encoder:
     @staticmethod
     def beat() -> None:
         with transaction() as con:
-            queries.set_heartbeat(con, "encoder", clock.at(0))
+            queries.config.set_heartbeat(con, "encoder", clock.at(0))
 
     def run_thumbnails(self) -> None:
         while not self.stopping.wait(POLL_S):
@@ -170,7 +170,7 @@ class Encoder:
         """Videos whose segments changed on the Videos page: a thumbnail for each
         segment without one (new or re-timed), the files of removed segments deleted."""
         with transaction() as con:
-            videos = queries.thumbs_dirty_videos(con)
+            videos = queries.thumbnails.thumbs_dirty_videos(con)
         changed = False
         for video in videos:
             if self.stopping.is_set():
@@ -183,7 +183,7 @@ class Encoder:
 
     def refresh_video_thumbnails(self, video: sqlite3.Row) -> None:
         with transaction() as con:
-            segments = queries.segment_thumbnails(con, video["id"])
+            segments = queries.thumbnails.segment_thumbnails(con, video["id"])
         folder = self.videos / video["sha256sum"][:2] / video["sha256sum"]
         duration = video["duration_s"] or max((s["end_s"] for s in segments), default=0)
         for s in segments:
@@ -200,36 +200,36 @@ class Encoder:
             finally:
                 tmp.unlink(missing_ok=True)
             with transaction() as con:
-                queries.set_new_segment_thumbnail(con, s, name)
+                queries.thumbnails.set_new_segment_thumbnail(con, s, name)
         keep = {f"segment-{s['id']}.jpg" for s in segments}
         for path in folder.glob("segment-*.jpg"):
             if path.name not in keep:
                 path.unlink(missing_ok=True)
         with transaction() as con:
-            queries.clear_thumbs_dirty(con, video["id"], video["thumbs_dirty"])
+            queries.thumbnails.clear_thumbs_dirty(con, video["id"], video["thumbs_dirty"])
         log.info("Video %s: segment thumbnails updated", video["id"])
 
     def housekeeping(self) -> None:
         """Delete the originals of published, dropped or abandoned uploads."""
         with transaction() as con:
-            queries.expire_uploads(con, clock.at(-UPLOAD_EXPIRY_S))
-            tus_ids = queries.deleted_uploads(con)
+            queries.uploads.expire_uploads(con, clock.at(-UPLOAD_EXPIRY_S))
+            tus_ids = queries.uploads.deleted_uploads(con)
         for tus_id in tus_ids:
             for path in self.upload_files(tus_id):
                 path.unlink(missing_ok=True)
             with transaction() as con:
-                queries.delete_upload(con, tus_id)
+                queries.uploads.delete_upload(con, tus_id)
             log.info("Original %s deleted", tus_id)
 
     def run_once(self) -> bool:
         """Encode one queued video; False if the queue is empty."""
         with transaction() as con:
-            row = queries.next_job(con)
+            row = queries.queue.next_job(con)
             if row is None:
                 return False
-            if not queries.claim_job(con, row["id"]):
+            if not queries.queue.claim_job(con, row["id"]):
                 return True
-            segments = [dict(s) for s in queries.job_segments(con, row["id"])]
+            segments = [dict(s) for s in queries.queue.job_segments(con, row["id"])]
         video = row["id"]
         with logs.bind(video_id=video):  # on every line of this job
             self.run_job(video, row, segments)
@@ -246,7 +246,7 @@ class Encoder:
             log.info("Video %s: deleted while encoding, stopped", video)
         except Stopped:
             with transaction() as c:
-                queries.release_job(c, video)
+                queries.queue.release_job(c, video)
             log.info("Video %s: back in the queue (shutdown)", video)
         except JobError as e:
             self.fail(video, str(e), e.retryable)
@@ -258,9 +258,9 @@ class Encoder:
 
     def fail(self, video: int, error: str, retryable: bool) -> None:
         with transaction() as con:
-            row = queries.video(con, video)
+            row = queries.videos.video(con, video)
             requeue = retryable and row is not None and row["attempts"] < MAX_ATTEMPTS
-            queries.requeue_or_fail(con, video, error[:2000], requeue)
+            queries.queue.requeue_or_fail(con, video, error[:2000], requeue)
         log.warning("Video %s: encoding failed (%s): %s", video, "retry" if requeue else "final", error)
 
     def publish(self, video: int, result: dict) -> None:
@@ -268,13 +268,13 @@ class Encoder:
         folder = self.videos / sha256[:2] / sha256
         try:
             with transaction() as con:
-                row = queries.video(con, video)
-                published = row is not None and queries.publish_video(
+                row = queries.videos.video(con, video)
+                published = row is not None and queries.queue.publish_video(
                     con, video, sha256, f"{sha256[:2]}/{sha256}", result["thumbnail"], result["duration_s"])
                 if published:
                     for segment_id, name in result["segment_thumbnails"].items():
-                        queries.set_segment_thumbnail(con, segment_id, video, name)
-                    queries.set_upload_state(con, row["upload"], "deleted")  # original: no longer needed
+                        queries.queue.set_segment_thumbnail(con, segment_id, video, name)
+                    queries.uploads.set_upload_state(con, row["upload"], "deleted")  # original: no longer needed
         except sqlite3.IntegrityError:  # same encoded file as another video
             shutil.rmtree(folder, ignore_errors=True)
             raise JobError("Same video as another one") from None
@@ -288,7 +288,7 @@ class Encoder:
         if self.stopping.is_set():
             raise Stopped()
         with transaction() as con:
-            if not queries.job_progress(con, video, int(percent)):
+            if not queries.queue.job_progress(con, video, int(percent)):
                 raise Gone()
 
     # --- one job ---
@@ -417,7 +417,7 @@ def catalog_changed() -> None:
 
 def healthy(con: sqlite3.Connection) -> bool:
     """Its heartbeat is recent (/health, and the encoder container's healthcheck)."""
-    at = queries.heartbeat(con, "encoder")
+    at = queries.config.heartbeat(con, "encoder")
     if at is None:
         return False
     return (clock.now() - datetime.fromisoformat(at)).total_seconds() < HEARTBEAT_MAX_AGE_S

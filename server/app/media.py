@@ -35,6 +35,7 @@ from fastapi.responses import FileResponse
 from . import db, limits, paths, procs, queries, settings
 from .errors import ApiError
 from .auth import require_access
+from .queries.users import User
 
 log = logging.getLogger(__name__)
 router = APIRouter(prefix="/media", tags=["media"])
@@ -54,7 +55,7 @@ def _not_found() -> ApiError:
 
 def _published(con: sqlite3.Connection, segment_id: int) -> sqlite3.Row:
     """The segment, if published; else 404."""
-    row = queries.segment_media(con, segment_id)
+    row = queries.catalog.segment_media(con, segment_id)
     if row is None or not row["sha256sum"]:  # no such segment, or not published yet
         raise _not_found()
     if not SHA256.fullmatch(row["sha256sum"]):
@@ -67,14 +68,14 @@ def _published(con: sqlite3.Connection, segment_id: int) -> sqlite3.Row:
 @router.api_route("/segment/{segment_id}", methods=["GET", "HEAD"])
 def segment_clip(
     segment_id: int,
-    user: sqlite3.Row = Depends(segment_access),
+    user: User = Depends(segment_access),
     con: sqlite3.Connection = Depends(db.get_db),
 ) -> Response:
     row = _published(con, segment_id)
     sha, begin, end = row["sha256sum"], row["begin_s"], row["end_s"]
     if settings.current().x_accel:
         return Response(headers={
-            "X-Accel-Redirect": f"{CLIP_PREFIX}/{user['id']}/{sha[:2]}/{sha}/video.mp4?start={begin}&end={end}"})
+            "X-Accel-Redirect": f"{CLIP_PREFIX}/{user.id}/{sha[:2]}/{sha}/video.mp4?start={begin}&end={end}"})
     video = paths.video_dir() / sha[:2] / sha / "video.mp4"
     if not video.is_file():
         raise _not_found()
@@ -108,7 +109,7 @@ def _dev_clip(video, sha: str, begin: int, end: int):
 @router.get("/segment/{segment_id}/thumbnail")
 def segment_thumbnail(
     segment_id: int,
-    _: sqlite3.Row = Depends(segment_access),
+    _: User = Depends(segment_access),
     con: sqlite3.Connection = Depends(db.get_db),
 ) -> Response:
     row = _published(con, segment_id)
@@ -134,7 +135,7 @@ video_access = require_access("video_mgmt")
 
 
 def _video_file(con: sqlite3.Connection, video_id: int, name: str | None, prefix: str = INTERNAL_PREFIX) -> Response:
-    row = queries.published_video(con, video_id)
+    row = queries.videos.published_video(con, video_id)
     if row is None or not name or not SHA256.fullmatch(row["sha256sum"]) or not FILE_NAME.fullmatch(name):
         raise _not_found()
     relative = f"{row['sha256sum'][:2]}/{row['sha256sum']}/{name}"
@@ -148,14 +149,14 @@ def _video_file(con: sqlite3.Connection, video_id: int, name: str | None, prefix
 
 @router.get("/video/{video_id}")
 def whole_video(
-    video_id: int, user: sqlite3.Row = Depends(video_access), con: sqlite3.Connection = Depends(db.get_db)
+    video_id: int, user: User = Depends(video_access), con: sqlite3.Connection = Depends(db.get_db)
 ) -> Response:
-    return _video_file(con, video_id, "video.mp4", f"{VIDEO_PREFIX}/{user['id']}")
+    return _video_file(con, video_id, "video.mp4", f"{VIDEO_PREFIX}/{user.id}")
 
 
 @router.get("/video/{video_id}/thumbnail")
 def video_thumbnail(
-    video_id: int, _: sqlite3.Row = Depends(video_access), con: sqlite3.Connection = Depends(db.get_db)
+    video_id: int, _: User = Depends(video_access), con: sqlite3.Connection = Depends(db.get_db)
 ) -> Response:
-    row = queries.published_video(con, video_id)
+    row = queries.videos.published_video(con, video_id)
     return _video_file(con, video_id, row["thumbnail"] if row else None)

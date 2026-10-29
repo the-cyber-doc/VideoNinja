@@ -8,6 +8,7 @@ from pydantic import BaseModel
 
 from . import audit, clock, crypto, db, i18n, logs, queries, security, throttle
 from .errors import ApiError
+from .queries.users import Credentials, User
 from .validation import field
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
@@ -37,28 +38,28 @@ def current_user(
     con: sqlite3.Connection = Depends(db.get_db),
     token: str | None = Depends(session_token),
     zone: ZoneInfo | None = Depends(clock.zone),
-) -> sqlite3.Row:
+) -> User:
     """Dependency for every protected endpoint: 401 unless a valid session cookie is sent."""
     user = security.session_user(con, token, zone) if token else None
     if user is None:
         raise ApiError("auth.not_logged_in")
-    logs.add(user_id=user["id"])  # on this request's every line from now on
+    logs.add(user_id=user.id)  # on this request's every line from now on
     return user
 
 
 def user_zone(
-    user: sqlite3.Row = Depends(current_user), zone: ZoneInfo | None = Depends(clock.zone)
+    user: User = Depends(current_user), zone: ZoneInfo | None = Depends(clock.zone)
 ) -> tzinfo:
     """Dependency: the timezone to write this request's dates in (see clock.user_zone)."""
-    return clock.user_zone(user, zone)
+    return clock.user_zone(user.time_zone, zone)
 
 
 def require_access(*accesses: str):
     """Dependency factory: 403 unless the logged-in user's role grants `access`
     (one of them, if several: e.g. performers for uploads and video management)."""
 
-    def check(user: sqlite3.Row = Depends(current_user)) -> sqlite3.Row:
-        if not set(accesses) & security.accesses(user):
+    def check(user: User = Depends(current_user)) -> User:
+        if not set(accesses) & user.access:
             audit.event("access.denied", access=" or ".join(accesses))
             raise ApiError("auth.access_denied")
         return user
@@ -66,26 +67,27 @@ def require_access(*accesses: str):
     return check
 
 
-def _totp_ok(user: sqlite3.Row | None, code: str) -> bool:
+def _totp_ok(credentials: Credentials | None, code: str) -> bool:
     # TOTP is mandatory: a user without a secret cannot log in (an admin must set one).
-    if user is None or not user["totp"]:
+    if credentials is None or not credentials.totp:
         return False
+    user_id = credentials.user.id
     try:
-        secret = crypto.decrypt(user["totp"], crypto.totp_aad(user["id"]))
+        secret = crypto.decrypt(credentials.totp, crypto.totp_aad(user_id))
     except (InvalidTag, ValueError):
         # Wrong key, or the value was tampered with / copied from another row.
-        audit.event("totp.undecryptable", target_user_id=user["id"])
+        audit.event("totp.undecryptable", target_user_id=user_id)
         return False
     return security.verify_totp(secret, code)
 
 
-def user_out(con: sqlite3.Connection, row: sqlite3.Row, lang: str) -> UserOut:
+def user_out(con: sqlite3.Connection, user: User, lang: str) -> UserOut:
     return UserOut(
-        username=row["username"],
-        name=row["name"],
-        role=row["role"],
-        role_name=i18n.pick(queries.role_name(con, row["role"]), "name", lang, row["role"]),
-        access=queries.role_access(con, row["role"]),
+        username=user.username,
+        name=user.name,
+        role=user.role,
+        role_name=i18n.pick(queries.users.role_name(con, user.role), "name", lang, user.role),
+        access=sorted(user.access),
     )
 
 
@@ -98,15 +100,16 @@ def login(
     lang: str = Depends(i18n.language),
     zone: ZoneInfo | None = Depends(clock.zone),
 ) -> UserOut:
-    user = queries.user_for_login(con, body.username)
-    password_ok = security.verify_password(user["pw_hash"] if user else None, body.password)
-    totp_ok = _totp_ok(user, body.totp_code)
+    credentials = queries.users.user_for_login(con, body.username)
+    password_ok = security.verify_password(credentials.pw_hash if credentials else None, body.password)
+    totp_ok = _totp_ok(credentials, body.totp_code)
     # One error for every failure: don't reveal which part was wrong.
-    if not (password_ok and totp_ok):
+    if not (credentials and password_ok and totp_ok):
         audit.event("login.failed", client=throttle.client_key(request))
         raise ApiError("auth.invalid_credentials")
 
-    logs.add(user_id=user["id"])
+    user = credentials.user
+    logs.add(user_id=user.id)
     audit.event("login.succeeded")
     security.purge_expired_sessions(con)
     token = security.create_session(con, user, zone)
@@ -137,7 +140,7 @@ def logout(
 
 @router.get("/me")
 def me(
-    user: sqlite3.Row = Depends(current_user),
+    user: User = Depends(current_user),
     con: sqlite3.Connection = Depends(db.get_db),
     lang: str = Depends(i18n.language),
 ) -> UserOut:

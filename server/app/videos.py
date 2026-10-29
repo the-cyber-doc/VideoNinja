@@ -13,12 +13,13 @@ from typing import Literal
 from fastapi import APIRouter, Depends, Query, status
 from pydantic import BaseModel, Field
 
-from . import audit, clock, db, limits, queries, security, segments, settings, tusd
+from . import audit, clock, db, limits, queries, segments, settings, tusd
 from .errors import ApiError
 from .auth import require_access, user_zone
 from .segments import SegmentIn, TagIn
 from .snapshot import rebuild_after_write
 from .validation import RULES, field
+from .queries.users import User
 
 router = APIRouter(prefix="/api", tags=["videos"])
 uploader = require_access("upload")
@@ -45,15 +46,15 @@ class UploadStatus(BaseModel):
     queue_position: int | None  # 1 = next to be encoded
 
 
-def _may_manage(me: sqlite3.Row, video: sqlite3.Row | None) -> sqlite3.Row:
+def _may_manage(me: User, video: sqlite3.Row | None) -> sqlite3.Row:
     """The video, if `me` uploaded it or is an admin (user_mgmt access); else 404."""
-    if video is None or (video["uploaded_by"] != me["id"] and "user_mgmt" not in security.accesses(me)):
+    if video is None or (video["uploaded_by"] != me.id and "user_mgmt" not in me.access):
         raise ApiError("video.unknown")
     return video
 
 
 @router.get("/uploads/available")
-def uploads_available(_: sqlite3.Row = Depends(uploader)) -> dict[str, bool]:
+def uploads_available(_: User = Depends(uploader)) -> dict[str, bool]:
     """Can the server receive uploads now? The page warns before work is lost."""
     return {"available": tusd.available()}
 
@@ -61,11 +62,11 @@ def uploads_available(_: sqlite3.Row = Depends(uploader)) -> dict[str, bool]:
 @router.get("/videos/exists")
 def exists(
     original_sha256: str = Query(**RULES["sha256"]),
-    _: sqlite3.Row = Depends(uploader),
+    _: User = Depends(uploader),
     con: sqlite3.Connection = Depends(db.get_db),
 ) -> dict[str, bool]:
     """True if a video (published, pending or failed) has this original or this encoded file."""
-    return {"exists": queries.video_known(con, original_sha256)}
+    return {"exists": queries.videos.video_known(con, original_sha256)}
 
 
 @router.post(
@@ -76,7 +77,7 @@ def exists(
 def submit(
     tus_id: str,
     body: SubmitIn,
-    me: sqlite3.Row = Depends(uploader),
+    me: User = Depends(uploader),
     con: sqlite3.Connection = Depends(db.get_db),
     zone: tzinfo = Depends(user_zone),
 ) -> dict[str, int]:
@@ -88,25 +89,25 @@ def submit(
 
     _wait_finished(con, tus_id)
     with db.write(con):
-        upload = queries.upload(con, tus_id)
-        if upload is None or upload["user"] != me["id"] or upload["state"] == "deleted":
+        upload = queries.uploads.upload(con, tus_id)
+        if upload is None or upload["user"] != me.id or upload["state"] == "deleted":
             raise ApiError("upload.unknown")
         if upload["state"] != "finished":
             raise ApiError("upload.not_finished")
-        if queries.video_known(con, upload["original_sha256"]):
+        if queries.videos.video_known(con, upload["original_sha256"]):
             raise ApiError("video.exists")
-        video_id = queries.insert_video(
+        video_id = queries.videos.insert_video(
             con, upload["original_sha256"], body.original_filename, body.all_segments_done,
-            me["id"], clock.at(0, zone), tus_id,
+            me.id, clock.at(0, zone), tus_id,
         )
         for tag in body.tags:
-            queries.insert_video_tag(con, video_id, tag.id, tag.value)
+            queries.videos.insert_video_tag(con, video_id, tag.id, tag.value)
         for segment in body.segments:
-            segment_id = queries.insert_segment(
-                con, video_id, segment.technique, segment.begin_s, segment.end_s, segment.performer, me["id"]
+            segment_id = queries.segments.insert_segment(
+                con, video_id, segment.technique, segment.begin_s, segment.end_s, segment.performer, me.id
             )
             for tag in segment.tags:
-                queries.insert_segment_tag(con, segment_id, tag.id, tag.value)
+                queries.segments.insert_segment_tag(con, segment_id, tag.id, tag.value)
     audit.event("video.submitted", video_id=video_id, tus_id=tus_id, segments=len(body.segments))
     return {"id": video_id}
 
@@ -117,7 +118,7 @@ class UploadLimits(BaseModel):
 
 
 @router.get("/uploads/limits")
-def upload_limits(_: sqlite3.Row = Depends(uploader)) -> UploadLimits:
+def upload_limits(_: User = Depends(uploader)) -> UploadLimits:
     """What the upload page may send (checked again by the pre-create hook, and the
     content by ffprobe before encoding): the page refuses other files at once."""
     return UploadLimits(max_bytes=settings.current().max_upload_bytes, extensions=limits.extensions())
@@ -127,35 +128,35 @@ def _wait_finished(con: sqlite3.Connection, tus_id: str) -> None:
     """Until tusd's post-finish hook has marked the upload (outside a transaction:
     each read sees the hook's commit), or FINISH_WAIT_S."""
     end = time.monotonic() + FINISH_WAIT_S
-    while (upload := queries.upload(con, tus_id)) and upload["state"] == "uploading" and time.monotonic() < end:
+    while (upload := queries.uploads.upload(con, tus_id)) and upload["state"] == "uploading" and time.monotonic() < end:
         time.sleep(0.1)
 
 
 @router.get("/uploads/mine")
-def my_uploads(me: sqlite3.Row = Depends(uploader), con: sqlite3.Connection = Depends(db.get_db)) -> list[UploadStatus]:
+def my_uploads(me: User = Depends(uploader), con: sqlite3.Connection = Depends(db.get_db)) -> list[UploadStatus]:
     """My videos waiting, being encoded or failed, and those published this week."""
-    rows = queries.user_videos(con, me["id"], clock.at(-RECENT_S))
+    rows = queries.videos.user_videos(con, me.id, clock.at(-RECENT_S))
     return [UploadStatus(**dict(r)) for r in rows]
 
 
 @router.post("/videos/{video_id}/retry", status_code=status.HTTP_204_NO_CONTENT)
-def retry(video_id: int, me: sqlite3.Row = Depends(uploader), con: sqlite3.Connection = Depends(db.get_db)) -> None:
+def retry(video_id: int, me: User = Depends(uploader), con: sqlite3.Connection = Depends(db.get_db)) -> None:
     """Queue a failed video again (its original is still on the server)."""
     with db.write(con):
-        _may_manage(me, queries.video(con, video_id))
-        if not queries.retry_video(con, video_id):
+        _may_manage(me, queries.videos.video(con, video_id))
+        if not queries.videos.retry_video(con, video_id):
             raise ApiError("video.not_failed")
     audit.event("video.retried", video_id=video_id)
 
 
 @router.delete("/videos/{video_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete(video_id: int, me: sqlite3.Row = Depends(uploader), con: sqlite3.Connection = Depends(db.get_db)) -> None:
+def delete(video_id: int, me: User = Depends(uploader), con: sqlite3.Connection = Depends(db.get_db)) -> None:
     """Drop a video that is not published yet. The encoder deletes its original."""
     with db.write(con):
-        video = _may_manage(me, queries.video(con, video_id))
+        video = _may_manage(me, queries.videos.video(con, video_id))
         if video["status"] in ("published", "encoding"):
             raise ApiError("video.not_deletable")
-        queries.delete_video(con, video_id)
+        queries.videos.delete_video(con, video_id)
         if video["upload"]:
-            queries.set_upload_state(con, video["upload"], "deleted")
+            queries.uploads.set_upload_state(con, video["upload"], "deleted")
     audit.event("video.deleted", video_id=video_id)

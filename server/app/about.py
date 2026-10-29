@@ -7,6 +7,7 @@ from pydantic import BaseModel
 
 from . import db, queries
 from .auth import current_user
+from .queries.users import User
 
 router = APIRouter(prefix="/api", tags=["about"])
 
@@ -18,6 +19,6 @@ class AboutOut(BaseModel):
 
 @router.get("/about")
 def about(
-    _: sqlite3.Row = Depends(current_user), con: sqlite3.Connection = Depends(db.get_db)
+    _: User = Depends(current_user), con: sqlite3.Connection = Depends(db.get_db)
 ) -> AboutOut:
-    return AboutOut(db_version=int(queries.config_value(con, "db_version") or 0), db_schema=db.EXPECTED_VERSION)
+    return AboutOut(db_version=int(queries.config.config_value(con, "db_version") or 0), db_schema=db.EXPECTED_VERSION)

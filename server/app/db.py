@@ -103,7 +103,7 @@ def scripts(version: int | None = None) -> tuple[Path, Path]:
 def version(con: sqlite3.Connection) -> int:
     """The database's own version (config.db_version; 0 if unknown)."""
     try:
-        value = queries.config_value(con, "db_version")
+        value = queries.config.config_value(con, "db_version")
     except sqlite3.OperationalError:  # no config table
         return 0
     return int(value) if value and value.isdigit() else 0
@@ -182,9 +182,9 @@ def create_database(username: str, name: str, pw_hash: str, totp_secret: str) ->
             con.executescript(seed.read_text(encoding="utf-8"))
             yield "data"
             with write(con):
-                user_id = queries.insert_user(con, username, "admin", name, pw_hash)
+                user_id = queries.users.insert_user(con, username, "admin", name, pw_hash)
                 # Encrypted with the row's ID as associated data, so the ID must exist first.
-                queries.set_user_totp(con, user_id, crypto.encrypt(totp_secret, crypto.totp_aad(user_id)))
+                queries.users.set_user_totp(con, user_id, crypto.encrypt(totp_secret, crypto.totp_aad(user_id)))
             yield "admin"
             con.execute("PRAGMA journal_mode = WAL")
         finally:

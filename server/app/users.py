@@ -10,6 +10,7 @@ from . import audit, clock, db, i18n, invites, queries
 from .errors import ApiError
 from .auth import require_access
 from .validation import field
+from .queries.users import User
 
 router = APIRouter(prefix="/api/admin", tags=["users"])
 admin = require_access("user_mgmt")
@@ -41,18 +42,18 @@ class InviteOut(BaseModel):
 
 @router.get("/roles")
 def roles(
-    _: sqlite3.Row = Depends(admin),
+    _: User = Depends(admin),
     con: sqlite3.Connection = Depends(db.get_db),
     lang: str = Depends(i18n.language),
 ) -> list[RoleOut]:
     """Every role, named in the request's language and sorted by that name."""
-    out = [RoleOut(id=r["id"], name=i18n.pick(r, "name", lang, r["id"])) for r in queries.roles(con)]
+    out = [RoleOut(id=r["id"], name=i18n.pick(r, "name", lang, r["id"])) for r in queries.users.roles(con)]
     return sorted(out, key=lambda r: i18n.sort_key(r.name))
 
 
 @router.get("/users")
-def list_users(_: sqlite3.Row = Depends(admin), con: sqlite3.Connection = Depends(db.get_db)) -> list[UserRow]:
-    rows = queries.list_users(con, clock.at())
+def list_users(_: User = Depends(admin), con: sqlite3.Connection = Depends(db.get_db)) -> list[UserRow]:
+    rows = queries.users.list_users(con, clock.at())
     return [
         UserRow(
             id=r["id"],
@@ -66,20 +67,20 @@ def list_users(_: sqlite3.Row = Depends(admin), con: sqlite3.Connection = Depend
 
 
 def _invite_out(con: sqlite3.Connection, user_id: int, token: str) -> InviteOut:
-    return InviteOut(token=token, expires_at=queries.invite_expiry(con, user_id))
+    return InviteOut(token=token, expires_at=queries.invites.invite_expiry(con, user_id))
 
 
 @router.post("/users", status_code=status.HTTP_201_CREATED)
 def create_user(
-    body: CreateIn, me: sqlite3.Row = Depends(admin), con: sqlite3.Connection = Depends(db.get_db)
+    body: CreateIn, me: User = Depends(admin), con: sqlite3.Connection = Depends(db.get_db)
 ) -> InviteOut:
     """Create a user without credentials, and its invitation."""
     with db.write(con):  # checked and created at once: two admins, one username
-        if not queries.role_exists(con, body.role):
+        if not queries.users.role_exists(con, body.role):
             raise ApiError("user.unknown_role")
-        if queries.username_exists(con, body.username):
+        if queries.users.username_exists(con, body.username):
             raise ApiError("user.exists")
-        user_id = queries.insert_user(con, body.username, body.role)
+        user_id = queries.users.insert_user(con, body.username, body.role)
         token = invites.create(con, user_id)
     audit.event("user.invited", target_user_id=user_id, role=body.role)
     return _invite_out(con, user_id, token)
@@ -87,7 +88,7 @@ def create_user(
 
 @router.get("/users/{user_id}/invite")
 def get_invite(
-    user_id: int, _: sqlite3.Row = Depends(admin), con: sqlite3.Connection = Depends(db.get_db)
+    user_id: int, _: User = Depends(admin), con: sqlite3.Connection = Depends(db.get_db)
 ) -> InviteOut:
     """The current invitation, to copy the link again."""
     token = invites.token_of(con, user_id)
@@ -99,20 +100,20 @@ def get_invite(
 
 @router.post("/users/{user_id}/reset")
 def reset_user(
-    user_id: int, me: sqlite3.Row = Depends(admin), con: sqlite3.Connection = Depends(db.get_db)
+    user_id: int, me: User = Depends(admin), con: sqlite3.Connection = Depends(db.get_db)
 ) -> InviteOut:
     """Issue a new invitation, then remove the password, TOTP and sessions.
 
     One transaction: either the user has a new link AND no old credentials, or
     nothing changed. The old password and authenticator can never be used again.
     """
-    if user_id == me["id"]:
+    if user_id == me.id:
         raise ApiError("user.reset_self")
     with db.write(con):
-        if not queries.user_exists(con, user_id):
+        if not queries.users.user_exists(con, user_id):
             raise ApiError("user.unknown")
         token = invites.create(con, user_id)
-        queries.clear_user_credentials(con, user_id)
-        queries.delete_user_sessions(con, user_id)
+        queries.users.clear_user_credentials(con, user_id)
+        queries.sessions.delete_user_sessions(con, user_id)
     audit.event("user.reset", target_user_id=user_id)
     return _invite_out(con, user_id, token)

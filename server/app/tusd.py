@@ -33,6 +33,7 @@ from .auth import require_access
 from .errors import ApiError
 from .children import Child
 from .validation import RULES
+from .queries.users import User
 
 log = logging.getLogger(__name__)
 router = APIRouter(prefix="/internal", tags=["internal"])
@@ -76,8 +77,8 @@ def _pre_create(con: sqlite3.Connection, event: dict[str, Any]) -> dict[str, Any
     user = security.session_user(con, token) if token else None
     if user is None:
         return _reject("auth.not_logged_in")
-    logs.add(user_id=user["id"])
-    if "upload" not in security.accesses(user):
+    logs.add(user_id=user.id)
+    if "upload" not in user.access:
         audit.event("access.denied", access="upload")
         return _reject("auth.access_denied")
 
@@ -95,11 +96,12 @@ def _pre_create(con: sqlite3.Connection, event: dict[str, Any]) -> dict[str, Any
     if not limits.accepted_name(meta["filename"]):
         return _reject("upload.type_refused")
     with db.write(con):
-        if queries.video_known(con, original_sha256):
+        if queries.videos.video_known(con, original_sha256):
             return _reject("video.exists")
         tus_id = secrets.token_hex(16)  # the upload's file name in tusd's folder
         # The hook has no browser request: the user's saved timezone.
-        queries.insert_upload(con, tus_id, user["id"], original_sha256, size, clock.at(0, clock.user_zone(user)))
+        created = clock.at(0, clock.user_zone(user.time_zone))
+        queries.uploads.insert_upload(con, tus_id, user.id, original_sha256, size, created)
     audit.event("upload.accepted", tus_id=tus_id, size=size)
     return {"ChangeFileInfo": {"ID": tus_id}}
 
@@ -108,9 +110,9 @@ def _post_finish(con: sqlite3.Connection, event: dict[str, Any]) -> dict[str, An
     upload = event.get("Upload") or {}
     tus_id = upload.get("ID", "")
     with db.write(con):
-        row = queries.upload(con, tus_id)
+        row = queries.uploads.upload(con, tus_id)
         if row and row["state"] == "uploading" and upload.get("Offset") == row["size"]:
-            queries.set_upload_state(con, tus_id, "finished")
+            queries.uploads.set_upload_state(con, tus_id, "finished")
     return {}
 
 
@@ -135,7 +137,7 @@ def upload_auth(
     request: Request,
     x_original_uri: str = Header(default=""),
     x_original_method: str = Header(default=""),
-    user: sqlite3.Row = Depends(require_access("upload")),
+    user: User = Depends(require_access("upload")),
     con: sqlite3.Connection = Depends(db.get_db),
 ) -> None:
     """nginx auth_request for /files/…: 204 = forward to tusd; 401/403/404 = refuse.
@@ -153,8 +155,8 @@ def upload_auth(
         if x_original_method.upper() != "POST":  # only creation on the base path
             raise ApiError("not_found")
         return
-    upload = queries.upload(con, tus_id)
-    if upload is None or upload["user"] != user["id"] or upload["state"] == "deleted":
+    upload = queries.uploads.upload(con, tus_id)
+    if upload is None or upload["user"] != user.id or upload["state"] == "deleted":
         audit.event("upload.denied", tus_id=tus_id)
         raise ApiError("not_found")
 

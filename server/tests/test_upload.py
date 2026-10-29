@@ -413,7 +413,7 @@ def test_interrupted_jobs_requeued_at_startup(admin, enc):
         con.execute("UPDATE video SET status = 'encoding', attempts = 1 WHERE id = ?", (a,))
         con.execute("UPDATE video SET status = 'encoding', attempts = ? WHERE id = ?", (encoder.MAX_ATTEMPTS, b))
     with encoder.transaction() as c:
-        encoder.queries.requeue_interrupted(c, encoder.MAX_ATTEMPTS)
+        encoder.queries.queue.requeue_interrupted(c, encoder.MAX_ATTEMPTS)
     assert video_row(a)[0] == "queued"
     assert video_row(b)[:3] == ("failed", encoder.MAX_ATTEMPTS, "Encoding interrupted too many times")
 

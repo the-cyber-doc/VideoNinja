@@ -1,5 +1,4 @@
 import hashlib
-import json
 import secrets
 import sqlite3
 import threading
@@ -15,6 +14,7 @@ from argon2 import PasswordHasher
 from argon2.exceptions import InvalidHashError, VerificationError
 
 from . import clock, db, queries, settings
+from .queries.users import User
 
 SESSION_IDLE_S = 30 * 24 * 3600  # sliding: each visit extends to 30 days from now
 SESSION_MAX_S = 365 * 24 * 3600  # absolute cap, whatever the activity
@@ -119,58 +119,55 @@ def _session_id(token: str) -> str:
 
 def purge_expired_sessions(con: sqlite3.Connection) -> None:
     with db.write(con):
-        queries.delete_expired_sessions(con, clock.at())
+        queries.sessions.delete_expired_sessions(con, clock.at())
 
 
-def create_session(con: sqlite3.Connection, user: sqlite3.Row, zone: tzinfo | None = None) -> str:
+def create_session(con: sqlite3.Connection, user: User, zone: tzinfo | None = None) -> str:
     """Store a new session and return the cookie token. `zone`: the browser's timezone."""
     token = secrets.token_urlsafe(32)
-    tz = clock.user_zone(user, zone)
+    tz = clock.user_zone(user.time_zone, zone)
     with db.write(con):
         remember_zone(con, user, zone)
-        queries.insert_session(con, _session_id(token), user["id"], clock.at(0, tz), clock.at(SESSION_IDLE_S, tz))
+        queries.sessions.insert_session(con, _session_id(token), user.id, clock.at(0, tz),
+                                        clock.at(SESSION_IDLE_S, tz))
     return token
 
 
-def remember_zone(con: sqlite3.Connection, user: sqlite3.Row, zone: ZoneInfo | None) -> None:
+def remember_zone(con: sqlite3.Connection, user: User, zone: ZoneInfo | None) -> None:
     """Save the browser's timezone on the user, for writes without a browser request."""
-    if zone is not None and zone.key != user["time_zone"]:
-        queries.set_user_time_zone(con, user["id"], zone.key)
+    if zone is not None and zone.key != user.time_zone:
+        queries.users.set_user_time_zone(con, user.id, zone.key)
 
 
-def session_user(con: sqlite3.Connection, token: str, zone: ZoneInfo | None = None) -> sqlite3.Row | None:
+def session_user(con: sqlite3.Connection, token: str, zone: ZoneInfo | None = None) -> User | None:
     """Return the session's user, or None. Extends the session (sliding expiry).
     `zone`: the browser's timezone (None: the user's saved one)."""
     now = clock.now()
     sid = _session_id(token)
-    row = queries.session_user(con, sid, clock.text(now))
-    if row is None:
+    session = queries.sessions.session_user(con, sid, clock.text(now))
+    if session is None:
         return None
-    new_zone = zone is not None and zone.key != row["time_zone"]
-    refresh = now - clock.parse(row["last_seen_at"]) >= timedelta(seconds=SESSION_REFRESH_S)
+    user = session.user
+    new_zone = zone is not None and zone.key != user.time_zone
+    refresh = now - clock.parse(session.last_seen_at) >= timedelta(seconds=SESSION_REFRESH_S)
     if new_zone or refresh:  # every request reads this: the write lock only when something changes
         with db.write(con):
-            remember_zone(con, row, zone)
+            remember_zone(con, user, zone)
             if refresh:
                 expires = min(now + timedelta(seconds=SESSION_IDLE_S),
-                              clock.parse(row["created_at"]) + timedelta(seconds=SESSION_MAX_S))
-                tz = clock.user_zone(row, zone)
-                queries.touch_session(con, sid, clock.text(now, tz), clock.text(expires, tz))
-    return row
-
-
-def accesses(user: sqlite3.Row) -> frozenset[str]:
-    """What the user's role allows, from the session_user() row (no other query)."""
-    return frozenset(json.loads(user["access"]))
+                              clock.parse(session.created_at) + timedelta(seconds=SESSION_MAX_S))
+                tz = clock.user_zone(user.time_zone, zone)
+                queries.sessions.touch_session(con, sid, clock.text(now, tz), clock.text(expires, tz))
+    return user
 
 
 def delete_session(con: sqlite3.Connection, token: str) -> int | None:
     """End the session; its user's ID, or None if it did not exist (expired, already ended)."""
     with db.write(con):
-        return queries.delete_session(con, _session_id(token))
+        return queries.sessions.delete_session(con, _session_id(token))
 
 
 def delete_other_sessions(con: sqlite3.Connection, user_id: int, token: str) -> None:
     """Log the user out everywhere else, e.g. after a credential change: call inside
     the transaction that changes the credential, so both happen or neither."""
-    queries.delete_user_sessions(con, user_id, except_id=_session_id(token))
+    queries.sessions.delete_user_sessions(con, user_id, except_id=_session_id(token))
