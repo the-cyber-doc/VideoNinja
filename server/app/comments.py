@@ -9,10 +9,12 @@ import sqlite3
 from datetime import tzinfo
 from typing import Literal
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, status
 from pydantic import BaseModel, field_validator
+from pydantic_core import PydanticCustomError
 
 from . import clock, db, i18n, queries
+from .errors import ApiError
 from .auth import current_user, require_access, user_zone
 from .validation import field
 
@@ -40,7 +42,7 @@ class CommentIn(BaseModel):
     def not_blank(cls, text: str) -> str:
         text = text.strip()
         if not text:
-            raise ValueError("The comment is empty")
+            raise PydanticCustomError("comment_empty", "The comment is empty")
         return text
 
 
@@ -52,16 +54,16 @@ def _own(con: sqlite3.Connection, comment_id: int, me: sqlite3.Row) -> sqlite3.R
     """The comment, if `me` wrote it: 404 unknown, 403 someone else's."""
     row = queries.comment(con, comment_id, me["id"])
     if row is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Unknown comment")
+        raise ApiError("comment.unknown")
     if not row["mine"]:
         log.warning("Denied: user id %s tried to change comment %s of user id %s", me["id"], comment_id, row["author"])
-        raise HTTPException(status.HTTP_403_FORBIDDEN, "Only its author can change a comment")
+        raise ApiError("comment.not_author")
     return row
 
 
 def _technique(con: sqlite3.Connection, technique_id: str) -> None:
     if not queries.technique_exists(con, technique_id):
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Unknown technique")
+        raise ApiError("technique.unknown")
 
 
 @router.get("/techniques/{technique_id}/comments")

@@ -26,7 +26,7 @@ def test_cross_site_writes_refused(client, admin_secret, headers, refused):
     assert login(client, admin_secret).status_code == 200
     r = client.post("/api/profile/name", json={"name": "Sensei"}, headers=headers)
     if refused:
-        assert (r.status_code, r.json()) == (403, {"detail": "Cross-site request refused"})
+        assert (r.status_code, r.json()["code"]) == (403, "cross_site")
     else:
         assert r.status_code == 200, r.text
 
@@ -68,7 +68,7 @@ def test_password_checks_capped(client, admin_secret, monkeypatch):
     try:
         r = login(client, admin_secret)
         assert r.status_code == 503 and r.headers["retry-after"] == "5"
-        assert r.json() == {"detail": "The server is busy, try again in a moment"}
+        assert r.json()["code"] == "busy"
     finally:
         security._argon2.release()
     assert login(client, admin_secret).status_code == 200  # free again

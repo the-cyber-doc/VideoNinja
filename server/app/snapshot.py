@@ -30,10 +30,11 @@ import time
 from collections.abc import Iterator
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from fastapi import APIRouter, Depends, Request, Response, status
 from fastapi.responses import FileResponse
 
 from . import catalog, db, i18n, procs
+from .errors import ApiError
 from .auth import current_user
 
 log = logging.getLogger("uvicorn.error")
@@ -213,7 +214,7 @@ def get_catalog(
         return Response(headers={"X-Accel-Redirect": f"{INTERNAL_PREFIX}/{version}/{name}"})
     path = catalog_dir() / "versions" / version / name
     if not path.is_file():
-        raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, "Catalogue not available")
+        raise ApiError("catalog.unavailable")
     return FileResponse(
         path,
         media_type="application/json",

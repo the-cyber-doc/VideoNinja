@@ -4,10 +4,11 @@ import re
 import sqlite3
 import unicodedata
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, status
 from pydantic import BaseModel
 
 from . import db, i18n, queries
+from .errors import ApiError
 from .auth import require_access
 from .validation import field
 
@@ -44,10 +45,10 @@ def create_performer(
 ) -> Performer:
     name = " ".join(body.name.split())
     if not name:
-        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "Empty name")
+        raise ApiError("performer.empty_name")
     with db.write(con):
         if queries.performer_name_exists(con, name):
-            raise HTTPException(status.HTTP_409_CONFLICT, "This performer already exists")
+            raise ApiError("performer.exists")
         base = performer_id = slug(name)
         n = 1
         while queries.performer_exists(con, performer_id):

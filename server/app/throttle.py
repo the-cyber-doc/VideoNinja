@@ -23,7 +23,9 @@ import time
 from collections import OrderedDict, deque
 from collections.abc import Iterator
 
-from fastapi import HTTPException, Request, status
+from fastapi import HTTPException, Request
+
+from .errors import ApiError
 
 log = logging.getLogger("uvicorn.error")
 
@@ -99,8 +101,7 @@ def credential_guard(*failure_statuses: int):
         key = client_key(request)
         wait = retry_after(key)
         if wait:
-            raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS, "Too many failed attempts",
-                                headers={"Retry-After": str(wait)})
+            raise ApiError("throttled", headers={"Retry-After": str(wait)}, minutes=-(-wait // 60))
         try:
             yield
         except HTTPException as e:

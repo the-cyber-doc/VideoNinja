@@ -27,10 +27,11 @@ import urllib.request
 from http.cookies import CookieError, SimpleCookie
 from typing import Any
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
+from fastapi import APIRouter, Depends, Header, Request, status
 
-from . import clock, db, limits, paths, queries, security
+from . import clock, db, errors, limits, paths, queries, security
 from .auth import require_access
+from .errors import ApiError
 from .children import Child
 from .validation import RULES
 
@@ -45,12 +46,12 @@ def files_path() -> str:
     return f"{paths.base_path()}/files/"
 
 
-def _reject(status_code: int, detail: str) -> dict[str, Any]:
+def _reject(code: str) -> dict[str, Any]:
     return {
         "RejectUpload": True,
         "HTTPResponse": {
-            "StatusCode": status_code,
-            "Body": json.dumps({"detail": detail}),
+            "StatusCode": errors.ERRORS[code][0],
+            "Body": json.dumps(errors.body(code)),
             "Header": {"Content-Type": "application/json"},
         },
     }
@@ -75,27 +76,27 @@ def _pre_create(con: sqlite3.Connection, event: dict[str, Any]) -> dict[str, Any
     token = _session_token(event.get("HTTPRequest", {}).get("Header") or {})
     user = security.session_user(con, token) if token else None
     if user is None:
-        return _reject(401, "Not logged in")
+        return _reject("auth.not_logged_in")
     if "upload" not in security.accesses(user):
         log.warning("Upload denied: user id %s lacks access 'upload'", user["id"])
-        return _reject(403, "Access denied")
+        return _reject("auth.access_denied")
 
     upload = event.get("Upload") or {}
     meta = upload.get("MetaData") or {}
     original_sha256 = meta.get("original_sha256", "")
     size = upload.get("Size")
     if upload.get("SizeIsDeferred") or not isinstance(size, int) or size <= 0:
-        return _reject(400, "The file size must be known")
+        return _reject("upload.size_unknown")
     if size > limits.max_upload_bytes():
-        return _reject(413, "File too large")
+        return _reject("upload.too_large")
     # "filename": the tus metadata convention (tus-js-client); stored as video.original_filename.
     if not SHA256.fullmatch(original_sha256) or not FILENAME.fullmatch(meta.get("filename", "")):
-        return _reject(400, "Invalid metadata")
+        return _reject("upload.invalid_metadata")
     if not limits.accepted_name(meta["filename"]):
-        return _reject(415, "This type of file is not accepted")
+        return _reject("upload.type_refused")
     with db.write(con):
         if queries.video_known(con, original_sha256):
-            return _reject(409, "This video already exists")
+            return _reject("video.exists")
         tus_id = secrets.token_hex(16)  # the upload's file name in tusd's folder
         # The hook has no browser request: the user's saved timezone.
         queries.insert_upload(con, tus_id, user["id"], original_sha256, size, clock.at(0, clock.user_zone(user)))
@@ -138,20 +139,20 @@ def upload_auth(
     another origin is refused, as for the API (main.same_origin_writes)."""
     if x_original_method.upper() not in ("GET", "HEAD", "OPTIONS") and security.cross_site(request.headers):
         log.warning("Upload %s refused to user id %s: cross-site", x_original_method, user["id"])
-        raise HTTPException(status.HTTP_403_FORBIDDEN, "Cross-site request refused")
+        raise ApiError("cross_site")
     path = x_original_uri.split("?", 1)[0]
     base = files_path()
     if not path.startswith(base):
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Not found")
+        raise ApiError("not_found")
     tus_id = path[len(base):].strip("/")
     if not tus_id:
         if x_original_method.upper() != "POST":  # only creation on the base path
-            raise HTTPException(status.HTTP_404_NOT_FOUND, "Not found")
+            raise ApiError("not_found")
         return
     upload = queries.upload(con, tus_id)
     if upload is None or upload["user"] != user["id"] or upload["state"] == "deleted":
         log.warning("Upload %r refused to user id %s", tus_id, user["id"])
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Not found")
+        raise ApiError("not_found")
 
 
 # --- the tusd process ---

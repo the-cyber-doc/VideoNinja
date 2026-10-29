@@ -14,10 +14,11 @@ import logging
 import sqlite3
 from datetime import tzinfo
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
 
 from . import db, queries, segments
+from .errors import ApiError
 from .auth import require_access, user_zone
 from .segments import AnnotatedSegment, TagIn
 from .snapshot import rebuild_after_write
@@ -56,7 +57,7 @@ class AnnotationsOut(Annotations):
 def _published(con: sqlite3.Connection, video_id: int) -> sqlite3.Row:
     row = queries.published_video(con, video_id)
     if row is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Unknown video")
+        raise ApiError("video.unknown")
     return row
 
 

@@ -33,7 +33,8 @@ def test_login_throttled_after_ten_failures(client, admin_secret, clock):
     fail_logins(client, admin_secret, 10)
     r = login(client, admin_secret)  # the right password: refused all the same
     assert r.status_code == 429
-    assert r.json()["detail"] == "Too many failed attempts"
+    assert r.json()["code"] == "throttled"
+    assert r.json()["params"] == {"minutes": -(-int(r.headers["Retry-After"]) // 60)}
     assert r.headers["Retry-After"] == str(throttle.WINDOW_S + 1)
 
     clock[0] += 60  # the oldest failure still in the window
