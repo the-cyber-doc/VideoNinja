@@ -1,4 +1,5 @@
 <script lang="ts">
+	import ErrorMessage from '#lib/ErrorMessage.svelte';
 	import * as profile from '#lib/api/profile.js';
 	import type { TotpEnrollment } from '#lib/api/types.js';
 	import { t } from '#lib/i18n.svelte.js';
@@ -10,16 +11,17 @@
 
 	/** busy / error / success message of one section. */
 	function status() {
-		return { busy: false, error: '', done: '' };
+		return { busy: false, error: null as unknown, done: '' };
 	}
 
 	async function run(s: ReturnType<typeof status>, action: () => Promise<string>) {
 		s.busy = true;
-		s.error = s.done = '';
+		s.error = null;
+		s.done = '';
 		try {
 			s.done = await action();
 		} catch (e) {
-			s.error = (e as Error).message;
+			s.error = e;
 		} finally {
 			s.busy = false;
 		}
@@ -73,7 +75,7 @@
 	const cancelTotp = () => {
 		totp = null;
 		totpCode = totpPassword = '';
-		totpStatus.error = '';
+		totpStatus.error = null;
 	};
 
 	const confirmTotp = (e: SubmitEvent) => {
@@ -104,7 +106,7 @@
 					{t('profile.name_optional')}
 					<input bind:value={name} autocomplete="name" maxlength={rules.display_name.max_length} />
 				</label>
-				{#if nameStatus.error}<p class="error" role="alert">{nameStatus.error}</p>{/if}
+				<ErrorMessage error={nameStatus.error} />
 				{#if nameStatus.done}<p class="ok" role="status">{nameStatus.done}</p>{/if}
 				<button disabled={nameStatus.busy}>{t('profile.save_name')}</button>
 			</form>
@@ -146,7 +148,7 @@
 						required
 					/>
 				</label>
-				{#if passwordStatus.error}<p class="error" role="alert">{passwordStatus.error}</p>{/if}
+				<ErrorMessage error={passwordStatus.error} />
 				{#if passwordStatus.done}<p class="ok" role="status">{passwordStatus.done}</p>{/if}
 				<button disabled={passwordStatus.busy}>{t('profile.change_password')}</button>
 			</form>
@@ -156,7 +158,7 @@
 			<h2 id="h-totp">{t('profile.totp_section')}</h2>
 			{#if !totp}
 				<p class="hint">{t('profile.totp_hint')}</p>
-				{#if totpStatus.error}<p class="error" role="alert">{totpStatus.error}</p>{/if}
+				<ErrorMessage error={totpStatus.error} />
 				{#if totpStatus.done}<p class="ok" role="status">{totpStatus.done}</p>{/if}
 				<button class="secondary" onclick={startTotp} disabled={totpStatus.busy}>
 					{t('profile.totp_start')}
@@ -189,7 +191,7 @@
 							required
 						/>
 					</label>
-					{#if totpStatus.error}<p class="error" role="alert">{totpStatus.error}</p>{/if}
+					<ErrorMessage error={totpStatus.error} />
 					<div class="row">
 						<button type="button" class="secondary" onclick={cancelTotp} disabled={totpStatus.busy}>
 							{t('common.cancel')}

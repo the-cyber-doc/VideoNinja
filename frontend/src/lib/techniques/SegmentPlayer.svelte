@@ -8,7 +8,8 @@
 	// The server sends one clip per user at a time: while another one downloads
 	// (e.g. still being saved for offline use), it refuses this one (429). The
 	// player says so and offers to try again.
-	import Icon from '../Icon.svelte';
+	import ErrorMessage from '../ErrorMessage.svelte';
+	import IconButton from '../IconButton.svelte';
 	import type { Segment } from '../catalog.svelte';
 	import { i18n, t } from '../i18n.svelte';
 	import { clipUrl, segmentDuration } from '../media';
@@ -89,13 +90,11 @@
 >
 	<header>
 		<h2>{title} <span class="duration">{formatTime(segmentDuration(segment))}</span></h2>
-		<button type="button" class="icon" title={t('player.close')} aria-label={t('player.close')} onclick={() => dialog?.close()}>
-			<Icon name="cross" />
-		</button>
+		<IconButton label={t('player.close')} icon="cross" onclick={() => dialog?.close()} />
 	</header>
 	{#if failed}
 		<div class="failed">
-			<p class="error" role="alert">{t(failed === 'busy' ? 'player.busy' : 'player.error')}</p>
+			<ErrorMessage error={t(failed === 'busy' ? 'player.busy' : 'player.error')} />
 			<button type="button" class="secondary" onclick={() => (failed = '')}>{t('player.retry')}</button>
 		</div>
 	{:else}
@@ -113,21 +112,9 @@
 			onerror={loadFailed}
 		></video>
 		<div class="tools">
-			<button type="button" class="icon" title={t('player.back_frame')} aria-label={t('player.back_frame')} onclick={() => step(-1)}>
-				<Icon name="frame-back" size={18} />
-			</button>
-			<button
-				type="button"
-				class="icon"
-				title={t(paused ? 'player.play' : 'player.pause')}
-				aria-label={t(paused ? 'player.play' : 'player.pause')}
-				onclick={toggle}
-			>
-				<Icon name={paused ? 'play' : 'pause'} size={18} />
-			</button>
-			<button type="button" class="icon" title={t('player.forward_frame')} aria-label={t('player.forward_frame')} onclick={() => step(1)}>
-				<Icon name="frame-forward" size={18} />
-			</button>
+			<IconButton label={t('player.back_frame')} icon="frame-back" iconSize={18} size="sm" onclick={() => step(-1)} />
+			<IconButton label={t(paused ? 'player.play' : 'player.pause')} icon={paused ? 'play' : 'pause'} iconSize={18} size="sm" onclick={toggle} />
+			<IconButton label={t('player.forward_frame')} icon="frame-forward" iconSize={18} size="sm" onclick={() => step(1)} />
 			<div class="speeds" role="group" aria-label={t('player.speed')}>
 				{#each SPEEDS as value (value)}
 					<button type="button" class="speed" aria-pressed={speed === value} onclick={() => (speed = value)}>
@@ -174,16 +161,6 @@
 		color: var(--muted);
 		font-variant-numeric: tabular-nums;
 	}
-	button.icon {
-		display: grid;
-		place-items: center;
-		width: 2.2rem;
-		height: 2.2rem;
-		padding: 0;
-		color: var(--text);
-		background: transparent;
-		border: 1px solid var(--border);
-	}
 	/* Sized like the browser's own controls; one line, also on a phone. */
 	.tools {
 		display: flex;
@@ -191,10 +168,6 @@
 		align-items: center;
 		gap: var(--space-1);
 		margin-top: var(--space-2);
-	}
-	.tools button.icon {
-		width: 2rem;
-		height: 2rem;
 	}
 	.speeds {
 		display: flex;

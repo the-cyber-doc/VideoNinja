@@ -213,6 +213,7 @@
 		"en": "A value is not valid.",
 		"fr": "Une valeur n'est pas valide."
 	},
+	"common.reference": { "en": "Reference: {id}", "fr": "Référence : {id}" },
 	"common.username": { "en": "Username", "fr": "Nom d'utilisateur" },
 	"common.username_label": { "en": "Username:", "fr": "Nom d'utilisateur :" },
 	"common.username_hint": {

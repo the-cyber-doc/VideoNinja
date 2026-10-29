@@ -4,6 +4,7 @@
 	//   and the database;
 	// - /register (invitation): the invitation token from the link, the username
 	//   chosen by the admin.
+	import ErrorMessage from './ErrorMessage.svelte';
 	import { goto } from '$app/navigation';
 	import { errorFromBody } from '#lib/api/client.js';
 	import * as register from '#lib/api/register.js';
@@ -25,7 +26,7 @@
 	const INIT_TASKS = ['schema', 'data', 'admin', 'done'] as const;
 
 	let step = $state(0);
-	let error = $state('');
+	let error = $state<unknown>(null);
 	let busy = $state(false);
 
 	let token = $state('');
@@ -59,11 +60,11 @@
 	/** Run an action with busy/error handling. */
 	async function run(action: () => Promise<void>) {
 		busy = true;
-		error = '';
+		error = null;
 		try {
 			await action();
 		} catch (e) {
-			error = (e as Error).message;
+			error = e;
 		} finally {
 			busy = false;
 		}
@@ -158,12 +159,12 @@
 					required
 				/>
 			</label>
-			{#if error}<p class="error" role="alert">{error}</p>{/if}
+			<ErrorMessage error={error} />
 			<button disabled={busy}>{t('common.continue')}</button>
 		</form>
 	{:else if step === 0}
 		{#if error}
-			<p class="error" role="alert">{error}</p>
+			<ErrorMessage {error} />
 			<p class="hint">{t('wizard.ask_new_invite')}</p>
 		{:else}
 			<p class="hint">{t('wizard.checking_invite')}</p>
@@ -214,7 +215,7 @@
 					required
 				/>
 			</label>
-			{#if error}<p class="error" role="alert">{error}</p>{/if}
+			<ErrorMessage error={error} />
 			<button disabled={busy}>{t('common.continue')}</button>
 		</form>
 	{:else if step === 2 && totp}
@@ -235,7 +236,7 @@
 					required
 				/>
 			</label>
-			{#if error}<p class="error" role="alert">{error}</p>{/if}
+			<ErrorMessage error={error} />
 			<div class="row">
 				<button type="button" class="secondary" onclick={() => (step = 1)} disabled={busy}>
 					{t('common.back')}
@@ -255,7 +256,7 @@
 				{/each}
 			</ul>
 		{/if}
-		{#if error}<p class="error" role="alert">{error}</p>{/if}
+		<ErrorMessage error={error} />
 		{#if finished}
 			<p>
 				{setup ? t('wizard.setup_ready') : t('wizard.register_ready')}

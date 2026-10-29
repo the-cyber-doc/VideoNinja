@@ -2,6 +2,7 @@
 	// Annotating a published video again: the upload's annotation panel, with the
 	// video from the server and its saved segments and tags. Proceed saves them
 	// (nothing is uploaded). Needs the "video_mgmt" access.
+	import ErrorMessage from '#lib/ErrorMessage.svelte';
 	import { untrack } from 'svelte';
 	import { beforeNavigate, goto } from '$app/navigation';
 	import { url } from '#lib/base.js';
@@ -30,7 +31,7 @@
 	let performers = $state<Performer[]>([]);
 	let tags = $state<Tag[]>([]);
 	let saving = $state(false);
-	let error = $state('');
+	let error = $state<unknown>(null);
 
 	$effect(() => {
 		if (!allowed) {
@@ -49,16 +50,16 @@
 					annotation = toAnnotation(a, c);
 					saved = JSON.stringify(annotation);
 				},
-				(e) => (error = e.message)
+				(e) => (error = e)
 			)
 		);
-		loadPerformers().then((list) => (performers = list), (e) => (error = e.message));
+		loadPerformers().then((list) => (performers = list), (e) => (error = e));
 	});
 
 	$effect(() => {
 		if (!allowed) return;
 		void i18n.lang; // tag names are translated by the server
-		loadTags().then((list) => (tags = list), (e) => (error = e.message));
+		loadTags().then((list) => (tags = list), (e) => (error = e));
 	});
 
 	const changed = () => !!annotation && JSON.stringify(annotation) !== saved;
@@ -76,13 +77,13 @@
 	async function proceed() {
 		if (!annotation) return;
 		saving = true;
-		error = '';
+		error = null;
 		try {
 			await saveAnnotations(id, toAnnotations(annotation));
 			saved = JSON.stringify(annotation);
 			await goto(url('/videos?saved'));
 		} catch (e) {
-			error = (e as Error).message;
+			error = e;
 		} finally {
 			saving = false;
 		}
@@ -94,7 +95,7 @@
 {#if allowed}
 	<div class="page">
 		<a class="back" href={url('/videos')}>← {t('videos.back')}</a>
-		{#if error}<p class="error" role="alert">{error}</p>{/if}
+		<ErrorMessage error={error} />
 		{#if annotation && catalog}
 			<AnnotationPanel
 				src={videoUrl(id)}

@@ -2,11 +2,13 @@
 	// Every published video, in four collapsible sections by how far its annotation
 	// is. Open, a section's thumbnails scroll inside it. A thumbnail opens the
 	// annotation panel (/videos/<id>). Needs the "video_mgmt" access.
+	import ErrorMessage from '#lib/ErrorMessage.svelte';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import { url } from '#lib/base.js';
 	import { t, type MessageKey } from '#lib/i18n.svelte.js';
 	import { hasAccess } from '#lib/session.svelte.js';
+	import IconButton from '#lib/IconButton.svelte';
 	import Icon from '#lib/Icon.svelte';
 	import { formatTime } from '#lib/time.js';
 	import { offline, removeVideos, savedVideos } from '#lib/offline.svelte.js';
@@ -18,7 +20,7 @@
 
 	const allowed = $derived(hasAccess('video_mgmt'));
 	let videos = $state<VideoRow[] | null>(null);
-	let error = $state('');
+	let error = $state<unknown>(null);
 	let failed = $state<Record<number, boolean>>({});
 	const saved = page.url.searchParams.has('saved'); // back from the panel
 
@@ -27,7 +29,7 @@
 			goto(url('/'), { replace: true });
 			return;
 		}
-		listVideos().then((list) => (videos = list), (e) => (error = e.message));
+		listVideos().then((list) => (videos = list), (e) => (error = e));
 	});
 
 	const groups = $derived(
@@ -53,14 +55,12 @@
 			<h1>{t('videos.title')}</h1>
 			{#if offline.available}
 				{@const label = stored ? t('videos.remove_saved', { n: stored }) : t('videos.none_saved')}
-				<button type="button" class="icon remove" title={label} aria-label={label} disabled={!stored} onclick={removeSaved}>
-					<Icon name="phone" size={22} />
-				</button>
+				<IconButton label={label} icon="phone" iconSize={22} size="lg" round class="remove" disabled={!stored} onclick={removeSaved} />
 			{/if}
 		</header>
 		{#if saved}<p class="ok" role="status">{t('videos.saved')}</p>{/if}
 		{#if removed}<p class="ok" role="status">{t('videos.removed')}</p>{/if}
-		{#if error}<p class="error" role="alert">{error}</p>{/if}
+		<ErrorMessage error={error} />
 
 		{#if videos === null && !error}
 			<p class="hint centered">{t('common.loading')}</p>
@@ -133,22 +133,11 @@
 		text-align: center;
 		margin: 0;
 	}
-	.remove {
+	/* The round "remove saved videos" button (an IconButton): its place, and the page's background. */
+	header :global(.remove) {
 		grid-column: 3;
 		justify-self: end;
-		display: grid;
-		place-items: center;
-		width: 2.4rem;
-		height: 2.4rem;
-		padding: 0;
-		border-radius: 50%;
-		color: var(--text);
 		background: var(--bg);
-		border: 1px solid var(--border);
-	}
-	.remove:disabled {
-		opacity: 0.4;
-		cursor: default;
 	}
 	.ok {
 		color: var(--ok);

@@ -3,6 +3,7 @@
 	// technique (each choice narrows the next and resets those after it; a step with
 	// a single choice is filled in), performer (or a new one), tags. All but tags are
 	// mandatory.
+	import ErrorMessage from '../ErrorMessage.svelte';
 	import {
 		BUKI,
 		categoriesOf,
@@ -11,7 +12,7 @@
 		weaponsOf,
 		type Catalog
 	} from '../catalog.svelte';
-	import Icon from '../Icon.svelte';
+	import IconButton from '../IconButton.svelte';
 	import { t } from '../i18n.svelte';
 	import { displayName } from '../session.svelte';
 	import { formatTime } from '../time';
@@ -47,7 +48,7 @@
 	const ADD = '\u0000add'; // the "Add a performer…" option
 	let adding = $state(false);
 	let newName = $state('');
-	let addError = $state('');
+	let addError = $state<unknown>(null);
 	const categories = $derived(segment.school ? categoriesOf(catalog, segment.school) : []);
 	const weapons = $derived(segment.category === BUKI ? weaponsOf(catalog, segment.school) : []);
 	const sections = $derived(
@@ -84,14 +85,14 @@
 	}
 
 	async function addPerformer() {
-		addError = '';
+		addError = null;
 		try {
 			const performer = await onaddperformer(newName);
 			segment.performer = performer.id;
 			adding = false;
 			newName = '';
 		} catch (e) {
-			addError = (e as Error).message;
+			addError = e;
 		}
 	}
 </script>
@@ -103,18 +104,10 @@
 			<span class:invalid={missing('times')}>{time(segment.begin)} – {time(segment.end)}</span>
 		</button>
 		<span class="author">{t('upload.segment.created_by', { name: author ?? t('upload.deleted_user') })}</span>
-		<button
-			type="button"
-			class="icon"
-			title={t('upload.segment.delete')}
-			aria-label={t('upload.segment.delete')}
-			onclick={ondelete}
-		>
-			<Icon name="cross" size={16} />
-		</button>
+		<IconButton label={t('upload.segment.delete')} icon="cross" iconSize={16} variant="quiet" onclick={ondelete} />
 	</header>
 	{#if missing('times')}
-		<p class="error">{t('upload.segment.bad_times')}</p>
+		<ErrorMessage error={t('upload.segment.bad_times')} role={null} />
 	{/if}
 
 	<div class="fields">
@@ -184,7 +177,7 @@
 			{/if}
 		</label>
 	</div>
-	{#if addError}<p class="error">{addError}</p>{/if}
+	<ErrorMessage error={addError} />
 	<TagInput available={tags} bind:value={segment.tags} label={t('upload.tags')} />
 </article>
 
@@ -219,13 +212,6 @@
 		padding: 0;
 		font-weight: normal;
 		color: var(--text);
-		background: none;
-	}
-	button.icon {
-		display: grid;
-		place-items: center;
-		padding: var(--space-1);
-		color: var(--muted);
 		background: none;
 	}
 	.fields {

@@ -3,6 +3,7 @@
 	// "Add a comment" for users with the "comment" access. Not in the catalogue:
 	// loaded from the API each time and after every change; offline, the service
 	// worker answers with the last copy seen (writing needs a connection).
+	import ErrorMessage from '../ErrorMessage.svelte';
 	import { t } from '../i18n.svelte';
 	import { hasAccess } from '../session.svelte';
 	import CommentCard from './CommentCard.svelte';
@@ -13,7 +14,7 @@
 	let { technique }: { technique: string } = $props();
 	let comments = $state<Promise<Comment[]>>(new Promise(() => {}));
 	let adding = $state(false);
-	let error = $state('');
+	let error = $state<unknown>(null);
 	const canWrite = $derived(hasAccess('comment'));
 
 	function reload() {
@@ -34,11 +35,11 @@
 
 	async function remove(id: number) {
 		if (!confirm(t('comments.delete_confirm'))) return;
-		error = '';
+		error = null;
 		try {
 			await deleteComment(id);
 		} catch (e) {
-			error = navigator.onLine ? (e as Error).message : t('comments.offline');
+			error = navigator.onLine ? e : t('comments.offline');
 			return;
 		}
 		reload();
@@ -52,7 +53,7 @@
 		<button type="button" class="add" onclick={() => (adding = true)}>{t('comments.add')}</button>
 	{/if}
 {/if}
-{#if error}<p class="error" role="alert">{error}</p>{/if}
+<ErrorMessage error={error} />
 
 {#await comments}
 	<p class="hint">{t('common.loading')}</p>
@@ -75,7 +76,7 @@
 	{/if}
 {:catch e}
 	<!-- Offline and never seen online: nothing cached. -->
-	<p class="error">{navigator.onLine ? e.message : t('common.offline')}</p>
+	<ErrorMessage error={navigator.onLine ? e : t('common.offline')} role={null} />
 {/await}
 
 <style>

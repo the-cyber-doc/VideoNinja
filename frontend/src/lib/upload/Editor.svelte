@@ -5,7 +5,7 @@
 	// `current` is the seek marker (playhead): it moves when seeking or playing.
 	// Pointing at the timeline shows that frame in the video without moving it;
 	// when the pointer leaves, the video shows the marker's frame again.
-	import Icon from '../Icon.svelte';
+	import IconButton from '../IconButton.svelte';
 	import { t } from '../i18n.svelte';
 	import { FRAME_SAMPLES, frameDuration, frameStep, type FrameSample } from '../frames';
 	import { formatTime } from '../time';
@@ -253,18 +253,10 @@
 	{#if playable}
 		<div class="controls">
 			<div class="buttons">
-				<button type="button" class="icon" title={t('player.back_frame')} aria-label={t('player.back_frame')} onclick={() => step(-1)}>
-					<Icon name="frame-back" />
-				</button>
-				<button type="button" class="icon" title={t(paused ? 'player.play' : 'player.pause')} aria-label={t(paused ? 'player.play' : 'player.pause')} onclick={toggle}>
-					<Icon name={paused ? 'play' : 'pause'} />
-				</button>
-				<button type="button" class="icon" title={t('player.stop')} aria-label={t('player.stop')} onclick={stop}>
-					<Icon name="stop" />
-				</button>
-				<button type="button" class="icon" title={t('player.forward_frame')} aria-label={t('player.forward_frame')} onclick={() => step(1)}>
-					<Icon name="frame-forward" />
-				</button>
+				<IconButton label={t('player.back_frame')} icon="frame-back" onclick={() => step(-1)} />
+				<IconButton label={t(paused ? 'player.play' : 'player.pause')} icon={paused ? 'play' : 'pause'} onclick={toggle} />
+				<IconButton label={t('player.stop')} icon="stop" onclick={stop} />
+				<IconButton label={t('player.forward_frame')} icon="frame-forward" onclick={() => step(1)} />
 			</div>
 			<Timeline
 				{duration}
@@ -311,16 +303,6 @@
 	.buttons {
 		display: flex;
 		gap: var(--space-1);
-	}
-	button.icon {
-		display: grid;
-		place-items: center;
-		width: 2.2rem;
-		height: 2.2rem;
-		padding: 0;
-		color: var(--text);
-		background: var(--surface);
-		border: 1px solid var(--border);
 	}
 	.marks {
 		display: flex;

@@ -4,6 +4,7 @@
 	// with its segments, encoded by the server's queue and published later.
 	// The work in progress is saved on this device (draft) and resumed by picking
 	// the same file again.
+	import ErrorMessage from '#lib/ErrorMessage.svelte';
 	import { beforeNavigate, goto } from '$app/navigation';
 	import { onDestroy } from 'svelte';
 	import type { Upload } from 'tus-js-client';
@@ -41,7 +42,7 @@
 	let duplicate = $state(false);
 	let resumed = $state(false);
 	let message = $state('');
-	let error = $state('');
+	let error = $state<unknown>(null);
 	let refresh = $state(0);
 	let unavailable = $state(false); // the server cannot receive uploads (tusd not running)
 	let limits = $state<UploadLimits | null>(null); // largest file, accepted types
@@ -56,7 +57,7 @@
 			goto(url('/'), { replace: true });
 			return;
 		}
-		loadPerformers().then((list) => (performers = list), (e) => (error = e.message));
+		loadPerformers().then((list) => (performers = list), (e) => (error = e));
 		listDrafts().then((list) => (drafts = list), () => {});
 		checkAvailable();
 		uploadLimits().then((l) => (limits = l), () => {});
@@ -65,7 +66,7 @@
 	$effect(() => {
 		if (!allowed) return;
 		void i18n.lang; // reload on language change: tag names are translated by the server
-		loadTags().then((list) => (tags = list), (e) => (error = e.message));
+		loadTags().then((list) => (tags = list), (e) => (error = e));
 	});
 
 	function checkAvailable() {
@@ -108,7 +109,8 @@
 		const chosen = input?.files?.[0];
 		if (!chosen) return;
 		reset();
-		message = error = '';
+		message = '';
+		error = null;
 		// Refused by the server anyway: said at once, before hashing a large file for nothing.
 		const refused = refusal(chosen, limits);
 		if (refused) {
@@ -137,7 +139,7 @@
 			step = 'edit';
 		} catch (e) {
 			if (!hashing?.signal.aborted) {
-				error = (e as Error).message;
+				error = e;
 				step = 'pick';
 			}
 		}
@@ -155,7 +157,8 @@
 	/** Called by the panel once the annotation is complete. */
 	function proceed() {
 		if (!draft || !file || unavailable) return;
-		error = message = '';
+		error = null;
+		message = '';
 		step = 'uploading';
 		uploadProgress = 0;
 		retrying = false;
@@ -176,7 +179,7 @@
 					message = t('upload.submitted');
 					refresh++;
 				} catch (e) {
-					error = (e as Error).message;
+					error = e;
 					step = 'edit';
 				}
 			},
@@ -211,9 +214,9 @@
 	<div class="page">
 		<h1>{t('upload.title')}</h1>
 
-		{#if unavailable}<p class="error" role="alert">{t('upload.unavailable')}</p>{/if}
+		{#if unavailable}<ErrorMessage error={t('upload.unavailable')} />{/if}
 		{#if message}<p class="ok" role="status">{message}</p>{/if}
-		{#if error}<p class="error" role="alert">{error}</p>{/if}
+		<ErrorMessage error={error} />
 
 		<section class="card">
 			<label class="file">
@@ -234,7 +237,7 @@
 					<progress max="1" value={hashProgress}></progress>
 				</label>
 			{/if}
-			{#if duplicate}<p class="error">{t('upload.duplicate')}</p>{/if}
+			{#if duplicate}<ErrorMessage error={t('upload.duplicate')} />{/if}
 			{#if resumed}<p class="ok">{t('upload.resumed')}</p>{/if}
 
 			{#if step === 'pick' && drafts.length}
@@ -276,7 +279,7 @@
 							{t('upload.step.upload')}
 							<progress max="1" value={uploadProgress}></progress>
 						</label>
-						{#if retrying}<p class="error" role="status">{t('upload.retrying')}</p>{/if}
+						{#if retrying}<ErrorMessage error={t('upload.retrying')} role="status" />{/if}
 						{#if step === 'submitting'}<p class="hint">{t('upload.step.submit')}</p>{/if}
 					{/if}
 				</AnnotationPanel>

@@ -2,6 +2,7 @@
 	// A page of the catalogue at `path`: waits for the catalogue, shows "not found"
 	// (with the breadcrumbs of what exists) if a step is unknown, else `children`
 	// with the catalogue and what the path names.
+	import ErrorMessage from '../ErrorMessage.svelte';
 	import type { Snippet } from 'svelte';
 	import Breadcrumbs from '../Breadcrumbs.svelte';
 	import { catalogCrumbs, loadCatalog, resolvePath, type Catalog, type CatalogPath } from '../catalog.svelte';
@@ -22,8 +23,8 @@
 		{@render children(c, named)}
 	{:else}
 		<Breadcrumbs items={catalogCrumbs(c, path)} current={false} />
-		<p class="error centered">{t('common.not_found')}</p>
+		<ErrorMessage error={t('common.not_found')} role={null} centered />
 	{/if}
 {:catch e}
-	<p class="error centered">{e.message}</p>
+	<ErrorMessage error={e} role={null} centered />
 {/await}

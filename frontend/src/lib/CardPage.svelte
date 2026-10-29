@@ -4,6 +4,7 @@
 	// Shows the loading message and the error while `items` is pending or failed,
 	// `empty` when there is nothing to show. Optional `top`: above the title
 	// (breadcrumbs).
+	import ErrorMessage from './ErrorMessage.svelte';
 	import type { Snippet } from 'svelte';
 	import { t } from './i18n.svelte';
 
@@ -37,7 +38,7 @@
 		{/each}
 	</ul>
 {:catch e}
-	<p class="error">{e.message}</p>
+	<ErrorMessage error={e} role={null} />
 {/await}
 
 <style>
