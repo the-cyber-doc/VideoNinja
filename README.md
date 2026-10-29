@@ -598,7 +598,7 @@ export, re-add `"id" INTEGER PRIMARY KEY AUTOINCREMENT` on `video`, `segment`,
 `user` and `comment`.
 
 Versions: the app runs on one database version, `EXPECTED_VERSION` in
-`server/app/db.py` (now 2), kept in the database itself (`config.db_version`).
+`server/app/db.py` (now 3), kept in the database itself (`config.db_version`).
 
 | File | What |
 |---|---|
@@ -618,6 +618,7 @@ database as failing otherwise.
 |---|---|---|
 | 1 | v0.0.6 (efae32a) | — |
 | 2 | the four containers | `heartbeat` (the encoder's liveness, for `/health`), `video.thumbs_dirty` (segment thumbnails made by the encoder) |
+| 3 | indexes | Indexes on the columns looked up in the growing tables (video, segment, comment, session, upload), foreign keys included; no other change |
 
 Transactions: the API and the encoder write to the same file from two
 processes. Connections (`db.connect`) are in autocommit mode; every change of

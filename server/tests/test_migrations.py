@@ -27,7 +27,8 @@ def schema(path):
     out = {
         t: (
             con.execute(f'PRAGMA table_info("{t}")').fetchall(),
-            sorted(con.execute(f'PRAGMA index_list("{t}")').fetchall()),
+            sorted((name, unique, origin, partial, con.execute(f'PRAGMA index_info("{name}")').fetchall())
+                   for _, name, unique, origin, partial in con.execute(f'PRAGMA index_list("{t}")')),
             con.execute(f'PRAGMA foreign_key_list("{t}")').fetchall(),
         )
         for t in tables
@@ -84,6 +85,29 @@ def test_up_then_down_as_if_built_so(database, tmp_path, monkeypatch):
     assert sql(database, "SELECT original_filename FROM video") == [("kata.mp4",)]
 
 
+@pytest.mark.parametrize("version", range(2, db.EXPECTED_VERSION + 1))
+def test_each_step_as_if_built_so(database, tmp_path, monkeypatch, version):
+    """Every step, up then down: the schema (tables, columns, indexes, foreign keys)
+    its scripts build, and the data kept."""
+    build(database, version - 1)
+    sql(database, "INSERT INTO video (original_sha256, original_filename, uploaded_at)"
+                  " VALUES ('b', 'kata.mp4', '2026-01-01T00:00:00Z')")
+    fresh = {v: tmp_path / f"fresh-v{v}.db" for v in (version - 1, version)}
+    for v, path in fresh.items():
+        build(path, v)
+
+    monkeypatch.setattr(db, "EXPECTED_VERSION", version)
+    db.migrate()
+    assert db.current_version() == version
+    assert schema(database) == schema(fresh[version])
+
+    monkeypatch.setattr(db, "EXPECTED_VERSION", version - 1)
+    db.migrate()
+    assert db.current_version() == version - 1
+    assert schema(database) == schema(fresh[version - 1])
+    assert sql(database, "SELECT original_filename FROM video") == [("kata.mp4",)]
+
+
 def test_nothing_done_on_the_expected_version(database, tmp_path):
     build(database, db.EXPECTED_VERSION)
     db.migrate()
@@ -93,8 +117,9 @@ def test_nothing_done_on_the_expected_version(database, tmp_path):
 def test_no_way_there_refuses_to_start(database, tmp_path, monkeypatch):
     """A step without its script: nothing changed (not even half-way), and the app does not start."""
     build(database, 1)
-    monkeypatch.setattr(db, "EXPECTED_VERSION", 3)
-    with pytest.raises(RuntimeError, match="v2_to_v3.sql"):
+    latest = db.EXPECTED_VERSION
+    monkeypatch.setattr(db, "EXPECTED_VERSION", latest + 1)
+    with pytest.raises(RuntimeError, match=f"v{latest}_to_v{latest + 1}.sql"):
         db.migrate()
     assert db.current_version() == 1
     assert not list(tmp_path.glob("*.bak"))

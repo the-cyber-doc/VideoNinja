@@ -18,7 +18,7 @@ DEFAULT_DB = "/data/videoninja.db"
 # The database version this release runs on (config.db_version). A new database is
 # built from db_v<N>.sql + db_v<N>_init.sql; an existing one of another version is
 # migrated at startup (migrate), one version at a time: migrations/v<a>_to_v<b>.sql.
-EXPECTED_VERSION = 2
+EXPECTED_VERSION = 3
 
 
 def db_path() -> Path:
@@ -91,8 +91,10 @@ def get_db() -> Iterator[sqlite3.Connection]:
         con.close()
 
 
-def scripts(version: int = EXPECTED_VERSION) -> tuple[Path, Path]:
-    """db_v<version>.sql (schema) and db_v<version>_init.sql (data)."""
+def scripts(version: int | None = None) -> tuple[Path, Path]:
+    """db_v<version>.sql (schema) and db_v<version>_init.sql (data); default EXPECTED_VERSION
+    (read at the call, not bound when the module was imported)."""
+    version = EXPECTED_VERSION if version is None else version
     schema, seed = SQL_DIR / f"db_v{version}.sql", SQL_DIR / f"db_v{version}_init.sql"
     if not (schema.is_file() and seed.is_file()):
         raise RuntimeError(f"Database version {version}: {schema.name} or {seed.name} missing in {SQL_DIR}")
