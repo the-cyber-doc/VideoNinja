@@ -7,7 +7,7 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 import pytest
 from fastapi.testclient import TestClient
 
-from app import clock, db, encoder, paths
+from app import clock, db, encoder, settings
 from app.main import app
 
 from .test_auth import login
@@ -119,16 +119,16 @@ def test_service_urls_are_http_only(monkeypatch, value):
     """urllib would open file: and ftp: URLs too: another container's address is http(s)."""
     monkeypatch.setenv("VIDEONINJA_TUSD_URL", value)
     with pytest.raises(RuntimeError, match="VIDEONINJA_TUSD_URL"):
-        paths.service_url("VIDEONINJA_TUSD_URL")
+        settings.current()
     with pytest.raises(RuntimeError), TestClient(app):
         pass  # the API does not start with it
 
 
 def test_service_url_without_trailing_slash(monkeypatch):
     monkeypatch.setenv("VIDEONINJA_API_URL", "https://api:8000/")
-    assert paths.service_url("VIDEONINJA_API_URL") == "https://api:8000"
+    assert settings.current().api_url == "https://api:8000"
     monkeypatch.delenv("VIDEONINJA_API_URL")
-    assert paths.service_url("VIDEONINJA_API_URL") is None
+    assert settings.current().api_url is None
 
 
 def test_integrity_checked_hourly_not_on_every_call(client, admin_secret, tusd_server, monkeypatch):

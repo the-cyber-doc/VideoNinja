@@ -9,7 +9,7 @@ import subprocess  # the e2e script's own sed  # nosec B404
 
 import pytest
 
-from app import logs
+from app import logs, settings
 
 TOKEN_SED = r"s/.*Setup token: \([A-Za-z0-9_-]*\).*/\1/p"  # tools/test-e2e-stack.sh
 
@@ -66,7 +66,7 @@ def test_level(configured, capsys):
     assert "hidden" not in capsys.readouterr().err
 
 
-@pytest.mark.parametrize("log_format", logs.FORMATS)
+@pytest.mark.parametrize("log_format", settings.LOG_FORMATS)
 def test_access_log_off(configured, capsys, log_format):
     """The app logs its own line per request (app/middleware.py), with its ID."""
     configured(VIDEONINJA_LOG_FORMAT=log_format)

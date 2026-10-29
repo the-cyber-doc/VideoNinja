@@ -1,6 +1,5 @@
 import hashlib
 import json
-import os
 import secrets
 import sqlite3
 import threading
@@ -15,7 +14,7 @@ import segno
 from argon2 import PasswordHasher
 from argon2.exceptions import InvalidHashError, VerificationError
 
-from . import clock, db, paths, queries
+from . import clock, db, queries, settings
 
 SESSION_IDLE_S = 30 * 24 * 3600  # sliding: each visit extends to 30 days from now
 SESSION_MAX_S = 365 * 24 * 3600  # absolute cap, whatever the activity
@@ -30,7 +29,7 @@ _DUMMY_HASH = _hasher.hash(secrets.token_hex(16))
 # VIDEONINJA_ARGON2_CONCURRENCY at a time (default 2); the others wait their turn up
 # to ARGON2_WAIT_S, then get 503 (main.py: Busy).
 ARGON2_WAIT_S = 10.0
-_argon2 = threading.BoundedSemaphore(max(1, int(os.environ.get("VIDEONINJA_ARGON2_CONCURRENCY", "2"))))
+_argon2 = threading.BoundedSemaphore(settings.current().argon2_concurrency)
 
 
 class Busy(Exception):
@@ -109,7 +108,7 @@ def session_cookie() -> tuple[str, str]:
     Secure, no Domain, Path=/). Under a base path, the app shares its origin with
     the domain's other sites: "__Secure-session" with Path=<base path>, so that
     their servers never receive it (a __Host- cookie must have Path=/)."""
-    base = paths.base_path()
+    base = settings.current().base_path
     return ("__Secure-session", base) if base else ("__Host-session", "/")
 
 

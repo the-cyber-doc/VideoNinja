@@ -33,7 +33,7 @@ from pathlib import Path
 from fastapi import APIRouter, Depends, Request, Response, status
 from fastapi.responses import FileResponse
 
-from . import catalog, db, i18n, procs
+from . import catalog, db, i18n, procs, settings
 from .errors import ApiError
 from .auth import current_user
 
@@ -53,14 +53,7 @@ _timer: threading.Timer | None = None
 
 
 def catalog_dir() -> Path:
-    path = os.environ.get("VIDEONINJA_CATALOG_DIR")
-    return Path(path) if path else db.db_path().parent / "catalog"
-
-
-def x_accel() -> bool:
-    """VIDEONINJA_X_ACCEL=1 (Docker image, behind nginx): answer with X-Accel-Redirect.
-    Otherwise (development, no nginx): the app serves the file itself."""
-    return os.environ.get("VIDEONINJA_X_ACCEL") == "1"
+    return settings.current().catalog_dir
 
 
 def current() -> tuple[str, dict] | None:
@@ -210,7 +203,7 @@ def get_catalog(
     Cache-Control (the app sends none)."""
     version, manifest = current() or rebuild()
     name = manifest["catalog"][lang]
-    if x_accel():
+    if settings.current().x_accel:
         return Response(headers={"X-Accel-Redirect": f"{INTERNAL_PREFIX}/{version}/{name}"})
     path = catalog_dir() / "versions" / version / name
     if not path.is_file():

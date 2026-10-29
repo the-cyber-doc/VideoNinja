@@ -2,7 +2,7 @@
 
 import pytest
 
-from app import limits
+from app import limits, settings
 
 from .test_upload import admin  # noqa: F401 (fixture)
 
@@ -10,8 +10,8 @@ from .test_upload import admin  # noqa: F401 (fixture)
 def test_defaults(monkeypatch):
     for name in ("VIDEONINJA_MAX_UPLOAD_BYTES", "VIDEONINJA_INPUT_FORMATS"):
         monkeypatch.delenv(name, raising=False)
-    assert limits.max_upload_bytes() == 20 * 1024**3
-    assert limits.input_formats() == ["mov", "matroska", "avi", "mpegts", "mpeg", "dv", "asf"]
+    assert settings.current().max_upload_bytes == 20 * 1024**3
+    assert settings.current().input_formats == ("mov", "matroska", "avi", "mpegts", "mpeg", "dv", "asf")
     assert {"mp4", "mov", "mkv", "webm", "avi", "mts", "mpg", "vob", "dv", "wmv"} <= set(limits.extensions())
     assert limits.ffmpeg_input() == ["-protocol_whitelist", "file",
                                      "-format_whitelist", "mov,matroska,avi,mpegts,mpeg,dv,asf"]
@@ -27,7 +27,7 @@ def test_accepted_names(name, accepted):
 
 def test_formats_setting(monkeypatch):
     monkeypatch.setenv("VIDEONINJA_INPUT_FORMATS", " MOV, matroska ")
-    assert limits.input_formats() == ["mov", "matroska"]
+    assert settings.current().input_formats == ("mov", "matroska")
     assert limits.extensions() == ["mp4", "mov", "m4v", "3gp", "3g2", "mkv", "webm"]
 
 
@@ -40,7 +40,7 @@ def test_formats_setting(monkeypatch):
 def test_invalid_settings_refuse_start(monkeypatch, variable, value):
     monkeypatch.setenv(variable, value)
     with pytest.raises(RuntimeError, match=variable):
-        limits.check()
+        settings.current()
 
 
 def test_the_upload_page_gets_them(admin, monkeypatch):  # noqa: F811

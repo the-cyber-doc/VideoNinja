@@ -7,7 +7,7 @@ import time
 
 import pytest
 
-from app import procs
+from app import procs, settings
 
 
 def gone(pid: int, timeout=5.0) -> bool:
@@ -70,14 +70,14 @@ def test_stop_reaps(tmp_path):
 @pytest.mark.parametrize("value, seconds", [("24", 86400), ("0.5", 1800)])
 def test_time_limit_setting(monkeypatch, value, seconds):
     monkeypatch.setenv("VIDEONINJA_FFMPEG_TIMEOUT_H", value)
-    assert procs.timeout_s() == seconds
+    assert settings.current().ffmpeg_timeout_s == seconds
 
 
 @pytest.mark.parametrize("value", ["0", "-1", "a day", ""])
 def test_invalid_time_limit_refuses_start(monkeypatch, value):
     monkeypatch.setenv("VIDEONINJA_FFMPEG_TIMEOUT_H", value)
     with pytest.raises(RuntimeError, match="VIDEONINJA_FFMPEG_TIMEOUT_H"):
-        procs.timeout_s()
+        settings.current()
 
 
 def test_no_zombie_after_many_runs():
@@ -90,7 +90,7 @@ def test_no_zombie_after_many_runs():
 def test_ffprobe_has_its_own_shorter_limit(tmp_path, monkeypatch):
     """ffprobe only reads headers: 10 minutes by default, whatever the 24 h of ffmpeg."""
     monkeypatch.delenv("VIDEONINJA_FFPROBE_TIMEOUT_MIN", raising=False)
-    assert procs.probe_timeout_s() == 600
+    assert settings.current().ffprobe_timeout_s == 600
     probe = tmp_path / "ffprobe"
     probe.write_text("#!/bin/sh\nexec sleep 60\n")
     probe.chmod(0o755)
@@ -105,4 +105,4 @@ def test_ffprobe_has_its_own_shorter_limit(tmp_path, monkeypatch):
 def test_invalid_ffprobe_limit_refuses_start(monkeypatch, value):
     monkeypatch.setenv("VIDEONINJA_FFPROBE_TIMEOUT_MIN", value)
     with pytest.raises(RuntimeError, match="VIDEONINJA_FFPROBE_TIMEOUT_MIN"):
-        procs.check()
+        settings.current()

@@ -16,7 +16,7 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
-from app import db, encoder
+from app import db, encoder, settings
 from app.main import app
 
 from .test_upload import admin, hook, session, submit, uploaded  # noqa: F401 (fixture)
@@ -344,7 +344,7 @@ def test_stopping_kills_ffmpeg_too(enc, tmp_path):
 @pytest.mark.parametrize("value, preset", [("fast", "fast"), (" Medium\r", "medium"), ('"slow"', "slow")])
 def test_x265_preset_tidied(monkeypatch, value, preset):
     monkeypatch.setenv("VIDEONINJA_X265_PRESET", value)
-    assert encoder.x265_preset() == preset
+    assert settings.current().x265_preset == preset
 
 
 @pytest.mark.parametrize("value", ["", "p6", "medium fast"])
@@ -366,7 +366,7 @@ def test_script_strips_metadata_unless_asked(tmp_path, keep, present, absent):
     clip = tmp_path / "clip.mp4"
     subprocess.run(["ffmpeg", "-v", "error", "-y", "-f", "lavfi", "-i", "testsrc=size=160x120:rate=25:d=1",
                     "-c:v", "libx264", f"file:{clip}"], check=True)
-    out = subprocess.run([str(encoder.DEFAULT_SCRIPT), "-c", "-n", *(["-m"] if keep else []), "-o",
+    out = subprocess.run([str(settings.DEFAULT_SCRIPT), "-c", "-n", *(["-m"] if keep else []), "-o",
                           str(tmp_path / "out"), str(clip)], capture_output=True, text=True, check=True).stdout
     assert all(option in out for option in present), out
     assert not any(option in out for option in absent), out
@@ -381,7 +381,7 @@ def test_script_keyframe_interval(tmp_path, rate, options, every):
     clip = tmp_path / "clip.mp4"
     subprocess.run(["ffmpeg", "-v", "error", "-y", "-f", "lavfi", "-i", f"testsrc=size=160x120:rate={rate}:d=1",
                     "-c:v", "libx264", f"file:{clip}"], check=True)
-    result = subprocess.run([str(encoder.DEFAULT_SCRIPT), "-c", "-n", *options, "-o", str(tmp_path / "out"),
+    result = subprocess.run([str(settings.DEFAULT_SCRIPT), "-c", "-n", *options, "-o", str(tmp_path / "out"),
                              str(clip)], capture_output=True, text=True, check=True)
     assert f"{rate} fps, keyframe every {every} s" in result.stderr
     # The dry run prints the ffmpeg command shell-escaped: expr:gte\(t\,n_forced\*1\)
@@ -443,10 +443,10 @@ def test_only_allowed_formats_are_read(tmp_path, monkeypatch):
 
 def test_script_refuses_other_formats(tmp_path):
     sample = Path(__file__).parent / "video_test_need_encoding.webm"
-    result = subprocess.run([str(encoder.DEFAULT_SCRIPT), "-c", "-n", "-W", "mov", "-o", str(tmp_path / "out"),
+    result = subprocess.run([str(settings.DEFAULT_SCRIPT), "-c", "-n", "-W", "mov", "-o", str(tmp_path / "out"),
                              str(sample)], capture_output=True, text=True)
     assert "FAIL" in result.stderr, result.stderr
-    result = subprocess.run([str(encoder.DEFAULT_SCRIPT), "-c", "-n", "-o", str(tmp_path / "out"), str(sample)],
+    result = subprocess.run([str(settings.DEFAULT_SCRIPT), "-c", "-n", "-o", str(tmp_path / "out"), str(sample)],
                             capture_output=True, text=True, check=True)
     assert "-protocol_whitelist file -format_whitelist mov\\,matroska" in result.stdout, result.stdout
 

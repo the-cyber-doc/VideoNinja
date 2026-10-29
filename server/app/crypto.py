@@ -16,14 +16,15 @@ from pathlib import Path
 
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
-DEFAULT_KEY_FILE = "/run/secrets/videoninja_key"
+from . import settings
+
 VERSION = "v1"
 
 _aead: AESGCM | None = None
 
 
 def key_file() -> Path:
-    return Path(os.environ.get("VIDEONINJA_DB_KEY_FILE", DEFAULT_KEY_FILE))
+    return settings.current().key_file
 
 
 def _read_key() -> tuple[str, str]:

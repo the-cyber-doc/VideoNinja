@@ -18,42 +18,13 @@ import subprocess  # this module's purpose (docstring)  # nosec B404
 import tempfile
 from collections.abc import Sequence
 
+from . import settings
+
 GRACE_S = 30
 
 
 class Timeout(Exception):
     """The process ran longer than its time limit (it was stopped)."""
-
-
-def timeout_s() -> float:
-    """VIDEONINJA_FFMPEG_TIMEOUT_H in seconds. RuntimeError if not a positive number:
-    checked at startup."""
-    value = os.environ.get("VIDEONINJA_FFMPEG_TIMEOUT_H", "24")
-    try:
-        hours = float(value)
-    except ValueError:
-        hours = 0
-    if not hours > 0:
-        raise RuntimeError(f"VIDEONINJA_FFMPEG_TIMEOUT_H={value!r}: must be a positive number of hours")
-    return hours * 3600
-
-
-def probe_timeout_s() -> float:
-    """VIDEONINJA_FFPROBE_TIMEOUT_MIN in seconds. RuntimeError if not a positive number."""
-    value = os.environ.get("VIDEONINJA_FFPROBE_TIMEOUT_MIN", "10")
-    try:
-        minutes = float(value)
-    except ValueError:
-        minutes = 0
-    if not minutes > 0:
-        raise RuntimeError(f"VIDEONINJA_FFPROBE_TIMEOUT_MIN={value!r}: must be a positive number of minutes")
-    return minutes * 60
-
-
-def check() -> None:
-    """At startup: refuse to start with a wrong time limit."""
-    timeout_s()
-    probe_timeout_s()
 
 
 def _command(cmd: Sequence[str]) -> list[str]:
@@ -90,12 +61,13 @@ def _signal_group(process: subprocess.Popen, sig: int) -> None:
 
 
 def run(cmd: Sequence[str], timeout: float | None = None) -> subprocess.CompletedProcess:
-    """Run to the end and capture its output (text). Timeout (default: probe_timeout_s()
-    for ffprobe, else timeout_s())
+    """Run to the end and capture its output (text). Timeout (default: the settings'
+    ffprobe_timeout_s for ffprobe, else ffmpeg_timeout_s)
     raises Timeout, the process group stopped. The output goes through temporary
     files, not pipes: a child left behind holding a pipe would keep run() waiting."""
     if timeout is None:
-        timeout = probe_timeout_s() if os.path.basename(cmd[0]) == "ffprobe" else timeout_s()
+        limits = settings.current()
+        timeout = limits.ffprobe_timeout_s if os.path.basename(cmd[0]) == "ffprobe" else limits.ffmpeg_timeout_s
     limit = timeout
     with tempfile.TemporaryFile() as out, tempfile.TemporaryFile() as err:
         process = popen(cmd, stdout=out, stderr=err)
