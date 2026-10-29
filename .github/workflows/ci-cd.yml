@@ -41,11 +41,22 @@ jobs:
     - name: Install dependencies
       working-directory: ./server
       run: |
-        # Every package pinned with its hashes (requirements*.txt, from the .in files).
-        pip install --require-hashes -r requirements-dev.txt
+        # Every package pinned with its hashes (requirements*.txt, from the .in files),
+        # in server/.venv as in development (the git hooks' paths), first on the PATH.
+        python -m venv .venv
+        .venv/bin/pip install --require-hashes -r requirements-dev.txt
+        echo "$PWD/.venv/bin" >> "$GITHUB_PATH"
         # As in the Docker image: precompression of the catalogue snapshots,
         # ffmpeg for the encoding tests (tiny generated clips).
         sudo apt-get update && sudo apt-get install -y --no-install-recommends brotli zopfli ffmpeg
+
+    # The git hooks' hygiene checks (.pre-commit-config.yaml), for commits made without
+    # them (Dependabot, GitHub's editor). The tools' hooks: their own steps (backend
+    # below, frontend in its job).
+    - name: Repository hygiene (pre-commit)
+      env:
+        SKIP: ruff-format,ruff-check,mypy,prettier,eslint
+      run: pre-commit run --all-files --show-diff-on-failure
 
     - name: Run tests
       working-directory: ./server

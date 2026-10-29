@@ -1,0 +1,79 @@
+# Checks before each commit, on the staged files: the same tools and versions as CI
+# (server/.venv, frontend/node_modules), nothing downloaded. Install once, in the repository:
+#   server/.venv/bin/pre-commit install
+# Every file: server/.venv/bin/pre-commit run --all-files. CI runs the same tools itself.
+default_install_hook_types: [pre-commit]
+fail_fast: false
+
+repos:
+  - repo: local
+    hooks:
+      # Hygiene (pre-commit-hooks, from requirements-dev.txt).
+      - id: check-added-large-files
+        name: no large files (videos belong in the media folder, not in git)
+        entry: server/.venv/bin/check-added-large-files --maxkb=1024
+        language: system
+      - id: detect-private-key
+        name: no private keys
+        entry: server/.venv/bin/detect-private-key
+        language: system
+        types: [text]
+      - id: check-merge-conflict
+        name: no merge conflict markers
+        entry: server/.venv/bin/check-merge-conflict
+        language: system
+        types: [text]
+      - id: end-of-file-fixer
+        name: one newline at the end of files
+        entry: server/.venv/bin/end-of-file-fixer
+        language: system
+        types: [text]
+      - id: trailing-whitespace
+        name: no trailing whitespace
+        entry: server/.venv/bin/trailing-whitespace-fixer --markdown-linebreak-ext=md
+        language: system
+        types: [text]
+      - id: check-yaml
+        name: YAML parses
+        entry: server/.venv/bin/check-yaml
+        language: system
+        types: [yaml]
+      - id: check-toml
+        name: TOML parses
+        entry: server/.venv/bin/check-toml
+        language: system
+        types: [toml]
+
+      # Backend (settings: server/pyproject.toml).
+      - id: ruff-format
+        name: ruff format (backend layout)
+        entry: server/.venv/bin/ruff format
+        language: system
+        types: [python]
+        files: ^server/(app|tests)/
+      - id: ruff-check
+        name: ruff check (backend lint)
+        entry: server/.venv/bin/ruff check
+        language: system
+        types: [python]
+        files: ^server/(app|tests)/
+      - id: mypy
+        name: mypy (backend types, strict)
+        entry: bash -c 'cd server && exec .venv/bin/mypy'
+        language: system
+        types: [python]
+        files: ^server/app/
+        pass_filenames: false
+
+      # Frontend (settings: frontend/.prettierrc, .prettierignore, eslint.config.js), run
+      # from frontend/ so that they find them.
+      - id: prettier
+        name: prettier (frontend layout)
+        entry: bash -c 'cd frontend && exec node_modules/.bin/prettier --write --ignore-unknown "${@#frontend/}"' --
+        language: system
+        files: ^frontend/
+      - id: eslint
+        name: eslint (frontend lint)
+        entry: bash -c 'cd frontend && exec node_modules/.bin/eslint --no-warn-ignored "${@#frontend/}"' --
+        language: system
+        files: ^frontend/.*\.(js|ts|svelte)$

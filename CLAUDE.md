@@ -496,6 +496,12 @@ the encoder waits for the version; `/health` fails on a mismatch.
   siblings allowed); `npm run format` applies both. `npm run test:coverage` (v8, `src/**/*.ts`, thresholds in
   `vite.config.ts` = the figures when set: raise, never lower; components are covered by Playwright, not
   measured).
+- Git hooks: `.pre-commit-config.yaml` (pre-commit + pre-commit-hooks in requirements-dev), every hook
+  `repo: local` / `language: system` on `server/.venv/bin/…` and `frontend/node_modules/.bin/…` (the CI versions,
+  nothing fetched; frontend tools run from `frontend/` to find their configs): large files (> 1 MB), private keys,
+  merge markers, EOF/trailing whitespace, YAML/TOML, ruff format + check, mypy, prettier --write, eslint.
+  Installed by hand (`server/.venv/bin/pre-commit install`). CI's server job installs into `server/.venv` too (on
+  `$GITHUB_PATH`) and runs the hygiene hooks on every file (`SKIP` = the tools' hooks, run by their own steps).
 - Code scanning: CodeQL = GitHub's default setup (repository settings; python, javascript-typescript,
   actions). No CodeQL workflow: GitHub refuses advanced-setup results while the default setup is on.
   Bandit in CI's server job (`bandit -r app -q`, fails on a finding). Reviewed
