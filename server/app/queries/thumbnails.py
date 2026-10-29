@@ -14,7 +14,7 @@ def mark_thumbs_dirty(con: sqlite3.Connection, video_id: int) -> None:
 def thumbs_dirty_videos(con: sqlite3.Connection) -> list[sqlite3.Row]:
     return con.execute(
         'SELECT "id", "sha256sum", "duration_s", "thumbs_dirty" FROM "video"'
-        " WHERE \"thumbs_dirty\" > 0 AND \"status\" = 'published' ORDER BY \"id\""
+        ' WHERE "thumbs_dirty" > 0 AND "status" = \'published\' ORDER BY "id"'
     ).fetchall()
 
 
@@ -27,14 +27,11 @@ def segment_thumbnails(con: sqlite3.Connection, video_id: int) -> list[sqlite3.R
 def set_new_segment_thumbnail(con: sqlite3.Connection, segment: sqlite3.Row, name: str) -> None:
     """Only if the segment still has no thumbnail and the same times (not re-timed meanwhile)."""
     con.execute(
-        'UPDATE "segment" SET "thumbnail" = ?'
-        ' WHERE "id" = ? AND "thumbnail" IS NULL AND "begin_s" = ? AND "end_s" = ?',
+        'UPDATE "segment" SET "thumbnail" = ? WHERE "id" = ? AND "thumbnail" IS NULL AND "begin_s" = ? AND "end_s" = ?',
         (name, segment["id"], segment["begin_s"], segment["end_s"]),
     )
 
 
 def clear_thumbs_dirty(con: sqlite3.Connection, video_id: int, seen: int) -> None:
     """Only the changes seen: one made meanwhile keeps the video dirty."""
-    con.execute(
-        'UPDATE "video" SET "thumbs_dirty" = "thumbs_dirty" - ? WHERE "id" = ?', (seen, video_id)
-    )
+    con.execute('UPDATE "video" SET "thumbs_dirty" = "thumbs_dirty" - ? WHERE "id" = ?', (seen, video_id))

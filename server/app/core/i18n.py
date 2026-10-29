@@ -8,6 +8,7 @@ Japanese names (kanji, romaji) are not translations: they are sent as they are.
 
 import sqlite3
 import unicodedata
+from typing import overload
 
 from fastapi import Header
 
@@ -41,8 +42,14 @@ def language(accept_language: str | None = Header(default=None)) -> str:
     return parse(accept_language)
 
 
+@overload
+def pick(row: sqlite3.Row, key: str, lang: str, fallback: str) -> str: ...
+@overload
+def pick(row: sqlite3.Row, key: str, lang: str, fallback: None = None) -> str | None: ...
 def pick(row: sqlite3.Row, key: str, lang: str, fallback: str | None = None) -> str | None:
-    return row[f"{key}_{lang}"] or row[f"{key}_{DEFAULT}"] or fallback
+    """The `<key>_<lang>` column, else English's, else `fallback`."""
+    value: str | None = row[f"{key}_{lang}"] or row[f"{key}_{DEFAULT}"] or fallback
+    return value
 
 
 def sort_key(text: str) -> str:

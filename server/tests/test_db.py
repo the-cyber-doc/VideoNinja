@@ -1,6 +1,7 @@
 """Connections and transactions (db.connect, db.write, db.read): autocommit outside
 an explicit transaction, writes serialised from their first read, never half done."""
 
+import re
 import sqlite3
 import threading
 import time
@@ -35,9 +36,8 @@ def test_with_con_is_refused(path):
     """In autocommit mode `with con:` would commit nothing and roll nothing back."""
     con = db.connect(path)
     try:
-        with pytest.raises(TypeError, match="db.write"):
-            with con:
-                pass
+        with pytest.raises(TypeError, match=re.escape("db.write")), con:
+            pass
     finally:
         con.close()
 
@@ -57,11 +57,10 @@ def test_write_rolls_back_on_error(path):
     """An error in the middle (e.g. a 4xx after the first writes) leaves nothing behind."""
     con = db.connect(path)
     try:
-        with pytest.raises(RuntimeError):
-            with db.write(con):
-                con.execute("UPDATE counter SET n = 1")
-                con.execute("INSERT INTO counter VALUES (2)")
-                raise RuntimeError("refused")
+        with pytest.raises(RuntimeError), db.write(con):
+            con.execute("UPDATE counter SET n = 1")
+            con.execute("INSERT INTO counter VALUES (2)")
+            raise RuntimeError("refused")
         assert not con.in_transaction
     finally:
         con.close()
@@ -100,7 +99,7 @@ def test_concurrent_read_modify_write(path):
                 n = con.execute("SELECT n FROM counter").fetchone()[0]
                 time.sleep(0.02)  # the others try meanwhile
                 con.execute("UPDATE counter SET n = ?", (n + 1,))
-        except BaseException as e:  # noqa: BLE001 - reported by the assertion below
+        except BaseException as e:
             errors.append(e)
         finally:
             con.close()

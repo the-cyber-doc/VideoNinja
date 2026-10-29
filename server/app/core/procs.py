@@ -11,12 +11,14 @@ never left running, never left unreaped.
 - In the containers, tini is PID 1 and reaps whatever is re-parented to it.
 """
 
+import contextlib
 import os
 import shutil
 import signal
 import subprocess  # this module's purpose (docstring)  # nosec B404
 import tempfile
 from collections.abc import Sequence
+from typing import Any
 
 from . import settings
 
@@ -32,14 +34,14 @@ def _command(cmd: Sequence[str]) -> list[str]:
     return [setpriv, "--pdeathsig", "KILL", "--", *cmd] if setpriv else list(cmd)
 
 
-def popen(cmd: Sequence[str], **kwargs) -> subprocess.Popen:
+def popen(cmd: Sequence[str], **kwargs: Any) -> subprocess.Popen[Any]:
     """Start cmd in its own process group, killed if the app's process dies.
     The caller must end with stop() (also after a normal exit)."""
     # An argument list (no shell) built by the app, never from a request.
     return subprocess.Popen(_command(cmd), start_new_session=True, **kwargs)  # nosec B603
 
 
-def stop(process: subprocess.Popen) -> None:
+def stop(process: subprocess.Popen[Any]) -> None:
     """Stop the process and everything left in its group, and reap it."""
     if process.poll() is None:
         _signal_group(process, signal.SIGTERM)
@@ -53,14 +55,12 @@ def stop(process: subprocess.Popen) -> None:
     _signal_group(process, signal.SIGKILL)
 
 
-def _signal_group(process: subprocess.Popen, sig: int) -> None:
-    try:
+def _signal_group(process: subprocess.Popen[Any], sig: int) -> None:
+    with contextlib.suppress(ProcessLookupError):  # gone already
         os.killpg(process.pid, sig)
-    except ProcessLookupError:
-        pass
 
 
-def run(cmd: Sequence[str], timeout: float | None = None) -> subprocess.CompletedProcess:
+def run(cmd: Sequence[str], timeout: float | None = None) -> subprocess.CompletedProcess[str]:
     """Run to the end and capture its output (text). Timeout (default: the settings'
     ffprobe_timeout_s for ffprobe, else ffmpeg_timeout_s)
     raises Timeout, the process group stopped. The output goes through temporary

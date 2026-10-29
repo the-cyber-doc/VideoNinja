@@ -21,8 +21,7 @@ def catalog_changed() -> None:
         return
     # An ID of its own, in both logs: the API's line of this call and this one.
     rid = uuid.uuid4().hex
-    request = urllib.request.Request(f"{api}/internal/catalog-changed", method="POST",
-                                     headers={"X-Request-ID": rid})
+    request = urllib.request.Request(f"{api}/internal/catalog-changed", method="POST", headers={"X-Request-ID": rid})
     try:
         urllib.request.urlopen(request, timeout=10).close()  # http(s) only (paths)  # nosec B310
         log.info("Catalogue rebuild requested from the API", extra={"request_id": rid})

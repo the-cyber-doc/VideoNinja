@@ -20,13 +20,12 @@ import ipaddress
 import threading
 import time
 from collections import OrderedDict, deque
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 
 from fastapi import HTTPException, Request
 
-from . import audit
 from ..core.errors import ApiError
-
+from . import audit
 
 MAX_FAILURES = 10
 WINDOW_S = 15 * 60
@@ -43,7 +42,7 @@ def client_key(request: Request) -> str:
         address = ipaddress.ip_address(host)
     except ValueError:
         return host  # not an address (test client)
-    if address.version == 6:
+    if isinstance(address, ipaddress.IPv6Address):
         if address.ipv4_mapped:
             return str(address.ipv4_mapped)
         return str(ipaddress.ip_network(f"{address}/64", strict=False))
@@ -92,7 +91,7 @@ def reset() -> None:
         _failures.clear()
 
 
-def credential_guard(*failure_statuses: int):
+def credential_guard(*failure_statuses: int) -> Callable[[Request], Iterator[None]]:
     """Dependency factory for an endpoint that checks a credential: 429 while the
     client is throttled; an answer with one of `failure_statuses` counts as a failure."""
 

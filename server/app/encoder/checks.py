@@ -4,9 +4,11 @@ result's format; and ffmpeg's progress. Every run through procs.py (own process
 group, time limit) and limits.ffmpeg_input (local files of the allowed formats)."""
 
 import hashlib
+import itertools
 import json
 import os
 from pathlib import Path
+from typing import Any
 
 from ..core import limits, procs
 
@@ -28,7 +30,7 @@ def check_complete(original: Path, info: Path) -> None:
     offset (it stays 0): the data received is the file's size on disk."""
     try:
         meta = json.loads(info.read_text(encoding="utf-8"))
-    except (OSError, ValueError):
+    except OSError, ValueError:
         raise JobError("The uploaded file is missing") from None
     if not original.is_file() or original.stat().st_size != meta.get("Size"):
         raise JobError("The upload is incomplete")
@@ -42,24 +44,47 @@ def run(cmd: list[str]) -> str:
         raise JobError(str(e)) from None  # final: it would take as long again
     if result.returncode != 0:
         raise JobError(f"{cmd[0]} failed: {result.stderr.strip()[-500:]}")
-    return result.stdout
+    output: str = result.stdout
+    return output
 
 
 def probe_duration(path: Path) -> float:
-    out = run(["ffprobe", "-v", "error", *limits.ffmpeg_input(), "-show_entries", "format=duration:stream=codec_type",
-               "-of", "json", f"file:{path}"])
+    out = run(
+        [
+            "ffprobe",
+            "-v",
+            "error",
+            *limits.ffmpeg_input(),
+            "-show_entries",
+            "format=duration:stream=codec_type",
+            "-of",
+            "json",
+            f"file:{path}",
+        ]
+    )
     data = json.loads(out)
     if not any(s.get("codec_type") == "video" for s in data.get("streams", [])):
         raise JobError("No video in this file")
     try:
         return float(data["format"]["duration"])
-    except (KeyError, ValueError):
+    except KeyError, ValueError:
         raise JobError("Unknown duration") from None
 
 
 def check_encoded(path: Path) -> None:
-    out = run(["ffprobe", "-v", "error", *limits.ffmpeg_input(own=True),
-               "-show_entries", "stream=codec_type,codec_name,codec_tag_string", "-of", "json", f"file:{path}"])
+    out = run(
+        [
+            "ffprobe",
+            "-v",
+            "error",
+            *limits.ffmpeg_input(own=True),
+            "-show_entries",
+            "stream=codec_type,codec_name,codec_tag_string",
+            "-of",
+            "json",
+            f"file:{path}",
+        ]
+    )
     streams = json.loads(out).get("streams", [])
     videos = [s for s in streams if s.get("codec_type") == "video"]
     audios = [s for s in streams if s.get("codec_type") == "audio"]
@@ -78,10 +103,21 @@ def needs_encoding(path: Path, own: bool = False) -> str | None:
     Such a file (e.g. a phone's recording, or encoded with the script before
     upload) is not encoded again, which would only lose quality and take the Pi
     minutes to hours: strip_metadata copies its streams. When unsure: encode."""
-    out = run(["ffprobe", "-v", "error", *limits.ffmpeg_input(own), "-show_entries",
-               "format=format_name:stream=codec_type,codec_name,codec_tag_string,profile,pix_fmt,"
-               "width,height,field_order,color_transfer,color_primaries,channels,avg_frame_rate"
-               ":stream_side_data=side_data_type", "-of", "json", f"file:{path}"])
+    out = run(
+        [
+            "ffprobe",
+            "-v",
+            "error",
+            *limits.ffmpeg_input(own),
+            "-show_entries",
+            "format=format_name:stream=codec_type,codec_name,codec_tag_string,profile,pix_fmt,"
+            "width,height,field_order,color_transfer,color_primaries,channels,avg_frame_rate"
+            ":stream_side_data=side_data_type",
+            "-of",
+            "json",
+            f"file:{path}",
+        ]
+    )
     data = json.loads(out)
     fmt = data.get("format", {})
     if "mp4" not in fmt.get("format_name", "").split(","):
@@ -89,13 +125,14 @@ def needs_encoding(path: Path, own: bool = False) -> str | None:
     if not moov_first(path):
         return "no faststart (index after the media data)"
     streams = data.get("streams", [])
-    v = [s for s in streams if s.get("codec_type") == "video"]
-    a = [s for s in streams if s.get("codec_type") == "audio"]
-    if len(v) != 1:
-        return "no video" if not v else "more than one video stream"
-    if len(a) > 1:
+    videos = [s for s in streams if s.get("codec_type") == "video"]
+    audios = [s for s in streams if s.get("codec_type") == "audio"]
+    if len(videos) != 1:
+        return "no video" if not videos else "more than one video stream"
+    if len(audios) > 1:
         return "more than one audio stream"
-    v, a = v[0], a[0] if a else None
+    v: dict[str, Any] = videos[0]
+    a: dict[str, Any] | None = audios[0] if audios else None
     if (v.get("codec_name"), v.get("codec_tag_string"), v.get("profile")) != ("hevc", "hvc1", "Main"):
         return f"video is {v.get('codec_name')}/{v.get('codec_tag_string')} {v.get('profile')}, not hevc/hvc1 Main"
     if v.get("pix_fmt") != "yuv420p":
@@ -110,8 +147,10 @@ def needs_encoding(path: Path, own: bool = False) -> str | None:
     if any("DOVI" in d.get("side_data_type", "") for d in v.get("side_data_list", [])):
         return "Dolby Vision"
     if a is not None and ((a.get("codec_name"), a.get("profile")) != ("aac", "LC") or a.get("channels") not in (1, 2)):
-        return (f"audio is {a.get('codec_name')} {a.get('profile')} with {a.get('channels')} channels,"
-                " not AAC mono or stereo")
+        return (
+            f"audio is {a.get('codec_name')} {a.get('profile')} with {a.get('channels')} channels,"
+            " not AAC mono or stereo"
+        )
     return keyframe_problem(path, v.get("avg_frame_rate", "0/1"), own)
 
 
@@ -121,11 +160,43 @@ def strip_metadata(original: Path, out: Path) -> None:
     device, encoder), no chapters, no other streams (data or GPS tracks,
     timecode, subtitles). The picture's rotation is side data, not metadata: it
     stays. Seconds, even for a long video: only the bytes are copied."""
-    run(["ffmpeg", "-v", "error", "-nostdin", "-y", *limits.ffmpeg_input(), "-i", f"file:{original}",
-         "-map", "0:v:0", "-map", "0:a:0?", "-c", "copy",
-         "-map_metadata", "-1", "-map_metadata:s", "-1", "-map_chapters", "-1",
-         "-fflags", "+bitexact", "-flags:v", "+bitexact", "-flags:a", "+bitexact",
-         "-tag:v", "hvc1", "-movflags", "+faststart", "-f", "mp4", f"file:{out}"])
+    run(
+        [
+            "ffmpeg",
+            "-v",
+            "error",
+            "-nostdin",
+            "-y",
+            *limits.ffmpeg_input(),
+            "-i",
+            f"file:{original}",
+            "-map",
+            "0:v:0",
+            "-map",
+            "0:a:0?",
+            "-c",
+            "copy",
+            "-map_metadata",
+            "-1",
+            "-map_metadata:s",
+            "-1",
+            "-map_chapters",
+            "-1",
+            "-fflags",
+            "+bitexact",
+            "-flags:v",
+            "+bitexact",
+            "-flags:a",
+            "+bitexact",
+            "-tag:v",
+            "hvc1",
+            "-movflags",
+            "+faststart",
+            "-f",
+            "mp4",
+            f"file:{out}",
+        ]
+    )
 
 
 def keyframe_problem(path: Path, frame_rate: str, own: bool = False) -> str | None:
@@ -133,13 +204,29 @@ def keyframe_problem(path: Path, frame_rate: str, own: bool = False) -> str | No
     seconds (one frame of tolerance). Reads packet headers only: no decoding."""
     num, _, den = frame_rate.partition("/")
     frame_s = float(den or 1) / float(num) if float(num or 0) else 0.1
-    out = run(["ffprobe", "-v", "error", *limits.ffmpeg_input(own), "-select_streams", "v:0",
-               "-show_entries", "packet=pts_time,flags", "-of", "csv=p=0", f"file:{path}"])
-    keys = sorted(float(t) for t, _, flags in (line.partition(",") for line in out.splitlines())
-                  if "K" in flags and t not in ("", "N/A"))
+    out = run(
+        [
+            "ffprobe",
+            "-v",
+            "error",
+            *limits.ffmpeg_input(own),
+            "-select_streams",
+            "v:0",
+            "-show_entries",
+            "packet=pts_time,flags",
+            "-of",
+            "csv=p=0",
+            f"file:{path}",
+        ]
+    )
+    keys = sorted(
+        float(t)
+        for t, _, flags in (line.partition(",") for line in out.splitlines())
+        if "K" in flags and t not in ("", "N/A")
+    )
     if not keys or keys[0] > frame_s:
         return "does not start with a keyframe"
-    gap = max((b - a for a, b in zip(keys, keys[1:])), default=0)
+    gap = max((b - a for a, b in itertools.pairwise(keys)), default=0)
     if gap > GOP_S + frame_s:
         return f"keyframes up to {gap:.1f} s apart, not every {GOP_S} s"
     return None

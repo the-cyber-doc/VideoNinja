@@ -1,24 +1,25 @@
-import sqlite3
 from datetime import UTC, datetime
 
 import pyotp
 import pytest
 
-from app.core import clock, db
+from app.core import clock
 
+from .conftest import connect
 from .test_auth import login
-from .test_users import USER_PASSWORD, create, register, user_login
 from .test_catalog import KETO, KOKU
+from .test_users import USER_PASSWORD, create, register, user_login
 
 COMMENTS = f"/api/techniques/{KOKU}/comments"
 
 
 def add_comment(technique, user_id, created_at, text, lang="en", modified_at=None):
-    con = sqlite3.connect(db.db_path())
+    con = connect()
     with con:
-        con.execute("INSERT INTO comment (technique, user, lang, text, created_at, modified_at)"
-                    " VALUES (?, ?, ?, ?, ?, ?)",
-                    (technique, user_id, lang, text, created_at, modified_at or created_at))
+        con.execute(
+            "INSERT INTO comment (technique, user, lang, text, created_at, modified_at) VALUES (?, ?, ?, ?, ?, ?)",
+            (technique, user_id, lang, text, created_at, modified_at or created_at),
+        )
 
 
 @pytest.fixture
@@ -40,15 +41,17 @@ def test_requires_login(client, admin_secret):
 
 
 def test_every_role_may_comment(client, admin_secret):
-    con = sqlite3.connect(db.db_path())
+    con = connect()
     roles = {r for (r,) in con.execute("SELECT id FROM role")}
     assert {r for (r,) in con.execute("SELECT role FROM role_has_access WHERE access = 'comment'")} == roles
-    assert con.execute("SELECT en, fr FROM translation WHERE id = 'access.comment.name'").fetchone() \
-        == ("Comment", "Commentaire")
+    assert con.execute("SELECT en, fr FROM translation WHERE id = 'access.comment.name'").fetchone() == (
+        "Comment",
+        "Commentaire",
+    )
 
 
 def test_last_modified_first_with_author(admin):
-    con = sqlite3.connect(db.db_path())
+    con = connect()
     with con:  # a user without display name: shown by username
         kenji = con.execute("INSERT INTO user (username, role) VALUES ('kenji', 'user')").lastrowid
     add_comment(KOKU, 1, "2026-01-05T09:00:00+01:00", "First")
@@ -59,8 +62,7 @@ def test_last_modified_first_with_author(admin):
     add_comment(KOKU, kenji, "2026-02-05T09:00:00+09:00", "09:00 Tokyo")
     add_comment(KETO, 1, "2026-05-05T09:00:00+02:00", "Other technique")
     # Written first, edited last: on top.
-    add_comment(KOKU, kenji, "2025-12-01T09:00:00+01:00", "Edited",
-                modified_at="2026-04-01T09:00:00+02:00")
+    add_comment(KOKU, kenji, "2025-12-01T09:00:00+01:00", "Edited", modified_at="2026-04-01T09:00:00+02:00")
 
     r = admin.get(COMMENTS)
     assert r.status_code == 200
@@ -72,8 +74,15 @@ def test_last_modified_first_with_author(admin):
         (5, "kenji", "09:00 Tokyo", False),
         (1, "Admin", "First", True),
     ]
-    assert r.json()[0] == {"id": 7, "user": "kenji", "created_at": "2025-12-01T09:00:00+01:00",
-                           "modified_at": "2026-04-01T09:00:00+02:00", "lang": "en", "text": "Edited", "mine": False}
+    assert r.json()[0] == {
+        "id": 7,
+        "user": "kenji",
+        "created_at": "2025-12-01T09:00:00+01:00",
+        "modified_at": "2026-04-01T09:00:00+02:00",
+        "lang": "en",
+        "text": "Edited",
+        "mine": False,
+    }
 
 
 def test_no_comments(admin):
@@ -87,18 +96,30 @@ def test_unknown_technique(admin):
 
 def test_add_edit_delete_own(admin, monkeypatch):
     monkeypatch.setattr(clock, "now", lambda: datetime(2026, 10, 23, 10, 0, tzinfo=UTC))
-    r = admin.post(COMMENTS, json={"text": "  Keep the elbow low.\nThen turn.  ", "lang": "en"},
-                   headers={"Time-Zone": "Europe/Zurich"})
+    r = admin.post(
+        COMMENTS,
+        json={"text": "  Keep the elbow low.\nThen turn.  ", "lang": "en"},
+        headers={"Time-Zone": "Europe/Zurich"},
+    )
     assert r.status_code == 201
     comment = r.json()
-    assert comment == {"id": comment["id"], "user": "Admin", "created_at": "2026-10-23T12:00:00+02:00",
-                       "modified_at": "2026-10-23T12:00:00+02:00", "lang": "en",
-                       "text": "Keep the elbow low.\nThen turn.", "mine": True}  # trimmed, line breaks kept
+    assert comment == {
+        "id": comment["id"],
+        "user": "Admin",
+        "created_at": "2026-10-23T12:00:00+02:00",
+        "modified_at": "2026-10-23T12:00:00+02:00",
+        "lang": "en",
+        "text": "Keep the elbow low.\nThen turn.",
+        "mine": True,
+    }  # trimmed, line breaks kept
     assert admin.get(COMMENTS).json() == [comment]
 
     monkeypatch.setattr(clock, "now", lambda: datetime(2026, 10, 24, 8, 30, tzinfo=UTC))
-    r = admin.patch(f"/api/comments/{comment['id']}", json={"text": "Coude bas.", "lang": "fr"},
-                    headers={"Time-Zone": "Europe/Zurich"})
+    r = admin.patch(
+        f"/api/comments/{comment['id']}",
+        json={"text": "Coude bas.", "lang": "fr"},
+        headers={"Time-Zone": "Europe/Zurich"},
+    )
     assert r.status_code == 200
     assert r.json() == {**comment, "text": "Coude bas.", "lang": "fr", "modified_at": "2026-10-24T10:30:00+02:00"}
 
@@ -126,7 +147,7 @@ def test_only_the_author_edits_or_deletes(admin, kenji, caplog):
 
 def test_needs_the_comment_access(admin, kenji):
     his = kenji.post(COMMENTS, json={"text": "Kenji's", "lang": "en"}).json()
-    con = sqlite3.connect(db.db_path())
+    con = connect()
     with con:
         con.execute("DELETE FROM role_has_access WHERE role = 'user' AND access = 'comment'")
     assert kenji.get(COMMENTS).status_code == 200  # reading needs no access
@@ -135,14 +156,17 @@ def test_needs_the_comment_access(admin, kenji):
     assert kenji.delete(f"/api/comments/{his['id']}").status_code == 403
 
 
-@pytest.mark.parametrize("body", [
-    {"text": "", "lang": "en"},
-    {"text": "   \n  ", "lang": "en"},
-    {"text": "x" * 4001, "lang": "en"},
-    {"text": "Hi", "lang": "de"},
-    {"text": "Hi"},
-    {"lang": "en"},
-])
+@pytest.mark.parametrize(
+    "body",
+    [
+        {"text": "", "lang": "en"},
+        {"text": "   \n  ", "lang": "en"},
+        {"text": "x" * 4001, "lang": "en"},
+        {"text": "Hi", "lang": "de"},
+        {"text": "Hi"},
+        {"lang": "en"},
+    ],
+)
 def test_invalid_comments(admin, body):
     assert admin.post(COMMENTS, json=body).status_code == 422
 

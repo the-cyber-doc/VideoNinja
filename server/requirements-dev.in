@@ -9,5 +9,12 @@ httpx2==2.16.0
 watchfiles==1.3.0
 # Python security linter (ci-cd.yml's server tests; README, Security)
 bandit==1.9.4
-# Style and errors (flake8 --max-line-length=120 app tests)
-flake8==7.4.1
+# Lint and import order (ruff check), types (mypy), test coverage (pytest --cov):
+# settings in pyproject.toml
+ruff==0.17.0
+mypy==2.4.0
+pytest-cov==7.1.0
+# Their dependencies held to releases two weeks old at least (as Dependabot's cooldown):
+# the newest were days old when these were added.
+coverage==7.16.2
+ast-serialize==0.13.0

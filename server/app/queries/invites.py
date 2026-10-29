@@ -2,13 +2,13 @@
 
 import sqlite3
 
+from .rows import one
+
 # Dates are text with their UTC offset, "2026-10-23T12:13:38+02:00" (app/clock.py),
 # in different timezones: always compare and sort them through datetime().
 
 
-def replace_invite(
-    con: sqlite3.Connection, user_id: int, token_hash: str, token: str, expires_at: str
-) -> None:
+def replace_invite(con: sqlite3.Connection, user_id: int, token_hash: str, token: str, expires_at: str) -> None:
     con.execute(
         'INSERT OR REPLACE INTO "invite" ("user", "token_hash", "token", "expires_at") VALUES (?, ?, ?, ?)',
         (user_id, token_hash, token, expires_at),
@@ -16,11 +16,13 @@ def replace_invite(
 
 
 def invited_user(con: sqlite3.Connection, token_hash: str, now: str) -> sqlite3.Row | None:
-    return con.execute(
-        'SELECT u."id", u."username", u."name", u."role" FROM "invite" i JOIN "user" u ON u."id" = i."user"'
-        ' WHERE i."token_hash" = ? AND datetime(i."expires_at") > datetime(?)',
-        (token_hash, now),
-    ).fetchone()
+    return one(
+        con.execute(
+            'SELECT u."id", u."username", u."name", u."role" FROM "invite" i JOIN "user" u ON u."id" = i."user"'
+            ' WHERE i."token_hash" = ? AND datetime(i."expires_at") > datetime(?)',
+            (token_hash, now),
+        )
+    )
 
 
 def invite_token(con: sqlite3.Connection, user_id: int, now: str) -> str | None:
@@ -31,8 +33,10 @@ def invite_token(con: sqlite3.Connection, user_id: int, now: str) -> str | None:
     return row[0] if row else None
 
 
-def invite_expiry(con: sqlite3.Connection, user_id: int) -> int:
-    return con.execute('SELECT "expires_at" FROM "invite" WHERE "user" = ?', (user_id,)).fetchone()[0]
+def invite_expiry(con: sqlite3.Connection, user_id: int) -> str:
+    """The invitation's expiry (a date: app/core/clock.py's format)."""
+    expires_at: str = con.execute('SELECT "expires_at" FROM "invite" WHERE "user" = ?', (user_id,)).fetchone()[0]
+    return expires_at
 
 
 def delete_invite(con: sqlite3.Connection, user_id: int) -> bool:

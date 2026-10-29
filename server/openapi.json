@@ -143,9 +143,9 @@
         },
         "required": [
           "all_segments_done",
-          "segments",
           "original_filename",
-          "uploaded_by"
+          "uploaded_by",
+          "segments"
         ],
         "title": "AnnotationsOut",
         "type": "object"

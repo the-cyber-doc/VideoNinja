@@ -6,15 +6,15 @@ write transaction that stores the annotation, so what they found still holds."""
 import sqlite3
 from collections.abc import Mapping, Sequence
 from datetime import tzinfo
-
+from typing import Self
 
 from pydantic import BaseModel, Field, model_validator
 from pydantic_core import PydanticCustomError
 
 from .. import queries
 from ..core.errors import ApiError
-from .tags import Rule, tag_rules, value_error
 from ..core.validation import field
+from .tags import Rule, tag_rules, value_error
 
 
 class TagIn(BaseModel):
@@ -30,7 +30,7 @@ class SegmentIn(BaseModel):
     tags: list[TagIn] = []
 
     @model_validator(mode="after")
-    def ordered(self):
+    def ordered(self) -> Self:
         if self.end_s <= self.begin_s:
             raise PydanticCustomError("segment_order", "A segment must end after it begins")
         return self

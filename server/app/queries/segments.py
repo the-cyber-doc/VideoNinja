@@ -2,22 +2,24 @@
 
 import sqlite3
 
+from .rows import inserted
+
 
 def insert_segment(
     con: sqlite3.Connection, video_id: int, technique: str, begin_s: int, end_s: int, performer: str, user_id: int
 ) -> int:
     """user_id: who created the segment (kept when it is edited later)."""
-    return con.execute(
-        'INSERT INTO "segment" ("video", "technique", "begin_s", "end_s", "performer", "created_by")'
-        " VALUES (?, ?, ?, ?, ?, ?)",
-        (video_id, technique, begin_s, end_s, performer, user_id),
-    ).lastrowid
+    return inserted(
+        con.execute(
+            'INSERT INTO "segment" ("video", "technique", "begin_s", "end_s", "performer", "created_by")'
+            " VALUES (?, ?, ?, ?, ?, ?)",
+            (video_id, technique, begin_s, end_s, performer, user_id),
+        )
+    )
 
 
 def insert_segment_tag(con: sqlite3.Connection, segment_id: int, tag: str, value: str | None) -> None:
-    con.execute(
-        'INSERT INTO "segment_has_tags" ("segment", "tag", "value") VALUES (?, ?, ?)', (segment_id, tag, value)
-    )
+    con.execute('INSERT INTO "segment_has_tags" ("segment", "tag", "value") VALUES (?, ?, ?)', (segment_id, tag, value))
 
 
 def video_segments(con: sqlite3.Connection, video_id: int) -> list[sqlite3.Row]:

@@ -1,6 +1,5 @@
 """The app under a base path (e.g. https://example.org/videoninja/), behind nginx."""
 
-
 import pytest
 
 from app.core import settings
@@ -16,8 +15,13 @@ def base(monkeypatch):
 
 
 def test_base_path_values(monkeypatch):
-    for value, expected in [("", ""), ("/", ""), ("/videoninja", "/videoninja"), ("/videoninja/", "/videoninja"),
-                            ("/a/b-c_d.e", "/a/b-c_d.e")]:
+    for value, expected in [
+        ("", ""),
+        ("/", ""),
+        ("/videoninja", "/videoninja"),
+        ("/videoninja/", "/videoninja"),
+        ("/a/b-c_d.e", "/a/b-c_d.e"),
+    ]:
         monkeypatch.setenv("VIDEONINJA_BASE_PATH", value)
         assert settings.current().base_path == expected
     for bad in ("videoninja", "/video ninja", "/a//b", "/a?b", "/%2e%2e"):

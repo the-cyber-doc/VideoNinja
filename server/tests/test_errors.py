@@ -85,6 +85,7 @@ def test_validation_errors(client, admin_secret):
 
 def test_custom_validation_error(client, admin_secret):
     from .test_auth import login
+
     assert login(client, admin_secret).status_code == 200
     r = client.post("/api/techniques/x/comments", json={"text": "   ", "lang": "en"})
     assert (r.status_code, r.json()["code"]) == (422, "validation.comment_empty")

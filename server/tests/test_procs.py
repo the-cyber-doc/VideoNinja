@@ -1,6 +1,7 @@
 """procs: external tools never left running, never left unreaped."""
 
 import os
+import re
 import subprocess
 import sys
 import time
@@ -48,9 +49,16 @@ def test_dies_with_the_app(tmp_path):
     if procs.shutil.which("setpriv") is None:
         pytest.skip("setpriv (util-linux) missing")
     pid_file = tmp_path / "child"
-    worker = subprocess.Popen([sys.executable, "-c", (
-        "import time; from app.core import procs\n"
-        f"p = procs.popen(['sleep', '60']); open({str(pid_file)!r}, 'w').write(str(p.pid)); time.sleep(60)")])
+    worker = subprocess.Popen(
+        [
+            sys.executable,
+            "-c",
+            (
+                "import time; from app.core import procs\n"
+                f"p = procs.popen(['sleep', '60']); open({str(pid_file)!r}, 'w').write(str(p.pid)); time.sleep(60)"
+            ),
+        ]
+    )
     for _ in range(100):
         if pid_file.exists() and pid_file.read_text():
             break
@@ -96,7 +104,7 @@ def test_ffprobe_has_its_own_shorter_limit(tmp_path, monkeypatch):
     probe.chmod(0o755)
     monkeypatch.setenv("VIDEONINJA_FFPROBE_TIMEOUT_MIN", "0.01")  # 0.6 s
     started = time.monotonic()
-    with pytest.raises(procs.Timeout, match="ffprobe stopped after 0.01 min"):
+    with pytest.raises(procs.Timeout, match=re.escape("ffprobe stopped after 0.01 min")):
         procs.run([str(probe), "-v", "error"])
     assert time.monotonic() - started < 5
 

@@ -27,11 +27,14 @@ def test_admin_logs_in_with_the_fixed_credentials(tmp_path, key_file, monkeypatc
 
     monkeypatch.setenv("VIDEONINJA_DB", str(database))
     with TestClient(app, base_url="https://testserver") as client:
-        r = client.post("/api/auth/login", json={
-            "username": TOOL["USERNAME"],
-            "password": TOOL["PASSWORD"],
-            "totp_code": pyotp.TOTP(TOOL["TOTP_SECRET"]).now(),
-        })
+        r = client.post(
+            "/api/auth/login",
+            json={
+                "username": TOOL["USERNAME"],
+                "password": TOOL["PASSWORD"],
+                "totp_code": pyotp.TOTP(TOOL["TOTP_SECRET"]).now(),
+            },
+        )
         assert r.status_code == 200, r.text
         assert r.json()["role"] == "admin"
 

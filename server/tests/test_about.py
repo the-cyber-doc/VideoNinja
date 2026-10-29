@@ -1,9 +1,8 @@
 """About: the database version, for every logged-in user."""
 
-import sqlite3
-
 from app.core import db
 
+from .conftest import connect
 from .test_auth import login
 
 
@@ -17,7 +16,7 @@ def test_database_version(client, admin_secret):
     assert client.get("/api/about").json() == {"db_version": expected, "db_schema": expected}
 
     # Another version (migrated at the next start): said as it is.
-    con = sqlite3.connect(db.db_path())
+    con = connect()
     with con:
         con.execute("UPDATE config SET value = '0' WHERE name = 'db_version'")
     con.close()

@@ -2,6 +2,8 @@
 
 import sqlite3
 
+from .rows import inserted, one
+
 # Dates are text with their UTC offset, "2026-10-23T12:13:38+02:00" (app/clock.py),
 # in different timezones: always compare and sort them through datetime().
 
@@ -20,20 +22,24 @@ def technique_comments(con: sqlite3.Connection, technique_id: str, user_id: int)
 
 def comment(con: sqlite3.Connection, comment_id: int, user_id: int) -> sqlite3.Row | None:
     """One comment, as in technique_comments, with its author's ID ("author")."""
-    return con.execute(
-        'SELECT c."id", COALESCE(u."name", u."username") AS "user", c."created_at", c."modified_at",'
-        ' c."lang", c."text", c."user" = ? AS "mine", c."user" AS "author"'
-        ' FROM "comment" c JOIN "user" u ON u."id" = c."user" WHERE c."id" = ?',
-        (user_id, comment_id),
-    ).fetchone()
+    return one(
+        con.execute(
+            'SELECT c."id", COALESCE(u."name", u."username") AS "user", c."created_at", c."modified_at",'
+            ' c."lang", c."text", c."user" = ? AS "mine", c."user" AS "author"'
+            ' FROM "comment" c JOIN "user" u ON u."id" = c."user" WHERE c."id" = ?',
+            (user_id, comment_id),
+        )
+    )
 
 
 def insert_comment(con: sqlite3.Connection, technique_id: str, user_id: int, lang: str, text: str, now: str) -> int:
-    return con.execute(
-        'INSERT INTO "comment" ("technique", "user", "lang", "text", "created_at", "modified_at")'
-        " VALUES (?, ?, ?, ?, ?, ?)",
-        (technique_id, user_id, lang, text, now, now),
-    ).lastrowid
+    return inserted(
+        con.execute(
+            'INSERT INTO "comment" ("technique", "user", "lang", "text", "created_at", "modified_at")'
+            " VALUES (?, ?, ?, ?, ?, ?)",
+            (technique_id, user_id, lang, text, now, now),
+        )
+    )
 
 
 def update_comment(con: sqlite3.Connection, comment_id: int, lang: str, text: str, now: str) -> None:

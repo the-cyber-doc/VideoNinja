@@ -10,6 +10,7 @@ is not set up yet), else 503.
 """
 
 import logging
+import sqlite3
 import threading
 import time
 from typing import Literal
@@ -40,14 +41,14 @@ _integrity: dict[str, tuple[float, bool]] = {}
 _integrity_lock = threading.Lock()
 
 
-def _integrity_ok(con) -> bool:
+def _integrity_ok(con: sqlite3.Connection) -> bool:
     """The file's quick_check, run again once INTEGRITY_EVERY_S has passed."""
     key = str(db.db_path())
     with _integrity_lock:
         checked = _integrity.get(key)
         if checked and time.monotonic() - checked[0] < INTEGRITY_EVERY_S:
             return checked[1]
-        ok = con.execute("PRAGMA quick_check(1)").fetchone()[0] == "ok"
+        ok: bool = con.execute("PRAGMA quick_check(1)").fetchone()[0] == "ok"
         _integrity[key] = (time.monotonic(), ok)
     if not ok:
         log.error("Health: the database fails its integrity check")
@@ -70,7 +71,7 @@ def _database() -> tuple[State, State]:
             return "ok", "ok" if encoder.healthy(con) else "failing"
         finally:
             con.close()
-    except Exception:  # noqa: BLE001 - any error is a failing database
+    except Exception:
         log.exception("Health: database")
         return "failing", "failing"
 

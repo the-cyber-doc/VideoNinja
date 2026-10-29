@@ -1,12 +1,10 @@
-import sqlite3
-
 import pyotp
 import pytest
 from fastapi.testclient import TestClient
 
-from app.core import db
 from app.main import app
 
+from .conftest import connect
 from .test_auth import login
 
 USER_PASSWORD = "kenji's long password"
@@ -28,9 +26,16 @@ def register(token, password=USER_PASSWORD) -> str:
     """Complete an invitation like the registration page; return the TOTP secret."""
     anon = TestClient(app, base_url="https://testserver")
     secret = anon.post("/api/register/totp", json={"token": token}).json()["secret"]
-    r = anon.post("/api/register/complete", json={
-        "token": token, "name": "Kenji", "password": password,
-        "totp_secret": secret, "totp_code": pyotp.TOTP(secret).now()})
+    r = anon.post(
+        "/api/register/complete",
+        json={
+            "token": token,
+            "name": "Kenji",
+            "password": password,
+            "totp_secret": secret,
+            "totp_code": pyotp.TOTP(secret).now(),
+        },
+    )
     assert r.status_code == 204, r.text
     return secret
 
@@ -46,7 +51,7 @@ def statuses(admin) -> dict[str, str]:
 
 
 def expire_invites():
-    con = sqlite3.connect(db.db_path())
+    con = connect()
     with con:
         con.execute("UPDATE invite SET expires_at = '1970-01-01T00:00:00Z'")
 
@@ -55,8 +60,13 @@ def test_create_and_list(admin):
     create(admin)
     users = {u["username"]: u for u in admin.get("/api/admin/users").json()}
     assert users["admin"]["status"] == "registered"
-    assert users["kenji"] == {"id": users["kenji"]["id"], "username": "kenji", "name": None,
-                              "role": "user", "status": "invited"}
+    assert users["kenji"] == {
+        "id": users["kenji"]["id"],
+        "username": "kenji",
+        "name": None,
+        "role": "user",
+        "status": "invited",
+    }
     roles = admin.get("/api/admin/roles").json()
     assert {r["id"] for r in roles} == {"admin", "editor", "uploader", "user", "video_mgmt"}
 
@@ -70,7 +80,7 @@ def test_create_checks(admin):
 
 def test_invite_token_not_stored_in_clear(admin):
     token = create(admin)
-    row = sqlite3.connect(db.db_path()).execute("SELECT token_hash, token FROM invite").fetchone()
+    row = connect().execute("SELECT token_hash, token FROM invite").fetchone()
     assert token not in row[0] and token not in row[1]
     # ...but the admin can copy the link again.
     user_id = next(u["id"] for u in admin.get("/api/admin/users").json() if u["username"] == "kenji")
@@ -92,8 +102,13 @@ def test_registration(admin):
     secret = register(token)
     assert statuses(admin)["kenji"] == "registered"
     me = user_login("kenji", USER_PASSWORD, pyotp.TOTP(secret).now()).get("/api/auth/me").json()
-    assert me == {"username": "kenji", "name": "Kenji", "role": "user", "role_name": "User",
-                  "access": ["comment", "segment"]}
+    assert me == {
+        "username": "kenji",
+        "name": "Kenji",
+        "role": "user",
+        "role_name": "User",
+        "access": ["comment", "segment"],
+    }
 
     # Single use.
     assert anon.post("/api/register/verify", json={"token": token}).status_code == 404
@@ -106,8 +121,12 @@ def test_registration_checks(admin):
     body = {"token": token, "password": USER_PASSWORD, "totp_secret": secret}
     wrong = "000000" if pyotp.TOTP(secret).now() != "000000" else "111111"
     assert anon.post("/api/register/complete", json={**body, "totp_code": wrong}).status_code == 400
-    assert anon.post("/api/register/complete",
-                     json={**body, "password": "short", "totp_code": pyotp.TOTP(secret).now()}).status_code == 422
+    assert (
+        anon.post(
+            "/api/register/complete", json={**body, "password": "short", "totp_code": pyotp.TOTP(secret).now()}
+        ).status_code
+        == 422
+    )
     assert anon.post("/api/register/verify", json={"token": "made-up"}).status_code == 404
     assert statuses(admin)["kenji"] == "invited"  # nothing changed
 
@@ -136,7 +155,7 @@ def test_reset_registered_user(admin):
     token = admin.post(f"/api/admin/users/{user_id}/reset").json()["token"]
     assert statuses(admin)["kenji"] == "invited"
     # Old credentials erased from the database, sessions gone, new invitation stored.
-    con = sqlite3.connect(db.db_path())
+    con = connect()
     assert con.execute("SELECT pw_hash, totp FROM user WHERE id = ?", (user_id,)).fetchone() == (None, None)
     assert con.execute("SELECT count(*) FROM session WHERE user = ?", (user_id,)).fetchone()[0] == 0
     assert con.execute("SELECT count(*) FROM invite WHERE user = ?", (user_id,)).fetchone()[0] == 1
@@ -158,9 +177,13 @@ def test_access_control(admin, client):
     secret = register(create(admin))
     kenji = user_login("kenji", USER_PASSWORD, pyotp.TOTP(secret).now())
     anon = TestClient(app, base_url="https://testserver")
-    calls = [("get", "/api/admin/users", None), ("get", "/api/admin/roles", None),
-             ("post", "/api/admin/users", {"username": "x" * 5, "role": "user"}),
-             ("get", "/api/admin/users/1/invite", None), ("post", "/api/admin/users/1/reset", None)]
+    calls = [
+        ("get", "/api/admin/users", None),
+        ("get", "/api/admin/roles", None),
+        ("post", "/api/admin/users", {"username": "x" * 5, "role": "user"}),
+        ("get", "/api/admin/users/1/invite", None),
+        ("post", "/api/admin/users/1/reset", None),
+    ]
     for method, path, body in calls:
         assert getattr(anon, method)(path, **({"json": body} if body else {})).status_code == 401, path
         assert getattr(kenji, method)(path, **({"json": body} if body else {})).status_code == 403, path

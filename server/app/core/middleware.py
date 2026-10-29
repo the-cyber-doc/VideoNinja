@@ -2,7 +2,7 @@
 
 The ID: nginx's ($request_id, sent as X-Request-ID, also in its access log and in
 its answer's X-Request-ID header), else one made here (development, no nginx;
-then this answer carries it). A received value that is not 1–64 letters, digits
+then this answer carries it). A received value that is not 1-64 letters, digits
 or dashes is replaced, never logged as is. Every record logged while the request
 runs carries it (logs.bind), and the user's ID once the session is checked
 (auth.current_user: logs.add).
@@ -67,6 +67,12 @@ class RequestLog:
             path = getattr(route, "path", None) or "(no route)"
             duration_ms = round((time.perf_counter() - started) * 1000)
             quiet = path == "/health" and status == 200
-            log.log(logging.DEBUG if quiet else logging.INFO, "%s %s %s %d ms", scope["method"], path, status,
-                    duration_ms, extra={"method": scope["method"], "route": path, "status": status,
-                                        "duration_ms": duration_ms})
+            log.log(
+                logging.DEBUG if quiet else logging.INFO,
+                "%s %s %s %d ms",
+                scope["method"],
+                path,
+                status,
+                duration_ms,
+                extra={"method": scope["method"], "route": path, "status": status, "duration_ms": duration_ms},
+            )

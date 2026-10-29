@@ -49,12 +49,19 @@ jobs:
 
     - name: Run tests
       working-directory: ./server
+      # With coverage: below its floor (pyproject.toml) the step fails.
       run: |
-        pytest -v --tb=short
+        pytest -v --tb=short --cov
 
-    - name: Lint (flake8)
+    - name: Lint and format (Ruff)
       working-directory: ./server
-      run: flake8 --max-line-length=120 app tests
+      run: |
+        ruff check app tests
+        ruff format --check app tests
+
+    - name: Types (mypy, strict)
+      working-directory: ./server
+      run: mypy
 
     # Python security linter: a new finding fails the tests. A reviewed one is marked
     # where it is (reason, then "# nosec <test id>").

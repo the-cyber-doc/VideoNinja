@@ -6,8 +6,7 @@ values are not."""
 import re
 import sqlite3
 from datetime import tzinfo
-from typing import Literal
-
+from typing import Literal, TypedDict
 
 from .. import queries
 from ..core import clock
@@ -33,7 +32,15 @@ def tag_rules(con: sqlite3.Connection) -> dict[str, Rule]:
     return rules
 
 
-def value_error(rule: Rule, value: str | None, zone: tzinfo) -> tuple[str, dict[str, str | int]] | None:
+class TagErrorParams(TypedDict, total=False):
+    """The params of a tag value's error (errors.py: tag.year, tag.value), but the tag."""
+
+    min: int
+    max: int
+    values: str
+
+
+def value_error(rule: Rule, value: str | None, zone: tzinfo) -> tuple[str, TagErrorParams] | None:
     """Why `value` is not accepted by a tag with this rule (an error code of errors.py
     and its params, but the tag), or None."""
     if rule == "year":

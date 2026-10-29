@@ -1,12 +1,12 @@
 import json
-import sqlite3
+import re
 
 import pyotp
 import pytest
 
 from app.core import crypto, db
 
-from .conftest import PASSWORD
+from .conftest import PASSWORD, connect
 
 
 def test_status_before_setup(client):
@@ -36,8 +36,13 @@ def test_wrong_totp_code_rejected(client):
     secret = pyotp.random_base32()
     r = client.post(
         "/api/setup/complete",
-        json={"token": token, "username": "admin", "password": PASSWORD,
-              "totp_secret": secret, "totp_code": "000000" if pyotp.TOTP(secret).now() != "000000" else "111111"},
+        json={
+            "token": token,
+            "username": "admin",
+            "password": PASSWORD,
+            "totp_secret": secret,
+            "totp_code": "000000" if pyotp.TOTP(secret).now() != "000000" else "111111",
+        },
     )
     assert r.status_code == 400
     assert not db.db_path().exists()
@@ -48,8 +53,13 @@ def test_short_password_rejected(client):
     secret = pyotp.random_base32()
     r = client.post(
         "/api/setup/complete",
-        json={"token": token, "username": "admin", "password": "short",
-              "totp_secret": secret, "totp_code": pyotp.TOTP(secret).now()},
+        json={
+            "token": token,
+            "username": "admin",
+            "password": "short",
+            "totp_secret": secret,
+            "totp_code": pyotp.TOTP(secret).now(),
+        },
     )
     assert r.status_code == 422
 
@@ -59,14 +69,20 @@ def test_complete_streams_steps_and_creates_db(client):
     secret = pyotp.random_base32()
     r = client.post(
         "/api/setup/complete",
-        json={"token": token, "username": "admin", "name": "Admin", "password": PASSWORD,
-              "totp_secret": secret, "totp_code": pyotp.TOTP(secret).now()},
+        json={
+            "token": token,
+            "username": "admin",
+            "name": "Admin",
+            "password": PASSWORD,
+            "totp_secret": secret,
+            "totp_code": pyotp.TOTP(secret).now(),
+        },
     )
     assert r.headers["x-accel-buffering"] == "no"
     steps = [json.loads(line) for line in r.text.splitlines()]
     assert steps == [{"step": "schema"}, {"step": "data"}, {"step": "admin"}, {"step": "done"}]
 
-    con = sqlite3.connect(db.db_path())
+    con = connect()
     assert con.execute("PRAGMA journal_mode").fetchone()[0] == "wal"
     assert con.execute("SELECT value FROM config WHERE name = 'db_version'").fetchone()[0] == str(db.EXPECTED_VERSION)
     assert con.execute("SELECT count(*) FROM ryu").fetchone()[0] == 9
@@ -94,5 +110,5 @@ def test_built_from_the_expected_version(tmp_path, monkeypatch):
     monkeypatch.setattr(db, "SQL_DIR", tmp_path)
     monkeypatch.setattr(db, "EXPECTED_VERSION", 2)
     assert [p.name for p in db.scripts()] == ["db_v2.sql", "db_v2_init.sql"]
-    with pytest.raises(RuntimeError, match="db_v3_init.sql"):
+    with pytest.raises(RuntimeError, match=re.escape("db_v3_init.sql")):
         db.scripts(3)  # incomplete: refused

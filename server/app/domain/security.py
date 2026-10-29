@@ -4,7 +4,7 @@ import sqlite3
 import threading
 from collections.abc import Iterator, Mapping
 from contextlib import contextmanager
-from datetime import timedelta, tzinfo
+from datetime import timedelta
 from urllib.parse import urlsplit
 from zoneinfo import ZoneInfo
 
@@ -57,7 +57,7 @@ def verify_password(pw_hash: str | None, password: str) -> bool:
     with _argon2_slot():
         try:
             _hasher.verify(pw_hash or _DUMMY_HASH, password)
-        except (VerificationError, InvalidHashError):
+        except VerificationError, InvalidHashError:
             return False
     return pw_hash is not None
 
@@ -123,14 +123,13 @@ def purge_expired_sessions(con: sqlite3.Connection) -> None:
         queries.sessions.delete_expired_sessions(con, clock.at())
 
 
-def create_session(con: sqlite3.Connection, user: User, zone: tzinfo | None = None) -> str:
+def create_session(con: sqlite3.Connection, user: User, zone: ZoneInfo | None = None) -> str:
     """Store a new session and return the cookie token. `zone`: the browser's timezone."""
     token = secrets.token_urlsafe(32)
     tz = clock.user_zone(user.time_zone, zone)
     with db.write(con):
         remember_zone(con, user, zone)
-        queries.sessions.insert_session(con, _session_id(token), user.id, clock.at(0, tz),
-                                        clock.at(SESSION_IDLE_S, tz))
+        queries.sessions.insert_session(con, _session_id(token), user.id, clock.at(0, tz), clock.at(SESSION_IDLE_S, tz))
     return token
 
 
@@ -155,8 +154,10 @@ def session_user(con: sqlite3.Connection, token: str, zone: ZoneInfo | None = No
         with db.write(con):
             remember_zone(con, user, zone)
             if refresh:
-                expires = min(now + timedelta(seconds=SESSION_IDLE_S),
-                              clock.parse(session.created_at) + timedelta(seconds=SESSION_MAX_S))
+                expires = min(
+                    now + timedelta(seconds=SESSION_IDLE_S),
+                    clock.parse(session.created_at) + timedelta(seconds=SESSION_MAX_S),
+                )
                 tz = clock.user_zone(user.time_zone, zone)
                 queries.sessions.touch_session(con, sid, clock.text(now, tz), clock.text(expires, tz))
     return user

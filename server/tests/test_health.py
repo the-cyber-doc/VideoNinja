@@ -11,13 +11,14 @@ from app.core import clock, db, settings
 from app.encoder import cli, heartbeat
 from app.main import app
 
+from .conftest import connect
 from .test_auth import login
 
 ALL_OK = {"status": "ok", "database": "ok", "encoder": "ok", "tusd": "ok"}
 
 
 def beat(seconds_ago=0):
-    con = sqlite3.connect(db.db_path())
+    con = connect()
     with con:
         con.execute("INSERT OR REPLACE INTO heartbeat (name, at) VALUES ('encoder', ?)", (clock.at(-seconds_ago),))
     con.close()
@@ -29,7 +30,7 @@ def tusd_server(monkeypatch):
     state = {"answer": True}
 
     class Handler(BaseHTTPRequestHandler):
-        def do_OPTIONS(self):  # noqa: N802 - http.server's naming
+        def do_OPTIONS(self):
             self.send_response(204 if state["answer"] else 404)
             if state["answer"]:
                 self.send_header("Tus-Version", "1.0.0")
@@ -107,7 +108,7 @@ def test_encoder_container_healthcheck(client, admin_secret):
 def test_database_on_another_version(client, admin_secret):
     """Not migrated (an encoder or API of another release on it): failing, not ok."""
     beat()
-    con = sqlite3.connect(db.db_path())
+    con = connect()
     with con:
         con.execute("UPDATE config SET value = '1' WHERE name = 'db_version'")
     con.close()
@@ -135,6 +136,7 @@ def test_service_url_without_trailing_slash(monkeypatch):
 def test_integrity_checked_hourly_not_on_every_call(client, admin_secret, tusd_server, monkeypatch):
     """quick_check reads the whole file: once, then again only after INTEGRITY_EVERY_S."""
     from app.api import health
+
     checks = []
     connect = db.connect
 

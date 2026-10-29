@@ -28,8 +28,18 @@ INPUT_FORMATS = {
     "dv": ("dv",),
     "asf": ("wmv", "asf"),
 }
-X265_PRESETS = ("ultrafast", "superfast", "veryfast", "faster", "fast", "medium", "slow", "slower", "veryslow",
-                "placebo")
+X265_PRESETS = (
+    "ultrafast",
+    "superfast",
+    "veryfast",
+    "faster",
+    "fast",
+    "medium",
+    "slow",
+    "slower",
+    "veryslow",
+    "placebo",
+)
 LOG_LEVELS = ("DEBUG", "INFO", "WARNING", "ERROR")
 LOG_FORMATS = ("text", "json")
 DEFAULT_DB = "/data/videoninja.db"
@@ -73,7 +83,7 @@ class Settings:
     time_zone: str | None  # TZ: an IANA name (clock.py; unusable: the system's)
 
     @classmethod
-    def from_env(cls, env: Mapping[str, str]) -> "Settings":
+    def from_env(cls, env: Mapping[str, str]) -> Settings:
         """RuntimeError naming every wrong variable."""
         read = _Reader(env)
         db = Path(read.text("VIDEONINJA_DB") or DEFAULT_DB)
@@ -93,17 +103,23 @@ class Settings:
             tusd_host=read.text("VIDEONINJA_TUSD_HOST") or "127.0.0.1",
             tusd_port=read.port("VIDEONINJA_TUSD_PORT", 1080),
             app_port=read.port("VIDEONINJA_APP_PORT", 8000),
-            max_upload_bytes=read.number("VIDEONINJA_MAX_UPLOAD_BYTES", DEFAULT_MAX_UPLOAD_BYTES, int,
-                                         "must be a positive number of bytes"),
+            max_upload_bytes=read.number(
+                "VIDEONINJA_MAX_UPLOAD_BYTES", DEFAULT_MAX_UPLOAD_BYTES, int, "must be a positive number of bytes"
+            ),
             input_formats=read.formats("VIDEONINJA_INPUT_FORMATS"),
             encode_script=Path(read.text("VIDEONINJA_ENCODE_SCRIPT") or DEFAULT_SCRIPT),
             x265_preset=read.choice("VIDEONINJA_X265_PRESET", "medium", X265_PRESETS, str.lower),
-            ffmpeg_timeout_s=read.number("VIDEONINJA_FFMPEG_TIMEOUT_H", 24, float,
-                                         "must be a positive number of hours") * 3600,
-            ffprobe_timeout_s=read.number("VIDEONINJA_FFPROBE_TIMEOUT_MIN", 10, float,
-                                          "must be a positive number of minutes") * 60,
-            argon2_concurrency=read.number("VIDEONINJA_ARGON2_CONCURRENCY", 2, int,
-                                           "must be a positive number of password checks"),
+            ffmpeg_timeout_s=read.number(
+                "VIDEONINJA_FFMPEG_TIMEOUT_H", 24.0, float, "must be a positive number of hours"
+            )
+            * 3600,
+            ffprobe_timeout_s=read.number(
+                "VIDEONINJA_FFPROBE_TIMEOUT_MIN", 10.0, float, "must be a positive number of minutes"
+            )
+            * 60,
+            argon2_concurrency=read.number(
+                "VIDEONINJA_ARGON2_CONCURRENCY", 2, int, "must be a positive number of password checks"
+            ),
             log_level=read.choice("VIDEONINJA_LOG_LEVEL", "INFO", LOG_LEVELS, str.upper),
             log_format=read.choice("VIDEONINJA_LOG_FORMAT", "text", LOG_FORMATS, str.lower),
             time_zone=read.text("TZ"),
@@ -189,13 +205,31 @@ class _Reader:
 
 # The variables read (the cache's key). VIDEONINJA_DB_KEY is not one: crypto.py.
 VARIABLES = (
-    "VIDEONINJA_DB", "VIDEONINJA_DB_KEY_FILE", "VIDEONINJA_CATALOG_DIR", "VIDEONINJA_UPLOAD_DIR",
-    "VIDEONINJA_MEDIA_DIR", "VIDEONINJA_BASE_PATH", "VIDEONINJA_X_ACCEL", "VIDEONINJA_TUSD_URL",
-    "VIDEONINJA_API_URL", "VIDEONINJA_TUSD", "VIDEONINJA_ENCODER", "VIDEONINJA_TUSD_BIN", "VIDEONINJA_TUSD_HOST",
-    "VIDEONINJA_TUSD_PORT", "VIDEONINJA_APP_PORT", "VIDEONINJA_MAX_UPLOAD_BYTES", "VIDEONINJA_INPUT_FORMATS",
-    "VIDEONINJA_ENCODE_SCRIPT", "VIDEONINJA_X265_PRESET", "VIDEONINJA_FFMPEG_TIMEOUT_H",
-    "VIDEONINJA_FFPROBE_TIMEOUT_MIN", "VIDEONINJA_ARGON2_CONCURRENCY", "VIDEONINJA_LOG_LEVEL",
-    "VIDEONINJA_LOG_FORMAT", "TZ",
+    "VIDEONINJA_DB",
+    "VIDEONINJA_DB_KEY_FILE",
+    "VIDEONINJA_CATALOG_DIR",
+    "VIDEONINJA_UPLOAD_DIR",
+    "VIDEONINJA_MEDIA_DIR",
+    "VIDEONINJA_BASE_PATH",
+    "VIDEONINJA_X_ACCEL",
+    "VIDEONINJA_TUSD_URL",
+    "VIDEONINJA_API_URL",
+    "VIDEONINJA_TUSD",
+    "VIDEONINJA_ENCODER",
+    "VIDEONINJA_TUSD_BIN",
+    "VIDEONINJA_TUSD_HOST",
+    "VIDEONINJA_TUSD_PORT",
+    "VIDEONINJA_APP_PORT",
+    "VIDEONINJA_MAX_UPLOAD_BYTES",
+    "VIDEONINJA_INPUT_FORMATS",
+    "VIDEONINJA_ENCODE_SCRIPT",
+    "VIDEONINJA_X265_PRESET",
+    "VIDEONINJA_FFMPEG_TIMEOUT_H",
+    "VIDEONINJA_FFPROBE_TIMEOUT_MIN",
+    "VIDEONINJA_ARGON2_CONCURRENCY",
+    "VIDEONINJA_LOG_LEVEL",
+    "VIDEONINJA_LOG_FORMAT",
+    "TZ",
 )
 _cache: dict[tuple[str | None, ...], Settings] = {}
 
@@ -205,7 +239,8 @@ def current() -> Settings:
     key = tuple(os.environ.get(name) for name in VARIABLES)
     settings = _cache.get(key)
     if settings is None:
-        settings = Settings.from_env({name: value for name, value in zip(VARIABLES, key) if value is not None})
+        env = {name: value for name, value in zip(VARIABLES, key, strict=True) if value is not None}
+        settings = Settings.from_env(env)
         if len(_cache) > 64:  # tests: many environments; production: one
             _cache.clear()
         _cache[key] = settings

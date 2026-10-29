@@ -28,6 +28,7 @@ import os
 import re
 import sqlite3
 import tempfile
+from pathlib import Path
 
 from fastapi import APIRouter, Depends, Response
 from fastapi.responses import FileResponse
@@ -78,15 +79,16 @@ def segment_clip(
     row = _published(con, segment_id)
     sha, begin, end = row["sha256sum"], row["begin_s"], row["end_s"]
     if settings.current().x_accel:
-        return Response(headers={
-            "X-Accel-Redirect": f"{CLIP_PREFIX}/{user.id}/{sha[:2]}/{sha}/video.mp4?start={begin}&end={end}"})
+        return Response(
+            headers={"X-Accel-Redirect": f"{CLIP_PREFIX}/{user.id}/{sha[:2]}/{sha}/video.mp4?start={begin}&end={end}"}
+        )
     video = paths.video_dir() / sha[:2] / sha / "video.mp4"
     if not video.is_file():
         raise _not_found()
     return FileResponse(_dev_clip(video, sha, begin, end), media_type="video/mp4", headers=NO_STORE)
 
 
-def _dev_clip(video, sha: str, begin: int, end: int):
+def _dev_clip(video: Path, sha: str, begin: int, end: int) -> Path:
     """Development only: the clip, cut once (stream copy) and kept in <media>/clips/."""
     clip = paths.media_dir() / "clips" / f"{sha}-{begin}-{end}.mp4"
     if clip.is_file():
@@ -95,9 +97,31 @@ def _dev_clip(video, sha: str, begin: int, end: int):
     fd, tmp = tempfile.mkstemp(dir=clip.parent, suffix=".part.mp4")
     os.close(fd)
     try:
-        result = procs.run(["ffmpeg", "-v", "error", "-nostdin", "-y", "-ss", str(begin), "-to", str(end),
-                            *limits.ffmpeg_input(own=True), "-i", f"file:{video}", "-map", "0", "-c", "copy",
-                            "-movflags", "+faststart", "-f", "mp4", f"file:{tmp}"])
+        result = procs.run(
+            [
+                "ffmpeg",
+                "-v",
+                "error",
+                "-nostdin",
+                "-y",
+                "-ss",
+                str(begin),
+                "-to",
+                str(end),
+                *limits.ffmpeg_input(own=True),
+                "-i",
+                f"file:{video}",
+                "-map",
+                "0",
+                "-c",
+                "copy",
+                "-movflags",
+                "+faststart",
+                "-f",
+                "mp4",
+                f"file:{tmp}",
+            ]
+        )
         if result.returncode != 0:
             raise OSError(result.stderr.strip()[-500:])
         os.replace(tmp, clip)  # complete or absent, also with requests in parallel

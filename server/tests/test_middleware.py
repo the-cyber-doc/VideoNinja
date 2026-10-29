@@ -100,8 +100,10 @@ def test_unexpected_error_logged_with_status_500(caplog):
 def test_tusd_hook_takes_the_browser_request_id(client, admin_secret, caplog):
     """tusd calls the app itself: the line carries the browser's request (nginx's ID)."""
     caplog.set_level(logging.INFO)
-    hook = {"Type": "post-finish",
-            "Event": {"Upload": {"ID": "nope"}, "HTTPRequest": {"Header": {"X-Request-Id": [NGINX_ID]}}}}
+    hook = {
+        "Type": "post-finish",
+        "Event": {"Upload": {"ID": "nope"}, "HTTPRequest": {"Header": {"X-Request-Id": [NGINX_ID]}}},
+    }
     assert client.post("/internal/tusd-hook", json=hook).status_code == 200
     assert lines(caplog)[-1].request_id == NGINX_ID
 

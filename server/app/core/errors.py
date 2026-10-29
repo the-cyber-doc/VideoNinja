@@ -137,7 +137,8 @@ def response(code: str, headers: Mapping[str, str] | None = None, **params: str 
     return JSONResponse(body(code, **params), status_code=ERRORS[code][0], headers=headers)
 
 
-async def _http_error(request: Request, exc: StarletteHTTPException) -> JSONResponse:
+async def _http_error(request: Request, exc: Exception) -> JSONResponse:
+    assert isinstance(exc, StarletteHTTPException)  # registered for these only  # nosec B101
     if isinstance(exc, ApiError):
         content = {"code": exc.code, "detail": exc.detail, "params": exc.params}
     else:  # Starlette's own: unknown route, wrong method
@@ -146,8 +147,9 @@ async def _http_error(request: Request, exc: StarletteHTTPException) -> JSONResp
     return JSONResponse(content, status_code=exc.status_code, headers=exc.headers)
 
 
-async def _validation_error(request: Request, exc: RequestValidationError) -> JSONResponse:
-    first = exc.errors()[0] if exc.errors() else {"type": ""}
+async def _validation_error(request: Request, exc: Exception) -> JSONResponse:
+    assert isinstance(exc, RequestValidationError)  # registered for these only  # nosec B101
+    first: dict[str, Any] = dict(exc.errors()[0]) if exc.errors() else {"type": ""}
     code, wanted = VALIDATION.get(first["type"], ("validation.invalid", {}))
     context = first.get("ctx") or {}
     params = {name: context[key] for name, key in wanted.items() if key in context}

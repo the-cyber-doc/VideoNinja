@@ -34,7 +34,8 @@ def test_command_line(tmp_path, monkeypatch):
     monkeypatch.setenv("VIDEONINJA_MAX_UPLOAD_BYTES", str(1024**3))
     cmd = tusd.Tusd().command()
     assert cmd[0] == "/bin/tusd"
-    args = dict(zip(cmd[1::2], cmd[2::2]))
+    # Pairs up to the first flag without a value (-behind-proxy…): enough for -host and -port.
+    args = dict(zip(cmd[1::2], cmd[2::2], strict=False))
     assert args["-host"] == "127.0.0.1" and args["-port"] == "1080"
     assert args["-upload-dir"] == str(tmp_path / "up") and args["-max-size"] == str(1024**3)
     assert args["-hooks-http"] == "http://127.0.0.1:8000/internal/tusd-hook"
@@ -79,6 +80,7 @@ def test_not_started_without_binary(monkeypatch, caplog):
 
 def test_available(client, admin_secret, tmp_path, monkeypatch):
     from .test_auth import login
+
     login(client, admin_secret)
     # Run elsewhere (tests, a separate tusd): assumed up.
     assert client.get("/api/uploads/available").json() == {"available": True}
@@ -87,7 +89,7 @@ def test_available(client, admin_secret, tmp_path, monkeypatch):
     monkeypatch.setattr(tusd, "process", tusd.Tusd())  # not started: binary missing, as in dev
     assert client.get("/api/uploads/available").json() == {"available": False}
 
-    script, calls = stub(tmp_path)
+    script, _calls = stub(tmp_path)
     monkeypatch.setenv("VIDEONINJA_TUSD_BIN", str(script))
     monkeypatch.setenv("VIDEONINJA_UPLOAD_DIR", str(tmp_path / "up"))
     running = tusd.Tusd()

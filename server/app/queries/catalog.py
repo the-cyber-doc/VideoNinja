@@ -3,6 +3,8 @@
 import json
 import sqlite3
 
+from .rows import one
+
 
 # rowid order = insertion order (the seed lists everything in its traditional order).
 # Each row with its description in each language ("description_en", "description_fr").
@@ -53,15 +55,17 @@ def segments(con: sqlite3.Connection) -> list[sqlite3.Row]:
     return con.execute(
         'SELECT s."id", s."video", s."technique", s."begin_s", s."end_s", s."performer"'
         ' FROM "segment" s JOIN "video" v ON v."id" = s."video"'
-        " WHERE v.\"status\" = 'published' ORDER BY s.\"id\""
+        ' WHERE v."status" = \'published\' ORDER BY s."id"'
     ).fetchall()
 
 
 def segment_media(con: sqlite3.Connection, segment_id: int) -> sqlite3.Row | None:
     """The encoded video's SHA-256 (NULL until published), the segment's times and
     its thumbnail file name: the segment's own, else its video's."""
-    return con.execute(
-        'SELECT v."sha256sum", s."begin_s", s."end_s", COALESCE(s."thumbnail", v."thumbnail") AS "thumbnail"'
-        ' FROM "segment" s JOIN "video" v ON v."id" = s."video" WHERE s."id" = ?',
-        (segment_id,),
-    ).fetchone()
+    return one(
+        con.execute(
+            'SELECT v."sha256sum", s."begin_s", s."end_s", COALESCE(s."thumbnail", v."thumbnail") AS "thumbnail"'
+            ' FROM "segment" s JOIN "video" v ON v."id" = s."video" WHERE s."id" = ?',
+            (segment_id,),
+        )
+    )

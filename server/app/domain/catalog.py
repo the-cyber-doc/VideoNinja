@@ -26,8 +26,12 @@ def build(con: sqlite3.Connection, lang: str) -> dict[str, Any]:
         "categories": [_named(r, lang) for r in queries.catalog.categories(con)],
         "weapons": [_named(r, lang) for r in queries.catalog.weapons(con)],
         "sections": [
-            {**_named(r, lang), "ryu": r["ryu"], "category": r["category"],
-             **({"weapon": r["weapon"]} if r["weapon"] else {})}
+            {
+                **_named(r, lang),
+                "ryu": r["ryu"],
+                "category": r["category"],
+                **({"weapon": r["weapon"]} if r["weapon"] else {}),
+            }
             for r in queries.catalog.sections(con)
         ],
         "techniques": [{**_named(r, lang), "section": r["section"]} for r in queries.catalog.techniques(con)],
