@@ -70,10 +70,10 @@ DEFAULT_SCRIPT = Path(__file__).resolve().parents[2] / "tools" / "encode-videos"
 
 @contextmanager
 def transaction() -> Iterator[sqlite3.Connection]:
-    """A connection of its own (this is not a request), in one transaction, then closed."""
+    """A connection of its own (this is not a request), in one write transaction, then closed."""
     con = db.connect()
     try:
-        with con:
+        with db.write(con):
             yield con
     finally:
         con.close()

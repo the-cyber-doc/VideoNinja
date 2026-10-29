@@ -50,7 +50,7 @@ def set_name(
     lang: str = Depends(i18n.language),
 ) -> UserOut:
     name = body.name.strip() or None
-    with con:
+    with db.write(con):
         queries.set_user_name(con, user["id"], name)
     return user_out(con, {**user, "name": name}, lang)
 
@@ -63,9 +63,10 @@ def set_password(
     token: str = Depends(session_token),
 ) -> None:
     _check_password(con, user, body.current_password)
-    with con:
-        queries.set_user_pw_hash(con, user["id"], security.hash_password(body.new_password))
-    security.delete_other_sessions(con, user["id"], token)
+    pw_hash = security.hash_password(body.new_password)  # slow: before the write lock
+    with db.write(con):
+        queries.set_user_pw_hash(con, user["id"], pw_hash)
+        security.delete_other_sessions(con, user["id"], token)
     log.warning("Profile: password changed for user id %s", user["id"])
 
 
@@ -86,7 +87,7 @@ def confirm_totp(
     _check_password(con, user, body.current_password)
     if not security.verify_totp(body.totp_secret, body.totp_code):
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid code for the new authenticator")
-    with con:
+    with db.write(con):
         queries.set_user_totp(con, user["id"], crypto.encrypt(body.totp_secret, crypto.totp_aad(user["id"])))
-    security.delete_other_sessions(con, user["id"], token)
+        security.delete_other_sessions(con, user["id"], token)
     log.warning("Profile: authenticator replaced for user id %s", user["id"])

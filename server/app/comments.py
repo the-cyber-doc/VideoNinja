@@ -83,8 +83,8 @@ def add_comment(
     con: sqlite3.Connection = Depends(db.get_db),
     zone: tzinfo = Depends(user_zone),
 ) -> CommentOut:
-    _technique(con, technique_id)
-    with con:
+    with db.write(con):
+        _technique(con, technique_id)
         comment_id = queries.insert_comment(con, technique_id, me["id"], body.lang, body.text, clock.at(0, zone))
     return _out(queries.comment(con, comment_id, me["id"]))
 
@@ -97,7 +97,7 @@ def edit_comment(
     con: sqlite3.Connection = Depends(db.get_db),
     zone: tzinfo = Depends(user_zone),
 ) -> CommentOut:
-    with con:
+    with db.write(con):
         _own(con, comment_id, me)
         queries.update_comment(con, comment_id, body.lang, body.text, clock.at(0, zone))
     return _out(queries.comment(con, comment_id, me["id"]))
@@ -109,6 +109,6 @@ def delete_comment(
     me: sqlite3.Row = Depends(commenter),
     con: sqlite3.Connection = Depends(db.get_db),
 ) -> None:
-    with con:
+    with db.write(con):
         _own(con, comment_id, me)
         queries.delete_comment(con, comment_id)

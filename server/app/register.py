@@ -51,7 +51,8 @@ def complete(body: CompleteIn, con: sqlite3.Connection = Depends(db.get_db)) -> 
     user = _invited(con, body.token)
     if not security.verify_totp(body.totp_secret, body.totp_code):
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid TOTP code")
-    with con:
+    pw_hash = security.hash_password(body.password)  # slow: before the write lock
+    with db.write(con):
         # Deleting the invitation first makes the link single-use, even under concurrent requests.
         if not queries.delete_invite(con, user["id"]):
             raise HTTPException(status.HTTP_404_NOT_FOUND, "Invalid or expired invitation")
@@ -59,7 +60,7 @@ def complete(body: CompleteIn, con: sqlite3.Connection = Depends(db.get_db)) -> 
             con,
             user["id"],
             body.name.strip() or None,
-            security.hash_password(body.password),
+            pw_hash,
             crypto.encrypt(body.totp_secret, crypto.totp_aad(user["id"])),
         )
     log.warning("Registered: user id %s (%r)", user["id"], user["username"])

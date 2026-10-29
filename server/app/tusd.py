@@ -93,7 +93,7 @@ def _pre_create(con: sqlite3.Connection, event: dict[str, Any]) -> dict[str, Any
         return _reject(400, "Invalid metadata")
     if not limits.accepted_name(meta["filename"]):
         return _reject(415, "This type of file is not accepted")
-    with con:
+    with db.write(con):
         if queries.video_known(con, original_sha256):
             return _reject(409, "This video already exists")
         tus_id = secrets.token_hex(16)  # the upload's file name in tusd's folder
@@ -106,7 +106,7 @@ def _pre_create(con: sqlite3.Connection, event: dict[str, Any]) -> dict[str, Any
 def _post_finish(con: sqlite3.Connection, event: dict[str, Any]) -> dict[str, Any]:
     upload = event.get("Upload") or {}
     tus_id = upload.get("ID", "")
-    with con:
+    with db.write(con):
         row = queries.upload(con, tus_id)
         if row and row["state"] == "uploading" and upload.get("Offset") == row["size"]:
             queries.set_upload_state(con, tus_id, "finished")
