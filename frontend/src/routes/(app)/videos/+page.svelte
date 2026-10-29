@@ -11,7 +11,10 @@
 	import { formatTime } from '#lib/time.js';
 	import { offline, removeVideos, savedVideos } from '#lib/offline.svelte.js';
 	import SavedBadge from '#lib/SavedBadge.svelte';
-	import { listVideos, SECTIONS, videoSection, videoThumbnailUrl, videoUrl, type VideoRow } from '#lib/videos/annotations.js';
+	import type { VideoRow } from '#lib/api/types.js';
+	import { listVideos } from '#lib/api/videos.js';
+	import { videoThumbnailUrl, videoUrl } from '#lib/media.js';
+	import { SECTIONS, videoSection } from '#lib/videos/annotations.js';
 
 	const allowed = $derived(hasAccess('video_mgmt'));
 	let videos = $state<VideoRow[] | null>(null);

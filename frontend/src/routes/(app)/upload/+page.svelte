@@ -11,19 +11,11 @@
 	import { loadCatalog } from '#lib/catalog.svelte.js';
 	import { i18n, t } from '#lib/i18n.svelte.js';
 	import { hasAccess } from '#lib/session.svelte.js';
-	import {
-		addPerformer,
-		performers as loadPerformers,
-		submit,
-		tags as loadTags,
-		refusal,
-		uploadLimits,
-		uploadsAvailable,
-		videoExists,
-		type Performer,
-		type Tag,
-		type UploadLimits
-	} from '#lib/upload/api.js';
+	import { addPerformer, listPerformers as loadPerformers } from '#lib/api/performers.js';
+	import { listTags as loadTags } from '#lib/api/tags.js';
+	import type { Performer, Tag, UploadLimits } from '#lib/api/types.js';
+	import { submit, uploadLimits, uploadsAvailable, videoExists } from '#lib/api/uploads.js';
+	import { refusal } from '#lib/upload/rules.js';
 	import AnnotationPanel from '#lib/upload/AnnotationPanel.svelte';
 	import { deleteDraft, listDrafts, loadDraft, newDraft, saveDraft, type Draft } from '#lib/upload/draft.svelte.js';
 	import { sha256File } from '#lib/upload/hash.js';

@@ -1,5 +1,6 @@
 <script lang="ts">
-	import { api, type User } from '#lib/api.js';
+	import * as profile from '#lib/api/profile.js';
+	import type { TotpEnrollment } from '#lib/api/types.js';
 	import { t } from '#lib/i18n.svelte.js';
 	import { session } from '#lib/session.svelte.js';
 	import { onTotpInput, rules } from '#lib/validation.js';
@@ -31,7 +32,7 @@
 	const saveName = (e: SubmitEvent) => {
 		e.preventDefault();
 		run(nameStatus, async () => {
-			session.user = await api<User>('/api/profile/name', { name });
+			session.user = await profile.setName(name);
 			name = session.user.name ?? '';
 			return t('profile.name_saved');
 		});
@@ -51,24 +52,21 @@
 			return;
 		}
 		run(passwordStatus, async () => {
-			await api('/api/profile/password', {
-				current_password: currentPassword,
-				new_password: newPassword
-			});
+			await profile.setPassword({ current_password: currentPassword, new_password: newPassword });
 			currentPassword = newPassword = newPassword2 = '';
 			return t('profile.password_changed');
 		});
 	};
 
 	// Authenticator (TOTP)
-	let totp = $state<{ secret: string; qr: string } | null>(null);
+	let totp = $state<TotpEnrollment | null>(null);
 	let totpCode = $state('');
 	let totpPassword = $state('');
 	const totpStatus = $state(status());
 
 	const startTotp = () =>
 		run(totpStatus, async () => {
-			totp = await api('/api/profile/totp', {});
+			totp = await profile.newTotp();
 			return '';
 		});
 
@@ -81,7 +79,7 @@
 	const confirmTotp = (e: SubmitEvent) => {
 		e.preventDefault();
 		run(totpStatus, async () => {
-			await api('/api/profile/totp/confirm', {
+			await profile.confirmTotp({
 				current_password: totpPassword,
 				totp_secret: totp!.secret,
 				totp_code: totpCode

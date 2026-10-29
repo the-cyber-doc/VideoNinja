@@ -55,3 +55,20 @@ def test_json_answers_are_typed():
             if not schema:
                 untyped.add((method, path))
     assert untyped == UNTYPED
+
+
+def test_no_open_dictionaries():
+    """An answer the frontend reads has a model, not dict[str, …] (any key would
+    type-check there). tusd's hook answers tusd's own protocol."""
+    open_ = {(method, path) for method, path, operation in operations()
+             for code, response in operation["responses"].items() if code.startswith("2")
+             for schema in [response.get("content", {}).get("application/json", {}).get("schema", {})]
+             if "additionalProperties" in schema and "properties" not in schema}
+    assert open_ == {("post", "/internal/tusd-hook")}
+
+
+def test_schema_names_are_plain():
+    """Two models of one name in different modules get names like app__api__setup__X,
+    which change when a module moves: give each its own name."""
+    names = openapi.schema(app)["components"]["schemas"]
+    assert [n for n in names if "__" in n] == []

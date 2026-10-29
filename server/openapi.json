@@ -187,6 +187,19 @@
         "title": "ApiError",
         "type": "object"
       },
+      "AvailabilityOut": {
+        "properties": {
+          "available": {
+            "title": "Available",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "available"
+        ],
+        "title": "AvailabilityOut",
+        "type": "object"
+      },
       "CommentIn": {
         "properties": {
           "lang": {
@@ -276,6 +289,19 @@
         "title": "CreateIn",
         "type": "object"
       },
+      "ExistsOut": {
+        "properties": {
+          "exists": {
+            "title": "Exists",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "exists"
+        ],
+        "title": "ExistsOut",
+        "type": "object"
+      },
       "HealthOut": {
         "properties": {
           "database": {
@@ -339,6 +365,19 @@
           "expires_at"
         ],
         "title": "InviteOut",
+        "type": "object"
+      },
+      "InviteeOut": {
+        "properties": {
+          "username": {
+            "title": "Username",
+            "type": "string"
+          }
+        },
+        "required": [
+          "username"
+        ],
+        "title": "InviteeOut",
         "type": "object"
       },
       "LoginIn": {
@@ -433,6 +472,49 @@
           "name"
         ],
         "title": "PerformerIn",
+        "type": "object"
+      },
+      "RegisterCompleteIn": {
+        "properties": {
+          "name": {
+            "default": "",
+            "maxLength": 64,
+            "title": "Name",
+            "type": "string"
+          },
+          "password": {
+            "maxLength": 256,
+            "minLength": 12,
+            "title": "Password",
+            "type": "string"
+          },
+          "token": {
+            "maxLength": 128,
+            "title": "Token",
+            "type": "string"
+          },
+          "totp_code": {
+            "maxLength": 6,
+            "minLength": 6,
+            "pattern": "^[0-9]+$",
+            "title": "Totp Code",
+            "type": "string"
+          },
+          "totp_secret": {
+            "maxLength": 32,
+            "minLength": 32,
+            "pattern": "^[A-Z2-7]+$",
+            "title": "Totp Secret",
+            "type": "string"
+          }
+        },
+        "required": [
+          "token",
+          "password",
+          "totp_secret",
+          "totp_code"
+        ],
+        "title": "RegisterCompleteIn",
         "type": "object"
       },
       "RoleOut": {
@@ -560,6 +642,70 @@
         "title": "SegmentOut",
         "type": "object"
       },
+      "SetupCompleteIn": {
+        "properties": {
+          "name": {
+            "default": "",
+            "maxLength": 64,
+            "title": "Name",
+            "type": "string"
+          },
+          "password": {
+            "maxLength": 256,
+            "minLength": 12,
+            "title": "Password",
+            "type": "string"
+          },
+          "token": {
+            "maxLength": 128,
+            "title": "Token",
+            "type": "string"
+          },
+          "totp_code": {
+            "maxLength": 6,
+            "minLength": 6,
+            "pattern": "^[0-9]+$",
+            "title": "Totp Code",
+            "type": "string"
+          },
+          "totp_secret": {
+            "maxLength": 32,
+            "minLength": 32,
+            "pattern": "^[A-Z2-7]+$",
+            "title": "Totp Secret",
+            "type": "string"
+          },
+          "username": {
+            "maxLength": 32,
+            "minLength": 3,
+            "pattern": "^[a-z0-9._\\-]+$",
+            "title": "Username",
+            "type": "string"
+          }
+        },
+        "required": [
+          "token",
+          "username",
+          "password",
+          "totp_secret",
+          "totp_code"
+        ],
+        "title": "SetupCompleteIn",
+        "type": "object"
+      },
+      "SetupStatusOut": {
+        "properties": {
+          "initialized": {
+            "title": "Initialized",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "initialized"
+        ],
+        "title": "SetupStatusOut",
+        "type": "object"
+      },
       "SubmitIn": {
         "properties": {
           "all_segments_done": {
@@ -597,6 +743,19 @@
           "all_segments_done"
         ],
         "title": "SubmitIn",
+        "type": "object"
+      },
+      "SubmittedOut": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "title": "SubmittedOut",
         "type": "object"
       },
       "Tag": {
@@ -752,6 +911,30 @@
           "totp_code"
         ],
         "title": "TotpConfirmIn",
+        "type": "object"
+      },
+      "TotpEnrollmentOut": {
+        "description": "A fresh TOTP secret for an authenticator app (setup, registration, profile):\nnothing is stored until a code from it is confirmed.",
+        "properties": {
+          "qr": {
+            "title": "Qr",
+            "type": "string"
+          },
+          "secret": {
+            "title": "Secret",
+            "type": "string"
+          },
+          "uri": {
+            "title": "Uri",
+            "type": "string"
+          }
+        },
+        "required": [
+          "secret",
+          "uri",
+          "qr"
+        ],
+        "title": "TotpEnrollmentOut",
         "type": "object"
       },
       "TotpIn": {
@@ -991,100 +1174,6 @@
           "segment_count"
         ],
         "title": "VideoOut",
-        "type": "object"
-      },
-      "app__api__register__CompleteIn": {
-        "properties": {
-          "name": {
-            "default": "",
-            "maxLength": 64,
-            "title": "Name",
-            "type": "string"
-          },
-          "password": {
-            "maxLength": 256,
-            "minLength": 12,
-            "title": "Password",
-            "type": "string"
-          },
-          "token": {
-            "maxLength": 128,
-            "title": "Token",
-            "type": "string"
-          },
-          "totp_code": {
-            "maxLength": 6,
-            "minLength": 6,
-            "pattern": "^[0-9]+$",
-            "title": "Totp Code",
-            "type": "string"
-          },
-          "totp_secret": {
-            "maxLength": 32,
-            "minLength": 32,
-            "pattern": "^[A-Z2-7]+$",
-            "title": "Totp Secret",
-            "type": "string"
-          }
-        },
-        "required": [
-          "token",
-          "password",
-          "totp_secret",
-          "totp_code"
-        ],
-        "title": "CompleteIn",
-        "type": "object"
-      },
-      "app__api__setup__CompleteIn": {
-        "properties": {
-          "name": {
-            "default": "",
-            "maxLength": 64,
-            "title": "Name",
-            "type": "string"
-          },
-          "password": {
-            "maxLength": 256,
-            "minLength": 12,
-            "title": "Password",
-            "type": "string"
-          },
-          "token": {
-            "maxLength": 128,
-            "title": "Token",
-            "type": "string"
-          },
-          "totp_code": {
-            "maxLength": 6,
-            "minLength": 6,
-            "pattern": "^[0-9]+$",
-            "title": "Totp Code",
-            "type": "string"
-          },
-          "totp_secret": {
-            "maxLength": 32,
-            "minLength": 32,
-            "pattern": "^[A-Z2-7]+$",
-            "title": "Totp Secret",
-            "type": "string"
-          },
-          "username": {
-            "maxLength": 32,
-            "minLength": 3,
-            "pattern": "^[a-z0-9._\\-]+$",
-            "title": "Username",
-            "type": "string"
-          }
-        },
-        "required": [
-          "token",
-          "username",
-          "password",
-          "totp_secret",
-          "totp_code"
-        ],
-        "title": "CompleteIn",
         "type": "object"
       }
     }
@@ -2053,11 +2142,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": {
-                    "type": "string"
-                  },
-                  "title": "Response New Totp Api Profile Totp Post",
-                  "type": "object"
+                  "$ref": "#/components/schemas/TotpEnrollmentOut"
                 }
               }
             },
@@ -2140,7 +2225,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/app__api__register__CompleteIn"
+                "$ref": "#/components/schemas/RegisterCompleteIn"
               }
             }
           },
@@ -2186,11 +2271,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": {
-                    "type": "string"
-                  },
-                  "title": "Response New Totp Api Register Totp Post",
-                  "type": "object"
+                  "$ref": "#/components/schemas/TotpEnrollmentOut"
                 }
               }
             },
@@ -2232,11 +2313,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": {
-                    "type": "string"
-                  },
-                  "title": "Response Verify Api Register Verify Post",
-                  "type": "object"
+                  "$ref": "#/components/schemas/InviteeOut"
                 }
               }
             },
@@ -2267,7 +2344,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/app__api__setup__CompleteIn"
+                "$ref": "#/components/schemas/SetupCompleteIn"
               }
             }
           },
@@ -2307,11 +2384,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": {
-                    "type": "boolean"
-                  },
-                  "title": "Response Setup Status Api Setup Status Get",
-                  "type": "object"
+                  "$ref": "#/components/schemas/SetupStatusOut"
                 }
               }
             },
@@ -2353,11 +2426,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": {
-                    "type": "string"
-                  },
-                  "title": "Response New Totp Api Setup Totp Post",
-                  "type": "object"
+                  "$ref": "#/components/schemas/TotpEnrollmentOut"
                 }
               }
             },
@@ -2640,11 +2709,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": {
-                    "type": "boolean"
-                  },
-                  "title": "Response Uploads Available Api Uploads Available Get",
-                  "type": "object"
+                  "$ref": "#/components/schemas/AvailabilityOut"
                 }
               }
             },
@@ -2817,11 +2882,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": {
-                    "type": "integer"
-                  },
-                  "title": "Response Submit Api Uploads  Tus Id  Submit Post",
-                  "type": "object"
+                  "$ref": "#/components/schemas/SubmittedOut"
                 }
               }
             },
@@ -2937,11 +2998,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": {
-                    "type": "boolean"
-                  },
-                  "title": "Response Exists Api Videos Exists Get",
-                  "type": "object"
+                  "$ref": "#/components/schemas/ExistsOut"
                 }
               }
             },

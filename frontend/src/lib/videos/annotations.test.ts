@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Catalog } from '../catalog.svelte';
-import { toAnnotation, toAnnotations, videoSection, type AnnotationsOut } from './annotations';
+import type { AnnotationsOut } from '../api/types';
+import { toAnnotation, toAnnotations, videoSection } from './annotations';
 
 const catalog = {
 	schools: [],

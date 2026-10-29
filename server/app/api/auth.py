@@ -24,6 +24,15 @@ class LoginIn(BaseModel):
     totp_code: str = field("totp_code", max_only=True, default="")
 
 
+class TotpEnrollmentOut(BaseModel):
+    """A fresh TOTP secret for an authenticator app (setup, registration, profile):
+    nothing is stored until a code from it is confirmed."""
+
+    secret: str  # base32, to type in by hand
+    uri: str  # otpauth://totp/…
+    qr: str  # the URI as a QR code: an SVG data URI
+
+
 class UserOut(BaseModel):
     username: str
     name: str | None

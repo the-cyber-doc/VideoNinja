@@ -10,6 +10,7 @@ from fastapi import APIRouter, Depends, Request, status
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
+from .auth import TotpEnrollmentOut
 from .. import encoder
 from ..core import db, errors
 from ..domain import audit, security, snapshot, throttle, tusd
@@ -37,7 +38,7 @@ class TotpIn(TokenIn):
     username: str = field("username")
 
 
-class CompleteIn(TokenIn):
+class SetupCompleteIn(TokenIn):
     username: str = field("username")
     name: str = field("display_name", default="")
     password: str = field("password")
@@ -53,9 +54,13 @@ def _check_token(request: Request, token: str) -> None:
         raise ApiError("setup.invalid_token")
 
 
+class SetupStatusOut(BaseModel):
+    initialized: bool  # False: the wizard; True: /api/setup/* answers 404
+
+
 @router.get("/status")
-def setup_status() -> dict[str, bool]:
-    return {"initialized": db.is_initialized()}
+def setup_status() -> SetupStatusOut:
+    return SetupStatusOut(initialized=db.is_initialized())
 
 
 @router.post("/verify", status_code=status.HTTP_204_NO_CONTENT, dependencies=[token_guard])
@@ -64,14 +69,14 @@ def verify_token(body: TokenIn, request: Request) -> None:
 
 
 @router.post("/totp", dependencies=[token_guard])
-def new_totp(body: TotpIn, request: Request) -> dict[str, str]:
+def new_totp(body: TotpIn, request: Request) -> TotpEnrollmentOut:
     """A fresh TOTP secret and its QR code. Nothing is stored until /complete."""
     _check_token(request, body.token)
-    return security.totp_enrollment(body.username)
+    return TotpEnrollmentOut(**security.totp_enrollment(body.username))
 
 
 @router.post("/complete", dependencies=[token_guard])
-def complete(body: CompleteIn, request: Request) -> StreamingResponse:
+def complete(body: SetupCompleteIn, request: Request) -> StreamingResponse:
     """Create the database and the admin user. Streams one JSON line per completed step."""
     _check_token(request, body.token)
     if not security.verify_totp(body.totp_secret, body.totp_code):

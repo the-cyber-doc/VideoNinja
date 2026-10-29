@@ -1,17 +1,12 @@
 <script lang="ts">
 	import { COPYRIGHT_HOLDER, DOCKER_URL, GITHUB_URL, LICENSE_URL, build, buildDate, version } from '#lib/about.js';
-	import { api } from '#lib/api.js';
+	import { getAbout } from '#lib/api/about.js';
+	import type { About } from '#lib/api/types.js';
 	import { url } from '#lib/base.js';
 	import { i18n, t } from '#lib/i18n.svelte.js';
 
-	/** From the server: the running database's version, and the latest this release ships. */
-	interface About {
-		db_version: number;
-		db_schema: number;
-	}
-
 	let server = $state<About | null>(null);
-	api<About>('/api/about')
+	getAbout()
 		.then((about) => (server = about))
 		.catch(() => {}); // offline: "—"
 

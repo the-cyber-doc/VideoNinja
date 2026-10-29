@@ -1,7 +1,8 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { url } from '#lib/base.js';
-	import { api, isInitialized } from '#lib/api.js';
+	import { login } from '#lib/api/auth.js';
+	import { isInitialized } from '#lib/api/setup.js';
 	import { t } from '#lib/i18n.svelte.js';
 	import { clearUserData } from '#lib/pwa.js';
 	import { onTotpInput, rules } from '#lib/validation.js';
@@ -23,7 +24,7 @@
 		busy = true;
 		error = '';
 		try {
-			await api('/api/auth/login', { username, password, totp_code: totpCode });
+			await login({ username, password, totp_code: totpCode });
 			await clearUserData(); // nothing cached from a previous user
 			goto(url('/'), { replace: true });
 		} catch (e) {

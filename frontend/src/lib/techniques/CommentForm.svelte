@@ -3,7 +3,7 @@
 	// UI's). onsave throws on failure: the message is shown and the text kept.
 	import { i18n, LANGUAGES, t, type Lang } from '../i18n.svelte';
 	import { rules } from '../validation';
-	import type { CommentIn } from './comments';
+	import type { CommentIn } from '../api/types';
 
 	let {
 		initial,

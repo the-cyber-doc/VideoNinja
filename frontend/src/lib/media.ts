@@ -9,3 +9,7 @@ export const clipUrl = (segment: Segment) => url(`/media/segment/${segment.id}`)
 export const thumbnailUrl = (segment: Segment) => url(`/media/segment/${segment.id}/thumbnail`);
 
 export const segmentDuration = (segment: Segment) => segment.end_s - segment.begin_s;
+
+// Whole videos (the Videos page: the "video_mgmt" access).
+export const videoUrl = (id: number) => url(`/media/video/${id}`);
+export const videoThumbnailUrl = (id: number) => url(`/media/video/${id}/thumbnail`);

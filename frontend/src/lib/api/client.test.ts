@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { api, ApiError, errorFromBody, errorText } from './api';
-import { setLang } from './i18n.svelte';
+import { api, ApiError, errorFromBody, errorText } from './client';
+import { setLang } from '../i18n.svelte';
 
 afterEach(() => {
 	setLang('en');

@@ -38,6 +38,18 @@ class SubmitIn(BaseModel):
     tags: list[TagIn] = Field(default=[], max_length=50)
 
 
+class AvailabilityOut(BaseModel):
+    available: bool  # False: the server cannot receive uploads now (tusd not running)
+
+
+class ExistsOut(BaseModel):
+    exists: bool  # a video (published, waiting or failed) has this original or encoded file
+
+
+class SubmittedOut(BaseModel):
+    id: int  # the new video's
+
+
 class UploadStatus(BaseModel):
     id: int
     original_filename: str
@@ -56,9 +68,9 @@ def _may_manage(me: User, video: sqlite3.Row | None) -> sqlite3.Row:
 
 
 @router.get("/uploads/available")
-def uploads_available(_: User = Depends(uploader)) -> dict[str, bool]:
+def uploads_available(_: User = Depends(uploader)) -> AvailabilityOut:
     """Can the server receive uploads now? The page warns before work is lost."""
-    return {"available": tusd.available()}
+    return AvailabilityOut(available=tusd.available())
 
 
 @router.get("/videos/exists")
@@ -66,9 +78,9 @@ def exists(
     original_sha256: str = Query(**RULES["sha256"]),
     _: User = Depends(uploader),
     con: sqlite3.Connection = Depends(db.get_db),
-) -> dict[str, bool]:
+) -> ExistsOut:
     """True if a video (published, pending or failed) has this original or this encoded file."""
-    return {"exists": queries.videos.video_known(con, original_sha256)}
+    return ExistsOut(exists=queries.videos.video_known(con, original_sha256))
 
 
 @router.post(
@@ -82,7 +94,7 @@ def submit(
     me: User = Depends(uploader),
     con: sqlite3.Connection = Depends(db.get_db),
     zone: tzinfo = Depends(user_zone),
-) -> dict[str, int]:
+) -> SubmittedOut:
     """Queue a finished upload for encoding, with its segments and tags."""
     # Before waiting for the upload: a wrong annotation is refused at once. Outside the
     # write: techniques, tags and performers are never deleted (the foreign keys would
@@ -111,7 +123,7 @@ def submit(
             for tag in segment.tags:
                 queries.segments.insert_segment_tag(con, segment_id, tag.id, tag.value)
     audit.event("video.submitted", video_id=video_id, tus_id=tus_id, segments=len(body.segments))
-    return {"id": video_id}
+    return SubmittedOut(id=video_id)
 
 
 class UploadLimits(BaseModel):

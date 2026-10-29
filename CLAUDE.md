@@ -189,6 +189,14 @@ the encoder waits for the version; `/health` fails on a mismatch.
   endpoint/model change: `tools/api-types.sh`, commit both. Checks: `tests/test_openapi.py` (file current,
   errors declared, unique operation IDs, every JSON answer typed but the files/streams in `UNTYPED`) and
   `npm run check` (`--check`). GET+HEAD = two decorators (one operation ID each).
+- Frontend API (`src/lib/api/`): `client.ts` = the transport (`api`, `ndjson`, `ApiError`), used ONLY by the
+  modules beside it, one per domain (auth, setup, register, profile, users, about, catalog, comments, uploads,
+  performers, tags, videos): every URL is there. Types: `types.ts` names `schema.d.ts`'s (never written by
+  hand; `Answer<path, method>` for an operation's answer); the catalogue's type stays in `catalog.svelte.ts`
+  (a snapshot file, not in the schema). Pages import a module (`* as profile` when names clash) and show
+  `e.message`. Test `lib/api/boundary.test.ts`: no `/api/` URL nor `api(`/`ndjson(` outside `lib/api/` (and
+  the SW). Server side: an answer the frontend reads is a model, never `dict[str, …]`, and model names are
+  unique (`tests/test_openapi.py`). Media URLs: `$lib/media.ts`.
 - HTTP layer (`app/api/`): one router per module (about, auth, catalog, comments, health, media,
   performers, profile, register, setup, tags, upload_hooks, users, video_mgmt, videos), `api.ROUTERS`
   included by main.py in that order; `api/deps.py` = the dependencies (`session_token`, `current_user`,
@@ -465,7 +473,7 @@ the encoder waits for the version; `/health` fails on a mismatch.
   `validation.<kind>`, routing, 500 `internal`, tusd hook bodies, nginx 429 `rate_limited`). Each
   code needs `error.<code>` in messages.json (en + fr; `tests/test_errors.py`: also every code raised
   in `app/` is in the table, no bare `HTTPException`). `detail` is never for users. Setup stream:
-  `{"error": {code, detail, params}}`. Frontend: `$lib/api.ts` `ApiError(status, code, params)`,
+  `{"error": {code, detail, params}}`. Frontend: `$lib/api/client.ts` `ApiError(status, code, params)`,
   `message` = `t('error.<code>')` (`errorText`; unknown code → `error.http_error` {status}; no JSON →
   code from the status, `BY_STATUS`; fetch failure → `network`); pages show `e.message`. tus:
   `uploadError` (`$lib/upload/upload.ts`). Tests: `src/lib/api.test.ts`, mocked specs send coded bodies.

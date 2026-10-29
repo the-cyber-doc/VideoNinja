@@ -5,6 +5,7 @@ import sqlite3
 from fastapi import APIRouter, Depends, status
 from pydantic import BaseModel
 
+from .auth import TotpEnrollmentOut
 from .. import queries
 from ..core import crypto, db
 from ..domain import audit, invites, security, throttle
@@ -20,7 +21,7 @@ class TokenIn(BaseModel):
     token: str = field("invite_token")
 
 
-class CompleteIn(TokenIn):
+class RegisterCompleteIn(TokenIn):
     name: str = field("display_name", default="")
     password: str = field("password")
     totp_secret: str = field("totp_secret")
@@ -35,20 +36,24 @@ def _invited(con: sqlite3.Connection, token: str) -> sqlite3.Row:
     return user
 
 
+class InviteeOut(BaseModel):
+    username: str
+
+
 @router.post("/verify")
-def verify(body: TokenIn, con: sqlite3.Connection = Depends(db.get_db)) -> dict[str, str]:
+def verify(body: TokenIn, con: sqlite3.Connection = Depends(db.get_db)) -> InviteeOut:
     """The username the invitation is for."""
-    return {"username": _invited(con, body.token)["username"]}
+    return InviteeOut(username=_invited(con, body.token)["username"])
 
 
 @router.post("/totp")
-def new_totp(body: TokenIn, con: sqlite3.Connection = Depends(db.get_db)) -> dict[str, str]:
+def new_totp(body: TokenIn, con: sqlite3.Connection = Depends(db.get_db)) -> TotpEnrollmentOut:
     """A fresh TOTP secret and its QR code. Nothing is stored until /complete."""
-    return security.totp_enrollment(_invited(con, body.token)["username"])
+    return TotpEnrollmentOut(**security.totp_enrollment(_invited(con, body.token)["username"]))
 
 
 @router.post("/complete", status_code=status.HTTP_204_NO_CONTENT)
-def complete(body: CompleteIn, con: sqlite3.Connection = Depends(db.get_db)) -> None:
+def complete(body: RegisterCompleteIn, con: sqlite3.Connection = Depends(db.get_db)) -> None:
     user = _invited(con, body.token)
     if not security.verify_totp(body.totp_secret, body.totp_code):
         raise ApiError("totp.invalid_code")

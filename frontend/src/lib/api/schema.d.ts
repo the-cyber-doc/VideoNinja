@@ -865,6 +865,11 @@ export interface components {
                 [key: string]: string | number;
             };
         };
+        /** AvailabilityOut */
+        AvailabilityOut: {
+            /** Available */
+            available: boolean;
+        };
         /** CommentIn */
         CommentIn: {
             /**
@@ -899,6 +904,11 @@ export interface components {
             /** Username */
             username: string;
         };
+        /** ExistsOut */
+        ExistsOut: {
+            /** Exists */
+            exists: boolean;
+        };
         /** HealthOut */
         HealthOut: {
             /**
@@ -928,6 +938,11 @@ export interface components {
             expires_at: string;
             /** Token */
             token: string;
+        };
+        /** InviteeOut */
+        InviteeOut: {
+            /** Username */
+            username: string;
         };
         /** LoginIn */
         LoginIn: {
@@ -964,6 +979,22 @@ export interface components {
         PerformerIn: {
             /** Name */
             name: string;
+        };
+        /** RegisterCompleteIn */
+        RegisterCompleteIn: {
+            /**
+             * Name
+             * @default
+             */
+            name: string;
+            /** Password */
+            password: string;
+            /** Token */
+            token: string;
+            /** Totp Code */
+            totp_code: string;
+            /** Totp Secret */
+            totp_secret: string;
         };
         /** RoleOut */
         RoleOut: {
@@ -1008,6 +1039,29 @@ export interface components {
             /** Technique */
             technique: string;
         };
+        /** SetupCompleteIn */
+        SetupCompleteIn: {
+            /**
+             * Name
+             * @default
+             */
+            name: string;
+            /** Password */
+            password: string;
+            /** Token */
+            token: string;
+            /** Totp Code */
+            totp_code: string;
+            /** Totp Secret */
+            totp_secret: string;
+            /** Username */
+            username: string;
+        };
+        /** SetupStatusOut */
+        SetupStatusOut: {
+            /** Initialized */
+            initialized: boolean;
+        };
         /** SubmitIn */
         SubmitIn: {
             /** All Segments Done */
@@ -1024,6 +1078,11 @@ export interface components {
              * @default []
              */
             tags: components["schemas"]["TagIn"][];
+        };
+        /** SubmittedOut */
+        SubmittedOut: {
+            /** Id */
+            id: number;
         };
         /** Tag */
         Tag: {
@@ -1067,6 +1126,19 @@ export interface components {
             totp_code: string;
             /** Totp Secret */
             totp_secret: string;
+        };
+        /**
+         * TotpEnrollmentOut
+         * @description A fresh TOTP secret for an authenticator app (setup, registration, profile):
+         *     nothing is stored until a code from it is confirmed.
+         */
+        TotpEnrollmentOut: {
+            /** Qr */
+            qr: string;
+            /** Secret */
+            secret: string;
+            /** Uri */
+            uri: string;
         };
         /** TotpIn */
         TotpIn: {
@@ -1145,40 +1217,6 @@ export interface components {
             segment_count: number;
             /** Uploaded At */
             uploaded_at: string;
-        };
-        /** CompleteIn */
-        app__api__register__CompleteIn: {
-            /**
-             * Name
-             * @default
-             */
-            name: string;
-            /** Password */
-            password: string;
-            /** Token */
-            token: string;
-            /** Totp Code */
-            totp_code: string;
-            /** Totp Secret */
-            totp_secret: string;
-        };
-        /** CompleteIn */
-        app__api__setup__CompleteIn: {
-            /**
-             * Name
-             * @default
-             */
-            name: string;
-            /** Password */
-            password: string;
-            /** Token */
-            token: string;
-            /** Totp Code */
-            totp_code: string;
-            /** Totp Secret */
-            totp_secret: string;
-            /** Username */
-            username: string;
         };
     };
     responses: never;
@@ -1731,9 +1769,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: string;
-                    };
+                    "application/json": components["schemas"]["TotpEnrollmentOut"];
                 };
             };
             /** @description An error (core/errors.py: ERRORS) */
@@ -1789,7 +1825,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["app__api__register__CompleteIn"];
+                "application/json": components["schemas"]["RegisterCompleteIn"];
             };
         };
         responses: {
@@ -1830,9 +1866,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: string;
-                    };
+                    "application/json": components["schemas"]["TotpEnrollmentOut"];
                 };
             };
             /** @description An error (core/errors.py: ERRORS) */
@@ -1865,9 +1899,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: string;
-                    };
+                    "application/json": components["schemas"]["InviteeOut"];
                 };
             };
             /** @description An error (core/errors.py: ERRORS) */
@@ -1890,7 +1922,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["app__api__setup__CompleteIn"];
+                "application/json": components["schemas"]["SetupCompleteIn"];
             };
         };
         responses: {
@@ -1929,9 +1961,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: boolean;
-                    };
+                    "application/json": components["schemas"]["SetupStatusOut"];
                 };
             };
             /** @description An error (core/errors.py: ERRORS) */
@@ -1964,9 +1994,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: string;
-                    };
+                    "application/json": components["schemas"]["TotpEnrollmentOut"];
                 };
             };
             /** @description An error (core/errors.py: ERRORS) */
@@ -2130,9 +2158,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: boolean;
-                    };
+                    "application/json": components["schemas"]["AvailabilityOut"];
                 };
             };
             /** @description An error (core/errors.py: ERRORS) */
@@ -2231,9 +2257,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: number;
-                    };
+                    "application/json": components["schemas"]["SubmittedOut"];
                 };
             };
             /** @description An error (core/errors.py: ERRORS) */
@@ -2297,9 +2321,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: boolean;
-                    };
+                    "application/json": components["schemas"]["ExistsOut"];
                 };
             };
             /** @description An error (core/errors.py: ERRORS) */

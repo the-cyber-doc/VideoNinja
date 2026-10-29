@@ -5,7 +5,8 @@
 	// after a submit or an action, and when the page becomes visible again.
 	import { refreshCatalog } from '../catalog.svelte';
 	import { i18n, t } from '../i18n.svelte';
-	import { myUploads, remove, retry, type UploadStatus } from './api';
+	import type { UploadStatus } from '../api/types';
+	import { myUploads, remove, retry } from '../api/uploads';
 
 	let { refresh = 0 }: { refresh?: number } = $props();
 	let list = $state<UploadStatus[]>([]);
