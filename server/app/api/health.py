@@ -16,6 +16,7 @@ from typing import Literal
 
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse
+from pydantic import BaseModel
 
 from .. import encoder
 from ..core import db
@@ -24,6 +25,15 @@ from ..domain import tusd
 log = logging.getLogger(__name__)
 router = APIRouter(tags=["health"])
 State = Literal["ok", "failing", "not_set_up"]
+
+
+class HealthOut(BaseModel):
+    status: Literal["ok", "degraded"]
+    database: State
+    encoder: State
+    tusd: State
+
+
 INTEGRITY_EVERY_S = 3600
 # Per database file: (monotonic time of the check, its result).
 _integrity: dict[str, tuple[float, bool]] = {}
@@ -65,7 +75,7 @@ def _database() -> tuple[State, State]:
         return "failing", "failing"
 
 
-@router.get("/health")
+@router.get("/health", response_model=HealthOut, responses={503: {"model": HealthOut, "description": "Degraded"}})
 def health() -> JSONResponse:
     database, encoder_state = _database()
     states = {"database": database, "encoder": encoder_state, "tusd": "ok" if tusd.available() else "failing"}

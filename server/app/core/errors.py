@@ -19,6 +19,7 @@ from typing import Any
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
+from pydantic import BaseModel
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 # code: (HTTP status, English text with the params as {placeholders})
@@ -107,6 +108,14 @@ VALIDATION: dict[str, tuple[str, dict[str, str]]] = {
 }
 
 Params = Mapping[str, str | int | float]
+
+
+class ErrorOut(BaseModel):
+    """Every error's answer (the OpenAPI schema's ApiError: api/openapi.py)."""
+
+    code: str  # a key of ERRORS; the frontend shows messages.json's error.<code>
+    detail: str  # English, for logs and tools: never shown to users
+    params: dict[str, str | int | float]  # the message's placeholders
 
 
 class ApiError(HTTPException):

@@ -7,7 +7,7 @@ from fastapi.responses import JSONResponse
 from . import api, encoder
 from .core import crypto, db, errors, logs, middleware, settings
 from .domain import audit, security, snapshot, tusd
-from .api import setup
+from .api import openapi, setup
 
 
 @asynccontextmanager
@@ -65,3 +65,4 @@ async def argon2_busy(request: Request, exc: security.Busy) -> JSONResponse:
 app.add_middleware(middleware.RequestLog)
 for router in api.ROUTERS:
     app.include_router(router)
+openapi.install(app)
