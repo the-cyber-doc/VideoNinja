@@ -16,12 +16,12 @@ from datetime import tzinfo
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
 
-from . import audit, db, queries, segments
-from .errors import ApiError
-from .auth import require_access, user_zone
-from .segments import AnnotatedSegment, TagIn
-from .snapshot import rebuild_after_write
-from .queries.users import User
+from .. import audit, db, queries, segments
+from ..errors import ApiError
+from ..queries.users import User
+from ..segments import AnnotatedSegment, TagIn
+from .deps import rebuild_after_write
+from .deps import require_access, user_zone
 
 router = APIRouter(prefix="/api", tags=["video management"])
 manager = require_access("video_mgmt")
@@ -43,6 +43,8 @@ class Annotations(BaseModel):
 
 
 # Read only: who did what, by display name (never user IDs). None: user unknown.
+
+
 class SegmentOut(AnnotatedSegment):
     created_by: str | None
 

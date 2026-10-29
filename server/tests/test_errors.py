@@ -35,7 +35,7 @@ def test_every_code_translated_in_every_language():
 
 
 def _code_calls():
-    for path in APP.glob("*.py"):
+    for path in APP.rglob("*.py"):
         for node in ast.walk(ast.parse(path.read_text(encoding="utf-8"))):
             if isinstance(node, ast.Call):
                 name = node.func.attr if isinstance(node.func, ast.Attribute) else getattr(node.func, "id", None)

@@ -170,7 +170,7 @@ production. It forwards `/api` to the backend on port 8000.
 With no database, the backend prints a one-time setup token in terminal 1:
 
 ```
-12:13:38 WARNING  app.setup: Video Ninja is not set up yet. Setup token: 3q2-…
+12:13:38 WARNING  app.api.setup: Video Ninja is not set up yet. Setup token: 3q2-…
 ```
 
 The app opens the setup wizard: enter the token, create the admin account

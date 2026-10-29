@@ -6,11 +6,11 @@ from typing import Literal
 from fastapi import APIRouter, Depends, status
 from pydantic import BaseModel
 
-from . import audit, clock, db, i18n, invites, queries
-from .errors import ApiError
-from .auth import require_access
-from .validation import field
-from .queries.users import User
+from .. import audit, clock, db, i18n, invites, queries
+from ..errors import ApiError
+from ..queries.users import User
+from ..validation import field
+from .deps import require_access
 
 router = APIRouter(prefix="/api/admin", tags=["users"])
 admin = require_access("user_mgmt")

@@ -1,15 +1,16 @@
 import sqlite3
-from datetime import tzinfo
 from zoneinfo import ZoneInfo
 
 from cryptography.exceptions import InvalidTag
 from fastapi import APIRouter, Depends, Request, Response, status
 from pydantic import BaseModel
 
-from . import audit, clock, crypto, db, i18n, logs, queries, security, throttle
-from .errors import ApiError
-from .queries.users import Credentials, User
-from .validation import field
+from .. import audit, clock, crypto, db, i18n, logs, queries, security, throttle
+from ..errors import ApiError
+from ..queries.users import Credentials, User
+from ..validation import field
+from .deps import session_token
+from .deps import current_user
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
@@ -27,44 +28,6 @@ class UserOut(BaseModel):
     role: str
     role_name: str  # in the request's language
     access: list[str]  # what the role allows, e.g. "user_mgmt": the UI shows matching menus
-
-
-def session_token(request: Request) -> str | None:
-    """Dependency: the session cookie's value (its name depends on the base path)."""
-    return request.cookies.get(security.session_cookie()[0])
-
-
-def current_user(
-    con: sqlite3.Connection = Depends(db.get_db),
-    token: str | None = Depends(session_token),
-    zone: ZoneInfo | None = Depends(clock.zone),
-) -> User:
-    """Dependency for every protected endpoint: 401 unless a valid session cookie is sent."""
-    user = security.session_user(con, token, zone) if token else None
-    if user is None:
-        raise ApiError("auth.not_logged_in")
-    logs.add(user_id=user.id)  # on this request's every line from now on
-    return user
-
-
-def user_zone(
-    user: User = Depends(current_user), zone: ZoneInfo | None = Depends(clock.zone)
-) -> tzinfo:
-    """Dependency: the timezone to write this request's dates in (see clock.user_zone)."""
-    return clock.user_zone(user.time_zone, zone)
-
-
-def require_access(*accesses: str):
-    """Dependency factory: 403 unless the logged-in user's role grants `access`
-    (one of them, if several: e.g. performers for uploads and video management)."""
-
-    def check(user: User = Depends(current_user)) -> User:
-        if not set(accesses) & user.access:
-            audit.event("access.denied", access=" or ".join(accesses))
-            raise ApiError("auth.access_denied")
-        return user
-
-    return check
 
 
 def _totp_ok(credentials: Credentials | None, code: str) -> bool:

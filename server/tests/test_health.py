@@ -134,7 +134,7 @@ def test_service_url_without_trailing_slash(monkeypatch):
 
 def test_integrity_checked_hourly_not_on_every_call(client, admin_secret, tusd_server, monkeypatch):
     """quick_check reads the whole file: once, then again only after INTEGRITY_EVERY_S."""
-    from app import health
+    from app.api import health
     checks = []
     connect = db.connect
 
@@ -156,7 +156,7 @@ def test_integrity_checked_hourly_not_on_every_call(client, admin_secret, tusd_s
 
 
 def test_integrity_failure_kept_until_checked_again(tmp_path, monkeypatch, caplog):
-    from app import health
+    from app.api import health
 
     class Corrupt:
         def execute(self, sql):

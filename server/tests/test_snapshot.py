@@ -10,6 +10,7 @@ from fastapi import APIRouter, Depends, FastAPI, HTTPException
 from fastapi.testclient import TestClient
 
 from app import db, snapshot
+from app.api import deps
 
 from .test_auth import login
 
@@ -121,7 +122,7 @@ def test_rebuild_after_write(monkeypatch):
     scheduled = []
     monkeypatch.setattr(snapshot, "schedule", lambda: scheduled.append(1))
     # Any router whose writes change the catalogue, whoever may call it.
-    router = APIRouter(dependencies=[Depends(snapshot.rebuild_after_write)])
+    router = APIRouter(dependencies=[Depends(deps.rebuild_after_write)])
 
     @router.get("/item")
     def read():

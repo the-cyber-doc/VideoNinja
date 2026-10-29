@@ -27,22 +27,12 @@ import shutil
 import sqlite3
 import threading
 import time
-from collections.abc import Iterator
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, Request, Response, status
-from fastapi.responses import FileResponse
 
 from . import catalog, db, i18n, procs, settings
-from .errors import ApiError
-from .auth import current_user
-from .queries.users import User
 
 log = logging.getLogger(__name__)
-router = APIRouter(prefix="/api", tags=["catalog"])
-# Called by the encoder's container (no catalogue there). Never forwarded by nginx;
-# a call from elsewhere only costs a rebuild (one at a time, no new version if nothing changed).
-internal_router = APIRouter(prefix="/internal", tags=["internal"])
 
 INTERNAL_PREFIX = "/protected-catalog"  # nginx internal location, aliased to versions/
 KEEP = 3  # previous versions kept for requests in flight
@@ -181,43 +171,3 @@ def flush() -> None:
     if timer is not None:
         timer.cancel()
         _rebuild_logged()
-
-
-def rebuild_after_write(request: Request) -> Iterator[None]:
-    """Router dependency: schedule a rebuild after each successful write.
-
-    Reads (GET, HEAD) are ignored. A failed request (exception, e.g.
-    HTTPException) never gets past the yield, so it schedules nothing.
-    """
-    yield
-    if request.method not in ("GET", "HEAD"):
-        schedule()
-
-
-@router.get("/catalog")
-def get_catalog(
-    _: User = Depends(current_user),
-    lang: str = Depends(i18n.language),
-) -> Response:
-    """The catalogue file of the request's language. Behind nginx: an empty answer
-    with X-Accel-Redirect; nginx serves the file, its .br/.gz variant, ETag and
-    Cache-Control (the app sends none)."""
-    version, manifest = current() or rebuild()
-    name = manifest["catalog"][lang]
-    if settings.current().x_accel:
-        return Response(headers={"X-Accel-Redirect": f"{INTERNAL_PREFIX}/{version}/{name}"})
-    path = catalog_dir() / "versions" / version / name
-    if not path.is_file():
-        raise ApiError("catalog.unavailable")
-    return FileResponse(
-        path,
-        media_type="application/json",
-        headers={"Cache-Control": "private, no-cache", "Vary": "Accept-Language"},
-    )
-
-
-@internal_router.post("/catalog-changed", status_code=status.HTTP_204_NO_CONTENT)
-def catalog_changed() -> None:
-    """The encoder published a video or made thumbnails: rebuild the catalogue now
-    (not debounced: publishing is rare, and the upload page fetches it at once)."""
-    rebuild_now()

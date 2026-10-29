@@ -109,9 +109,9 @@ def test_wrong_setting_refused(configured, name, value):
 def test_modules_log_under_their_name(configured, capsys):
     """app.<module>, not uvicorn's logger: the setup token's line, as the e2e script reads it."""
     configured(VIDEONINJA_LOG_FORMAT="json")
-    from app import setup
+    from app.api import setup
     token = setup.new_setup_token()
     line = last_line(capsys)
-    assert json.loads(line)["logger"] == "app.setup"
+    assert json.loads(line)["logger"] == "app.api.setup"
     sed = subprocess.run(["sed", "-n", TOKEN_SED], input=line, capture_output=True, text=True, check=True)  # nosec
     assert sed.stdout.strip() == token

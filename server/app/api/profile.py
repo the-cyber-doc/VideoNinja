@@ -10,11 +10,12 @@ import sqlite3
 from fastapi import APIRouter, Depends, status
 from pydantic import BaseModel
 
-from . import audit, crypto, db, i18n, queries, security, throttle
-from .errors import ApiError
-from .auth import UserOut, current_user, session_token, user_out
-from .validation import field
-from .queries.users import User
+from .. import audit, crypto, db, i18n, queries, security, throttle
+from ..errors import ApiError
+from ..queries.users import User
+from ..validation import field
+from .auth import UserOut, user_out
+from .deps import current_user, session_token
 
 router = APIRouter(prefix="/api/profile", tags=["profile"])
 # A wrong current password (403) counts as a credential failure.
