@@ -79,3 +79,10 @@ def test_schema_names_are_plain():
     which change when a module moves: give each its own name."""
     names = openapi.schema(app)["components"]["schemas"]
     assert [n for n in names if "__" in n] == []
+
+
+def test_served_schema_is_the_committed_one(client):
+    """/openapi.json (and /docs): this schema, built once."""
+    first = client.get("/openapi.json").json()
+    assert first == openapi.schema(app)
+    assert client.get("/openapi.json").json() == first

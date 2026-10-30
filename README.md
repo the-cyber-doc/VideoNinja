@@ -235,7 +235,7 @@ sudo docker compose up -d && sudo rm videoninja.db
 server/.venv/bin/pre-commit run --all-files
 
 # Backend, in server/ with the venv active
-pytest --cov              # coverage below its floor (pyproject.toml) fails
+pytest --cov              # 100% of app/ (statements + branches, pyproject.toml): an untested line fails
 ruff check app tests      # lint (settings: pyproject.toml)
 ruff format --check app tests   # layout; `ruff format app tests` applies it
 mypy                      # types, strict, over app/
@@ -259,9 +259,11 @@ Two levels, both run by CI on every push:
 | `npm run test:browser` | [Playwright](https://playwright.dev) | Pages in real browsers, files in `tests/` | seconds |
 
 `npm test` runs both. `npm run test:coverage` (CI) runs the unit tests with
-coverage of `src/**/*.ts`; components and pages are the browser tests' (no
-coverage measured there), so the figure is low by design: the floors in
-`vite.config.ts` only stop it from going down.
+coverage of `src/**/*.ts`: every module, the service worker included, at 100% of
+its statements and lines and 99% of its branches and functions (floors in
+`vite.config.ts`). The browser APIs these modules use (Cache API, IndexedDB,
+the service worker's scope, video elements) are faked in `src/lib/testing/`.
+Components (`.svelte`) are the browser tests' (no coverage measured there).
 
 Browser tests come in two kinds:
 
@@ -1597,6 +1599,9 @@ and update. Enable **Dependabot alerts** in the repository's settings too.
 Dependabot (`.github/dependabot.yml`) opens a pull request per update, weekly,
 for a release at least **14 days old** (`cooldown`), time for a broken or
 malicious release to be noticed and withdrawn; CI tests each pull request.
+Security updates skip the wait (Dependabot opens them at once): a version pinned
+by hand (an `.in` file, `TUSD_MODULES`) follows the same rule, never older than
+the release that fixes a known vulnerability.
 Before merging: read the release notes (breaking changes, security fixes), let
 CI run, and run `tools/test-e2e-stack.sh` for anything in the images.
 

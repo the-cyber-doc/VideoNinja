@@ -117,3 +117,28 @@ def test_modules_log_under_their_name(configured, capsys):
     assert json.loads(line)["logger"] == "app.api.setup"
     sed = subprocess.run(["sed", "-n", TOKEN_SED], input=line, capture_output=True, text=True, check=True)  # nosec
     assert sed.stdout.strip() == token
+
+
+def test_add_outside_a_bind_is_ignored():
+    logs.add(user_id=1)
+    assert logs.context() == {}
+
+
+def test_context_is_a_copy():
+    with logs.bind(video_id=3):
+        logs.context()["user_id"] = 1
+        assert logs.context() == {"video_id": 3}
+
+
+def test_extra_wins_over_the_bound_field(configured, capsys):
+    configured(VIDEONINJA_LOG_FORMAT="json")
+    with logs.bind(video_id=3):
+        logging.getLogger("app.encoder").info("other video", extra={"video_id": 4})
+    assert json.loads(last_line(capsys))["video_id"] == 4
+
+
+def test_json_traceback_formatted_already():
+    """A record whose traceback is text only (e.g. formatted by another handler first)."""
+    record = logging.LogRecord("app.db", logging.ERROR, __file__, 1, "failed", None, None)
+    record.exc_text = "Traceback (most recent call last): …"
+    assert json.loads(logs.JsonFormatter().format(record))["exc"] == record.exc_text

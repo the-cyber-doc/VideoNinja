@@ -4,7 +4,8 @@ import re
 import pyotp
 import pytest
 
-from app.core import crypto, db
+from app.api import setup
+from app.core import crypto, db, errors
 
 from .conftest import PASSWORD, connect
 
@@ -112,3 +113,41 @@ def test_built_from_the_expected_version(tmp_path, monkeypatch):
     assert [p.name for p in db.scripts()] == ["db_v2.sql", "db_v2_init.sql"]
     with pytest.raises(RuntimeError, match=re.escape("db_v3_init.sql")):
         db.scripts(3)  # incomplete: refused
+
+
+def complete(client):
+    secret = pyotp.random_base32()
+    body = {
+        "token": client.app.state.setup_token,
+        "username": "admin",
+        "password": PASSWORD,
+        "totp_secret": secret,
+        "totp_code": pyotp.TOTP(secret).now(),
+    }
+    return [json.loads(line) for line in client.post("/api/setup/complete", json=body).text.splitlines()]
+
+
+def test_second_setup_at_the_same_time(client):
+    assert setup._setup_lock.acquire(blocking=False)
+    try:
+        assert complete(client) == [{"error": errors.body("setup.running")}]
+    finally:
+        setup._setup_lock.release()
+
+
+def test_setup_finished_meanwhile(client, monkeypatch):
+    """Another request created the database between the token check and the build."""
+    checks = iter([False, True])  # the token check, then the stream
+    monkeypatch.setattr(db, "is_initialized", lambda: next(checks))
+    assert complete(client) == [{"error": errors.body("setup.done")}]
+
+
+def test_failed_setup(client, monkeypatch, caplog):
+    def broken(*args):
+        yield "schema"
+        raise OSError("disk full")
+
+    monkeypatch.setattr(db, "create_database", broken)
+    assert complete(client) == [{"step": "schema"}, {"error": errors.body("setup.failed")}]
+    assert "Setup failed" in caplog.text
+    assert client.app.state.setup_token  # still usable: try again

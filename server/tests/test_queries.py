@@ -4,6 +4,7 @@ user the app passes around carries no credentials."""
 import ast
 import dataclasses
 import re
+import sqlite3
 from pathlib import Path
 
 import pytest
@@ -30,3 +31,12 @@ def test_user_has_no_credentials():
     user = User(1, "admin", None, "admin", None, frozenset())
     with pytest.raises(dataclasses.FrozenInstanceError):
         user.role = "user"  # type: ignore[misc]
+
+
+def test_inserted_needs_a_row():
+    con = sqlite3.connect(":memory:")
+    try:
+        with pytest.raises(RuntimeError, match="No row inserted"):
+            queries.rows.inserted(con.cursor())
+    finally:
+        con.close()

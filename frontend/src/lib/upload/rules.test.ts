@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import type { Draft, DraftSegment } from './draft.svelte';
-import { allSegmentsDone, canProceed, segmentProblems, submitBody, wholeSeconds } from './rules';
+import {
+	allSegmentsDone,
+	canProceed,
+	checkboxLocked,
+	refusal,
+	segmentProblems,
+	submitBody,
+	wholeSeconds
+} from './rules';
 
 const segment = (over: Partial<DraftSegment> = {}): DraftSegment => ({
 	key: 1,
@@ -80,5 +88,17 @@ describe('submit body', () => {
 		expect(body.segments).toEqual([
 			{ begin_s: 12, end_s: 27, technique: 'gyokko.taijutsu.jo_ryaku.koku', performer: 'hatsumi', tags: [] }
 		]);
+	});
+});
+
+describe('checkbox and file checks', () => {
+	it('locked by a mode', () => {
+		expect([checkboxLocked(null), checkboxLocked('later'), checkboxLocked('none')]).toEqual([false, true, true]);
+	});
+
+	it('limits not known: the server decides; a name without extension is a wrong type', () => {
+		expect(refusal({ name: 'kata', size: 1 }, null)).toBe('');
+		expect(refusal({ name: 'kata', size: 1 }, { max_bytes: 10, extensions: ['mp4'] })).toBe('type');
+		expect(refusal({ name: 'kata.MP4', size: 1 }, { max_bytes: 10, extensions: ['mp4'] })).toBe('');
 	});
 });

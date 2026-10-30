@@ -3,6 +3,7 @@ from datetime import UTC, datetime
 import pyotp
 import pytest
 
+from app import queries
 from app.core import clock
 
 from .conftest import connect
@@ -173,3 +174,10 @@ def test_invalid_comments(admin, body):
 
 def test_longest_comment_accepted(admin):
     assert admin.post(COMMENTS, json={"text": "x" * 4000, "lang": "en"}).status_code == 201
+
+
+def test_comment_gone_right_after_writing(admin, monkeypatch):
+    """Never in practice (same transaction), but answered as an unknown comment."""
+    monkeypatch.setattr(queries.comments, "comment", lambda con, comment_id, user_id: None)
+    r = admin.post(COMMENTS, json={"text": "Hello", "lang": "en"})
+    assert (r.status_code, r.json()["code"]) == (404, "comment.unknown")

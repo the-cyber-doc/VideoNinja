@@ -2,6 +2,7 @@
 error, each code in the table and translated in every language for the frontend."""
 
 import ast
+import asyncio
 import json
 import re
 import string
@@ -9,6 +10,7 @@ from datetime import UTC
 from pathlib import Path
 
 from fastapi import FastAPI
+from fastapi.exceptions import RequestValidationError
 from fastapi.testclient import TestClient
 
 from app.core import errors, i18n
@@ -102,3 +104,13 @@ def test_unexpected_error_is_internal():
     r = TestClient(app, raise_server_exceptions=False).get("/boom")
     assert (r.status_code, r.json()) == (500, {"code": "internal", "detail": "Internal error", "params": {}})
     assert not re.search("bug|RuntimeError", r.text)  # nothing of the exception leaks
+
+
+def test_validation_error_without_details():
+    """No error listed (or none naming a field): the generic code, no field."""
+    response = asyncio.run(errors._validation_error(None, RequestValidationError([])))
+    assert json.loads(response.body) == {
+        "code": "validation.invalid",
+        "detail": errors.ERRORS["validation.invalid"][1],
+        "params": {},
+    }

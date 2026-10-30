@@ -1,9 +1,11 @@
 import shutil
+import subprocess
 from pathlib import Path
 
 import pyotp
 import pytest
 
+from app.core import procs
 from app.encoder import checks
 
 from .conftest import connect
@@ -138,3 +140,41 @@ def test_clip_cut_by_the_app_without_nginx(client, admin_secret, tmp_path, monke
     assert part.headers["content-range"] == f"bytes 0-99/{len(r.content)}"
     # Cut once, then served from the cache folder.
     assert [p.name for p in (tmp_path / "media" / "clips").iterdir()] == [f"{SHA}-5-15.mp4"]
+
+
+def test_invalid_hash_never_served(client, admin_secret, monkeypatch, caplog):
+    monkeypatch.setenv("VIDEONINJA_X_ACCEL", "1")
+    login(client, admin_secret)
+    add_segments()
+    with connect() as con:
+        con.execute("UPDATE video SET sha256sum = '../etc'")
+    assert client.get("/media/segment/1").status_code == 404
+    assert "invalid SHA-256" in caplog.text
+
+
+def test_clip_of_a_missing_file_without_nginx(client, admin_secret, tmp_path, monkeypatch):
+    monkeypatch.setenv("VIDEONINJA_MEDIA_DIR", str(tmp_path / "media"))
+    login(client, admin_secret)
+    add_segments()
+    assert client.get("/media/segment/1").status_code == 404
+
+
+@pytest.mark.parametrize("failure", ["exit code", "timeout"])
+def test_clip_that_ffmpeg_cannot_cut(client, admin_secret, tmp_path, monkeypatch, caplog, failure):
+    """404, logged, and nothing left in the clips folder."""
+    monkeypatch.setenv("VIDEONINJA_MEDIA_DIR", str(tmp_path / "media"))
+    login(client, admin_secret)
+    add_segments()
+    folder = tmp_path / "media" / "video" / "ab" / SHA
+    folder.mkdir(parents=True)
+    (folder / "video.mp4").write_bytes(b"not a video")
+
+    def run(cmd, **kwargs):
+        if failure == "timeout":
+            raise procs.Timeout("ffmpeg ran for too long")
+        return subprocess.CompletedProcess(cmd, 1, "", "Invalid data found")
+
+    monkeypatch.setattr(procs, "run", run)
+    assert client.get("/media/segment/1").status_code == 404
+    assert "Segment clip" in caplog.text
+    assert list((tmp_path / "media" / "clips").iterdir()) == []

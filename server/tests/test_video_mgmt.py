@@ -1,13 +1,14 @@
 """Video management: the list of published videos, annotating one again, the whole video."""
 
 import shutil
+import threading
 from pathlib import Path
 
 import pyotp
 import pytest
 
 from app.domain import snapshot
-from app.encoder import notify, queue, thumbnails
+from app.encoder import checks, notify, queue, thumbnails
 
 from .conftest import connect
 from .test_auth import login
@@ -301,3 +302,50 @@ def test_thumbnail_of_a_segment_retimed_meanwhile_is_not_kept(admin, tmp_path, m
     queue.Encoder().refresh_thumbnails()
     assert sql("SELECT id, thumbnail FROM segment ORDER BY id") == [(1, None), (2, "segment-2.jpg")]
     assert sql("SELECT thumbs_dirty FROM video") == [(1,)]
+
+
+def test_whole_video_missing_without_nginx(admin, tmp_path, monkeypatch):
+    monkeypatch.setenv("VIDEONINJA_MEDIA_DIR", str(tmp_path / "media"))
+    assert admin.get("/media/video/1").status_code == 404
+
+
+def test_thumbnail_past_the_end_from_the_first_frame(tmp_path, monkeypatch):
+    """-ss after the last frame writes nothing: taken again from the start."""
+    calls = []
+
+    def run(cmd):
+        calls.append(cmd)
+        if len(calls) == 2:
+            (tmp_path / "t.jpg").write_bytes(b"jpg")
+
+    monkeypatch.setattr(thumbnails, "run", run)
+    thumbnails.thumbnail(tmp_path / "video.mp4", 99, tmp_path / "t.jpg")
+    assert "-ss" in calls[0] and "-ss" not in calls[1]
+
+
+def test_thumbnails_stop_with_the_encoder(admin, tmp_path):
+    sql("UPDATE video SET thumbs_dirty = 1")
+    stopping = threading.Event()
+    stopping.set()
+    assert thumbnails.refresh(tmp_path, stopping) is False
+    assert sql("SELECT thumbs_dirty FROM video WHERE id = 1") == [(1,)]  # done at the next start
+
+
+def test_thumbnail_failure_skips_the_segment(admin, tmp_path, monkeypatch, caplog):
+    """Segment 1 has its thumbnail: kept. Segment 2's fails: logged, tried again later."""
+    monkeypatch.setenv("VIDEONINJA_MEDIA_DIR", str(tmp_path / "media"))
+    (tmp_path / "media" / "video" / "ab" / SHA).mkdir(parents=True)
+    sql("UPDATE segment SET thumbnail = NULL WHERE id = 2")
+    sql("UPDATE video SET thumbs_dirty = 1")
+    made = []
+
+    def thumbnail(video, at, out):
+        made.append(out.name)
+        raise checks.JobError("ffmpeg failed")
+
+    monkeypatch.setattr(thumbnails, "thumbnail", thumbnail)
+    monkeypatch.setattr(notify, "catalog_changed", lambda: None)
+    queue.Encoder().refresh_thumbnails()
+    assert made == [".segment-2.jpg"]
+    assert "no thumbnail for segment 2" in caplog.text
+    assert sql("SELECT thumbnail FROM segment WHERE id = 2") == [(None,)]

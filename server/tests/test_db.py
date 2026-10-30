@@ -111,3 +111,46 @@ def test_concurrent_read_modify_write(path):
         t.join()
     assert errors == []
     assert count(path) == writers
+
+
+def test_write_after_sqlite_rolled_back_by_itself(path):
+    """An error that already ended the transaction (SQLite rolls back by itself, e.g.
+    disk full): the original error, not one from a second ROLLBACK."""
+    con = db.connect(path)
+    try:
+        with pytest.raises(RuntimeError, match="disk full"), db.write(con):
+            con.execute("ROLLBACK")
+            raise RuntimeError("disk full")
+    finally:
+        con.close()
+
+
+def test_read_ended_inside(path):
+    con = db.connect(path)
+    try:
+        with db.read(con):
+            con.execute("COMMIT")
+        assert not con.in_transaction
+    finally:
+        con.close()
+
+
+def test_version_without_config_table(path):
+    con = db.connect(path)
+    try:
+        assert db.version(con) == 0
+    finally:
+        con.close()
+
+
+def test_nothing_before_the_setup(tmp_path, monkeypatch):
+    monkeypatch.setenv("VIDEONINJA_DB", str(tmp_path / "none.db"))
+    assert db.current_version() is None
+    db.migrate()
+    assert not (tmp_path / "none.db").exists()
+
+
+def test_database_without_version_not_migrated(path, monkeypatch):
+    monkeypatch.setenv("VIDEONINJA_DB", str(path))  # a counter, no config table
+    with pytest.raises(RuntimeError, match="no version"):
+        db.migrate()

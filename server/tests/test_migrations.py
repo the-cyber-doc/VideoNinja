@@ -161,3 +161,15 @@ def test_the_app_migrates_at_startup(database):
 def test_a_new_setup_is_on_the_expected_version(client):
     run_setup(client)
     assert db.current_version() == db.EXPECTED_VERSION
+
+
+def test_step_that_does_not_set_the_version_refused(tmp_path, monkeypatch):
+    """A script that ran but left the version as it was: no start on an unknown schema."""
+    build(tmp_path / "videoninja.db", db.EXPECTED_VERSION - 1)
+    monkeypatch.setenv("VIDEONINJA_DB", str(tmp_path / "videoninja.db"))
+    steps = tmp_path / "migrations"
+    steps.mkdir()
+    (steps / f"v{db.EXPECTED_VERSION - 1}_to_v{db.EXPECTED_VERSION}.sql").write_text("BEGIN; COMMIT;")
+    monkeypatch.setattr(db, "MIGRATIONS_DIR", steps)
+    with pytest.raises(RuntimeError, match="did not set the database version"):
+        db.migrate()

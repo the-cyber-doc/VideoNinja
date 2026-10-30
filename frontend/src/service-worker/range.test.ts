@@ -33,3 +33,10 @@ describe('rangeResponse', () => {
 		expect(r.headers.get('Content-Range')).toBe('bytes */10');
 	});
 });
+
+describe('a clip saved without its type', () => {
+	it('sent as bytes', async () => {
+		const r = await rangeResponse(new Response(new Uint8Array([0, 1, 2])), 'bytes=0-0');
+		expect(r.headers.get('Content-Type')).toBe('application/octet-stream');
+	});
+});

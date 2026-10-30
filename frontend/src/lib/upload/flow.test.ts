@@ -122,3 +122,138 @@ describe('the upload flow', () => {
 		expect(flow.step).toBe('edit');
 	});
 });
+
+describe('the upload flow, edges', () => {
+	it('busy while hashing, uploading or submitting', async () => {
+		const flow = new UploadFlow(LIMITS, false, fakes().deps);
+		expect(flow.busy).toBe(false);
+		await flow.choose(file());
+		flow.proceed();
+		expect(flow.busy).toBe(true);
+	});
+
+	it('drafts and availability loaded in the background; their failures ignored', async () => {
+		const saved = draftOf('b'.repeat(64), file());
+		const flow = new UploadFlow(LIMITS, false, fakes({ listDrafts: async () => [saved] }).deps);
+		flow.reloadDrafts();
+		flow.checkAvailable();
+		await new Promise((resolve) => setTimeout(resolve));
+		expect([flow.drafts, flow.unavailable]).toEqual([[saved], false]);
+		const failing = new UploadFlow(
+			LIMITS,
+			false,
+			fakes({
+				listDrafts: async () => Promise.reject(new Error('blocked')),
+				uploadsAvailable: async () => Promise.reject(new Error('offline'))
+			}).deps
+		);
+		failing.reloadDrafts();
+		failing.checkAvailable();
+		await new Promise((resolve) => setTimeout(resolve));
+		expect([failing.drafts, failing.unavailable]).toEqual([[], false]);
+	});
+
+	it('a file that cannot be read: back to picking, with the reason', async () => {
+		const unreadable = new Error('NotReadableError');
+		const flow = new UploadFlow(LIMITS, false, fakes({ sha256File: async () => Promise.reject(unreadable) }).deps);
+		await flow.choose(file());
+		expect([flow.step, flow.error]).toEqual(['pick', unreadable]);
+	});
+
+	it('hashing stopped (another file, cancel): no error shown', async () => {
+		let reject!: (e: Error) => void;
+		const flow = new UploadFlow(
+			LIMITS,
+			false,
+			fakes({
+				sha256File: (_f, _p, signal) =>
+					new Promise((_, r) => ((reject = r), signal.addEventListener('abort', () => r(new Error('aborted')))))
+			}).deps
+		);
+		const choosing = flow.choose(file());
+		await flow.cancel();
+		await choosing;
+		expect([flow.step, flow.error]).toEqual(['pick', null]);
+		void reject;
+	});
+
+	it('a draft that cannot be read: a new one', async () => {
+		const flow = new UploadFlow(
+			LIMITS,
+			false,
+			fakes({ loadDraft: async () => Promise.reject(new Error('blocked')) }).deps
+		);
+		await flow.choose(file());
+		expect([flow.step, flow.resumed, flow.draft?.sha256]).toEqual(['edit', false, 'a'.repeat(64)]);
+	});
+
+	it('an upload the server deleted (410) starts over; other errors keep the URL', async () => {
+		const { deps, state } = fakes();
+		const flow = new UploadFlow(LIMITS, false, deps);
+		await flow.choose(file());
+		flow.draft!.uploadUrl = '/files/old';
+		flow.proceed();
+		state.callbacks!.onError(new ApiError(503, 'busy'));
+		expect(flow.draft?.uploadUrl).toBe('/files/old');
+		flow.proceed();
+		state.callbacks!.onError(new ApiError(410, 'http_error', { status: 410 }));
+		expect(flow.draft?.uploadUrl).toBeUndefined();
+	});
+
+	it('a refused submit: back to the annotation, with the reason', async () => {
+		const refused = new ApiError(422, 'segment.unknown_technique', { technique: 'x' });
+		const { deps, state } = fakes({ submit: vi.fn(async () => Promise.reject(refused)) });
+		const flow = new UploadFlow(LIMITS, false, deps);
+		await flow.choose(file());
+		flow.proceed();
+		await state.callbacks!.onSuccess('abc');
+		expect([flow.step, flow.error]).toEqual(['edit', refused]);
+		expect(state.deleted).toEqual([]); // the draft stays
+	});
+
+	it('a saved draft dropped from the list (also when the device refuses)', async () => {
+		const saved = [draftOf('b'.repeat(64), file()), draftOf('c'.repeat(64), file())];
+		const deps = fakes({
+			listDrafts: async () => saved,
+			deleteDraft: async () => Promise.reject(new Error('blocked'))
+		}).deps;
+		const flow = new UploadFlow(LIMITS, false, deps);
+		flow.reloadDrafts();
+		await new Promise((resolve) => setTimeout(resolve));
+		await flow.discard('b'.repeat(64));
+		expect(flow.drafts.map((d) => d.sha256[0])).toEqual(['c']);
+	});
+
+	it('the page left: the upload paused (resumable), the video released', async () => {
+		const { deps, state } = fakes();
+		const flow = new UploadFlow(LIMITS, false, deps);
+		await flow.choose(file());
+		const revoke = vi.spyOn(URL, 'revokeObjectURL');
+		flow.proceed();
+		flow.dispose();
+		expect(state.aborted).toEqual([undefined]); // not terminated
+		expect(revoke).toHaveBeenCalledWith(flow.src);
+		new UploadFlow(LIMITS, false, deps).dispose(); // nothing chosen: nothing to stop
+	});
+});
+
+describe('the upload flow, when the device or the server refuses to clean up', () => {
+	it('submitted all the same; cancelled all the same', async () => {
+		const { deps, state } = fakes({
+			deleteDraft: async () => Promise.reject(new Error('blocked')),
+			startUpload: (_f, _meta, callbacks) => {
+				state.callbacks = callbacks;
+				return { abort: async () => Promise.reject(new Error('offline')) };
+			}
+		});
+		const flow = new UploadFlow(LIMITS, false, deps);
+		await flow.choose(file());
+		flow.proceed();
+		await state.callbacks!.onSuccess('abc');
+		expect([flow.step, flow.submitted]).toEqual(['pick', 1]);
+		await flow.choose(file());
+		flow.proceed();
+		await flow.cancel();
+		expect(flow.step).toBe('pick');
+	});
+});

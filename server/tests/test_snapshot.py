@@ -147,3 +147,46 @@ def test_rebuild_after_write(monkeypatch):
     assert scheduled == []
     assert c.post("/item").status_code == 200
     assert scheduled == [1]
+
+
+def test_catalogue_file_missing(logged_in, monkeypatch):
+    """The current version's file gone between the lookup and the answer (deleted by
+    hand, in development): 503, not a crash."""
+    monkeypatch.setattr(snapshot, "current", lambda: ("gone", {"catalog": {"en": "catalog.en.json"}}))
+    r = logged_in.get("/api/catalog")
+    assert (r.status_code, r.json()["code"]) == (503, "catalog.unavailable")
+
+
+@pytest.mark.compress  # the real _compress, its tools faked
+def test_precompression_tool_missing_or_failing(tmp_path, monkeypatch, caplog):
+    """Missing: a warning (nginx serves another variant). Failing: an error."""
+    path = tmp_path / "catalog.en.json"
+    path.write_text("{}")
+    monkeypatch.setattr(snapshot.shutil, "which", lambda tool: None)
+    snapshot._compress(path)
+    assert "brotli not found" in caplog.text and "zopfli not found" in caplog.text
+
+    monkeypatch.setattr(snapshot.shutil, "which", lambda tool: f"/usr/bin/{tool}")
+    monkeypatch.setattr(
+        snapshot.procs, "run", lambda cmd, timeout: subprocess.CompletedProcess(cmd, 1, "", "out of memory")
+    )
+    with pytest.raises(RuntimeError, match="brotli failed: out of memory"):
+        snapshot._compress(path)
+
+
+def test_unfinished_versions_pruned(logged_in):
+    """A version folder left half-written (.<name>, e.g. a crash): deleted at the next rebuild."""
+    snapshot.rebuild()
+    unfinished = snapshot.catalog_dir() / "versions" / ".partial"
+    unfinished.mkdir()
+    add_school()
+    snapshot.rebuild()
+    assert not unfinished.exists()
+
+
+def test_rebuild_now_without_a_scheduled_one(logged_in, monkeypatch):
+    rebuilt = []
+    monkeypatch.setattr(snapshot, "_timer", None)
+    monkeypatch.setattr(snapshot, "_rebuild_logged", lambda: rebuilt.append(True))
+    snapshot.rebuild_now()
+    assert rebuilt == [True]

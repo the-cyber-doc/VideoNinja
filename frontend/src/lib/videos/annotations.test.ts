@@ -114,3 +114,21 @@ describe('annotations <-> the panel', () => {
 		);
 	});
 });
+
+describe('a technique no longer in the catalogue', () => {
+	it('kept, without a place to choose it from', () => {
+		const saved = {
+			all_segments_done: false,
+			tags: [],
+			segments: [{ id: null, begin_s: 1, end_s: 2, technique: 'gone.x', performer: 'p', tags: [], created_by: null }]
+		} as unknown as AnnotationsOut;
+		expect(toAnnotation(saved, catalog).segments[0]).toMatchObject({
+			id: undefined,
+			school: '',
+			category: '',
+			weapon: '',
+			section: '',
+			technique: 'gone.x'
+		});
+	});
+});

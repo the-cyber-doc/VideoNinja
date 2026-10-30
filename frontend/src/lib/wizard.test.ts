@@ -125,3 +125,14 @@ describe('registration (an invitation)', () => {
 		expect([w.step, w.error]).toEqual(['token', invalid]);
 	});
 });
+
+describe('the setup task under way', () => {
+	it('the first not completed, only while busy', () => {
+		const w = new Wizard(undefined, fakes());
+		expect(w.currentTask).toBeNull();
+		w.busy = true;
+		expect(w.currentTask).toBe('schema');
+		w.completed = ['schema', 'data', 'admin', 'done'];
+		expect(w.currentTask).toBeNull();
+	});
+});

@@ -5,6 +5,8 @@ import {
 	categoriesOf,
 	pathOf,
 	resolvePath,
+	schoolHref,
+	segmentsOf,
 	sectionsOf,
 	segmentsUnder,
 	techniquesOf,
@@ -121,4 +123,45 @@ describe('segments under a place (offline download)', () => {
 		expect(ids(staff)).toEqual([2, 3]);
 		expect(ids({ ryu: 'gyokushin' })).toEqual([]);
 	});
+});
+
+describe('edges', () => {
+	it('breadcrumbs stop at the first step that does not exist', () => {
+		const labels = (p?: Parameters<typeof catalogCrumbs>[1]) => catalogCrumbs(catalog, p).map((c) => c.label);
+		expect(catalogCrumbs(undefined, staff).map((c) => c.label)).toEqual(['Schools']); // not loaded yet
+		expect(labels()).toEqual(['Schools']);
+		expect(labels({ ryu: 'nope' })).toEqual(['Schools']);
+		expect(labels({ ryu: 'gyokko', category: 'nope' })).toEqual(['Schools', 'Gyokko Ryu']);
+		expect(labels({ ryu: 'kukishinden', category: 'buki', weapon: 'nope' })).toEqual([
+			'Schools',
+			'Kukishin Ryu',
+			'Buki'
+		]);
+		expect(labels({ ...staff, technique: 'nope' })).toEqual([
+			'Schools',
+			'Kukishin Ryu',
+			'Buki',
+			'Rokushakubo',
+			'Shoden Gata'
+		]);
+	});
+
+	it('a catalogue cached before segments existed has none', () => {
+		const old = { ...catalog, segments: undefined } as unknown as Catalog;
+		expect(segmentsOf(old, 'gyokko.taijutsu.jo_ryaku.koku')).toEqual([]);
+		expect(segmentsUnder(old, { ryu: 'gyokko' })).toEqual([]);
+	});
+
+	it('a section path from its ID; nothing for an unknown ID', () => {
+		expect(pathOf(catalog, 'gyokko.taijutsu.jo_ryaku')).toEqual({
+			ryu: 'gyokko',
+			category: 'taijutsu',
+			weapon: undefined,
+			section: 'jo_ryaku',
+			technique: undefined
+		});
+		expect(pathOf(catalog, 'nope')).toBeUndefined();
+	});
+
+	it('names in URLs are encoded', () => expect(schoolHref('a b')).toBe('/schools/a%20b'));
 });

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { rules, totpDigits } from './validation';
+import { onTotpInput, rules, totpDigits } from './validation';
 
 describe('totpDigits', () => {
 	it('keeps digits only', () => expect(totpDigits('123 456')).toBe('123456'));
@@ -18,5 +18,15 @@ describe('shared rules', () => {
 		expect(re.test('a.b_c-d')).toBe(true);
 		expect(re.test('Admin')).toBe(false);
 		expect(re.test('a b')).toBe(false);
+	});
+});
+
+describe('TOTP field', () => {
+	it('rewritten as typed: digits only', () => {
+		const input = { value: '12a 34' };
+		expect(onTotpInput({ currentTarget: input } as unknown as Event & { currentTarget: HTMLInputElement })).toBe(
+			'1234'
+		);
+		expect(input.value).toBe('1234');
 	});
 });

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { api, ApiError, errorFromBody, errorText } from './client';
+import { api, ApiError, apiHeaders, errorFromBody, errorText, ndjson } from './client';
 import { setLang } from '../i18n.svelte';
 
 afterEach(() => {
@@ -79,5 +79,55 @@ describe('api()', () => {
 			'network',
 			'Cannot reach the server. Check your connection and try again.'
 		]);
+	});
+});
+
+describe('transport', () => {
+	it('no content: undefined, not a JSON error', async () => {
+		vi.stubGlobal(
+			'fetch',
+			vi.fn(async () => new Response(null, { status: 204 }))
+		);
+		expect(await api('/api/auth/logout', {})).toBeUndefined();
+	});
+
+	it('sends the language and the timezone', () => {
+		setLang('fr');
+		expect(apiHeaders()).toEqual({
+			'Accept-Language': 'fr',
+			'Time-Zone': Intl.DateTimeFormat().resolvedOptions().timeZone
+		});
+	});
+
+	it('NDJSON: lines split across chunks, blank lines skipped, the last one without its newline', async () => {
+		const chunks = ['{"step":"sch', 'ema"}\n\n{"step":', '"data"}\n{"step":"done"}'];
+		const body = new ReadableStream({
+			start(controller) {
+				for (const chunk of chunks) controller.enqueue(new TextEncoder().encode(chunk));
+				controller.close();
+			}
+		});
+		vi.stubGlobal(
+			'fetch',
+			vi.fn(async () => new Response(body))
+		);
+		const lines = [];
+		for await (const line of ndjson('/api/setup/complete', {})) lines.push(line);
+		expect(lines).toEqual([{ step: 'schema' }, { step: 'data' }, { step: 'done' }]);
+	});
+});
+
+describe('answers that are not the API’s', () => {
+	it('a page instead of JSON (nginx): the error from its status', async () => {
+		vi.stubGlobal(
+			'fetch',
+			vi.fn(async () => new Response('<html>Bad Gateway</html>', { status: 502 }))
+		);
+		const e = (await api('/api/videos').catch((e) => e)) as ApiError;
+		expect([e.status, e.code]).toEqual([502, 'http_error']);
+	});
+
+	it('an unknown code without a status: the generic error', () => {
+		expect(errorText('something.new')).toBe(errorText('internal'));
 	});
 });

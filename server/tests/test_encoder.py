@@ -669,3 +669,24 @@ def test_container_waits_for_the_expected_database_version(tmp_path):
     assert con.execute("SELECT value FROM config WHERE name = 'db_version'").fetchone() == ("1",)
     assert con.execute("SELECT count(*) FROM sqlite_master WHERE name = 'heartbeat'").fetchone() == (0,)
     con.close()
+
+
+def test_catalogue_change_not_sent(monkeypatch, caplog):
+    """The API unreachable: logged, it rebuilds at its next start anyway."""
+    monkeypatch.setenv("VIDEONINJA_API_URL", "http://api:8000/")
+
+    def unreachable(request, timeout):
+        raise OSError("Connection refused")
+
+    monkeypatch.setattr(urllib.request, "urlopen", unreachable)
+    notify.catalog_changed()
+    assert "Catalogue rebuild not requested from the API: Connection refused" in caplog.text
+
+
+@samples
+def test_format_changed_by_removing_the_metadata(admin, enc, tmp_path, monkeypatch):  # noqa: F811
+    """Already in the target format, but not once its metadata is removed: never published."""
+    monkeypatch.setattr(checks, "needs_encoding", lambda path, own=False: "pixel format changed" if own else None)
+    video = queue_sample(admin, enc, READY)
+    enc.run_once()
+    assert row(video)[:2] == ("failed", "Removing the metadata changed the format: pixel format changed")

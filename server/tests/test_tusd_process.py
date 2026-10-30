@@ -1,7 +1,13 @@
 """The tusd child process: command line, restart when it stops, stop with the app."""
 
+import logging
+import subprocess
 import time
+from types import SimpleNamespace
 
+import pytest
+
+from app.core import children
 from app.domain import tusd
 
 
@@ -101,3 +107,86 @@ def test_available(client, admin_secret, tmp_path, monkeypatch):
     finally:
         running.stop()
     assert client.get("/api/uploads/available").json() == {"available": False}
+
+
+def test_command_needs_the_binary():
+    process = tusd.Tusd()
+    process.binary = None
+    with pytest.raises(RuntimeError, match="not found"):
+        process.command()
+
+
+def test_output_logged_by_level(caplog):
+    caplog.set_level(logging.DEBUG, logger="app.domain.tusd")
+    tusd.Tusd().log_line("level=INFO event=ResponseOutgoing")
+    tusd.Tusd().log_line("level=ERROR event=Failed")
+    assert [(r.levelname, r.getMessage()) for r in caplog.records] == [
+        ("DEBUG", "tusd: level=INFO event=ResponseOutgoing"),
+        ("WARNING", "tusd: level=ERROR event=Failed"),
+    ]
+
+
+def test_started_with_the_app(tmp_path, monkeypatch):
+    """tusd.start(): one process, from the current settings; a second call keeps it."""
+    script, calls = stub(tmp_path)
+    monkeypatch.setenv("VIDEONINJA_TUSD", "1")
+    monkeypatch.setenv("VIDEONINJA_TUSD_BIN", str(script))
+    monkeypatch.setenv("VIDEONINJA_UPLOAD_DIR", str(tmp_path / "up"))
+    monkeypatch.setattr(tusd, "process", tusd.Tusd())
+    tusd.start()
+    try:
+        assert wait_for(lambda: calls.exists())
+        first = tusd.process
+        tusd.start()
+        assert tusd.process is first
+    finally:
+        tusd.process.stop()
+
+
+# The base class of child processes (app/core/children.py), through tusd's.
+
+
+def test_child_output_logged_at_debug(tmp_path, caplog):
+    class Echo(children.Child):
+        name = "echo"
+
+        def command(self):
+            self.stopping.set()  # one run
+            return ["echo", "hello"]
+
+    caplog.set_level(logging.DEBUG, logger="app.core.children")
+    Echo("echo").run()
+    assert "echo: hello" in caplog.text
+
+
+def test_backoff_reset_after_a_long_run(monkeypatch):
+    """A child that ran over a minute before it stopped: restarted after 1 s again."""
+    child = tusd.Tusd()
+    child.binary = "/bin/true"
+    child.command = lambda: ["true"]
+    times = iter([0.0, 100.0])
+    monkeypatch.setattr(children.time, "monotonic", lambda: next(times))
+    waits = []
+    child.stopping.wait = lambda seconds: waits.append(seconds) or child.stopping.set()
+    child.run()
+    assert waits == [1.0]
+
+
+def test_child_without_output_pipe(monkeypatch):
+    monkeypatch.setattr(children.subprocess, "Popen", lambda *a, **k: SimpleNamespace(pid=1, stdout=None))
+    child = tusd.Tusd()
+    child.command = lambda: ["true"]
+    with pytest.raises(RuntimeError, match="no output pipe"):
+        child.run()
+
+
+def test_child_killed_when_it_ignores_terminate():
+    killed = []
+
+    def wait(timeout):
+        raise subprocess.TimeoutExpired("tusd", timeout)
+
+    child = tusd.Tusd()
+    child.process = SimpleNamespace(poll=lambda: None, terminate=lambda: None, wait=wait, kill=lambda: killed.append(1))
+    child.stop()
+    assert killed == [1]

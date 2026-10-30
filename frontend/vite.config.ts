@@ -95,11 +95,11 @@ export default defineConfig({
 		coverage: {
 			provider: 'v8',
 			include: ['src/**/*.ts'],
-			exclude: ['src/**/*.test.ts', 'src/**/*.d.ts'],
+			exclude: ['src/**/*.test.ts', 'src/**/*.d.ts', 'src/lib/testing/**'], // testing/: the tests' fakes
 			reporter: ['text-summary', 'text'],
 			skipFull: true,
 			// The figures when set: raise them as tests are added, never lower them.
-			thresholds: { statements: 44, branches: 52, functions: 39, lines: 47 }
+			thresholds: { statements: 100, branches: 99, functions: 99, lines: 100 }
 		}
 	}
 });

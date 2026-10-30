@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest';
-import { detect, LANGUAGES, setLang, t } from './i18n.svelte';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { detect, i18n, LANGUAGES, setLang, t, type Lang } from './i18n.svelte';
 import messages from './messages.json';
 
 describe('messages.json', () => {
@@ -31,5 +31,30 @@ describe('t', () => {
 		expect(t('common.password_min', { min: 12 })).toBe('Mot de passe (au moins 12 caractères)');
 		setLang('en');
 		expect(t('common.password_min', { min: 12 })).toBe('Password (at least 12 characters)');
+	});
+});
+
+describe('t fallbacks', () => {
+	it('English for a language without the message; unknown placeholders left as they are', () => {
+		i18n.lang = 'de' as Lang; // none of its messages
+		expect(t('common.password_min', { min: 12 })).toBe('Password (at least 12 characters)');
+		setLang('en');
+		expect(t('common.password_min')).toBe('Password (at least {min} characters)');
+	});
+});
+
+describe('at start', () => {
+	afterEach(() => vi.unstubAllGlobals());
+
+	it('without a browser (no navigator): English; with a page: <html lang> set', async () => {
+		vi.resetModules();
+		vi.stubGlobal('navigator', undefined);
+		const root = { lang: '' };
+		vi.stubGlobal('document', { documentElement: root });
+		const fresh = await import('./i18n.svelte');
+		expect(fresh.i18n.lang).toBe('en');
+		expect(root.lang).toBe('en');
+		fresh.setLang('fr');
+		expect(root.lang).toBe('fr');
 	});
 });

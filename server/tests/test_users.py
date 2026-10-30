@@ -2,6 +2,7 @@ import pyotp
 import pytest
 from fastapi.testclient import TestClient
 
+from app import queries
 from app.main import app
 
 from .conftest import connect
@@ -188,3 +189,21 @@ def test_access_control(admin, client):
         assert getattr(anon, method)(path, **({"json": body} if body else {})).status_code == 401, path
         assert getattr(kenji, method)(path, **({"json": body} if body else {})).status_code == 403, path
     assert "xxxxx" not in statuses(admin)
+
+
+def test_invitation_used_meanwhile(admin, monkeypatch):
+    """Two registrations of one link at once: the second finds no invitation to delete."""
+    token = create(admin)
+    anon = TestClient(app, base_url="https://testserver")
+    secret = anon.post("/api/register/totp", json={"token": token}).json()["secret"]
+    monkeypatch.setattr(queries.invites, "delete_invite", lambda con, user_id: False)
+    r = anon.post(
+        "/api/register/complete",
+        json={
+            "token": token,
+            "password": USER_PASSWORD,
+            "totp_secret": secret,
+            "totp_code": pyotp.TOTP(secret).now(),
+        },
+    )
+    assert (r.status_code, r.json()["code"]) == (404, "invite.invalid")

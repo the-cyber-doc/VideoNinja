@@ -109,3 +109,16 @@ def test_login_refused_if_secret_moved_to_other_row(client, admin_secret):
         con.execute("UPDATE user SET id = 1 WHERE id = 7")
     r = client.post("/api/auth/login", json={"username": "admin", "password": PASSWORD, "totp_code": code})
     assert r.status_code == 200
+
+
+def test_no_key_loaded(monkeypatch):
+    monkeypatch.setattr(crypto, "_aead", None)
+    with pytest.raises(RuntimeError, match="not loaded"):
+        crypto.encrypt("secret", "user:1")
+
+
+def test_unknown_version_refused(key):
+    """A token of another key version (v1: the only one so far)."""
+    token = crypto.encrypt("secret", "user:1")
+    with pytest.raises(ValueError, match="v9"):
+        crypto.decrypt("v9" + token[2:], "user:1")

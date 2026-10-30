@@ -31,7 +31,7 @@ ARG TUSD_VERSION=2.10.1
 ARG TUSD_COMMIT=388a27cb81c33b2349e0308b5e97e23797e86fd9
 ARG TUSD_SHA256=ab47dd763c7d5269b13738cc731ea85b0670b62f49bccf046587b2588e71bd95
 # Raised above tusd's own go.mod: its release still has the vulnerable ones.
-ARG TUSD_MODULES="golang.org/x/net@v0.60.0 golang.org/x/crypto@v0.57.0 google.golang.org/grpc@v1.83.2 go.opentelemetry.io/otel/sdk@v1.45.0"
+ARG TUSD_MODULES="golang.org/x/net@v0.60.0 golang.org/x/crypto@v0.57.0 google.golang.org/grpc@v1.83.2 go.opentelemetry.io/otel/sdk@v1.45.0 github.com/go-jose/go-jose/v4@v4.1.6"
 ENV CGO_ENABLED=0 GOFLAGS=-trimpath GOTOOLCHAIN=local
 WORKDIR /tmp/build
 RUN wget -q -O tusd.tar.gz "https://github.com/tus/tusd/archive/refs/tags/v${TUSD_VERSION}.tar.gz" \

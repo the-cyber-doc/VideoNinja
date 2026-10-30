@@ -12,7 +12,7 @@ from fastapi.testclient import TestClient
 from app.api import videos
 from app.core import clock, db, i18n
 from app.domain import security, snapshot
-from app.encoder import checks, heartbeat, queue
+from app.encoder import checks, heartbeat, notify, queue, thumbnails
 
 from .conftest import connect
 from .test_auth import login
@@ -595,3 +595,144 @@ def test_abandoned_uploads_expire(admin, enc, monkeypatch):
     assert [p.name for p in enc.uploads.iterdir()] == [queued]
     # Their owner can no longer continue them.
     assert submit(admin, not_submitted).status_code == 404
+
+
+def test_performer_name_of_spaces_refused(admin):
+    r = admin.post("/api/performers", json={"name": "   "})
+    assert (r.status_code, r.json()["code"]) == (422, "performer.empty_name")
+
+
+def test_delete_without_upload(admin):
+    """A video whose tus upload is already gone (expired): deleted all the same."""
+    video = submit(admin, uploaded(admin)).json()["id"]
+    con = connect()
+    with con:
+        con.execute("UPDATE video SET upload = NULL")
+    assert admin.delete(f"/api/videos/{video}").status_code == 204
+
+
+def test_hook_without_a_valid_session_cookie(admin):
+    """Other headers, a cookie that cannot be parsed, a cookie without the session:
+    no session, refused."""
+    headers = {"X-Other": ["1"], "Cookie": ['a="\x7f"', "theme=dark"]}
+    r = admin.post(
+        "/internal/tusd-hook",
+        json={
+            "Type": "pre-create",
+            "Event": {
+                "Upload": {"ID": "", "Size": 10, "SizeIsDeferred": False, "Offset": 0, "MetaData": {}},
+                "HTTPRequest": {"Method": "POST", "URI": "/files/", "Header": headers},
+            },
+        },
+    )
+    assert r.json()["RejectUpload"] is True
+    assert r.json()["HTTPResponse"]["StatusCode"] == 401
+
+
+def test_other_hooks_ignored(admin):
+    assert admin.post("/internal/tusd-hook", json={"Type": "post-receive", "Event": {}}).json() == {}
+
+
+# --- the worker's loops and edges ---
+
+
+def test_not_started_without_ffmpeg(enc, monkeypatch, caplog):
+    monkeypatch.setattr(queue.shutil, "which", lambda tool: None)
+    enc.start()
+    assert enc.thread is None and "ffmpeg/ffprobe not found" in caplog.text
+
+
+def test_worker_survives_its_errors(enc, monkeypatch, caplog):
+    """An error between jobs (the disk, the database): logged, then the loop goes on."""
+    monkeypatch.setattr(queue, "POLL_S", 0.01)
+    rounds = []
+
+    def housekeeping():
+        rounds.append(1)
+        if len(rounds) == 1:
+            raise OSError("disk full")
+
+    jobs = iter([True, False])  # one job done (the next at once), then the queue empty
+
+    def run_once():
+        done = next(jobs)
+        if not done:
+            enc.stopping.set()
+        return done
+
+    enc.housekeeping, enc.run_once = housekeeping, run_once
+    enc.run()
+    assert len(rounds) == 3 and "Encoder error" in caplog.text
+
+
+def test_thumbnail_loop_survives_its_errors(enc, monkeypatch, caplog):
+    monkeypatch.setattr(queue, "POLL_S", 0.01)
+    rounds = []
+
+    def refresh(videos, stopping):
+        rounds.append(1)
+        if len(rounds) == 2:
+            stopping.set()
+            return False  # nothing changed: no catalogue rebuild
+        raise OSError("disk full")
+
+    monkeypatch.setattr(thumbnails, "refresh", refresh)
+    monkeypatch.setattr(notify, "catalog_changed", lambda: pytest.fail("nothing changed"))
+    enc.run_thumbnails()
+    assert len(rounds) == 2 and "Thumbnails error" in caplog.text
+
+
+def test_job_claimed_by_another_worker(admin, enc, monkeypatch):
+    """Between the lookup and the claim: not this worker's, the queue goes on."""
+    submit(admin, uploaded(admin))
+    monkeypatch.setattr(queue.queries.queue, "claim_job", lambda con, video: False)
+    assert enc.run_once() is True
+    assert enc.jobs == []
+
+
+def test_unexpected_error_retried(admin, enc):
+    video = submit(admin, uploaded(admin)).json()["id"]
+    enc.on_job = lambda job: (_ for _ in ()).throw(KeyError("format"))
+    enc.run_once()
+    assert video_row(video)[:3] == ("queued", 1, "Unexpected error: 'format'")
+
+
+def test_progress_stops_or_finds_the_video_gone(admin, enc):
+    with pytest.raises(queue.Gone):
+        enc.progress(999, 10)  # deleted meanwhile
+    enc.stopping.set()
+    with pytest.raises(queue.Stopped):
+        enc.progress(999, 10)
+
+
+def test_hash_check_reports_its_progress(enc, tmp_path, monkeypatch):
+    original = tmp_path / "original"
+    original.write_bytes(b"x" * 10)
+    monkeypatch.setattr(queue, "PROGRESS_EVERY_S", 0)
+    reported = []
+    enc.progress = lambda video, percent: reported.append(percent)
+    enc.check_hash(1, original, checks.file_sha256(original))
+    assert reported == [queue.HASH_SHARE]
+    with pytest.raises(checks.JobError, match="SHA-256 differs"):
+        enc.check_hash(1, original, "0" * 64)
+
+
+def test_queue_started_once(enc, monkeypatch):
+    """queue.start(): one worker from the current settings; a second call keeps it."""
+    monkeypatch.setenv("VIDEONINJA_ENCODER", "1")
+    monkeypatch.setattr(queue, "encoder", enc)
+
+    def start(self):
+        self.thread = threading.Thread(target=self.stopping.wait, daemon=True)
+        self.thread.start()
+
+    monkeypatch.setattr(queue.Encoder, "start", start)
+    queue.start()
+    try:
+        assert queue.running()
+        first = queue.encoder
+        queue.start()
+        assert queue.encoder is first
+    finally:
+        queue.stop()
+    assert not queue.running()

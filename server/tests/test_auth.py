@@ -165,3 +165,10 @@ def test_expiry_compared_across_offsets(client, admin_secret, offset_s, zone, va
     with con:
         con.execute("UPDATE session SET expires_at = ?", (clock.at(offset_s, ZoneInfo(zone)),))
     assert client.get("/api/auth/me").status_code == (200 if valid else 401)
+
+
+def test_logout_without_session(client, admin_secret):
+    """Nothing to delete: the cookie is cleared all the same."""
+    r = client.post("/api/auth/logout")
+    assert r.status_code == 204
+    assert "Max-Age=0" in r.headers["set-cookie"] or "max-age=0" in r.headers["set-cookie"].lower()

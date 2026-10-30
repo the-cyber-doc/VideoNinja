@@ -28,7 +28,9 @@ db="${XDG_CACHE_HOME:-$HOME/.cache}/videoninja-grype-db"
 mkdir -p "$db"
 
 run() {  # an analysis tool, as you, with only these folders
-	"${sudo[@]}" docker run --rm --user "$(id -u):$(id -g)" -e HOME=/tmp \
+	# A writable /tmp: Grype downloads and updates its database through it (else it
+	# fails on the first run and keeps the old database on the next ones).
+	"${sudo[@]}" docker run --rm --tmpfs /tmp:mode=1777 --user "$(id -u):$(id -g)" -e HOME=/tmp \
 		-e SYFT_CHECK_FOR_APP_UPDATE=false -e GRYPE_CHECK_FOR_APP_UPDATE=false -e GRYPE_DB_CACHE_DIR=/db \
 		-v "$work:/in:ro" -v "$root:/src:ro" -v "$out:/out" -v "$db:/db" "$@"
 }

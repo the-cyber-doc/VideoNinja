@@ -1,5 +1,6 @@
 """/health: the database, the encoder (its heartbeat) and tusd, each ok or failing."""
 
+import signal
 import sqlite3
 import threading
 from http.server import BaseHTTPRequestHandler, HTTPServer
@@ -7,6 +8,7 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 import pytest
 from fastapi.testclient import TestClient
 
+from app.api import health
 from app.core import clock, db, settings
 from app.encoder import cli, heartbeat
 from app.main import app
@@ -172,3 +174,64 @@ def test_integrity_failure_kept_until_checked_again(tmp_path, monkeypatch, caplo
     assert health._integrity_ok(Corrupt()) is False
     assert "fails its integrity check" in caplog.text
     assert health._integrity_ok(None) is False  # kept: not checked again within the hour
+
+
+def test_database_failing_its_integrity_check(client, admin_secret, tusd_server, monkeypatch):
+    beat()
+    monkeypatch.setattr(health, "_integrity_ok", lambda con: False)
+    r = client.get("/health")
+    assert r.status_code == 503
+    assert (r.json()["database"], r.json()["encoder"]) == ("failing", "failing")
+
+
+def test_encoder_container_healthy_before_setup(client):
+    assert cli.main(["--health"]) == 0  # nothing to encode yet
+
+
+@pytest.fixture
+def signals(monkeypatch):
+    """The encoder's signal handlers, kept here instead of installed in pytest's process."""
+    handlers = {}
+    monkeypatch.setattr(cli.signal, "signal", lambda sig, handler: handlers.__setitem__(sig, handler))
+    return handlers
+
+
+def test_encoder_container_waits_runs_and_stops(signals, monkeypatch):
+    """The database's version first, then the queue until SIGTERM, which stops it."""
+    calls = []
+    versions = iter([db.EXPECTED_VERSION - 1, db.EXPECTED_VERSION])
+    monkeypatch.setattr(cli.db, "current_version", lambda: next(versions))
+    monkeypatch.setattr(cli.queue, "POLL_S", 0.01)
+
+    def start():
+        calls.append("start")
+        threading.Timer(0.05, signals[signal.SIGTERM], (signal.SIGTERM, None)).start()
+
+    monkeypatch.setattr(cli.queue, "start", start)
+    monkeypatch.setattr(cli.queue, "running", lambda: True)
+    monkeypatch.setattr(cli.queue, "stop", lambda: calls.append("stop"))
+    assert cli.main([]) == 0
+    assert calls == ["start", "stop"]
+
+
+def test_encoder_container_without_ffmpeg(signals, monkeypatch):
+    monkeypatch.setattr(cli.db, "current_version", lambda: db.EXPECTED_VERSION)
+    monkeypatch.setattr(cli.queue, "start", lambda: None)
+    monkeypatch.setattr(cli.queue, "running", lambda: False)
+    assert cli.main([]) == 1
+
+
+def test_heartbeat_failure_logged_and_retried(monkeypatch, caplog):
+    stopping = threading.Event()
+    beats = []
+
+    def beat():
+        beats.append(1)
+        if len(beats) == 2:
+            stopping.set()
+        raise sqlite3.OperationalError("database is locked")
+
+    monkeypatch.setattr(heartbeat, "beat", beat)
+    monkeypatch.setattr(heartbeat, "HEARTBEAT_S", 0.01)
+    heartbeat.run(stopping)
+    assert len(beats) == 2 and "Encoder heartbeat failed" in caplog.text

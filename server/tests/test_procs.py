@@ -2,6 +2,7 @@
 
 import os
 import re
+import signal
 import subprocess
 import sys
 import time
@@ -114,3 +115,14 @@ def test_invalid_ffprobe_limit_refuses_start(monkeypatch, value):
     monkeypatch.setenv("VIDEONINJA_FFPROBE_TIMEOUT_MIN", value)
     with pytest.raises(RuntimeError, match="VIDEONINJA_FFPROBE_TIMEOUT_MIN"):
         settings.current()
+
+
+def test_killed_when_it_ignores_sigterm(monkeypatch):
+    monkeypatch.setattr(procs, "GRACE_S", 0.2)
+    process = procs.popen(["sh", "-c", "trap '' TERM; echo ready; sleep 30"], stdout=subprocess.PIPE, text=True)
+    try:
+        process.stdout.readline()  # the trap is set
+        procs.stop(process)
+    finally:
+        process.stdout.close()
+    assert process.returncode == -signal.SIGKILL
