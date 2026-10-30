@@ -18,7 +18,7 @@
 # (static), and the build stages (alpine-base, node, nginx -dev variants).
 # Building needs `docker login dhi.io` (a free Docker account). The API and the
 # encoder use the official python Alpine image: the hardened Python images stop
-# at 3.14 and have no package manager (ffmpeg, brotli, zopfli, tini are needed).
+# at 3.14 and have no package manager (brotli, zopfli, tini, ffmpeg's libraries).
 # Versions pinned; update them together with their checksums below.
 
 # tusd, built from its release's source (pinned SHA-256): the release binaries are
@@ -68,6 +68,38 @@ RUN apk add --no-cache build-base libffi-dev cargo \
     && python -m venv /opt/venv \
     && /opt/venv/bin/pip install --no-cache-dir --require-hashes -r /tmp/requirements.txt \
     && /opt/venv/bin/pip uninstall --yes pip
+
+# ffmpeg, built from its release's source (pinned SHA-256, of the tarball signed by
+# FFmpeg's release key FCF9 86EA 15E6 E293 A564 4F10 B432 2F04 D676 58D8): Alpine 3.24
+# ships 8.1, without the security fixes of 9.0 (the weekly scan). Only what the
+# encoder needs: FFmpeg's own decoders and filters (nnedi: GPL), libx265, zimg
+# (zscale), dav1d (AV1). No network protocols (it reads local files only), no
+# libavdevice, no ffplay, nothing autodetected. Same base image as the runtime (same
+# Alpine libraries); the encoder adds only x265, zimg and dav1d. FFmpeg's libraries are
+# shared (/usr/local/lib, in musl's default path): their "FFmpeg version X.Y.Z" string
+# is how Syft finds this ffmpeg, so the weekly scan keeps matching its CVEs (a static
+# build drops it). Threads get 2 MiB of stack (-z stack-size, which musl
+# reads from the program): musl's default 128 KiB is too small for ffmpeg 9's MPEG-TS
+# demuxer (pmt_cb keeps a whole struct Program, ~133 KB, on its thread's stack; glibc
+# gives 8 MiB). A new version: FFMPEG_VERSION + FFMPEG_SHA256.
+FROM python:3.15.2-alpine3.24 AS ffmpeg-build
+ARG FFMPEG_VERSION=9.0.2
+ARG FFMPEG_SHA256=8c3850283eb25fa026482078a04051e0be17347b09ef81a0849bec15a96e002e
+WORKDIR /tmp/build
+RUN apk add --no-cache build-base nasm pkgconf xz x265-dev zimg-dev dav1d-dev zlib-dev \
+    && wget -q -O ffmpeg.tar.xz "https://ffmpeg.org/releases/ffmpeg-${FFMPEG_VERSION}.tar.xz" \
+    && echo "${FFMPEG_SHA256}  ffmpeg.tar.xz" | sha256sum -c - \
+    && tar xJf ffmpeg.tar.xz \
+    && cd "ffmpeg-${FFMPEG_VERSION}" \
+    && ./configure --prefix=/usr/local --enable-shared --disable-static \
+        --disable-debug --disable-doc --disable-ffplay \
+        --disable-avdevice --disable-network --disable-autodetect --enable-pthreads --enable-zlib \
+        --enable-gpl --enable-libx265 --enable-libzimg --enable-libdav1d \
+        --extra-ldflags=-Wl,-z,stack-size=2097152 \
+    && grep -q '^#define HAVE_PTHREADS 1' config.h \
+    && make -j"$(nproc)" \
+    && make install DESTDIR=/out \
+    && rm -rf /out/usr/local/include /out/usr/local/lib/pkgconfig /out/usr/local/share
 
 # The app's sources, readable by the containers' user whatever the umask of the
 # checkout they come from (COPY keeps the files' modes).
@@ -122,10 +154,18 @@ RUN apk add --no-cache tini setpriv \
 FROM runtime-python AS runtime-api
 RUN apk add --no-cache brotli zopfli
 
-# The encoder: Alpine's ffmpeg (libx265, nnedi, zscale + tonemap) and bash for
-# encode-videos.sh. Checked here: the build fails if one is missing.
+# The encoder: ffmpeg + ffprobe built above (libx265, nnedi, zscale + tonemap), the
+# libraries they link, and bash for encode-videos.sh. Checked here: the build fails if
+# one is missing, or if ffmpeg can't write and read back an MPEG-TS file (the threads'
+# stack size, above).
 FROM runtime-python AS runtime-encoder
-RUN apk add --no-cache ffmpeg bash \
+COPY --from=ffmpeg-build /out/ /
+RUN apk add --no-cache x265-libs zimg libdav1d bash \
+    && ffmpeg -v error -f rawvideo -pix_fmt gray -s 16x16 -r 25 -i /dev/zero -frames:v 25 \
+        -c:v mpeg2video -f mpegts /tmp/check.ts \
+    && ffmpeg -v error -i /tmp/check.ts -f null - \
+    && rm /tmp/check.ts \
+    && ffprobe -hide_banner -version >/dev/null \
     && ffmpeg -hide_banner -encoders | grep -q libx265 \
     && ffmpeg -hide_banner -filters | grep -qw nnedi \
     && ffmpeg -hide_banner -filters | grep -qw zscale \

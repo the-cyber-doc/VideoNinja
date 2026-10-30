@@ -805,13 +805,13 @@ their runtime. No build step runs in them and they hold no build tool.
 |---|---|
 | nginx | `dhi.io/nginx:1.31.8-alpine3.24`: Docker Hardened Image |
 | api | `python:3.15.2-alpine3.24`, without pip, with brotli, zopfli, tini, setpriv |
-| encoder | `python:3.15.2-alpine3.24`, without pip, with ffmpeg (checked at build: libx265, nnedi, zscale, tonemap), bash, tini, setpriv |
+| encoder | `python:3.15.2-alpine3.24`, without pip, with ffmpeg + ffprobe built from source (below; checked at build: libx265, nnedi, zscale, tonemap), the x265, zimg and dav1d libraries, bash, tini, setpriv |
 | tusd | `dhi.io/static:20261020-alpine3.24`: Docker Hardened Image, the tusd binary only |
 | (build stages) | `dhi.io/node:26.12.1-alpine3.24-dev`, `dhi.io/alpine-base:3.24-alpine3.24-dev`, `dhi.io/nginx:1.31.8-alpine3.24-dev` |
 
 [Docker Hardened Images](https://docs.docker.com/dhi/) are used wherever one
 fits. The API and the encoder can't use one: the hardened Python images stop at
-3.14 and have no package manager to add ffmpeg, brotli, zopfli and tini. Building
+3.14 and have no package manager to add brotli, zopfli, tini and the libraries ffmpeg links. Building
 pulls from `dhi.io`, which needs a (free) Docker account: `docker login dhi.io`
 once on the build machine; CI logs in with the Docker Hub secrets. In the API and encoder, `tini` is PID 1: it reaps any
 process left behind and passes `docker stop` on.
@@ -1593,6 +1593,7 @@ and update. Enable **Dependabot alerts** in the repository's settings too.
 | Base images | exact tag in `server/Dockerfile` | Dependabot (docker; `dhi.io` with the Docker Hub secrets as Dependabot secrets) |
 | tusd | its source (version + SHA-256), built with the latest Go (`dhi.io/golang`, Dependabot) and its Go libraries raised to their fixed versions (`TUSD_MODULES` in `server/Dockerfile`, checked against `go.sum` and sum.golang.org) | by hand: a new tusd release, or a Go library the weekly scan flags |
 | nginx source, ngx_brotli | version + SHA-256 in `server/Dockerfile` | by hand (watch their releases) |
+| ffmpeg | its source (`FFMPEG_VERSION` + `FFMPEG_SHA256` in `server/Dockerfile`, of the tarball signed by FFmpeg's release key), built against the runtime's Alpine: only FFmpeg's own codecs and filters, libx265, zimg, dav1d; no network protocols, no libavdevice (Alpine 3.24 ships 8.1, without the fixes of 9.0) | by hand: a new FFmpeg release (the weekly Security workflow opens an issue; check the tarball's signature), or a CVE the weekly scan flags |
 | Alpine / Debian packages (`apk add`) | not pinned: the base image's current ones | a rebuild (the weekly scan says when) |
 | GitHub Actions | tags (`ci-cd.yml`), commits (`security.yml`) | Dependabot (github-actions) |
 

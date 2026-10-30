@@ -5,6 +5,7 @@ name: Security
 # repository's Security tab (code scanning) and the SBOMs as artifacts. Weekly: a new
 # vulnerability in an unchanged image shows up without any push. Never fails the
 # build: it reports; deciding what to update is yours (README, Security).
+# Also: an issue when FFmpeg releases a newer version than server/Dockerfile's.
 # Third-party actions pinned by commit (a tag can be moved); Dependabot updates them.
 on:
   schedule:
@@ -109,3 +110,43 @@ jobs:
       with:
         sarif_file: ${{ steps.scan.outputs.sarif }}
         category: sources
+
+  # ffmpeg is built from its source (server/Dockerfile), which Dependabot does not
+  # follow: a newer release on ffmpeg.org opens an issue (one per version, never twice).
+  releases:
+    name: New ffmpeg release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+    steps:
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1   # v7.0.1
+
+    - name: Compare with server/Dockerfile
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        current=$(sed -n 's/^ARG FFMPEG_VERSION=//p' server/Dockerfile)
+        if ! latest=$(curl -fsSL https://ffmpeg.org/releases/ \
+            | grep -oE 'ffmpeg-[0-9]+(\.[0-9]+)*\.tar\.xz' | sed -E 's/^ffmpeg-(.*)\.tar\.xz$/\1/' \
+            | sort -uV | tail -n 1) || [ -z "$latest" ]; then
+          echo "::warning::ffmpeg.org/releases/ unreadable, no check this time"
+          exit 0
+        fi
+        echo "server/Dockerfile: $current, ffmpeg.org: $latest"
+        [ "$(printf '%s\n%s\n' "$current" "$latest" | sort -V | tail -n 1)" = "$current" ] && exit 0
+        title="ffmpeg $latest available (server/Dockerfile: $current)"
+        if [ "$(gh issue list --state all --search "\"ffmpeg $latest available\" in:title" --json number --jq length)" != 0 ]; then
+          echo "Issue already opened: $title"
+          exit 0
+        fi
+        gh issue create --title "$title" --body "$(cat <<EOF
+        FFmpeg $latest is out: https://ffmpeg.org/download.html#releases (changes:
+        https://github.com/FFmpeg/FFmpeg/blob/n$latest/Changelog).
+
+        To update: check the tarball's signature (FFmpeg's release key, FCF9 86EA 15E6 E293
+        A564 4F10 B432 2F04 D676 58D8), then set \`FFMPEG_VERSION\` and \`FFMPEG_SHA256\` in
+        \`server/Dockerfile\` and build the encoder image (it checks libx265, nnedi, zscale,
+        tonemap). Opened by the weekly Security workflow.
+        EOF
+        )"
