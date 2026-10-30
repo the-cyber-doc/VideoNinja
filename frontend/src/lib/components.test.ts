@@ -15,7 +15,7 @@ function svelteFiles(dir: string): string[] {
 		return statSync(path).isDirectory() ? svelteFiles(path) : name.endsWith('.svelte') ? [path] : [];
 	});
 }
-const markup = (path: string) => readFileSync(join(SRC, path), 'utf8').replace(/<style[\s\S]*?<\/style>/, '');
+const markup = (path: string) => readFileSync(join(SRC, path), 'utf8').replace(/<style[\s\S]*?<\/style>/g, '');
 const files = svelteFiles(SRC).map((path) => relative(SRC, path));
 
 describe('shared components', () => {
