@@ -17,8 +17,11 @@ VIDEO = {
     "width": 1920,
     "height": 1080,
     "field_order": "progressive",
+    "color_transfer": "bt709",
+    "color_primaries": "bt709",
     "avg_frame_rate": "30/1",
 }
+UNTAGGED = {key: value for key, value in VIDEO.items() if key not in checks.COLORS}
 AUDIO = {"codec_type": "audio", "codec_name": "aac", "profile": "LC", "channels": 2}
 
 
@@ -87,6 +90,33 @@ def test_encoded_file_checked(ffprobe, mp4, streams, error):
 def test_reasons_to_encode(ffprobe, mp4, streams, reason):
     ffprobe.append(json.dumps({"format": {"format_name": "mov,mp4,m4a"}, "streams": streams}))
     assert reason in checks.needs_encoding(mp4)
+
+
+@pytest.mark.parametrize(
+    "frames, reason",
+    [
+        # HDR tagged in the HEVC bitstream only: unknown on the stream, known on its frames.
+        ([{"color_transfer": "arib-std-b67", "color_primaries": "bt2020"}], "color_transfer arib-std-b67, not BT.709"),
+        ([{"color_primaries": "bt2020"}], "color_primaries bt2020, not BT.709"),
+        ([{"color_transfer": "bt709", "color_primaries": "bt709"}], None),
+        ([{}], None),  # untagged everywhere: taken as BT.709
+        ([], None),  # no frame read
+    ],
+)
+def test_colors_read_from_the_first_frame_when_unknown(ffprobe, mp4, frames, reason):
+    ffprobe.append(json.dumps({"format": {"format_name": "mov,mp4,m4a"}, "streams": [UNTAGGED]}))
+    ffprobe.append(json.dumps({"frames": frames}))
+    if reason is None:
+        ffprobe.append("0.000000,K__\n1.000000,K__\n")  # then the keyframes: fine
+    result = checks.needs_encoding(mp4)
+    assert result == reason if reason is None else reason in result
+    assert not ffprobe  # every answer used: the frame was read
+
+
+def test_frame_not_read_when_the_stream_says(ffprobe, mp4):
+    ffprobe.append(json.dumps({"format": {"format_name": "mov,mp4,m4a"}, "streams": [VIDEO]}))
+    ffprobe.append("0.000000,K__\n1.000000,K__\n")
+    assert checks.needs_encoding(mp4) is None
 
 
 def test_not_an_mp4(ffprobe, mp4):

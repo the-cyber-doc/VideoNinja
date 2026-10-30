@@ -212,6 +212,40 @@ def test_chapters_are_ignored(tmp_path):
     assert checks.needs_encoding(with_chapters) is None
 
 
+def test_hdr_partly_tagged_by_the_container_is_encoded(tmp_path):
+    """An MP4 in the target format but HLG: its colr box has the matrix only (transfer and
+    primaries unspecified), its HEVC bitstream says HLG. ffprobe 8+ shows the stream's transfer
+    as unknown then; its first frame has it."""
+    clip = tmp_path / "hlg.mp4"
+    subprocess.run(
+        [
+            "ffmpeg",
+            "-v",
+            "error",
+            "-y",
+            "-f",
+            "lavfi",
+            "-i",
+            "testsrc=size=160x120:rate=25:d=2",
+            "-pix_fmt",
+            "yuv420p",
+            "-colorspace",
+            "bt2020nc",
+            "-c:v",
+            "libx265",
+            "-x265-params",
+            "log-level=error:keyint=25:min-keyint=25:scenecut=0:colorprim=bt2020:transfer=arib-std-b67:colormatrix=bt2020nc",
+            "-tag:v",
+            "hvc1",
+            "-movflags",
+            "+faststart+write_colr",
+            f"file:{clip}",
+        ],
+        check=True,
+    )
+    assert checks.needs_encoding(clip) == "color_transfer arib-std-b67, not BT.709 (HDR?)"
+
+
 @samples
 def test_original_in_the_target_format_is_not_encoded(admin, enc, tmp_path):  # noqa: F811
     enc.script, called = failing_script(tmp_path)
@@ -528,6 +562,45 @@ def test_script_keyframe_interval(tmp_path, rate, options, every):
     assert f"{rate} fps, keyframe every {every} s" in result.stderr
     # The dry run prints the ffmpeg command shell-escaped: expr:gte\(t\,n_forced\*1\)
     assert re.search(rf"n_forced\\?\*{re.escape(every)}\\?\)", result.stdout), result.stdout
+
+
+@pytest.mark.parametrize(("transfer", "hdr"), [("arib-std-b67", "hlg"), ("smpte2084", "pq")])
+def test_script_detects_hdr_partly_tagged_by_the_container(tmp_path, transfer, hdr):
+    """encode-videos.sh: HLG / PQ found when the container tags the matrix only and the HEVC
+    bitstream the rest (ffprobe 8+ shows the stream's transfer as unknown then; the first frame
+    has it), so it is tone-mapped (dry run)."""
+    clip = tmp_path / "clip.mkv"
+    subprocess.run(
+        [
+            "ffmpeg",
+            "-v",
+            "error",
+            "-y",
+            "-f",
+            "lavfi",
+            "-i",
+            "testsrc=size=160x120:rate=25:d=1",
+            "-pix_fmt",
+            "yuv420p10le",
+            "-colorspace",
+            "bt2020nc",
+            "-c:v",
+            "libx265",
+            "-x265-params",
+            f"log-level=error:colorprim=bt2020:transfer={transfer}:colormatrix=bt2020nc",
+            f"file:{clip}",
+        ],
+        check=True,
+    )
+    result = subprocess.run(
+        [str(settings.DEFAULT_SCRIPT), "-c", "-n", "-d", "off", "-o", str(tmp_path / "out"), str(clip)],
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    # Tone-mapped, or refused when this ffmpeg has no tone mapper: never encoded as SDR.
+    assert re.search(rf"HDR +\(?{hdr},", result.stderr), result.stderr
+    assert "SDR  (" not in result.stderr, result.stderr
 
 
 # --- hardening: formats, time limits, its own container ---

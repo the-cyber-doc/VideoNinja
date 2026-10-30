@@ -6,6 +6,7 @@
 #  - Detects interlaced sources and deinterlaces them with NNEDI3 (nnedi filter)
 #      * stream field_order metadata first, idet analysis when metadata is missing
 #  - Detects HDR (HLG, PQ/HDR10, Dolby Vision) and tone-maps to SDR BT.709
+#      * stream color_transfer first, the first frame's when the stream's is unknown
 #      * libplacebo (GPU via Vulkan, best quality) when available
 #      * zscale + tonemap (CPU) as fallback, also used automatically if libplacebo fails
 #  - Keyframe every second, every 0.5 s above 30 fps (precise cuts / nginx mp4 module, smooth seeking)
@@ -321,6 +322,14 @@ process_file() {   # in relative_path
   il_msg+=", ${fps%.000} fps, keyframe every ${gop} s"
 
   # --- HDR ---
+  # ffprobe 8+ leaves the stream's transfer unknown when the container tags only part of the
+  # colours (e.g. the matrix, transfer unspecified) and the bitstream the rest (HEVC VUI): no
+  # longer completed from the bitstream. The first decoded frame still has it.
+  if [[ -z $trc || $trc == unknown ]]; then
+    trc=$(limited ffprobe -v error "${INPUT_OPTS[@]}" -select_streams v:0 -read_intervals '%+#1' \
+            -show_entries frame=color_transfer -of default=noprint_wrappers=1 "file:$in" 2>/dev/null \
+          | sed -n 's/^color_transfer=//p' | head -n1) || true
+  fi
   case $trc in
     arib-std-b67) hdr=hlg; tin=arib-std-b67 ;;
     smpte2084)    hdr=pq;  tin=smpte2084 ;;

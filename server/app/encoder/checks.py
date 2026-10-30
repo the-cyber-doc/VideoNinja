@@ -15,6 +15,8 @@ from ..core import limits, procs
 # Longest keyframe interval accepted without encoding, needed by the nginx mp4 module's cuts.
 # encode-videos.sh makes 1 s up to 30 fps, 0.5 s above (smoother seeking at high frame rates).
 GOP_S = 1
+# The colour properties that tell HDR (HLG, PQ; BT.2020) from SDR (BT.709).
+COLORS = ("color_transfer", "color_primaries")
 
 
 class JobError(Exception):
@@ -141,9 +143,15 @@ def needs_encoding(path: Path, own: bool = False) -> str | None:
         return "odd dimensions"
     if v.get("field_order") != "progressive":
         return f"field order {v.get('field_order', 'unknown')}, not progressive"
-    for key in ("color_transfer", "color_primaries"):
-        if v.get(key, "unknown") not in ("bt709", "unknown"):
-            return f"{key} {v[key]}, not BT.709 (HDR?)"
+    colors = {key: v.get(key, "unknown") for key in COLORS}
+    if "unknown" in colors.values():
+        # ffprobe 8+ leaves them unknown when the container tags only part of the colours
+        # (a colr box with the matrix only) and the HEVC bitstream (VUI) the rest.
+        frame = first_frame_colors(path, own)
+        colors = {key: frame.get(key, "unknown") if value == "unknown" else value for key, value in colors.items()}
+    for key, value in colors.items():
+        if value not in ("bt709", "unknown"):
+            return f"{key} {value}, not BT.709 (HDR?)"
     if any("DOVI" in d.get("side_data_type", "") for d in v.get("side_data_list", [])):
         return "Dolby Vision"
     if a is not None and ((a.get("codec_name"), a.get("profile")) != ("aac", "LC") or a.get("channels") not in (1, 2)):
@@ -197,6 +205,30 @@ def strip_metadata(original: Path, out: Path) -> None:
             f"file:{out}",
         ]
     )
+
+
+def first_frame_colors(path: Path, own: bool = False) -> dict[str, Any]:
+    """The first video frame's COLORS (decodes that frame only): what the bitstream
+    says when the stream's own properties are unknown."""
+    out = run(
+        [
+            "ffprobe",
+            "-v",
+            "error",
+            *limits.ffmpeg_input(own),
+            "-select_streams",
+            "v:0",
+            "-read_intervals",
+            "%+#1",
+            "-show_entries",
+            "frame=" + ",".join(COLORS),
+            "-of",
+            "json",
+            f"file:{path}",
+        ]
+    )
+    frames: list[dict[str, Any]] = json.loads(out).get("frames", [])
+    return frames[0] if frames else {}
 
 
 def keyframe_problem(path: Path, frame_rate: str, own: bool = False) -> str | None:
