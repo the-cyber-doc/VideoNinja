@@ -54,7 +54,7 @@ def test_seeded_access_and_role(client, admin_secret):
     }
     all_accesses = {a for (a,) in sql("SELECT id FROM access")}
     assert "video_mgmt" in all_accesses
-    assert roles["video_mgmt"] == all_accesses - {"user_mgmt"}  # every access but user management
+    assert roles["video_mgmt"] == all_accesses - {"user_mgmt", "moderator"}  # all but user management, moderation
     assert roles["admin"] == all_accesses
     assert "video_mgmt" not in roles["user"] | roles["editor"] | roles["uploader"]
     names = sql("SELECT en, fr FROM translation WHERE id = 'role.video_mgmt.name'")

@@ -34,7 +34,7 @@ def test_login_me_logout(client, admin_secret):
         "name": "Admin",
         "role": "admin",
         "role_name": "Admin",
-        "access": ["annotate", "comment", "segment", "upload", "user_mgmt", "video_mgmt"],
+        "access": ["annotate", "comment", "moderator", "segment", "upload", "user_mgmt", "video_mgmt"],
     }
     cookie = r.headers["set-cookie"]
     for attr in ("__Host-session=", "HttpOnly", "Secure", "SameSite=strict", "Path=/"):

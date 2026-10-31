@@ -15,6 +15,7 @@ INSERT INTO "translation" ("id", "en", "fr") VALUES
 	('access.annotate.name', 'Annotate', 'Annotation'),
 	('access.comment.name', 'Comment', 'Commentaire'),
 	('access.video_mgmt.name', 'Video management', 'Gestion des vidéos'),
+	('access.moderator.name', 'Moderation', 'Modération'),
 	('role.admin.name', 'Admin', 'Administrateur'),
 	('role.user.name', 'User', 'Utilisateur'),
 	('role.editor.name', 'Editor', 'Éditeur'),
@@ -36,7 +37,8 @@ INSERT INTO "access" ("id", "name") VALUES
 	('upload', 'access.upload.name'),
 	('annotate', 'access.annotate.name'),
 	('comment', 'access.comment.name'),
-	('video_mgmt', 'access.video_mgmt.name');
+	('video_mgmt', 'access.video_mgmt.name'),
+	('moderator', 'access.moderator.name');
 
 INSERT INTO "role" ("id", "name") VALUES
 	('admin', 'role.admin.name'),
@@ -52,6 +54,7 @@ INSERT INTO "role_has_access" ("role", "access") VALUES
 	('admin', 'annotate'),
 	('admin', 'comment'),
 	('admin', 'video_mgmt'),
+	('admin', 'moderator'),
 	('user', 'segment'),
 	('user', 'comment'),
 	('editor', 'segment'),
@@ -61,7 +64,7 @@ INSERT INTO "role_has_access" ("role", "access") VALUES
 	('uploader', 'annotate'),
 	('uploader', 'upload'),
 	('uploader', 'comment'),
-	-- Every access but user_mgmt.
+	-- Every access but user_mgmt and moderator.
 	('video_mgmt', 'segment'),
 	('video_mgmt', 'comment'),
 	('video_mgmt', 'annotate'),

@@ -51,6 +51,21 @@ def test_every_role_may_comment(client, admin_secret):
     )
 
 
+def test_only_admins_moderate(client, admin_secret):
+    con = connect()
+    assert con.execute("SELECT role FROM role_has_access WHERE access = 'moderator'").fetchall() == [("admin",)]
+    assert con.execute("SELECT en, fr FROM translation WHERE id = 'access.moderator.name'").fetchone() == (
+        "Moderation",
+        "Modération",
+    )
+
+
+def without_moderator(role):
+    con = connect()
+    with con:
+        con.execute("DELETE FROM role_has_access WHERE role = ? AND access = 'moderator'", (role,))
+
+
 def test_last_modified_first_with_author(admin):
     con = connect()
     with con:  # a user without display name: shown by username
@@ -131,6 +146,7 @@ def test_add_edit_delete_own(admin, monkeypatch):
 
 
 def test_only_the_author_edits_or_deletes(admin, kenji, caplog):
+    without_moderator("admin")
     mine = admin.post(COMMENTS, json={"text": "Admin's", "lang": "en"}).json()
     his = kenji.post(COMMENTS, json={"text": "Kenji's", "lang": "fr"}).json()
     assert his["user"] == "Kenji" and his["mine"] is True
@@ -138,12 +154,56 @@ def test_only_the_author_edits_or_deletes(admin, kenji, caplog):
     assert {c["text"]: c["mine"] for c in admin.get(COMMENTS).json()} == {"Admin's": True, "Kenji's": False}
     assert {c["text"]: c["mine"] for c in kenji.get(COMMENTS).json()} == {"Admin's": False, "Kenji's": True}
 
-    # Not even an admin changes someone else's comment.
+    # Not even an admin changes someone else's comment, without the "moderator" access.
     assert admin.patch(f"/api/comments/{his['id']}", json={"text": "Changed", "lang": "en"}).status_code == 403
     assert admin.delete(f"/api/comments/{his['id']}").status_code == 403
     assert kenji.delete(f"/api/comments/{mine['id']}").status_code == 403
     assert "comment.denied" in caplog.text
     assert {c["text"] for c in admin.get(COMMENTS).json()} == {"Admin's", "Kenji's"}
+
+
+def test_moderator_edits_and_deletes_anyones(admin, kenji, caplog, monkeypatch):
+    his = kenji.post(COMMENTS, json={"text": "Kenji's", "lang": "fr"}).json()
+    other = kenji.post(COMMENTS, json={"text": "Another", "lang": "en"}).json()
+    mine = admin.post(COMMENTS, json={"text": "Admin's", "lang": "en"}).json()
+    monkeypatch.setattr(clock, "now", lambda: datetime(2026, 10, 24, 8, 30, tzinfo=UTC))
+    caplog.clear()
+
+    r = admin.patch(f"/api/comments/{his['id']}", json={"text": "Moderated", "lang": "en"})
+    assert r.status_code == 200
+    # Still kenji's: the author stays.
+    assert r.json() == {
+        **his,
+        "text": "Moderated",
+        "lang": "en",
+        "modified_at": "2026-10-24T08:30:00+00:00",
+        "mine": False,
+    }
+    assert f"comment.edited comment_id={his['id']} author_id=2" in caplog.text
+    assert {c["text"]: c["mine"] for c in kenji.get(COMMENTS).json()}["Moderated"] is True
+
+    assert admin.delete(f"/api/comments/{other['id']}").status_code == 204
+    assert f"comment.deleted comment_id={other['id']} author_id=2" in caplog.text
+    # Their own: no author named.
+    assert admin.patch(f"/api/comments/{mine['id']}", json={"text": "Mine", "lang": "en"}).status_code == 200
+    edited = [r for r in caplog.records if getattr(r, "event", None) == "comment.edited"]
+    assert edited[-1].getMessage() == f"comment.edited comment_id={mine['id']}"
+    assert "comment.denied" not in caplog.text
+    assert {c["text"] for c in admin.get(COMMENTS).json()} == {"Moderated", "Mine"}
+    # The moderator access is not given to a plain user.
+    assert kenji.delete(f"/api/comments/{mine['id']}").status_code == 403
+
+
+def test_moderator_without_the_comment_access(admin, kenji):
+    """Moderating needs no "comment" access, but writing does, even on one's own."""
+    his = kenji.post(COMMENTS, json={"text": "Kenji's", "lang": "en"}).json()
+    mine = admin.post(COMMENTS, json={"text": "Admin's", "lang": "en"}).json()
+    con = connect()
+    with con:
+        con.execute("DELETE FROM role_has_access WHERE role = 'admin' AND access = 'comment'")
+    assert admin.post(COMMENTS, json={"text": "More", "lang": "en"}).status_code == 403
+    assert admin.patch(f"/api/comments/{his['id']}", json={"text": "x", "lang": "en"}).status_code == 200
+    assert admin.delete(f"/api/comments/{mine['id']}").status_code == 204
 
 
 def test_needs_the_comment_access(admin, kenji):

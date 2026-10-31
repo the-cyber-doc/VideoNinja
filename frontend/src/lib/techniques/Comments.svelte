@@ -1,6 +1,7 @@
 <script lang="ts">
 	// The comments of a technique, last modified first (sorted by the server), with
-	// "Add a comment" for users with the "comment" access. Not in the catalogue:
+	// "Add a comment" for users with the "comment" access, who change their own;
+	// users with the "moderator" access change anyone's. Not in the catalogue:
 	// loaded from the API each time and after every change; offline, the service
 	// worker answers with the last copy seen (writing needs a connection).
 	import ErrorMessage from '../ErrorMessage.svelte';
@@ -16,6 +17,7 @@
 	let adding = $state(false);
 	let error = $state<unknown>(null);
 	const canWrite = $derived(hasAccess('comment'));
+	const canModerate = $derived(hasAccess('moderator'));
 
 	function reload() {
 		comments = listComments(technique);
@@ -64,7 +66,7 @@
 				<li>
 					<CommentCard
 						{comment}
-						editable={canWrite && comment.mine}
+						editable={(canWrite && comment.mine) || canModerate}
 						onsave={(changed) => edit(comment.id, changed)}
 						ondelete={() => remove(comment.id)}
 					/>

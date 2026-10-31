@@ -35,7 +35,7 @@ EVENTS: dict[str, int] = {
     # Refusals
     "access.denied": WARNING,
     "request.cross_site": WARNING,
-    "comment.denied": WARNING,  # not its author
+    "comment.denied": WARNING,  # not its author, not a moderator
     "upload.denied": WARNING,
     # Content
     "upload.accepted": INFO,

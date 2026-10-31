@@ -1,5 +1,6 @@
 """Comments on techniques. Read by every logged-in user; written with the
-"comment" access; each user edits and deletes only their own.
+"comment" access; each user edits and deletes only their own, except users with
+the "moderator" access, who edit and delete anyone's (the author stays).
 
 Not in the catalogue snapshot: written by users and changing often.
 """
@@ -22,6 +23,7 @@ from .deps import current_user, require_access, user_zone
 
 router = APIRouter(prefix="/api", tags=["comments"])
 commenter = require_access("comment")
+changer = require_access("comment", "moderator")
 
 
 class CommentOut(BaseModel):
@@ -51,15 +53,19 @@ def _out(row: sqlite3.Row) -> CommentOut:
     return CommentOut(**{k: row[k] for k in CommentOut.model_fields})
 
 
-def _own(con: sqlite3.Connection, comment_id: int, me: User) -> sqlite3.Row:
-    """The comment, if `me` wrote it: 404 unknown, 403 someone else's."""
+def _changeable(con: sqlite3.Connection, comment_id: int, me: User) -> dict[str, int]:
+    """Check that `me` may change the comment: its author (with the "comment" access) or
+    a moderator. 404 unknown, 403 otherwise. Returns the audit fields: someone else's
+    comment names its author."""
     row = queries.comments.comment(con, comment_id, me.id)
     if row is None:
         raise ApiError("comment.unknown")
-    if not row["mine"]:
-        audit.event("comment.denied", comment_id=comment_id, author_id=row["author"])
-        raise ApiError("comment.not_author")
-    return row
+    if row["mine"] and "comment" in me.access:
+        return {}
+    if "moderator" in me.access:
+        return {"author_id": row["author"]}
+    audit.event("comment.denied", comment_id=comment_id, author_id=row["author"])
+    raise ApiError("comment.not_author")
 
 
 def _technique(con: sqlite3.Connection, technique_id: str) -> None:
@@ -105,24 +111,24 @@ def add_comment(
 def edit_comment(
     comment_id: int,
     body: CommentIn,
-    me: User = Depends(commenter),
+    me: User = Depends(changer),
     con: sqlite3.Connection = Depends(db.get_db),
     zone: tzinfo = Depends(user_zone),
 ) -> CommentOut:
     with db.write(con):
-        _own(con, comment_id, me)
+        moderated = _changeable(con, comment_id, me)
         queries.comments.update_comment(con, comment_id, body.lang, body.text, clock.at(0, zone))
-    audit.event("comment.edited", comment_id=comment_id)
+    audit.event("comment.edited", comment_id=comment_id, **moderated)
     return _out(_written(con, comment_id, me))
 
 
 @router.delete("/comments/{comment_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_comment(
     comment_id: int,
-    me: User = Depends(commenter),
+    me: User = Depends(changer),
     con: sqlite3.Connection = Depends(db.get_db),
 ) -> None:
     with db.write(con):
-        _own(con, comment_id, me)
+        moderated = _changeable(con, comment_id, me)
         queries.comments.delete_comment(con, comment_id)
-    audit.event("comment.deleted", comment_id=comment_id)
+    audit.event("comment.deleted", comment_id=comment_id, **moderated)

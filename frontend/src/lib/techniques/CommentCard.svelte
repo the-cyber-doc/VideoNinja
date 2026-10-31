@@ -1,6 +1,6 @@
 <script lang="ts">
 	// One comment: author, language (flag), modification time, text. Its author
-	// (with the "comment" access) can edit it in place or delete it.
+	// (with the "comment" access) or a moderator can edit it in place or delete it.
 	import Flag from '../Flag.svelte';
 	import { i18n, isLang, LANGUAGES, t } from '../i18n.svelte';
 	import CommentForm from './CommentForm.svelte';

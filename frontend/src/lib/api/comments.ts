@@ -1,5 +1,5 @@
 // Comments: read by every logged-in user; written with the "comment" access, each
-// user changing only their own (the server checks both).
+// user changing only their own, except moderators (the server checks all of it).
 import { api } from './client';
 import type { Comment, CommentIn } from './types';
 

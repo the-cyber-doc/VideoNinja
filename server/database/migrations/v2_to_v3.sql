@@ -1,4 +1,5 @@
--- Version 2 → 3: indexes on the columns the app looks rows up by (see db_v3.sql).
+-- Version 2 → 3: indexes on the columns the app looks rows up by (see db_v3.sql), and the
+-- "moderator" access (edit and delete anyone's comments), given to the admin role.
 -- Run by the app at startup (app/db.py: migrate), after a backup of the database.
 
 BEGIN;
@@ -17,6 +18,13 @@ CREATE INDEX IF NOT EXISTS "comment_user" ON "comment" ("user");
 CREATE INDEX IF NOT EXISTS "session_user" ON "session" ("user");
 CREATE INDEX IF NOT EXISTS "upload_user" ON "upload" ("user");
 CREATE INDEX IF NOT EXISTS "upload_state" ON "upload" ("state");
+
+INSERT INTO "translation" ("id", "en", "fr") VALUES
+	('access.moderator.name', 'Moderation', 'Modération');
+INSERT INTO "access" ("id", "name") VALUES
+	('moderator', 'access.moderator.name');
+INSERT INTO "role_has_access" ("role", "access") VALUES
+	('admin', 'moderator');
 
 UPDATE "config" SET "value" = '3' WHERE "name" = 'db_version';
 

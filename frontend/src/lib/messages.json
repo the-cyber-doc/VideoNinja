@@ -103,8 +103,8 @@
 		"fr": "Ce commentaire n'existe plus."
 	},
 	"error.comment.not_author": {
-		"en": "Only its author can change this comment.",
-		"fr": "Seul son auteur peut modifier ce commentaire."
+		"en": "Only its author or a moderator can change this comment.",
+		"fr": "Seuls son auteur et les modérateurs peuvent modifier ce commentaire."
 	},
 	"error.upload.unknown": { "en": "Unknown upload.", "fr": "Envoi inconnu." },
 	"error.upload.not_finished": {

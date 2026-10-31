@@ -647,7 +647,7 @@ database as failing otherwise.
 |---|---|---|
 | 1 | v0.0.6 (efae32a) | — |
 | 2 | the four containers | `heartbeat` (the encoder's liveness, for `/health`), `video.thumbs_dirty` (segment thumbnails made by the encoder) |
-| 3 | indexes | Indexes on the columns looked up in the growing tables (video, segment, comment, session, upload), foreign keys included; no other change |
+| 3 | indexes, moderation | Indexes on the columns looked up in the growing tables (video, segment, comment, session, upload), foreign keys included; the `moderator` access (edit and delete anyone's comments), given to the `admin` role |
 
 Transactions: the API and the encoder write to the same file from two
 processes. Connections (`db.connect`) are in autocommit mode; every change of
@@ -1099,13 +1099,13 @@ is no way to log in without one. Admins cannot reset their own account.
 
 Roles and what they allow (accesses):
 
-| Role | `segment` | `comment` | `annotate` | `upload` | `video_mgmt` | `user_mgmt` |
-|---|---|---|---|---|---|---|
-| `user` | ✓ | ✓ | | | | |
-| `editor` | ✓ | ✓ | ✓ | | | |
-| `uploader` | ✓ | ✓ | ✓ | ✓ | | |
-| `video_mgmt` | ✓ | ✓ | ✓ | ✓ | ✓ | |
-| `admin` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Role | `segment` | `comment` | `annotate` | `upload` | `video_mgmt` | `moderator` | `user_mgmt` |
+|---|---|---|---|---|---|---|---|
+| `user` | ✓ | ✓ | | | | | |
+| `editor` | ✓ | ✓ | ✓ | | | | |
+| `uploader` | ✓ | ✓ | ✓ | ✓ | | | |
+| `video_mgmt` | ✓ | ✓ | ✓ | ✓ | ✓ | | |
+| `admin` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
 
 **Videos** (top menu, right of Upload; `video_mgmt` access) lists every
 published video in four collapsible sections: **In progress** (some
@@ -1126,8 +1126,9 @@ removed when it gets the new catalogue.
 access) opens a form for the text and its language (the interface's by
 default). Comments show the author, the language (flag) and the time of the
 last change ("(edited)" once changed), last changed first. Each user edits and
-deletes only their own comments, admins included: nobody can change someone
-else's.
+deletes only their own comments, except users with the `moderator` access
+(admins), who edit and delete anyone's: the comment keeps its author, and the
+audit log names the author (`author_id`).
 
 The invitation token is in the URL fragment (`#…`), which browsers never send
 to the server: it does not appear in nginx logs or `Referer` headers.

@@ -57,7 +57,7 @@ ERRORS: dict[str, tuple[int, str]] = {
     "catalog.unavailable": (503, "Catalogue not available"),
     "technique.unknown": (404, "Unknown technique"),
     "comment.unknown": (404, "Unknown comment"),
-    "comment.not_author": (403, "Only its author can change a comment"),
+    "comment.not_author": (403, "Only its author or a moderator can change a comment"),
     # Uploads and videos
     "upload.unknown": (404, "Unknown upload"),
     "upload.not_finished": (409, "The upload is not finished"),

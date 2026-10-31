@@ -173,3 +173,18 @@ def test_step_that_does_not_set_the_version_refused(tmp_path, monkeypatch):
     monkeypatch.setattr(db, "MIGRATIONS_DIR", steps)
     with pytest.raises(RuntimeError, match="did not set the database version"):
         db.migrate()
+
+
+def test_v3_brings_the_moderator_access(database, monkeypatch):
+    """v2 → v3 gives admins the "moderator" access, as v3's scripts do; v3 → v2 removes it."""
+    build(database, 2)
+    monkeypatch.setattr(db, "EXPECTED_VERSION", 3)
+    db.migrate()
+    assert sql(database, "SELECT role FROM role_has_access WHERE access = 'moderator'") == [("admin",)]
+    assert sql(database, "SELECT name FROM access WHERE id = 'moderator'") == [("access.moderator.name",)]
+
+    monkeypatch.setattr(db, "EXPECTED_VERSION", 2)
+    db.migrate()
+    assert sql(database, "SELECT count(*) FROM role_has_access WHERE access = 'moderator'") == [(0,)]
+    assert sql(database, "SELECT count(*) FROM access WHERE id = 'moderator'") == [(0,)]
+    assert sql(database, "SELECT count(*) FROM translation WHERE id = 'access.moderator.name'") == [(0,)]

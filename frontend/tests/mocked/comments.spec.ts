@@ -152,6 +152,31 @@ test('without the comment access: no add, edit or delete', async ({ page }) => {
 	await expect(list(page).getByRole('button')).toHaveCount(0);
 });
 
+test("a moderator edits and deletes anyone's comments", async ({ page }) => {
+	const sent = await setup(page, ['segment', 'comment', 'moderator']);
+	page.on('dialog', (d) => d.accept());
+	await page.goto(PAGE);
+	const hanas = list(page).filter({ hasText: "Celui d'Hana" });
+	await expect(hanas.getByRole('button')).toHaveText(['Edit', 'Delete']);
+	await hanas.getByRole('button', { name: 'Edit' }).click();
+	const second = list(page).last(); // by place: while edited, its text is in the form
+	await second.getByPlaceholder('Your comment').fill('Modéré');
+	await second.getByRole('button', { name: 'Save' }).click();
+	await expect(list(page)).toHaveText([/Modéré/, /My old one/]);
+	await expect(list(page).first()).toContainText('Hana'); // still Hana's
+	await list(page).first().getByRole('button', { name: 'Delete' }).click();
+	await expect(list(page)).toHaveText([/My old one/]);
+	expect(sent.map((s) => `${s.method} ${s.url}`)).toEqual(['PATCH /api/comments/1', 'DELETE /api/comments/1']);
+});
+
+test('a moderator without the comment access: no add, but changes every comment', async ({ page }) => {
+	await setup(page, ['segment', 'moderator']);
+	await page.goto(PAGE);
+	await expect(page.getByRole('button', { name: 'Add a comment' })).toHaveCount(0);
+	await expect(list(page).filter({ hasText: "Celui d'Hana" }).getByRole('button')).toHaveText(['Edit', 'Delete']);
+	await expect(list(page).filter({ hasText: 'My old one' }).getByRole('button')).toHaveText(['Edit', 'Delete']);
+});
+
 test('a failed save keeps the text and says why', async ({ page }) => {
 	await setup(page);
 	await page.route(`/api/techniques/${KOKU}/comments`, (r) =>
