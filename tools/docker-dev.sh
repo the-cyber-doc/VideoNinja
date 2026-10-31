@@ -14,6 +14,13 @@
 # once, as the same user: (sudo) docker login dhi.io (a free Docker account).
 set -euo pipefail
 
+# Make sure only root can run our script
+if ! [ $(id -u) = 0 ]; then
+    echo "This script must be run as root" 1>&2
+    echo "Usage: sudo $0" 1>&2
+    exit 1
+fi
+
 root=$(cd "$(dirname "$0")/.." && pwd)
 server="$root/server"
 [[ -f $server/dev.key ]] || {
