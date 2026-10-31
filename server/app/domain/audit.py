@@ -30,6 +30,8 @@ EVENTS: dict[str, int] = {
     "totp.undecryptable": ERROR,  # wrong key, or a value copied from another row
     "user.invited": INFO,
     "user.reset": INFO,  # credentials and sessions removed, new invitation
+    "user.deactivated": INFO,  # credentials, sessions and invitation removed
+    "user.deleted": INFO,  # content given to the deleted user
     "user.registered": INFO,
     "invite.shown": INFO,  # an admin read an invitation link again
     # Refusals

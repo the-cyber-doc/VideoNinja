@@ -1,9 +1,9 @@
-// User management's actions (create a user, copy an invitation link again, reset an
-// account) and their state: busy, the last error, the last link handed out. The list
+// User management's actions (create a user, copy an invitation link again, reset,
+// deactivate or delete an account) and their state: busy, the last error, the last link handed out. The list
 // itself is the page's data (+page.ts), loaded again after a change.
 import { invalidate } from '$app/navigation';
 import type { Invite, UserRow } from '#lib/api/types.js';
-import { createUser, getInvite, resetUser } from '#lib/api/users.js';
+import { createUser, deactivateUser, deleteUser, getInvite, resetUser } from '#lib/api/users.js';
 import { url } from '#lib/base.js';
 
 /** An invitation link handed out: shown so it can be copied by hand too. */
@@ -33,6 +33,21 @@ export class UserAdmin {
 	reset = (user: UserRow) =>
 		this.#run(async () => {
 			await this.#show(user.username, await resetUser(user.id));
+			await invalidate('app:users');
+		});
+
+	/** Credentials, sessions and invitation removed (reactivated by a reset). Confirm first. */
+	deactivate = (user: UserRow) =>
+		this.#run(async () => {
+			await deactivateUser(user.id);
+			await invalidate('app:users');
+		});
+
+	/** The user deleted, their content kept under "a deleted user". Confirm first. */
+	remove = (user: UserRow) =>
+		this.#run(async () => {
+			await deleteUser(user.id);
+			if (this.link?.username === user.username) this.link = null;
 			await invalidate('app:users');
 		});
 

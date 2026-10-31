@@ -96,7 +96,7 @@
 			<strong>{t('upload.segment_n', { n: number })}</strong>
 			<span class:invalid={missing('times')}>{time(segment.begin)} – {time(segment.end)}</span>
 		</button>
-		<span class="author">{t('upload.segment.created_by', { name: author ?? t('upload.deleted_user') })}</span>
+		<span class="author">{t('upload.segment.created_by', { name: author ?? t('common.deleted_user') })}</span>
 		<IconButton label={t('upload.segment.delete')} icon="cross" iconSize={16} variant="quiet" onclick={ondelete} />
 	</header>
 	{#if missing('times')}

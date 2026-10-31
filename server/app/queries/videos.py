@@ -3,6 +3,7 @@
 import sqlite3
 
 from .rows import inserted, one
+from .users import DELETED_USER_ID
 
 # Dates are text with their UTC offset, "2026-10-23T12:13:38+02:00" (app/clock.py),
 # in different timezones: always compare and sort them through datetime().
@@ -73,14 +74,14 @@ def published_videos(con: sqlite3.Connection) -> list[sqlite3.Row]:
 
 
 def published_video(con: sqlite3.Connection, video_id: int) -> sqlite3.Row | None:
-    """uploaded_by: the uploader's display name (name, else username); None if unknown."""
+    """uploaded_by: the uploader's display name (name, else username); None if unknown or deleted."""
     return one(
         con.execute(
             'SELECT v."id", v."sha256sum", v."thumbnail", v."duration_s", v."all_segments_done",'
             ' v."original_filename", COALESCE(u."name", u."username") AS "uploaded_by"'
-            ' FROM "video" v LEFT JOIN "user" u ON u."id" = v."uploaded_by"'
+            ' FROM "video" v LEFT JOIN "user" u ON u."id" = v."uploaded_by" AND u."id" <> ?'
             ' WHERE v."id" = ? AND v."status" = \'published\'',
-            (video_id,),
+            (DELETED_USER_ID, video_id),
         )
     )
 

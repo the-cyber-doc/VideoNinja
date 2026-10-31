@@ -87,7 +87,7 @@ def test_complete_streams_steps_and_creates_db(client):
     assert con.execute("PRAGMA journal_mode").fetchone()[0] == "wal"
     assert con.execute("SELECT value FROM config WHERE name = 'db_version'").fetchone()[0] == str(db.EXPECTED_VERSION)
     assert con.execute("SELECT count(*) FROM ryu").fetchone()[0] == 9
-    user = con.execute("SELECT username, role, totp, pw_hash FROM user").fetchall()
+    user = con.execute("SELECT username, role, totp, pw_hash FROM user WHERE id <> 0").fetchall()  # not the deleted user
     assert len(user) == 1
     assert user[0][:2] == ("admin", "admin")
     # TOTP secret encrypted at rest, bound to the user's row

@@ -36,7 +36,7 @@
 
 <article class="comment">
 	<header>
-		<strong>{comment.user}</strong>
+		<strong>{comment.user ?? t('common.deleted_user')}</strong>
 		<time datetime={date.toISOString()}>{when}</time>
 		{#if edited}<span class="edited">{t('comments.edited')}</span>{/if}
 		<span class="lang" role="img" aria-label={language} title={language}>

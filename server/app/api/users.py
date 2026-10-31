@@ -18,13 +18,17 @@ router = APIRouter(prefix="/api/admin", tags=["users"])
 admin = require_access("user_mgmt")
 
 
+Status = Literal["registered", "invited", "expired", "deactivated"]
+
+
 class UserRow(BaseModel):
     id: int
     username: str
     name: str | None
     role: str
-    # registered: password + TOTP set. invited: valid invitation. expired: neither.
-    status: Literal["registered", "invited", "expired"]
+    # registered: password + TOTP set. invited: valid invitation. expired: an expired
+    # invitation. deactivated: neither credentials nor invitation (a reset reactivates).
+    status: Status
 
 
 class RoleOut(BaseModel):
@@ -53,6 +57,14 @@ def roles(
     return sorted(out, key=lambda r: i18n.sort_key(r.name))
 
 
+def _status(row: sqlite3.Row) -> Status:
+    if row["registered"]:
+        return "registered"
+    if row["invited"]:
+        return "invited"
+    return "deactivated" if row["deactivated"] else "expired"
+
+
 @router.get("/users")
 def list_users(_: User = Depends(admin), con: sqlite3.Connection = Depends(db.get_db)) -> list[UserRow]:
     rows = queries.users.list_users(con, clock.at())
@@ -62,7 +74,7 @@ def list_users(_: User = Depends(admin), con: sqlite3.Connection = Depends(db.ge
             username=r["username"],
             name=r["name"],
             role=r["role"],
-            status="registered" if r["registered"] else "invited" if r["invited"] else "expired",
+            status=_status(r),
         )
         for r in rows
     ]
@@ -113,3 +125,32 @@ def reset_user(user_id: int, me: User = Depends(admin), con: sqlite3.Connection 
         queries.sessions.delete_user_sessions(con, user_id)
     audit.event("user.reset", target_user_id=user_id)
     return _invite_out(con, user_id, token)
+
+
+@router.post("/users/{user_id}/deactivate", status_code=status.HTTP_204_NO_CONTENT)
+def deactivate_user(user_id: int, me: User = Depends(admin), con: sqlite3.Connection = Depends(db.get_db)) -> None:
+    """Remove the password, TOTP, sessions and any invitation: the user can no longer log in
+    nor register. A reset (a new invitation) reactivates them."""
+    if user_id == me.id:
+        raise ApiError("user.deactivate_self")
+    with db.write(con):
+        if not queries.users.user_exists(con, user_id):
+            raise ApiError("user.unknown")
+        queries.users.clear_user_credentials(con, user_id)
+        queries.sessions.delete_user_sessions(con, user_id)
+        queries.invites.delete_invite(con, user_id)
+    audit.event("user.deactivated", target_user_id=user_id)
+
+
+@router.delete("/users/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_user(user_id: int, me: User = Depends(admin), con: sqlite3.Connection = Depends(db.get_db)) -> None:
+    """Delete the user (sessions and invitation too). Their comments, segments, videos and
+    uploads are kept, given to the generic deleted user. One transaction."""
+    if user_id == me.id:
+        raise ApiError("user.delete_self")
+    with db.write(con):
+        if not queries.users.user_exists(con, user_id):
+            raise ApiError("user.unknown")
+        queries.users.give_to_deleted_user(con, user_id)
+        queries.users.delete_user(con, user_id)
+    audit.event("user.deleted", target_user_id=user_id)

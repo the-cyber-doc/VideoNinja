@@ -146,7 +146,8 @@ test('user list: status icons and actions', async ({ page }) => {
 				{ id: 1, username: 'admin', name: 'Sensei', role: 'admin', status: 'registered' },
 				{ id: 2, username: 'hana', name: 'Hana', role: 'user', status: 'registered' },
 				{ id: 3, username: 'kenji', name: null, role: 'user', status: 'invited' },
-				{ id: 4, username: 'taro', name: null, role: 'user', status: 'expired' }
+				{ id: 4, username: 'taro', name: null, role: 'user', status: 'expired' },
+				{ id: 5, username: 'jiro', name: null, role: 'user', status: 'deactivated' }
 			]
 		})
 	);
@@ -168,6 +169,18 @@ test('user list: status icons and actions', async ({ page }) => {
 		'Copy invite link'
 	);
 	await expect(row('kenji').getByRole('button', { name: 'Reset account' })).toHaveCount(0);
+	await expect(row('kenji').getByRole('button')).toHaveCount(3); // copy, deactivate, delete
+
+	// Every other user: deactivate and delete too; deactivated: reactivate (a new link) instead.
+	for (const name of ['hana', 'taro']) {
+		await expect(row(name).getByRole('button', { name: 'Deactivate account' })).toBeVisible();
+		await expect(row(name).getByRole('button', { name: 'Delete user' })).toBeVisible();
+	}
+	await expect(cell('jiro')).toHaveAttribute('title', 'Deactivated');
+	await expect(cell('jiro').locator('svg')).toHaveCount(1);
+	await expect(row('jiro').getByRole('button', { name: 'Deactivate account' })).toHaveCount(0);
+	await expect(row('jiro').getByRole('button', { name: 'Reactivate (new invitation link)' })).toBeVisible();
+	await expect(row('jiro').getByRole('button', { name: 'Delete user' })).toBeVisible();
 
 	// Expired: red cross + reset instead of copy.
 	await expect(cell('taro')).toHaveAttribute('title', 'Invitation expired');
@@ -180,14 +193,83 @@ test('user list: status icons and actions', async ({ page }) => {
 		r.fulfill({ json: { token: 'tok-123', expires_at: '2033-05-18T05:33:20+02:00' } })
 	);
 	await row('kenji').getByRole('button', { name: 'Copy invite link' }).click();
-	await expect(page.getByLabel('Invitation link')).toHaveValue(/\/register#tok-123$/);
+	await expect(page.getByLabel('Invitation link', { exact: true })).toHaveValue(/\/register#tok-123$/);
 
 	// Reset of an expired invitation: no confirmation needed, new link shown.
 	await page.route('/api/admin/users/4/reset', (r) =>
 		r.fulfill({ json: { token: 'tok-456', expires_at: '2033-05-18T05:33:20+02:00' } })
 	);
 	await row('taro').getByRole('button', { name: 'Reset account' }).click();
-	await expect(page.getByLabel('Invitation link')).toHaveValue(/\/register#tok-456$/);
+	await expect(page.getByLabel('Invitation link', { exact: true })).toHaveValue(/\/register#tok-456$/);
+});
+
+test('user list: deactivate, reactivate and delete, after confirming', async ({ page }) => {
+	await loggedInAs(page, ADMIN);
+	let users = [
+		{ id: 2, username: 'hana', name: 'Hana', role: 'user', status: 'registered' },
+		{ id: 3, username: 'kenji', name: null, role: 'user', status: 'registered' }
+	];
+	const sent: string[] = [];
+	await page.route('/api/admin/roles', (r) => r.fulfill({ json: [{ id: 'user', name: 'User' }] }));
+	await page.route('/api/admin/users', (r) => r.fulfill({ json: users }));
+	await page.route('/api/admin/users/*/*', (r) => {
+		const path = new URL(r.request().url()).pathname;
+		sent.push(`${r.request().method()} ${path}`);
+		const id = Number(path.split('/')[4]);
+		if (path.endsWith('/deactivate')) {
+			users = users.map((u) => (u.id === id ? { ...u, status: 'deactivated' } : u));
+			return r.fulfill({ status: 204 });
+		}
+		users = users.map((u) => (u.id === id ? { ...u, status: 'invited' } : u));
+		return r.fulfill({ json: { token: 'tok-789', expires_at: '2033-05-18T05:33:20+02:00' } });
+	});
+	await page.route('/api/admin/users/*', (r) => {
+		const path = new URL(r.request().url()).pathname;
+		sent.push(`${r.request().method()} ${path}`);
+		users = users.filter((u) => u.id !== Number(path.split('/').pop()));
+		return r.fulfill({ status: 204 });
+	});
+	const dialogs: string[] = [];
+	let accept = false;
+	page.on('dialog', (d) => (dialogs.push(d.message()), accept ? d.accept() : d.dismiss()));
+	await page.goto('/admin/users');
+	const row = (name: string) => page.getByRole('row', { name: new RegExp(name) });
+
+	// Cancelled: nothing sent.
+	await row('hana').getByRole('button', { name: 'Delete user' }).click();
+	await row('hana').getByRole('button', { name: 'Deactivate account' }).click();
+	expect(sent).toEqual([]);
+	expect(dialogs[0]).toContain('Delete hana for good?');
+	expect(dialogs[1]).toContain('Deactivate the account of hana?');
+
+	accept = true;
+	await row('kenji').getByRole('button', { name: 'Deactivate account' }).click();
+	await expect(row('kenji').getByRole('cell').first()).toHaveAttribute('title', 'Deactivated');
+	// Reactivate: no confirmation (nothing left to lose), the new link shown.
+	await row('kenji').getByRole('button', { name: 'Reactivate (new invitation link)' }).click();
+	await expect(page.getByLabel('Invitation link', { exact: true })).toHaveValue(/\/register#tok-789$/);
+	await row('hana').getByRole('button', { name: 'Delete user' }).click();
+	await expect(row('hana')).toHaveCount(0);
+	expect(dialogs).toHaveLength(4);
+	expect(sent).toEqual([
+		'POST /api/admin/users/3/deactivate',
+		'POST /api/admin/users/3/reset',
+		'DELETE /api/admin/users/2'
+	]);
+});
+
+test('user list in French: the new actions', async ({ page }) => {
+	await page.addInitScript(() => localStorage.setItem('lang', 'fr'));
+	await loggedInAs(page, ADMIN);
+	await page.route('/api/admin/roles', (r) => r.fulfill({ json: [{ id: 'user', name: 'Utilisateur' }] }));
+	await page.route('/api/admin/users', (r) =>
+		r.fulfill({ json: [{ id: 5, username: 'jiro', name: null, role: 'user', status: 'deactivated' }] })
+	);
+	await page.goto('/admin/users');
+	const row = page.getByRole('row', { name: /jiro/ });
+	await expect(row.getByRole('cell').first()).toHaveAttribute('title', 'Désactivé');
+	await expect(row.getByRole('button', { name: "Réactiver (nouveau lien d'invitation)" })).toBeVisible();
+	await expect(row.getByRole('button', { name: "Supprimer l'utilisateur" })).toBeVisible();
 });
 
 test('registration with an invalid link explains what to do', async ({ page }) => {

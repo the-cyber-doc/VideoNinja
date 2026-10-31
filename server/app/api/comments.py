@@ -28,7 +28,7 @@ changer = require_access("comment", "moderator")
 
 class CommentOut(BaseModel):
     id: int
-    user: str  # display name, else username
+    user: str | None  # display name, else username; None: a deleted user
     created_at: str  # e.g. "2026-10-23T12:13:38+02:00" (app/clock.py)
     modified_at: str  # = created_at until edited
     lang: str  # language the comment is written in

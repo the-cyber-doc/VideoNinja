@@ -77,7 +77,7 @@
 <section class="card">
 	<div class="about">
 		<strong class="filename">{filename}</strong>
-		<span class="uploader">{t('upload.uploaded_by', { name: uploadedBy ?? t('upload.deleted_user') })}</span>
+		<span class="uploader">{t('upload.uploaded_by', { name: uploadedBy ?? t('common.deleted_user') })}</span>
 	</div>
 	<Editor {src} bind:draft={annotation} bind:duration bind:playable bind:selected />
 	{#if !playable}

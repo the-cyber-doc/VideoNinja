@@ -179,7 +179,7 @@ test('user management: create a user and get the invitation link', async ({ page
 	await page.getByLabel('Role').selectOption({ label: 'User' });
 	await page.getByRole('button', { name: 'Create' }).click();
 
-	inviteLink = await page.getByLabel('Invitation link').inputValue();
+	inviteLink = await page.getByLabel('Invitation link', { exact: true }).inputValue();
 	// The app's address (with its base path) + register#<token>.
 	const register = new URL('register', baseURL).href.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&');
 	expect(inviteLink).toMatch(new RegExp(`^${register}#[\\w-]{40,}$`));
@@ -238,7 +238,7 @@ test('user management: reset a registered account', async ({ page }) => {
 	page.once('dialog', (dialog) => dialog.accept());
 	await row.getByRole('button', { name: 'Reset account' }).click();
 	await expect(row).toContainText('Invitation pending');
-	await expect(page.getByLabel('Invitation link')).toHaveValue(/\/register#/);
+	await expect(page.getByLabel('Invitation link', { exact: true })).toHaveValue(/\/register#/);
 
 	// The old credentials no longer work.
 	await logOut(page);

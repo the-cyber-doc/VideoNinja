@@ -139,7 +139,7 @@ def test_dates_in_the_browser_timezone(client, admin_secret):
     assert clock.parse(row[3]) - clock.parse(row[1]) == timedelta(seconds=security.SESSION_IDLE_S)
 
     def saved():
-        return con.execute("SELECT time_zone FROM user").fetchone()[0]
+        return con.execute("SELECT time_zone FROM user WHERE id = 1").fetchone()[0]
 
     assert saved() == "Asia/Tokyo"
 

@@ -8,7 +8,7 @@ const PAGE = '/schools/gyokko/taijutsu/jo_ryaku/koku';
 
 interface Comment {
 	id: number;
-	user: string;
+	user: string | null;
 	created_at: string;
 	modified_at: string;
 	lang: string;
@@ -142,6 +142,29 @@ test('delete cancelled: nothing sent', async ({ page }) => {
 	await list(page).filter({ hasText: 'My old one' }).getByRole('button', { name: 'Delete' }).click();
 	await expect(list(page)).toHaveCount(2);
 	expect(sent).toEqual([]);
+});
+
+test("a deleted user's comment: named as such, changed by no one but a moderator", async ({ page }) => {
+	await setup(page);
+	await page.route(`/api/techniques/${KOKU}/comments`, (r) =>
+		r.fulfill({
+			json: [
+				{
+					id: 9,
+					user: null,
+					created_at: '2027-01-10T09:00:00+00:00',
+					modified_at: '2027-01-10T09:00:00+00:00',
+					lang: 'en',
+					text: 'From the past',
+					mine: false
+				}
+			]
+		})
+	);
+	await page.goto(PAGE);
+	await expect(list(page)).toHaveCount(1);
+	await expect(list(page).first()).toContainText('a deleted user');
+	await expect(list(page).getByRole('button')).toHaveCount(0);
 });
 
 test('without the comment access: no add, edit or delete', async ({ page }) => {

@@ -78,7 +78,7 @@ def test_replace_totp(client, logged_in):
         assert login(client, logged_in, code=old).status_code == 401
 
     # Stored encrypted, bound to the user's row.
-    stored = connect().execute("SELECT id, totp FROM user").fetchone()
+    stored = connect().execute("SELECT id, totp FROM user WHERE id = 1").fetchone()
     assert crypto.decrypt(stored[1], crypto.totp_aad(stored[0])) == new["secret"]
 
 

@@ -1091,11 +1091,20 @@ Users are added by invitation, from **User Management** in the user menu
 
 In the user list, the first column shows the state: a green check
 (registered), nothing (invitation pending: the copy button gives the link
-again) or a red cross (invitation expired). The reset button issues a new
-link. For a registered user, reset also removes the password and
-authenticator and logs the user out: that is how a lost password or
-authenticator is recovered. Every user must use an authenticator app; there
-is no way to log in without one. Admins cannot reset their own account.
+again), a red cross (invitation expired) or a crossed-out user (deactivated).
+The reset button issues a new link. For a registered user, reset also removes
+the password and authenticator and logs the user out: that is how a lost
+password or authenticator is recovered. Every user must use an authenticator
+app; there is no way to log in without one.
+
+**Deactivate** removes the user's password, authenticator, sessions and any
+pending invitation: they are logged out and can neither log in nor register.
+**Reactivate** (the reset button of a deactivated user) issues a new
+invitation link. **Delete** removes the user for good; their comments, the
+segments they identified and the videos they uploaded are kept, given to a
+generic "deleted user" (shown as "a deleted user"; never listed, nobody can log
+in as it). Deactivating and deleting ask for a confirmation. Admins cannot
+reset, deactivate or delete their own account.
 
 Roles and what they allow (accesses):
 
@@ -1507,7 +1516,7 @@ journalctl -t docker-videoninja-encoder -o cat | jq -c 'select(.video_id == 42)'
 `server/app/domain/audit.py`): `setup.completed`; `login.succeeded`, `login.failed`
 (with the client's address, never the username typed), `logout`,
 `credentials.throttled`; `password.wrong`, `password.changed`, `totp.replaced`,
-`totp.undecryptable`; `user.invited`, `user.reset`, `user.registered`,
+`totp.undecryptable`; `user.invited`, `user.reset`, `user.deactivated`, `user.deleted`, `user.registered`,
 `invite.shown`; `access.denied`, `request.cross_site`, `comment.denied`,
 `upload.denied`; `upload.accepted`, `video.submitted`, `video.retried`,
 `video.deleted`, `annotations.saved`, `comment.created`, `comment.edited`,

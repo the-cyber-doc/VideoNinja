@@ -251,8 +251,15 @@
             "type": "string"
           },
           "user": {
-            "title": "User",
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User"
           }
         },
         "required": [
@@ -1111,7 +1118,8 @@
             "enum": [
               "registered",
               "invited",
-              "expired"
+              "expired",
+              "deactivated"
             ],
             "title": "Status",
             "type": "string"
@@ -1409,6 +1417,110 @@
           }
         },
         "summary": "Create User",
+        "tags": [
+          "users"
+        ]
+      }
+    },
+    "/api/admin/users/{user_id}": {
+      "delete": {
+        "description": "Delete the user (sessions and invitation too). Their comments, segments, videos and\nuploads are kept, given to the generic deleted user. One transaction.",
+        "operationId": "delete_user_api_admin_users__user_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "schema": {
+              "title": "User Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "header",
+            "name": "time-zone",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Time-Zone"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "An error (core/errors.py: ERRORS)"
+          }
+        },
+        "summary": "Delete User",
+        "tags": [
+          "users"
+        ]
+      }
+    },
+    "/api/admin/users/{user_id}/deactivate": {
+      "post": {
+        "description": "Remove the password, TOTP, sessions and any invitation: the user can no longer log in\nnor register. A reset (a new invitation) reactivates them.",
+        "operationId": "deactivate_user_api_admin_users__user_id__deactivate_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "schema": {
+              "title": "User Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "header",
+            "name": "time-zone",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Time-Zone"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "An error (core/errors.py: ERRORS)"
+          }
+        },
+        "summary": "Deactivate User",
         "tags": [
           "users"
         ]

@@ -188,3 +188,34 @@ def test_v3_brings_the_moderator_access(database, monkeypatch):
     assert sql(database, "SELECT count(*) FROM role_has_access WHERE access = 'moderator'") == [(0,)]
     assert sql(database, "SELECT count(*) FROM access WHERE id = 'moderator'") == [(0,)]
     assert sql(database, "SELECT count(*) FROM translation WHERE id = 'access.moderator.name'") == [(0,)]
+
+
+def test_v3_brings_the_deleted_user(database, monkeypatch):
+    """v2 → v3 adds the deleted user (id 0); v3 → v2 keeps it while comments point to it."""
+    build(database, 2)
+    monkeypatch.setattr(db, "EXPECTED_VERSION", 3)
+    db.migrate()
+    assert sql(database, "SELECT id, username FROM user") == [(0, "#deleted")]
+    sql(
+        database,
+        "INSERT INTO video (original_sha256, original_filename, uploaded_at, uploaded_by)"
+        " VALUES ('b', 'kata.mp4', '2026-01-01T00:00:00Z', 0)",
+    )
+    sql(
+        database,
+        "INSERT INTO comment (technique, user, lang, text, created_at, modified_at)"
+        " VALUES ('gyokko.taijutsu.jo_ryaku.koku', 0, 'en', 'Kept', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z')",
+    )
+
+    monkeypatch.setattr(db, "EXPECTED_VERSION", 2)
+    db.migrate()
+    assert sql(database, "SELECT uploaded_by FROM video") == [(None,)]
+    assert sql(database, "SELECT user, text FROM comment") == [(0, "Kept")]
+    assert sql(database, "SELECT id FROM user") == [(0,)]
+
+
+def test_v3_to_v2_removes_an_unused_deleted_user(database, monkeypatch):
+    build(database, 3)
+    monkeypatch.setattr(db, "EXPECTED_VERSION", 2)
+    db.migrate()
+    assert sql(database, "SELECT count(*) FROM user") == [(0,)]

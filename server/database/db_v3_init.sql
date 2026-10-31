@@ -73,6 +73,11 @@ INSERT INTO "role_has_access" ("role", "access") VALUES
 
 -- The admin user is created by the first-start setup wizard.
 
+-- The generic "deleted user" (id 0, never listed nor managed): a deleted user's comments,
+-- segments, videos and uploads are given to it. Its username is outside the username
+-- pattern (app/validation.json) and it has no credentials: nobody can create it or log in as it.
+INSERT INTO "user" ("id", "username", "role") VALUES (0, '#deleted', 'user');
+
 INSERT INTO "ryu" ("id", "kanji", "romaji", "description") VALUES
 	('togakure', '戸隠流', 'Togakure Ryu', 'ryu.togakure.description'),
 	('gyokko', '玉虎流', 'Gyokko Ryu', 'ryu.gyokko.description'),

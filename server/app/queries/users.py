@@ -9,6 +9,10 @@ from .rows import inserted
 # What a user's role allows, as a JSON array (one query with the user: no other per request).
 ACCESS = '(SELECT json_group_array(a."access") FROM "role_has_access" a WHERE a."role" = u."role") AS "access"'
 USER_COLUMNS = f'u."id", u."username", u."name", u."role", u."time_zone", {ACCESS}'
+# The generic "deleted user" (db_v3_init.sql): a deleted user's comments, segments, videos
+# and uploads are given to it. Never listed nor managed; its display name is None (the
+# frontend names it). Queries join it out: LEFT JOIN "user" u ON … AND u."id" <> DELETED_USER_ID.
+DELETED_USER_ID = 0
 
 
 @dataclass(frozen=True)
@@ -59,7 +63,9 @@ def insert_user(
 
 
 def user_exists(con: sqlite3.Connection, user_id: int) -> bool:
-    return con.execute('SELECT 1 FROM "user" WHERE "id" = ?', (user_id,)).fetchone() is not None
+    """A user that can be managed: never the deleted user."""
+    query = 'SELECT 1 FROM "user" WHERE "id" = ? AND "id" <> ?'
+    return con.execute(query, (user_id, DELETED_USER_ID)).fetchone() is not None
 
 
 def username_exists(con: sqlite3.Connection, username: str) -> bool:
@@ -81,13 +87,17 @@ def user_pw_hash(con: sqlite3.Connection, user_id: int) -> str | None:
 
 
 def list_users(con: sqlite3.Connection, now: str) -> list[sqlite3.Row]:
-    """Every user with "registered" (password + TOTP set) and "invited" (valid invitation)."""
+    """Every user (not the deleted user) with "registered" (password + TOTP set), "invited"
+    (valid invitation) and "deactivated" (neither credentials nor invitation: registration
+    deletes the invitation and a reset makes one, only a deactivation leaves neither)."""
     return con.execute(
         'SELECT u."id", u."username", u."name", u."role",'
         ' u."pw_hash" IS NOT NULL AND u."totp" IS NOT NULL AS "registered",'
-        ' COALESCE(datetime(i."expires_at") > datetime(?), 0) AS "invited"'
-        ' FROM "user" u LEFT JOIN "invite" i ON i."user" = u."id" ORDER BY u."username"',
-        (now,),
+        ' COALESCE(datetime(i."expires_at") > datetime(?), 0) AS "invited",'
+        ' u."pw_hash" IS NULL AND u."totp" IS NULL AND i."user" IS NULL AS "deactivated"'
+        ' FROM "user" u LEFT JOIN "invite" i ON i."user" = u."id"'
+        ' WHERE u."id" <> ? ORDER BY u."username"',
+        (now, DELETED_USER_ID),
     ).fetchall()
 
 
@@ -116,6 +126,22 @@ def set_user_registration(con: sqlite3.Connection, user_id: int, name: str | Non
 
 def clear_user_credentials(con: sqlite3.Connection, user_id: int) -> None:
     con.execute('UPDATE "user" SET "pw_hash" = NULL, "totp" = NULL WHERE "id" = ?', (user_id,))
+
+
+def give_to_deleted_user(con: sqlite3.Connection, user_id: int) -> None:
+    """The user's comments, segments, videos and uploads, to the deleted user (before deleting them)."""
+    for update in (
+        'UPDATE "comment" SET "user" = ? WHERE "user" = ?',
+        'UPDATE "segment" SET "created_by" = ? WHERE "created_by" = ?',
+        'UPDATE "video" SET "uploaded_by" = ? WHERE "uploaded_by" = ?',
+        'UPDATE "upload" SET "user" = ? WHERE "user" = ?',
+    ):
+        con.execute(update, (DELETED_USER_ID, user_id))
+
+
+def delete_user(con: sqlite3.Connection, user_id: int) -> None:
+    """Sessions and invitation go with it (ON DELETE CASCADE): give its content away first."""
+    con.execute('DELETE FROM "user" WHERE "id" = ?', (user_id,))
 
 
 def roles(con: sqlite3.Connection) -> list[sqlite3.Row]:

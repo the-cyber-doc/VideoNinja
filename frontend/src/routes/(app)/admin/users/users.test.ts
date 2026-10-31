@@ -6,13 +6,17 @@ const mocks = vi.hoisted(() => ({
 	invalidate: vi.fn(async () => {}),
 	createUser: vi.fn(),
 	getInvite: vi.fn(),
-	resetUser: vi.fn()
+	resetUser: vi.fn(),
+	deactivateUser: vi.fn(),
+	deleteUser: vi.fn()
 }));
 vi.mock('$app/navigation', () => ({ invalidate: mocks.invalidate }));
 vi.mock('#lib/api/users.js', () => ({
 	createUser: mocks.createUser,
 	getInvite: mocks.getInvite,
-	resetUser: mocks.resetUser
+	resetUser: mocks.resetUser,
+	deactivateUser: mocks.deactivateUser,
+	deleteUser: mocks.deleteUser
 }));
 
 const invite = { token: 'tok', expires_at: '2026-11-05T10:00:00+01:00' };
@@ -65,5 +69,26 @@ describe('user management actions', () => {
 		mocks.resetUser.mockRejectedValue(refused);
 		expect(await admin.reset(kenji)).toBe(false);
 		expect([admin.error, admin.busy]).toEqual([refused, false]);
+	});
+
+	it('deactivate: the list reloaded', async () => {
+		mocks.deactivateUser.mockResolvedValue(undefined);
+		const admin = new UserAdmin();
+		expect(await admin.deactivate(kenji)).toBe(true);
+		expect(mocks.deactivateUser).toHaveBeenCalledWith(2);
+		expect(mocks.invalidate).toHaveBeenCalledWith('app:users');
+	});
+
+	it("delete: the list reloaded, the deleted user's link no longer shown", async () => {
+		mocks.createUser.mockResolvedValue(invite);
+		mocks.deleteUser.mockResolvedValue(undefined);
+		const admin = new UserAdmin();
+		await admin.create('hana', 'user');
+		expect(await admin.remove(kenji)).toBe(true);
+		expect(admin.link?.username).toBe('hana'); // someone else's: kept
+		await admin.create('kenji', 'user');
+		expect(await admin.remove(kenji)).toBe(true);
+		expect(mocks.deleteUser).toHaveBeenCalledWith(2);
+		expect(admin.link).toBeNull();
 	});
 });

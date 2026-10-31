@@ -62,6 +62,48 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/users/{user_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete User
+         * @description Delete the user (sessions and invitation too). Their comments, segments, videos and
+         *     uploads are kept, given to the generic deleted user. One transaction.
+         */
+        delete: operations["delete_user_api_admin_users__user_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/users/{user_id}/deactivate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Deactivate User
+         * @description Remove the password, TOTP, sessions and any invitation: the user can no longer log in
+         *     nor register. A reset (a new invitation) reactivates them.
+         */
+        post: operations["deactivate_user_api_admin_users__user_id__deactivate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/users/{user_id}/invite": {
         parameters: {
             query?: never;
@@ -895,7 +937,7 @@ export interface components {
             /** Text */
             text: string;
             /** User */
-            user: string;
+            user: string | null;
         };
         /** CreateIn */
         CreateIn: {
@@ -1199,7 +1241,7 @@ export interface components {
              * Status
              * @enum {string}
              */
-            status: "registered" | "invited" | "expired";
+            status: "registered" | "invited" | "expired" | "deactivated";
             /** Username */
             username: string;
         };
@@ -1344,6 +1386,68 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["InviteOut"];
                 };
+            };
+            /** @description An error (core/errors.py: ERRORS) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    delete_user_api_admin_users__user_id__delete: {
+        parameters: {
+            query?: never;
+            header?: {
+                "time-zone"?: string | null;
+            };
+            path: {
+                user_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description An error (core/errors.py: ERRORS) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    deactivate_user_api_admin_users__user_id__deactivate_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "time-zone"?: string | null;
+            };
+            path: {
+                user_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description An error (core/errors.py: ERRORS) */
             default: {

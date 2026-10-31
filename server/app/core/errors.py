@@ -52,6 +52,8 @@ ERRORS: dict[str, tuple[int, str]] = {
     "user.unknown_role": (422, "Unknown role"),
     "user.exists": (409, "This username already exists"),
     "user.reset_self": (400, "You cannot reset your own account"),
+    "user.deactivate_self": (400, "You cannot deactivate your own account"),
+    "user.delete_self": (400, "You cannot delete your own account"),
     "user.no_invite": (404, "No valid invitation"),
     # Catalogue and comments
     "catalog.unavailable": (503, "Catalogue not available"),

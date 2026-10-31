@@ -7,6 +7,8 @@
 		refresh: 'M20 11a8 8 0 0 0-14.9-3M4 4v4h4M4 13a8 8 0 0 0 14.9 3M20 20v-4h-4',
 		check: 'M5 12.5l4.5 4.5L19 7',
 		cross: 'M6 6l12 12M18 6L6 18',
+		'user-off': 'M10 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm-7 9a7 7 0 0 1 12-4.9M16 16l5 5M21 16l-5 5',
+		trash: 'M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3',
 		play: 'M7 5v14l12-7z',
 		pause: 'M8 5v14M16 5v14',
 		stop: 'M6 6h12v12H6z',

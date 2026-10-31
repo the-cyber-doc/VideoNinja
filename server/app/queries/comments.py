@@ -3,20 +3,21 @@
 import sqlite3
 
 from .rows import inserted, one
+from .users import DELETED_USER_ID
 
 # Dates are text with their UTC offset, "2026-10-23T12:13:38+02:00" (app/clock.py),
 # in different timezones: always compare and sort them through datetime().
 
 
 def technique_comments(con: sqlite3.Connection, technique_id: str, user_id: int) -> list[sqlite3.Row]:
-    """Last modified first, with the author's display name (else username) and
-    "mine": written by `user_id`."""
+    """Last modified first, with the author's display name (else username; None: the deleted
+    user) and "mine": written by `user_id`."""
     return con.execute(
         'SELECT c."id", COALESCE(u."name", u."username") AS "user", c."created_at", c."modified_at",'
         ' c."lang", c."text", c."user" = ? AS "mine"'
-        ' FROM "comment" c JOIN "user" u ON u."id" = c."user"'
+        ' FROM "comment" c LEFT JOIN "user" u ON u."id" = c."user" AND u."id" <> ?'
         ' WHERE c."technique" = ? ORDER BY datetime(c."modified_at") DESC, c."id" DESC',
-        (user_id, technique_id),
+        (user_id, DELETED_USER_ID, technique_id),
     ).fetchall()
 
 
@@ -26,8 +27,8 @@ def comment(con: sqlite3.Connection, comment_id: int, user_id: int) -> sqlite3.R
         con.execute(
             'SELECT c."id", COALESCE(u."name", u."username") AS "user", c."created_at", c."modified_at",'
             ' c."lang", c."text", c."user" = ? AS "mine", c."user" AS "author"'
-            ' FROM "comment" c JOIN "user" u ON u."id" = c."user" WHERE c."id" = ?',
-            (user_id, comment_id),
+            ' FROM "comment" c LEFT JOIN "user" u ON u."id" = c."user" AND u."id" <> ? WHERE c."id" = ?',
+            (user_id, DELETED_USER_ID, comment_id),
         )
     )
 

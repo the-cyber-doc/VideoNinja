@@ -1,6 +1,6 @@
 <script lang="ts">
 	// User management: the list (this page's data, +page.ts: access checked there) and
-	// its actions (users.svelte.ts). Markup only, and the confirmation of a reset.
+	// its actions (users.svelte.ts). Markup only, and the confirmations.
 	import ErrorMessage from '#lib/ErrorMessage.svelte';
 	import type { UserRow } from '#lib/api/types.js';
 	import { i18n, t } from '#lib/i18n.svelte.js';
@@ -26,10 +26,19 @@
 		admin.reset(user);
 	};
 
+	const deactivate = (user: UserRow) => {
+		if (confirm(t('users.deactivate_confirm', { username: user.username }))) admin.deactivate(user);
+	};
+
+	const remove = (user: UserRow) => {
+		if (confirm(t('users.delete_confirm', { username: user.username }))) admin.remove(user);
+	};
+
 	const STATUS = {
 		registered: { icon: 'check', label: 'users.status.registered', class: 'ok' },
 		invited: { icon: null, label: 'users.status.invited', class: '' },
-		expired: { icon: 'cross', label: 'users.status.expired', class: 'bad' }
+		expired: { icon: 'cross', label: 'users.status.expired', class: 'bad' },
+		deactivated: { icon: 'user-off', label: 'users.status.deactivated', class: 'off' }
 	} as const;
 </script>
 
@@ -108,15 +117,31 @@
 						<td>{user.name ?? ''}</td>
 						<td>{data.roles.find((r) => r.id === user.role)?.name ?? user.role}</td>
 						<td class="actions">
-							{#if user.status === 'invited'}
-								<IconButton
-									label={t('users.copy_invite')}
-									icon="copy"
-									onclick={() => admin.copyInvite(user)}
-									disabled={admin.busy}
-								/>
-							{:else if user.username !== session.user?.username}
-								<IconButton label={t('users.reset')} icon="refresh" onclick={() => reset(user)} disabled={admin.busy} />
+							{#if user.username !== session.user?.username}
+								{#if user.status === 'invited'}
+									<IconButton
+										label={t('users.copy_invite')}
+										icon="copy"
+										onclick={() => admin.copyInvite(user)}
+										disabled={admin.busy}
+									/>
+								{:else}
+									<IconButton
+										label={t(user.status === 'deactivated' ? 'users.reactivate' : 'users.reset')}
+										icon="refresh"
+										onclick={() => reset(user)}
+										disabled={admin.busy}
+									/>
+								{/if}
+								{#if user.status !== 'deactivated'}
+									<IconButton
+										label={t('users.deactivate')}
+										icon="user-off"
+										onclick={() => deactivate(user)}
+										disabled={admin.busy}
+									/>
+								{/if}
+								<IconButton label={t('users.delete')} icon="trash" onclick={() => remove(user)} disabled={admin.busy} />
 							{/if}
 						</td>
 					</tr>
@@ -195,9 +220,12 @@
 	td.status.bad {
 		color: var(--error);
 	}
+	td.status.off {
+		color: var(--muted);
+	}
 	td.actions {
-		width: 3rem;
 		text-align: right;
+		white-space: nowrap;
 	}
 	.visually-hidden {
 		position: absolute;

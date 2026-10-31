@@ -3,6 +3,7 @@
 import sqlite3
 
 from .rows import inserted
+from .users import DELETED_USER_ID
 
 
 def insert_segment(
@@ -23,13 +24,13 @@ def insert_segment_tag(con: sqlite3.Connection, segment_id: int, tag: str, value
 
 
 def video_segments(con: sqlite3.Connection, video_id: int) -> list[sqlite3.Row]:
-    """created_by: the author's display name (name, else username); None if unknown."""
+    """created_by: the author's display name (name, else username); None if unknown or deleted."""
     return con.execute(
         'SELECT s."id", s."begin_s", s."end_s", s."technique", s."performer",'
         ' COALESCE(u."name", u."username") AS "created_by"'
-        ' FROM "segment" s LEFT JOIN "user" u ON u."id" = s."created_by"'
+        ' FROM "segment" s LEFT JOIN "user" u ON u."id" = s."created_by" AND u."id" <> ?'
         ' WHERE s."video" = ? ORDER BY s."begin_s", s."id"',
-        (video_id,),
+        (DELETED_USER_ID, video_id),
     ).fetchall()
 
 
