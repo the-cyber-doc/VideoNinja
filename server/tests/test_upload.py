@@ -3,7 +3,7 @@ real ffmpeg runs in test_encoder.py)."""
 
 import threading
 import time
-from datetime import UTC, datetime, timedelta
+from datetime import timedelta
 
 import pyotp
 import pytest
@@ -11,7 +11,8 @@ from fastapi.testclient import TestClient
 
 from app.api import videos
 from app.core import clock, db, i18n
-from app.domain import security, snapshot
+from app.core.errors import ApiError
+from app.domain import security, segments, snapshot
 from app.encoder import checks, heartbeat, notify, queue, thumbnails
 
 from .conftest import connect
@@ -24,19 +25,22 @@ ENCODED = "e" * 64
 
 
 def add_tags(con):
-    """ "place": fixed values (one without French name: falls back to English); "note": free text."""
+    """ "place": fixed values (one without French name: falls back to English); "note": free text;
+    "rain": no value."""
     con.executemany(
         "INSERT INTO translation (id, en, fr) VALUES (?, ?, ?)",
         [
             ("tag.place.name", "Place", "Lieu"),
             ("tag.note.name", "Note", "Remarque"),
+            ("tag.rain.name", "Rain", "Pluie"),
             ("tag_value.place.dojo.name", "Dojo", "Dojo"),
             ("tag_value.place.outdoor.name", "Outdoor", "Extérieur"),
             ("tag_value.place.online.name", "Online", None),
         ],
     )
     con.executemany(
-        "INSERT INTO tag (id, name) VALUES (?, ?)", [("place", "tag.place.name"), ("note", "tag.note.name")]
+        "INSERT INTO tag (id, name, value_format) VALUES (?, ?, ?)",
+        [("place", "tag.place.name", "list"), ("note", "tag.note.name", "free"), ("rain", "tag.rain.name", None)],
     )
     con.executemany(
         "INSERT INTO tag_value (tag, id, name) VALUES ('place', ?, ?)",
@@ -170,36 +174,41 @@ def test_tags_translated(admin):
 
     def ours(lang):
         tags = admin.get("/api/tags", headers={"Accept-Language": lang}).json()
-        return [t for t in tags if t["id"] in ("place", "note")]  # not the seeded ones
+        return [t for t in tags if t["id"] in ("place", "note", "rain")]  # not the seeded ones
 
     assert ours("en") == [
-        {"id": "note", "name": "Note"},
+        {"id": "note", "name": "Note", "format": "free", "input_mode": "text"},
         {
             "id": "place",
             "name": "Place",
+            "format": "list",
+            "input_mode": "text",
             "values": [
                 {"id": "dojo", "name": "Dojo"},
                 {"id": "online", "name": "Online"},
                 {"id": "outdoor", "name": "Outdoor"},
             ],
         },
+        {"id": "rain", "name": "Rain", "input_mode": "text"},  # no value: no format
     ]
     assert ours("fr") == [
         {
             "id": "place",
             "name": "Lieu",
+            "format": "list",
+            "input_mode": "text",
             "values": [
                 {"id": "dojo", "name": "Dojo"},
                 {"id": "outdoor", "name": "Extérieur"},
                 {"id": "online", "name": "Online"},
             ],
         },  # no French name: the English one
-        {"id": "note", "name": "Remarque"},
+        {"id": "rain", "name": "Pluie", "input_mode": "text"},
+        {"id": "note", "name": "Remarque", "format": "free", "input_mode": "text"},
     ]
 
 
-def test_seeded_tags(admin, monkeypatch):
-    monkeypatch.setattr(clock, "now", lambda: datetime(2026, 10, 23, tzinfo=UTC))
+def test_seeded_tags(admin):
     seeded = ("location", "event", "year", "country", "source")
     for lang, names in [
         ("en", ["Country", "Event", "Location", "Source", "Year"]),
@@ -216,10 +225,12 @@ def test_seeded_tags(admin, monkeypatch):
         assert tags["year"] == {
             "id": "year",
             "name": {"en": "Year", "fr": "Année"}[lang],
-            "format": "year",
-            "min": 1926,
-            "max": 2026,
+            "format": "regexp",
+            "pattern": "[12][0-9]{3}",
+            "hint": {"en": "A year, e.g. 2024", "fr": "Une année, par ex. 2024"}[lang],
+            "input_mode": "numeric",
         }
+        assert {tags[t]["format"] for t in seeded if t != "year"} == {"list"}
     fr = {t["id"]: t for t in admin.get("/api/tags", headers={"Accept-Language": "fr"}).json()}
     assert fr["location"]["values"] == [{"id": "dojo", "name": "Dojo"}, {"id": "outdoor", "name": "Extérieur"}]
     assert fr["event"]["values"] == [
@@ -240,35 +251,49 @@ def test_seeded_tags(admin, monkeypatch):
 
 
 @pytest.mark.parametrize(
-    "value, ok",
+    "value, code",
     [
-        ("1926", True),
-        ("2026", True),
-        ("1999", True),
-        ("1925", False),
-        ("2027", False),
-        ("99", False),
-        ("20x6", False),
-        ("２０２０", False),  # noqa: RUF001 - fullwidth digits on purpose
-        (None, False),
+        ("1066", None),
+        ("2999", None),
+        ("0999", "tag.pattern"),
+        ("3000", "tag.pattern"),
+        ("99", "tag.pattern"),
+        ("20x6", "tag.pattern"),
+        ("２０２０", "tag.pattern"),  # noqa: RUF001 - fullwidth digits on purpose
+        ("2024 ", "tag.pattern"),  # the whole value
+        (None, "tag.missing_value"),
     ],
 )
-def test_year_tag(admin, monkeypatch, value, ok):
-    monkeypatch.setattr(clock, "now", lambda: datetime(2026, 10, 23, tzinfo=UTC))
+def test_year_tag(admin, value, code):
+    """The seeded year: its regular expression, the whole value."""
     tag = {"id": "year"} if value is None else {"id": "year", "value": value}
     r = submit(admin, uploaded(admin), tags=[tag])
-    assert r.status_code == (201 if ok else 422), r.text
-    if not ok:
-        assert "a year from 1926 to 2026" in r.text
+    assert r.status_code == (201 if code is None else 422), r.text
+    if code:
+        assert r.json()["code"] == code
 
 
-def test_year_in_the_user_timezone(admin, monkeypatch):
-    # New Year's Eve 23:30 UTC: already 2026 in Tokyo. (A past date: the session stays valid.)
-    monkeypatch.setattr(clock, "now", lambda: datetime(2025, 12, 31, 23, 30, tzinfo=UTC))
-    body = {"original_filename": "kata.mov", "all_segments_done": False, "tags": [{"id": "year", "value": "2026"}]}
-    for zone, sha, status in [("Europe/London", "a" * 64, 422), ("Asia/Tokyo", "b" * 64, 201)]:
-        r = admin.post(f"/api/uploads/{uploaded(admin, sha=sha)}/submit", json=body, headers={"Time-Zone": zone})
-        assert r.status_code == status, zone
+def test_tag_without_value(admin):
+    assert submit(admin, uploaded(admin), tags=[{"id": "rain", "value": "x"}]).json()["code"] == "tag.no_value"
+    assert submit(admin, uploaded(admin, sha="b" * 64), tags=[{"id": "rain"}]).status_code == 201
+
+
+def test_tag_checked_again_in_the_write(admin, monkeypatch):
+    """Changed on the Options page while the upload finished: refused, nothing stored."""
+    tus_id = uploaded(admin)
+    calls = []
+    real = segments.check
+
+    def check(con, tags, segment_list, **kwargs):
+        calls.append(con.in_transaction)
+        if con.in_transaction:
+            raise ApiError("tag.unknown", tag="note")
+        return real(con, tags, segment_list, **kwargs)
+
+    monkeypatch.setattr(segments, "check", check)
+    r = submit(admin, tus_id, tags=[{"id": "note", "value": "x"}])
+    assert (r.status_code, calls) == (422, [False, True])
+    assert connect().execute("SELECT count(*) FROM video").fetchone() == (0,)
 
 
 def test_tag_values_stored_by_id_free_text_as_typed(admin):

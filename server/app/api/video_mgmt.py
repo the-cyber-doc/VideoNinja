@@ -12,7 +12,6 @@ the segment shows its video's thumbnail meanwhile.
 
 import sqlite3
 from collections.abc import Iterable
-from datetime import tzinfo
 
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
@@ -23,7 +22,7 @@ from ..core.errors import ApiError
 from ..domain import audit, segments
 from ..domain.segments import AnnotatedSegment, TagIn
 from ..queries.users import User
-from .deps import rebuild_after_write, require_access, user_zone
+from .deps import rebuild_after_write, require_access
 
 router = APIRouter(prefix="/api", tags=["video management"])
 manager = require_access("video_mgmt")
@@ -104,14 +103,13 @@ def save_annotations(
     body: Annotations,
     me: User = Depends(manager),
     con: sqlite3.Connection = Depends(db.get_db),
-    zone: tzinfo = Depends(user_zone),
 ) -> AnnotationsOut:
     # One write transaction from the first read: two editors saving the same video
     # at once are applied one after the other, never mixed.
     with db.write(con):
         video = _published(con, video_id)
         existing = {s["id"]: s for s in queries.segments.video_segments(con, video_id)}
-        segments.check(con, body.tags, body.segments, zone, existing=existing, duration_s=video["duration_s"])
+        segments.check(con, body.tags, body.segments, existing=existing, duration_s=video["duration_s"])
         sent_ids = {s.id for s in body.segments if s.id is not None}
 
         changed = False  # a segment added, moved or removed: thumbnails to make or delete

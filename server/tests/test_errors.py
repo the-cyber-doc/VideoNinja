@@ -6,7 +6,6 @@ import asyncio
 import json
 import re
 import string
-from datetime import UTC
 from pathlib import Path
 
 from fastapi import FastAPI
@@ -63,8 +62,16 @@ def test_validation_codes_in_the_table():
 
 
 def test_tag_value_errors_in_the_table():
-    for rule, value in (("year", "1066"), (["dojo"], "beach")):
-        code, params = tags.value_error(rule, value, UTC)
+    for rule, value in (
+        (tags.Rule("list", frozenset({"dojo"})), "beach"),
+        (tags.Rule("regexp", regexp="[0-9]+"), "x"),
+        (tags.Rule("free", min=1), "0"),
+        (tags.Rule("free"), ""),
+        (tags.Rule(None), "x"),
+    ):
+        error = tags.value_error(rule, value)
+        assert error is not None
+        code, params = error
         assert code in errors.ERRORS
         errors.body(code, tag="place", **params)  # its text takes these params
 

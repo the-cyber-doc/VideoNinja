@@ -219,3 +219,40 @@ def test_v3_to_v2_removes_an_unused_deleted_user(database, monkeypatch):
     monkeypatch.setattr(db, "EXPECTED_VERSION", 2)
     db.migrate()
     assert sql(database, "SELECT count(*) FROM user") == [(0,)]
+
+
+def test_v3_gives_tags_an_explicit_format(database, monkeypatch):
+    """v2 → v3: fixed values → list, 'year' → its regexp + hint + numeric keyboard, any text
+    → free; the "options" access for admins. v3 → v2 back to v2's formats."""
+    build(database, 2)
+    sql(database, "INSERT INTO translation (id, en) VALUES ('tag.note.name', 'Note')")
+    sql(database, "INSERT INTO tag (id, name) VALUES ('note', 'tag.note.name')")
+    sql(database, "INSERT INTO video (original_sha256, original_filename, uploaded_at) VALUES ('b', 'k.mp4', 'x')")
+    sql(database, "INSERT INTO video_has_tags (video, tag, value) VALUES (1, 'year', '2024')")
+    monkeypatch.setattr(db, "EXPECTED_VERSION", 3)
+    db.migrate()
+    rows = (
+        "SELECT id, value_format, regexp, hint, input_mode FROM tag WHERE id IN ('country', 'note', 'year') ORDER BY id"
+    )
+    assert sql(database, rows) == [
+        ("country", "list", None, None, "text"),
+        ("note", "free", None, None, "text"),
+        ("year", "regexp", "[12][0-9]{3}", "tag.year.hint", "numeric"),
+    ]
+    assert sql(database, "SELECT en, fr FROM translation WHERE id = 'tag.year.hint'") == [
+        ("A year, e.g. 2024", "Une année, par ex. 2024")
+    ]
+    assert sql(database, "SELECT role FROM role_has_access WHERE access = 'options'") == [("admin",)]
+    assert sql(database, "SELECT tag, value FROM video_has_tags") == [("year", "2024")]
+    assert sql(database, "PRAGMA foreign_key_check") == []
+
+    monkeypatch.setattr(db, "EXPECTED_VERSION", 2)
+    db.migrate()
+    rows = "SELECT id, value_format FROM tag WHERE id IN ('country', 'note', 'year') ORDER BY id"
+    assert sql(database, rows) == [("country", None), ("note", None), ("year", "year")]
+    assert sql(database, "SELECT count(*) FROM translation WHERE id IN ('tag.year.hint', 'access.options.name')") == [
+        (0,)
+    ]
+    assert sql(database, "SELECT count(*) FROM role_has_access WHERE access = 'options'") == [(0,)]
+    assert sql(database, "SELECT tag, value FROM video_has_tags") == [("year", "2024")]
+    assert sql(database, "PRAGMA foreign_key_check") == []

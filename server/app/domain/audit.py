@@ -48,6 +48,9 @@ EVENTS: dict[str, int] = {
     "comment.created": INFO,
     "comment.edited": INFO,
     "comment.deleted": INFO,
+    "tag.created": INFO,
+    "tag.saved": INFO,  # previous_id: its ID until then (renamed when different)
+    "tag.deleted": INFO,
 }
 
 

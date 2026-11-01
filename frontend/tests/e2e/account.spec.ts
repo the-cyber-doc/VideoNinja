@@ -1,5 +1,5 @@
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Browser, type Page } from '@playwright/test';
 import { TOTP } from 'otpauth';
 
 // Real backend, fresh database: the tests depend on each other. Either Playwright's own
@@ -103,10 +103,10 @@ test('log in, then log out from the user menu', async ({ page }) => {
 	await expect(page).toHaveURL('login');
 });
 
-test('user menu: Profile first, User Management for admins, About, Log out last', async ({ page }) => {
+test('user menu: Profile first, User Management and Options for admins, About, Log out last', async ({ page }) => {
 	await logIn(page);
 	const menu = await openMenu(page);
-	await expect(menu.getByRole('menuitem')).toHaveText(['Profile', 'User Management', 'About', 'Log out']);
+	await expect(menu.getByRole('menuitem')).toHaveText(['Profile', 'User Management', 'Options', 'About', 'Log out']);
 	await page.keyboard.press('Escape');
 	await expect(menu).toBeHidden();
 });
@@ -277,6 +277,85 @@ test('comments: add, edit and delete my own, saved in the database', async ({ pa
 	await expect(page.getByText('No comments yet.')).toBeVisible();
 	await page.reload();
 	await expect(page.getByText('No comments yet.')).toBeVisible();
+});
+
+/** Kenji in a browser of his own (the admin's page stays open), registered from a new invitation link. */
+async function kenjiRegistered(page: Page, browser: Browser, baseURL?: string): Promise<Page> {
+	const row = page.getByRole('row', { name: /kenji/ });
+	await expect(row).toContainText('Invitation pending');
+	await row.getByRole('button', { name: 'Copy invite link' }).click();
+	const link = await page.getByLabel('Invitation link', { exact: true }).inputValue();
+	expect(link).toMatch(/\/register#/);
+
+	const context = await browser.newContext({ baseURL, ignoreHTTPSErrors: true, locale: 'en-US' });
+	const kenjiPage = await context.newPage();
+	await kenjiPage.goto(link);
+	kenji.totpSecret = await createAccount(kenjiPage, kenji.password);
+	await expect(kenjiPage.getByText('Your account is ready')).toBeVisible();
+	await logIn(kenjiPage, kenji);
+	return kenjiPage;
+}
+
+test('user management: deactivate a user, then reactivate them', async ({ page, browser, baseURL }) => {
+	page.on('dialog', (d) => d.accept());
+	await logIn(page);
+	await page.goto('admin/users');
+	const kenjiPage = await kenjiRegistered(page, browser, baseURL);
+	await page.reload();
+	const row = page.getByRole('row', { name: /kenji/ });
+	await expect(row).toContainText('Registered');
+
+	await row.getByRole('button', { name: 'Deactivate account' }).click();
+	await expect(row).toContainText('Deactivated');
+	await expect(row.getByRole('button', { name: 'Deactivate account' })).toHaveCount(0);
+	await page.reload(); // stored by the server
+	await expect(row).toContainText('Deactivated');
+
+	// Logged out everywhere, and the credentials are gone.
+	await kenjiPage.reload();
+	await expect(kenjiPage).toHaveURL('login');
+	await fillLogin(kenjiPage, kenji);
+	await expect(kenjiPage.getByRole('alert')).toBeVisible();
+	await kenjiPage.context().close();
+
+	// Reactivate: a new invitation link, the account registered again.
+	await row.getByRole('button', { name: 'Reactivate (new invitation link)' }).click();
+	await expect(page.getByLabel('Invitation link', { exact: true })).toHaveValue(/\/register#/);
+	await expect(row).toContainText('Invitation pending');
+	const again = await kenjiRegistered(page, browser, baseURL);
+	await again.context().close();
+});
+
+test('user management: delete a user, their comments kept', async ({ page, browser, baseURL }) => {
+	page.on('dialog', (d) => d.accept());
+	await logIn(page);
+	await page.goto('admin/users');
+	// Back to an invitation (the previous test left kenji registered), then registered again.
+	await page.getByRole('row', { name: /kenji/ }).getByRole('button', { name: 'Reset account' }).click();
+	const kenjiPage = await kenjiRegistered(page, browser, baseURL);
+
+	await kenjiPage.goto('schools/gyokko/taijutsu/jo_ryaku/koku');
+	await kenjiPage.getByRole('button', { name: 'Add a comment' }).click();
+	await kenjiPage.getByPlaceholder('Your comment').fill('Written by kenji');
+	await kenjiPage.getByRole('button', { name: 'Save' }).click();
+	await expect(kenjiPage.locator('.comment')).toHaveText([/kenji.*Written by kenji/]);
+
+	await page.reload();
+	await page.getByRole('row', { name: /kenji/ }).getByRole('button', { name: 'Delete user' }).click();
+	await expect(page.getByRole('row', { name: /kenji/ })).toHaveCount(0);
+	await page.reload();
+	await expect(page.getByRole('row', { name: /kenji/ })).toHaveCount(0);
+
+	// Logged out, and gone.
+	await kenjiPage.reload();
+	await expect(kenjiPage).toHaveURL('login');
+	await fillLogin(kenjiPage, kenji);
+	await expect(kenjiPage.getByRole('alert')).toBeVisible();
+	await kenjiPage.context().close();
+
+	// The comment stays, by a deleted user.
+	await page.goto('schools/gyokko/taijutsu/jo_ryaku/koku');
+	await expect(page.locator('.comment')).toHaveText([/a deleted user.*Written by kenji/]);
 });
 
 // The admin's final credentials (changed by the profile tests), for tests/stack.

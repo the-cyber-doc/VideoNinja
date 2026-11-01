@@ -181,13 +181,59 @@
 		"fr": "Une étiquette est donnée deux fois."
 	},
 	"error.tag.unknown": { "en": "Unknown tag: {tag}.", "fr": "Étiquette inconnue : {tag}." },
-	"error.tag.year": {
-		"en": "{tag}: enter a year from {min} to {max}.",
-		"fr": "{tag} : saisissez une année de {min} à {max}."
-	},
 	"error.tag.value": {
 		"en": "{tag}: choose one of the proposed values.",
 		"fr": "{tag} : choisissez une des valeurs proposées."
+	},
+	"error.tag.pattern": {
+		"en": "{tag}: the value does not have the expected form.",
+		"fr": "{tag} : la valeur n'a pas la forme attendue."
+	},
+	"error.tag.range": {
+		"en": "{tag}: enter a number from {min} to {max}.",
+		"fr": "{tag} : saisissez un nombre de {min} à {max}."
+	},
+	"error.tag.no_value": { "en": "{tag} takes no value.", "fr": "{tag} ne prend pas de valeur." },
+	"error.tag.missing_value": { "en": "{tag}: a value is needed.", "fr": "{tag} : une valeur est nécessaire." },
+	"error.tag.not_found": {
+		"en": "Unknown tag: {tag}. Reload the page.",
+		"fr": "Étiquette inconnue : {tag}. Rechargez la page."
+	},
+	"error.tag.exists": {
+		"en": "A tag with the ID {tag} exists already.",
+		"fr": "Une étiquette d'identifiant {tag} existe déjà."
+	},
+	"error.tag.in_use": {
+		"en": "{tag} cannot be deleted: videos or segments use it ({count}).",
+		"fr": "{tag} ne peut pas être supprimée : des vidéos ou des segments l'utilisent ({count})."
+	},
+	"error.tag.value_in_use": {
+		"en": "The value {value} cannot be removed: videos or segments use it ({count}).",
+		"fr": "La valeur {value} ne peut pas être retirée : des vidéos ou des segments l'utilisent ({count})."
+	},
+	"error.tag.value_unknown": {
+		"en": "{tag} has no value {value}. Reload the page.",
+		"fr": "{tag} n'a pas de valeur {value}. Rechargez la page."
+	},
+	"error.tag.duplicate_value": {
+		"en": "The value ID {value} is given twice.",
+		"fr": "L'identifiant de valeur {value} est donné deux fois."
+	},
+	"error.tag.regexp_invalid": {
+		"en": "This is not a valid regular expression.",
+		"fr": "Ce n'est pas une expression régulière valide."
+	},
+	"error.tag.range_invalid": {
+		"en": "The minimum is above the maximum.",
+		"fr": "Le minimum est au-dessus du maximum."
+	},
+	"error.tag.format_conflict": {
+		"en": "{count} values already stored for {tag} would not follow the new rule: change them first.",
+		"fr": "{count} valeurs déjà enregistrées pour {tag} ne suivraient pas la nouvelle règle : modifiez-les d'abord."
+	},
+	"error.validation.translations": {
+		"en": "A text is needed in every language.",
+		"fr": "Un texte est nécessaire dans chaque langue."
 	},
 	"error.validation.missing": {
 		"en": "A required value is missing.",
@@ -353,6 +399,7 @@
 	"menu.user": { "en": "User menu", "fr": "Menu utilisateur" },
 	"menu.profile": { "en": "Profile", "fr": "Profil" },
 	"menu.user_mgmt": { "en": "User Management", "fr": "Gestion des utilisateurs" },
+	"menu.options": { "en": "Options", "fr": "Options" },
 	"menu.about": { "en": "About", "fr": "À propos" },
 	"menu.logout": { "en": "Log out", "fr": "Se déconnecter" },
 
@@ -587,7 +634,6 @@
 	"upload.tag.add": { "en": "Add a tag", "fr": "Ajouter une étiquette" },
 	"upload.tag.value": { "en": "Value", "fr": "Valeur" },
 	"upload.tag.chip": { "en": "{name}: {value}", "fr": "{name} : {value}" },
-	"upload.tag.year": { "en": "Year ({min}–{max})", "fr": "Année ({min}–{max})" },
 	"upload.tag.remove": { "en": "Remove the tag {name}", "fr": "Retirer l'étiquette {name}" },
 	"upload.tag.none": {
 		"en": "No tags defined yet.",
@@ -665,5 +711,100 @@
 	"upload.failed": {
 		"en": "The upload failed. {error} Proceed again to continue where it stopped.",
 		"fr": "L'envoi a échoué. {error} Relancez pour continuer là où il s'est arrêté."
+	},
+	"options.title": { "en": "Options", "fr": "Options" },
+	"options.tags.title": { "en": "Tags", "fr": "Étiquettes" },
+	"options.tags.hint": {
+		"en": "What videos and segments can be tagged with, and the value each tag takes.",
+		"fr": "Ce dont les vidéos et les segments peuvent être étiquetés, et la valeur que prend chaque étiquette."
+	},
+	"options.tags.add": { "en": "New tag", "fr": "Nouvelle étiquette" },
+	"options.tags.none": { "en": "No tags yet.", "fr": "Aucune étiquette pour l'instant." },
+	"options.tags.new": { "en": "New tag", "fr": "Nouvelle étiquette" },
+	"options.tags.used": { "en": "uses: {n}", "fr": "utilisations : {n}" },
+	"options.tags.unsaved": { "en": "not saved", "fr": "non enregistrée" },
+	"options.tags.id": { "en": "ID", "fr": "Identifiant" },
+	"options.tags.id_hint": {
+		"en": "Lowercase letters, digits and _, at most {max}. Changing it renames the tag everywhere.",
+		"fr": "Lettres minuscules, chiffres et _, au plus {max}. Le changer renomme l'étiquette partout."
+	},
+	"options.tags.format": { "en": "Value", "fr": "Valeur" },
+	"options.tags.format.list": { "en": "One of a list", "fr": "Une valeur d'une liste" },
+	"options.tags.format.regexp": {
+		"en": "Text matching a regular expression",
+		"fr": "Texte suivant une expression régulière"
+	},
+	"options.tags.format.free": { "en": "Free text", "fr": "Texte libre" },
+	"options.tags.format.none": { "en": "No value", "fr": "Pas de valeur" },
+	"options.tags.names": { "en": "Name", "fr": "Nom" },
+	"options.tags.name_in": { "en": "Name ({lang})", "fr": "Nom ({lang})" },
+	"options.tags.translation_id": { "en": "Translation ID:", "fr": "Identifiant de traduction :" },
+	"options.tags.values": { "en": "Values ({n})", "fr": "Valeurs ({n})" },
+	"options.tags.no_values": {
+		"en": "No values yet: add at least one.",
+		"fr": "Aucune valeur pour l'instant : ajoutez-en au moins une."
+	},
+	"options.tags.filter": { "en": "Filter the values", "fr": "Filtrer les valeurs" },
+	"options.tags.value_id": { "en": "Value ID", "fr": "Identifiant de la valeur" },
+	"options.tags.remove_value": { "en": "Remove the value {id}", "fr": "Retirer la valeur {id}" },
+	"options.tags.add_value": { "en": "Add a value", "fr": "Ajouter une valeur" },
+	"options.tags.regexp": { "en": "Regular expression", "fr": "Expression régulière" },
+	"options.tags.regexp_label": { "en": "Expression", "fr": "Expression" },
+	"options.tags.regexp_hint": {
+		"en": "The whole value must match it (no ^ or $ needed). It must work in JavaScript and in Python.",
+		"fr": "La valeur entière doit la suivre (sans ^ ni $). Elle doit fonctionner en JavaScript et en Python."
+	},
+	"options.tags.test": { "en": "Try a value", "fr": "Essayer une valeur" },
+	"options.tags.test_ok": { "en": "Accepted.", "fr": "Acceptée." },
+	"options.tags.input": { "en": "Input", "fr": "Saisie" },
+	"options.tags.hint_hint": {
+		"en": "The hint is shown in the empty field and with an error (optional; then in every language).",
+		"fr": "L'indication s'affiche dans le champ vide et avec une erreur (facultative ; alors dans chaque langue)."
+	},
+	"options.tags.hint_in": { "en": "Hint ({lang})", "fr": "Indication ({lang})" },
+	"options.tags.keyboard": { "en": "Keyboard", "fr": "Clavier" },
+	"options.tags.keyboard.text": { "en": "Text", "fr": "Texte" },
+	"options.tags.keyboard.numeric": { "en": "Numbers", "fr": "Chiffres" },
+	"options.tags.min": { "en": "Minimum", "fr": "Minimum" },
+	"options.tags.max": { "en": "Maximum", "fr": "Maximum" },
+	"options.tags.save": { "en": "Save", "fr": "Enregistrer" },
+	"options.tags.saved": { "en": "Saved.", "fr": "Enregistrée." },
+	"options.tags.discard": { "en": "Discard the changes", "fr": "Annuler les modifications" },
+	"options.tags.delete": { "en": "Delete the tag", "fr": "Supprimer l'étiquette" },
+	"options.tags.delete_confirm": {
+		"en": "Delete the tag {name}? Only a tag no video or segment uses can be deleted.",
+		"fr": "Supprimer l'étiquette {name} ? Seule une étiquette qu'aucune vidéo ni aucun segment n'utilise peut être supprimée."
+	},
+	"options.tags.problem.id": {
+		"en": "The ID: lowercase letters, digits and _ only.",
+		"fr": "L'identifiant : lettres minuscules, chiffres et _ seulement."
+	},
+	"options.tags.problem.names": {
+		"en": "A name is needed in every language.",
+		"fr": "Un nom est nécessaire dans chaque langue."
+	},
+	"options.tags.problem.regexp": {
+		"en": "The regular expression is not valid.",
+		"fr": "L'expression régulière n'est pas valide."
+	},
+	"options.tags.problem.hint": {
+		"en": "The hint: in every language, or in none.",
+		"fr": "L'indication : dans chaque langue, ou dans aucune."
+	},
+	"options.tags.problem.range": {
+		"en": "Minimum and maximum: whole numbers, the minimum not above the maximum.",
+		"fr": "Minimum et maximum : des nombres entiers, le minimum pas au-dessus du maximum."
+	},
+	"options.tags.problem.value_id": {
+		"en": "Each value's ID: letters, digits, _ and - only.",
+		"fr": "L'identifiant de chaque valeur : lettres, chiffres, _ et - seulement."
+	},
+	"options.tags.problem.value_names": {
+		"en": "Each value needs a name in every language.",
+		"fr": "Chaque valeur a besoin d'un nom dans chaque langue."
+	},
+	"options.tags.problem.duplicate": {
+		"en": "Two values have the same ID.",
+		"fr": "Deux valeurs ont le même identifiant."
 	}
 }

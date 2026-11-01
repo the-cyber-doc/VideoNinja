@@ -144,15 +144,28 @@ CREATE TABLE IF NOT EXISTS "comment" (
 	ON UPDATE NO ACTION ON DELETE NO ACTION
 );
 
--- A tag with rows in tag_value takes one of them (video_has_tags / segment_has_tags
--- store the value's id); without, text (stored as typed, not translated) in its
--- value_format: NULL = any text, 'year' = a year, at most 100 years ago, not in the future.
+-- What a tag's value is (video_has_tags / segment_has_tags "value"), by value_format:
+-- 'list' = the id of one of its tag_value rows; 'regexp' = text fully matching "regexp";
+-- 'free' = any text (not empty); NULL = no value (stored NULL). Text values are stored as
+-- typed, not translated. For 'regexp' and 'free': "hint" (a translation, shown as the
+-- placeholder and in errors), "input_mode" (the keyboard: text or numeric) and, numeric
+-- only, "min_value" / "max_value" (bounds of the number, checked too). The app keeps the
+-- fields of the other formats empty. Edited on the Options page (api/options.py).
 CREATE TABLE IF NOT EXISTS "tag" (
 	"id" VARCHAR NOT NULL UNIQUE,
 	"name" VARCHAR NOT NULL,
-	"value_format" VARCHAR,
+	"value_format" VARCHAR CHECK ("value_format" IN ('list', 'regexp', 'free')),
+	"regexp" VARCHAR,
+	"hint" VARCHAR,
+	"input_mode" VARCHAR NOT NULL DEFAULT 'text' CHECK ("input_mode" IN ('text', 'numeric')),
+	"min_value" INTEGER,
+	"max_value" INTEGER,
 	PRIMARY KEY("id"),
+	CHECK (("value_format" IS 'regexp') = ("regexp" IS NOT NULL)),
+	CHECK ("min_value" IS NULL OR "max_value" IS NULL OR "min_value" <= "max_value"),
 	FOREIGN KEY ("name") REFERENCES "translation"("id")
+	ON UPDATE NO ACTION ON DELETE NO ACTION,
+	FOREIGN KEY ("hint") REFERENCES "translation"("id")
 	ON UPDATE NO ACTION ON DELETE NO ACTION
 );
 

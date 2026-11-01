@@ -41,6 +41,51 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/tags": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Tag Definitions
+         * @description Every tag as the Options page edits it, sorted by name in the request's language.
+         */
+        get: operations["list_tag_definitions_api_admin_tags_get"];
+        put?: never;
+        /** Create Tag */
+        post: operations["create_tag_api_admin_tags_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/tags/{tag_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Save Tag
+         * @description The whole tag: a new ID renames it; values missing from `values` are deleted.
+         */
+        put: operations["save_tag_api_admin_tags__tag_id__put"];
+        post?: never;
+        /**
+         * Delete Tag
+         * @description Only a tag no video or segment uses.
+         */
+        delete: operations["delete_tag_api_admin_tags__tag_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/users": {
         parameters: {
             query?: never;
@@ -473,7 +518,7 @@ export interface paths {
         };
         /**
          * List Tags
-         * @description Every tag, sorted by name in the request's language, and its values too.
+         * @description Every tag, sorted by name in the request's language, with its rule.
          */
         get: operations["list_tags_api_tags_get"];
         put?: never;
@@ -1129,17 +1174,89 @@ export interface components {
         /** Tag */
         Tag: {
             /** Format */
-            format?: "year" | null;
+            format?: ("list" | "regexp" | "free") | null;
+            /** Hint */
+            hint?: string | null;
             /** Id */
             id: string;
+            /**
+             * Input Mode
+             * @default text
+             * @enum {string}
+             */
+            input_mode: "text" | "numeric";
             /** Max */
             max?: number | null;
             /** Min */
             min?: number | null;
             /** Name */
             name: string;
+            /** Pattern */
+            pattern?: string | null;
             /** Values */
             values?: components["schemas"]["TagValue"][] | null;
+        };
+        /** TagDefinition */
+        TagDefinition: {
+            /** Format */
+            format: ("list" | "regexp" | "free") | null;
+            /** Hint */
+            hint: {
+                [key: string]: string;
+            } | null;
+            /** Id */
+            id: string;
+            /**
+             * Input Mode
+             * @enum {string}
+             */
+            input_mode: "text" | "numeric";
+            /** Max */
+            max: number | null;
+            /** Min */
+            min: number | null;
+            /** Names */
+            names: {
+                [key: string]: string;
+            };
+            /** Regexp */
+            regexp: string | null;
+            /** Used */
+            used: number;
+            /** Values */
+            values: components["schemas"]["TagValueDefinition"][];
+        };
+        /** TagDefinitionIn */
+        TagDefinitionIn: {
+            /** Format */
+            format?: ("list" | "regexp" | "free") | null;
+            /** Hint */
+            hint?: {
+                [key: string]: string;
+            } | null;
+            /** Id */
+            id: string;
+            /**
+             * Input Mode
+             * @default text
+             * @enum {string}
+             */
+            input_mode: "text" | "numeric";
+            /** Max */
+            max?: number | null;
+            /** Min */
+            min?: number | null;
+            /** Names */
+            names: {
+                [key: string]: string;
+            };
+            /** Regexp */
+            regexp?: string | null;
+            /**
+             * Values
+             * @default []
+             */
+            values: components["schemas"]["TagValueIn"][];
         };
         /** TagIn */
         TagIn: {
@@ -1154,6 +1271,28 @@ export interface components {
             id: string;
             /** Name */
             name: string;
+        };
+        /** TagValueDefinition */
+        TagValueDefinition: {
+            /** Id */
+            id: string;
+            /** Names */
+            names: {
+                [key: string]: string;
+            };
+            /** Used */
+            used: number;
+        };
+        /** TagValueIn */
+        TagValueIn: {
+            /** Id */
+            id: string;
+            /** Names */
+            names: {
+                [key: string]: string;
+            };
+            /** Previous Id */
+            previous_id?: string | null;
         };
         /** TokenIn */
         TokenIn: {
@@ -1320,6 +1459,143 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["RoleOut"][];
                 };
+            };
+            /** @description An error (core/errors.py: ERRORS) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    list_tag_definitions_api_admin_tags_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "time-zone"?: string | null;
+                "accept-language"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TagDefinition"][];
+                };
+            };
+            /** @description An error (core/errors.py: ERRORS) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    create_tag_api_admin_tags_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "time-zone"?: string | null;
+                "accept-language"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TagDefinitionIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TagDefinition"];
+                };
+            };
+            /** @description An error (core/errors.py: ERRORS) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    save_tag_api_admin_tags__tag_id__put: {
+        parameters: {
+            query?: never;
+            header?: {
+                "time-zone"?: string | null;
+                "accept-language"?: string | null;
+            };
+            path: {
+                tag_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TagDefinitionIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TagDefinition"];
+                };
+            };
+            /** @description An error (core/errors.py: ERRORS) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    delete_tag_api_admin_tags__tag_id__delete: {
+        parameters: {
+            query?: never;
+            header?: {
+                "time-zone"?: string | null;
+            };
+            path: {
+                tag_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description An error (core/errors.py: ERRORS) */
             default: {

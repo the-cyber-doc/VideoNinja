@@ -5,7 +5,6 @@ write transaction that stores the annotation, so what they found still holds."""
 
 import sqlite3
 from collections.abc import Mapping, Sequence
-from datetime import tzinfo
 from typing import Self
 
 from pydantic import BaseModel, Field, model_validator
@@ -44,7 +43,6 @@ def check(
     con: sqlite3.Connection,
     tags: Sequence[TagIn],
     segments: Sequence[SegmentIn],
-    zone: tzinfo,
     *,
     existing: Mapping[int, object] | None = None,
     duration_s: float | None = None,
@@ -54,7 +52,7 @@ def check(
     whole seconds), its tags). The techniques and performers are looked up once
     for all segments, not once each."""
     rules = tag_rules(con)
-    _check_tags(tags, rules, zone)
+    _check_tags(tags, rules)
     ids = [s.id for s in segments if isinstance(s, AnnotatedSegment) and s.id is not None]
     if len(set(ids)) != len(ids):
         raise ApiError("segment.duplicate")
@@ -70,15 +68,15 @@ def check(
             raise ApiError("segment.unknown_performer", performer=segment.performer)
         if duration_s is not None and segment.end_s > duration_s + 1:
             raise ApiError("segment.after_end")
-        _check_tags(segment.tags, rules, zone)
+        _check_tags(segment.tags, rules)
 
 
-def _check_tags(tags: Sequence[TagIn], rules: dict[str, Rule], zone: tzinfo) -> None:
+def _check_tags(tags: Sequence[TagIn], rules: dict[str, Rule]) -> None:
     if len({t.id for t in tags}) != len(tags):
         raise ApiError("tag.duplicate")
     for tag in tags:
         if tag.id not in rules:
             raise ApiError("tag.unknown", tag=tag.id)
-        if error := value_error(rules[tag.id], tag.value, zone):
+        if error := value_error(rules[tag.id], tag.value):
             code, params = error
             raise ApiError(code, tag=tag.id, **params)

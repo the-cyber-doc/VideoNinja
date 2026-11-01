@@ -1,7 +1,12 @@
 -- Version 3 → 2: back to a release before the indexes and the "moderator" access
 -- (admins then change only their own comments). No content is lost: the "deleted user"
 -- (id 0) stays while comments or uploads point to it (NOT NULL), shown under its username.
+-- Tags lose their explicit format and input hints: the year regexp → 'year', any other
+-- → NULL (v2: fixed values if it has some, else any text); the "options" access goes.
 -- Run by the app at startup (app/db.py: migrate), after a backup of the database.
+
+-- The tag table is rebuilt (v2's columns): foreign keys off meanwhile, as SQLite asks.
+PRAGMA foreign_keys = OFF;
 
 BEGIN;
 
@@ -30,6 +35,26 @@ DELETE FROM "user" WHERE "id" = 0
 	AND NOT EXISTS (SELECT 1 FROM "comment" WHERE "user" = 0)
 	AND NOT EXISTS (SELECT 1 FROM "upload" WHERE "user" = 0);
 
+DELETE FROM "role_has_access" WHERE "access" = 'options';
+DELETE FROM "access" WHERE "id" = 'options';
+DELETE FROM "translation" WHERE "id" = 'access.options.name';
+
+CREATE TABLE "tag_v2" (
+	"id" VARCHAR NOT NULL UNIQUE,
+	"name" VARCHAR NOT NULL,
+	"value_format" VARCHAR,
+	PRIMARY KEY("id"),
+	FOREIGN KEY ("name") REFERENCES "translation"("id")
+	ON UPDATE NO ACTION ON DELETE NO ACTION
+);
+INSERT INTO "tag_v2" ("id", "name", "value_format")
+	SELECT "id", "name", CASE WHEN "regexp" = '[12][0-9]{3}' THEN 'year' END FROM "tag";
+DELETE FROM "translation" WHERE "id" IN (SELECT "hint" FROM "tag");
+DROP TABLE "tag";
+ALTER TABLE "tag_v2" RENAME TO "tag";
+
 UPDATE "config" SET "value" = '2' WHERE "name" = 'db_version';
 
 COMMIT;
+
+PRAGMA foreign_keys = ON;

@@ -9,7 +9,7 @@
 	import { t, type MessageKey } from '#lib/i18n.svelte.js';
 	import { hasAccess } from '#lib/session.svelte.js';
 	import IconButton from '#lib/IconButton.svelte';
-	import Icon from '#lib/Icon.svelte';
+	import Section from '#lib/Section.svelte';
 	import { formatTime } from '#lib/time.js';
 	import { offline, removeVideos, savedVideos } from '#lib/offline.svelte.js';
 	import SavedBadge from '#lib/SavedBadge.svelte';
@@ -80,14 +80,12 @@
 			<p class="hint centered">{t('videos.none')}</p>
 		{:else if videos}
 			{#each groups as group (group.section)}
-				<details class="section" open={group.section === firstOpen}>
-					<summary>
-						<span class="name">{t(`videos.section.${group.section}` as MessageKey)}</span>
-						<span class="count">{t('videos.count', { n: group.videos.length })}</span>
-						<!-- Pointing right: collapsed; down: expanded (the open state is the details element's). -->
-						<span class="arrow"><Icon name="chevron-down" size={20} /></span>
-						<span class="hint">{t(`videos.section.${group.section}.hint` as MessageKey)}</span>
-					</summary>
+				<Section
+					title={t(`videos.section.${group.section}` as MessageKey)}
+					count={t('videos.count', { n: group.videos.length })}
+					hint={t(`videos.section.${group.section}.hint` as MessageKey)}
+					open={group.section === firstOpen}
+				>
 					{#if group.videos.length}
 						<ul class="grid">
 							{#each group.videos as video (video.id)}
@@ -120,7 +118,7 @@
 					{:else}
 						<p class="hint empty">{t('videos.empty_section')}</p>
 					{/if}
-				</details>
+				</Section>
 			{/each}
 		{/if}
 	</div>
@@ -155,51 +153,6 @@
 		color: var(--ok);
 		margin: 0;
 		text-align: center;
-	}
-	.section {
-		background: var(--surface);
-		border: 1px solid var(--border);
-		border-radius: var(--radius);
-	}
-	summary {
-		display: flex;
-		flex-wrap: wrap;
-		align-items: baseline;
-		gap: var(--space-1) var(--space-3);
-		padding: var(--space-3) var(--space-4);
-		cursor: pointer;
-		list-style: none; /* the arrow replaces the browser's marker */
-	}
-	summary::-webkit-details-marker {
-		display: none; /* Safari */
-	}
-	.arrow {
-		align-self: center;
-		margin-left: auto;
-		line-height: 0;
-		color: var(--muted);
-		transition: transform 0.15s;
-	}
-	.section:not([open]) .arrow {
-		transform: rotate(-90deg);
-	}
-	@media (prefers-reduced-motion: reduce) {
-		.arrow {
-			transition: none;
-		}
-	}
-	.name {
-		font-weight: 700;
-		font-size: var(--text-lg);
-	}
-	.count {
-		color: var(--muted);
-		font-variant-numeric: tabular-nums;
-	}
-	summary .hint {
-		flex-basis: 100%;
-		margin: 0;
-		font-size: var(--text-sm);
 	}
 	/* Open: most of the screen, its own scroll bar. */
 	.grid {

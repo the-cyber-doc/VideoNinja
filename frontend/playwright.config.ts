@@ -4,7 +4,8 @@ import { defineConfig, devices } from '@playwright/test';
 // WebKit (Safari's engine), service worker blocked (page.route does not see its
 // requests). tests/pwa: the service worker itself (install, offline, caches), API
 // faked with context.route, Chromium. tests/e2e: real backend, fresh database,
-// Chromium only (the flows change the database, so they run once, in order).
+// Chromium only (the flows change the database, so they run once, in order:
+// project e2e = account.spec.ts, then project options = the others).
 const API_PORT = 8001; // not 8000, so a running dev backend does not interfere
 // Not 4173 (`npm run preview`'s default): a preview started by hand would be taken
 // for the test build, with an old build and /api going to the dev backend.
@@ -16,13 +17,32 @@ const SUBPATH = '/videoninja';
 // http://localhost:8080/videoninja/. Only the e2e tests, then tests/stack (an upload
 // through tusd and the encoder, served by nginx); no server of our own.
 const STACK = process.env.E2E_BASE_URL;
+// tests/e2e: account.spec.ts first (it sets the instance up and leaves the admin's
+// credentials in .e2e/admin.json), then the specs that log in with them.
+const E2E_FIRST = 'account.spec.ts';
 const STACK_PROJECTS = [
-	{ name: 'e2e', testDir: 'tests/e2e', use: { ...devices['Desktop Chrome'], baseURL: STACK }, retries: 0 },
+	{
+		name: 'e2e',
+		testDir: 'tests/e2e',
+		testMatch: E2E_FIRST,
+		use: { ...devices['Desktop Chrome'], baseURL: STACK },
+		retries: 0
+	},
+	{
+		name: 'options',
+		testDir: 'tests/e2e',
+		testIgnore: E2E_FIRST,
+		use: { ...devices['Desktop Chrome'], baseURL: STACK },
+		dependencies: ['e2e'],
+		retries: 0
+	},
 	{
 		name: 'stack',
 		testDir: 'tests/stack',
 		use: { ...devices['Desktop Chrome'], baseURL: STACK },
-		dependencies: ['e2e'], // the admin account the e2e tests created (.e2e/admin.json)
+		// The admin account the e2e tests created (.e2e/admin.json); after the Options tests,
+		// whose logins its last tests would otherwise rate-limit.
+		dependencies: ['e2e', 'options'],
 		retries: 0
 	}
 ];
@@ -66,10 +86,20 @@ export default defineConfig({
 				{
 					name: 'e2e',
 					testDir: 'tests/e2e',
+					testMatch: E2E_FIRST,
 					use: devices['Desktop Chrome'],
 					fullyParallel: false,
 					// No retry: the first attempt already changed the database (a retried setup
 					// finds it done and fails at /setup, hiding the real error).
+					retries: 0
+				},
+				{
+					// The other specs of tests/e2e (the Options page), on the database e2e set up.
+					name: 'options',
+					testDir: 'tests/e2e',
+					testIgnore: E2E_FIRST,
+					use: devices['Desktop Chrome'],
+					dependencies: ['e2e'],
 					retries: 0
 				},
 				{

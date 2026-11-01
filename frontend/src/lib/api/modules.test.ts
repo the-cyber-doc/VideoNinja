@@ -39,6 +39,14 @@ afterEach(() => vi.unstubAllGlobals());
 const IN = { text: 'Keep the elbow low', lang: 'en' as const };
 
 // [name, call, method, path, body]
+const TAG = {
+	id: 'place',
+	names: { en: 'Place', fr: 'Lieu' },
+	format: 'list' as const,
+	input_mode: 'text' as const,
+	values: []
+};
+
 const CALLS: [string, () => Promise<unknown>, string, string, unknown][] = [
 	['about', about.getAbout, 'GET', '/api/about', undefined],
 	[
@@ -84,6 +92,10 @@ const CALLS: [string, () => Promise<unknown>, string, string, unknown][] = [
 	['verify setup token', () => setup.verifyToken('tok'), 'POST', '/api/setup/verify', { token: 'tok' }],
 	['setup totp', () => setup.newTotp('tok', 'admin'), 'POST', '/api/setup/totp', { token: 'tok', username: 'admin' }],
 	['tags', tags.listTags, 'GET', '/api/tags', undefined],
+	['tag definitions', tags.listTagDefinitions, 'GET', '/api/admin/tags', undefined],
+	['create tag', () => tags.createTag(TAG), 'POST', '/api/admin/tags', TAG],
+	['save tag', () => tags.saveTag('old id', TAG), 'PUT', '/api/admin/tags/old%20id', TAG],
+	['delete tag', () => tags.deleteTag('place'), 'DELETE', '/api/admin/tags/place', undefined],
 	['limits', uploads.uploadLimits, 'GET', '/api/uploads/limits', undefined],
 	[
 		'submit',

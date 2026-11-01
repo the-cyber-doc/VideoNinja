@@ -29,7 +29,7 @@ def admin(client, admin_secret):
     assert login(client, admin_secret).status_code == 200
     add_segments()  # video 1 (published): segments 1 (12-27) and 2 (40-55)
     sql("UPDATE video SET duration_s = 60.5")
-    sql("INSERT INTO tag (id, name) VALUES ('place', 'tag.location.name')")
+    sql("INSERT INTO tag (id, name, value_format) VALUES ('place', 'tag.location.name', 'free')")
     return client
 
 
@@ -54,7 +54,11 @@ def test_seeded_access_and_role(client, admin_secret):
     }
     all_accesses = {a for (a,) in sql("SELECT id FROM access")}
     assert "video_mgmt" in all_accesses
-    assert roles["video_mgmt"] == all_accesses - {"user_mgmt", "moderator"}  # all but user management, moderation
+    assert roles["video_mgmt"] == all_accesses - {
+        "user_mgmt",
+        "moderator",
+        "options",
+    }  # all but the admin pages, moderation
     assert roles["admin"] == all_accesses
     assert "video_mgmt" not in roles["user"] | roles["editor"] | roles["uploader"]
     names = sql("SELECT en, fr FROM translation WHERE id = 'role.video_mgmt.name'")

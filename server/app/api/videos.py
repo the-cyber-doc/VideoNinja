@@ -95,13 +95,13 @@ def submit(
     zone: tzinfo = Depends(user_zone),
 ) -> SubmittedOut:
     """Queue a finished upload for encoding, with its segments and tags."""
-    # Before waiting for the upload: a wrong annotation is refused at once. Outside the
-    # write: techniques, tags and performers are never deleted (the foreign keys would
-    # refuse the insert anyway).
-    segments.check(con, body.tags, body.segments, zone)
+    # Before waiting for the upload: a wrong annotation is refused at once (outside the
+    # write, so checked again inside it: tags can change on the Options page meanwhile).
+    segments.check(con, body.tags, body.segments)
 
     _wait_finished(con, tus_id)
     with db.write(con):
+        segments.check(con, body.tags, body.segments)
         upload = queries.uploads.upload(con, tus_id)
         if upload is None or upload["user"] != me.id or upload["state"] == "deleted":
             raise ApiError("upload.unknown")

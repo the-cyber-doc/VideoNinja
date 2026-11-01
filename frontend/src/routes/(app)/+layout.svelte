@@ -91,6 +91,9 @@
 							{#if hasAccess('user_mgmt')}
 								<a role="menuitem" href={url('/admin/users')}>{t('menu.user_mgmt')}</a>
 							{/if}
+							{#if hasAccess('options')}
+								<a role="menuitem" href={url('/options')}>{t('menu.options')}</a>
+							{/if}
 							<a role="menuitem" href={url('/about')}>{t('menu.about')}</a>
 							<button role="menuitem" class="logout" onclick={logout}>{t('menu.logout')}</button>
 						</div>

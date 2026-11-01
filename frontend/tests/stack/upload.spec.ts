@@ -132,6 +132,30 @@ test('a segment added on the Videos page gets its thumbnail from the encoder', a
 		.toBe(true);
 });
 
+test('Options: a tag value in use cannot be removed, nor its tag deleted', async ({ page }) => {
+	page.on('dialog', (d) => d.accept());
+	await logIn(page);
+	const annotations = await (await page.request.get(`api/videos/${segment.video}/annotations`)).json();
+	const kept = annotations.segments.map(({ created_by: _, ...s }: Record<string, unknown>) => s);
+	const saved = await page.request.put(`api/videos/${segment.video}/annotations`, {
+		data: { all_segments_done: true, tags: [{ id: 'source', value: 'youtube' }], segments: kept }
+	});
+	expect(saved.status()).toBe(200);
+
+	await page.goto('options');
+	const source = page.locator('details.tag', { has: page.locator('summary', { hasText: 'Source' }) });
+	await expect(source.locator('summary')).toContainText('uses: 1');
+	await source.locator('summary').click();
+	await source.getByRole('button', { name: 'Remove the value youtube' }).click();
+	await source.getByRole('button', { name: 'Save' }).click();
+	await expect(source.getByRole('alert')).toHaveText(
+		'The value youtube cannot be removed: videos or segments use it (1).'
+	);
+	await source.getByRole('button', { name: 'Discard the changes' }).click();
+	await source.getByRole('button', { name: 'Delete the tag' }).click();
+	await expect(source.getByRole('alert')).toHaveText('source cannot be deleted: videos or segments use it (1).');
+});
+
 // Last: they use up this address's request budget.
 test('a write from another origin is refused, through nginx', async ({ page }) => {
 	await logIn(page);

@@ -39,7 +39,7 @@ export type CommentIn = Schemas['CommentIn'];
 
 // Uploads and annotations
 export type Performer = Schemas['Performer'];
-/** A tag kind and, if it has some, its fixed values (names in the request's language). */
+/** A tag and its rule: fixed values, a pattern, free text or none (names in the request's language). */
 export type Tag = Schemas['Tag'];
 /** A tag set on a video or segment: a fixed value's ID, or the text as typed. */
 export type TagIn = Schemas['TagIn'];
@@ -54,3 +54,10 @@ export type VideoRow = Schemas['VideoOut'];
 export type SavedSegment = Schemas['AnnotatedSegment'];
 export type Annotations = Schemas['Annotations'];
 export type AnnotationsOut = Schemas['AnnotationsOut'];
+
+// Options
+/** A tag as the Options page edits it: names in every language, how often it is used. */
+export type TagDefinition = Schemas['TagDefinition'];
+export type TagDefinitionIn = Schemas['TagDefinitionIn'];
+export type TagValueDefinition = Schemas['TagValueDefinition'];
+export type TagValueIn = Schemas['TagValueIn'];

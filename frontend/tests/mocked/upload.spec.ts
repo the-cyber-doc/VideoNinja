@@ -33,28 +33,50 @@ interface Fake {
 // As the server sends them: names in the request's language, sorted by name.
 const TAGS: Record<string, object[]> = {
 	en: [
-		{ id: 'note', name: 'Note' },
+		{ id: 'note', name: 'Note', format: 'free', input_mode: 'text' },
 		{
 			id: 'place',
 			name: 'Place',
+			format: 'list',
+			input_mode: 'text',
 			values: [
 				{ id: 'dojo', name: 'Dojo' },
 				{ id: 'outdoor', name: 'Outdoor' }
 			]
 		},
-		{ id: 'year', name: 'Year', format: 'year', min: 1926, max: 2026 }
+		{ id: 'rain', name: 'Rain', input_mode: 'text' },
+		{
+			id: 'year',
+			name: 'Year',
+			format: 'regexp',
+			pattern: '[12][0-9]{3}',
+			hint: 'A year, e.g. 2024',
+			input_mode: 'numeric',
+			max: 2026
+		}
 	],
 	fr: [
 		{
 			id: 'place',
 			name: 'Lieu',
+			format: 'list',
+			input_mode: 'text',
 			values: [
 				{ id: 'dojo', name: 'Dojo' },
 				{ id: 'outdoor', name: 'Extérieur' }
 			]
 		},
-		{ id: 'note', name: 'Remarque' },
-		{ id: 'year', name: 'Année', format: 'year', min: 1926, max: 2026 }
+		{ id: 'rain', name: 'Pluie', input_mode: 'text' },
+		{ id: 'note', name: 'Remarque', format: 'free', input_mode: 'text' },
+		{
+			id: 'year',
+			name: 'Année',
+			format: 'regexp',
+			pattern: '[12][0-9]{3}',
+			hint: 'Une année, par ex. 2024',
+			input_mode: 'numeric',
+			max: 2026
+		}
 	]
 };
 
@@ -614,20 +636,33 @@ test('tags: shown by their translated names, kept by ID', async ({ page }) => {
 	await expect(videoFr.locator('.chip')).toHaveText(['Lieu : Extérieur', 'Remarque : Très bien']);
 });
 
-test('a year tag only takes a year in its range', async ({ page }) => {
+test('a tag follows its rule: pattern and bounds, hint and keyboard, or no value', async ({ page }) => {
 	await setup(page);
 	await openClip(page);
 	const video = page.locator('.card', { has: page.getByText('Tags of the video') });
 	await video.getByPlaceholder('Add a tag').fill('Year');
-	const year = video.getByLabel('Year (1926–2026)');
+	const year = video.getByLabel('A year, e.g. 2024');
+	await expect(year).toHaveAttribute('inputmode', 'numeric');
 	const add = video.getByRole('button', { name: 'Add', exact: true });
-	for (const wrong of ['1925', '2027', '99']) {
+	for (const [wrong, why] of [
+		['0999', 'Year: the value does not have the expected form.'],
+		['99', 'Year: the value does not have the expected form.'],
+		['2027', 'Year: enter a number from … to 2026.']
+	]) {
 		await year.fill(wrong);
 		await expect(add).toBeDisabled();
+		await expect(video.getByText(why)).toBeVisible();
+		await expect(year).toHaveAttribute('aria-invalid', 'true');
 	}
 	await year.fill('2024');
+	await expect(video.locator('.error')).toHaveCount(0);
 	await add.click();
-	await expect(video.locator('.chip')).toHaveText(['Year: 2024']);
+
+	// No value: the tag alone.
+	await video.getByPlaceholder('Add a tag').fill('Rain');
+	await expect(video.getByLabel('Value')).toHaveCount(0);
+	await add.click();
+	await expect(video.locator('.chip')).toHaveText(['Year: 2024', 'Rain']);
 });
 
 test('in French', async ({ page }) => {

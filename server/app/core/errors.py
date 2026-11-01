@@ -81,8 +81,21 @@ ERRORS: dict[str, tuple[int, str]] = {
     "segment.after_end": (422, "A segment ends after the end of the video"),
     "tag.duplicate": (422, "A tag is given twice"),
     "tag.unknown": (422, "Unknown tag: {tag}"),
-    "tag.year": (422, "Tag {tag}: the value must be a year from {min} to {max}"),
     "tag.value": (422, "Tag {tag}: the value must be one of {values}"),
+    "tag.pattern": (422, "Tag {tag}: the value must match {pattern}"),
+    "tag.range": (422, "Tag {tag}: the value must be a number from {min} to {max}"),
+    "tag.no_value": (422, "Tag {tag} takes no value"),
+    "tag.missing_value": (422, "Tag {tag}: a value is needed"),
+    # Tags (Options page: app/domain/tags.py)
+    "tag.not_found": (404, "Unknown tag: {tag}"),
+    "tag.exists": (409, "A tag with this ID exists already: {tag}"),
+    "tag.in_use": (409, "Tag {tag} is used {count} times"),
+    "tag.value_in_use": (409, "Value {value} of tag {tag} is used {count} times"),
+    "tag.value_unknown": (422, "Tag {tag} has no value {value}"),
+    "tag.duplicate_value": (422, "Value {value} is given twice"),
+    "tag.regexp_invalid": (422, "Not a valid regular expression"),
+    "tag.range_invalid": (422, "The minimum is above the maximum"),
+    "tag.format_conflict": (422, "Tag {tag}: {count} stored values do not follow the new rule"),
     # Request validation (pydantic): the first problem found
     "validation.missing": (422, "A value is missing"),
     "validation.too_short": (422, "A value is too short (at least {min_length})"),
@@ -91,6 +104,7 @@ ERRORS: dict[str, tuple[int, str]] = {
     "validation.too_small": (422, "A number is too small (at least {min})"),
     "validation.segment_order": (422, "A segment must end after it begins"),
     "validation.comment_empty": (422, "The comment is empty"),
+    "validation.translations": (422, "A text is needed in every language"),
     "validation.invalid": (422, "A value is not valid"),
 }
 
@@ -107,6 +121,7 @@ VALIDATION: dict[str, tuple[str, dict[str, str]]] = {
     # Custom errors (pydantic_core.PydanticCustomError types)
     "segment_order": ("validation.segment_order", {}),
     "comment_empty": ("validation.comment_empty", {}),
+    "translations": ("validation.translations", {}),
 }
 
 Params = Mapping[str, str | int | float]

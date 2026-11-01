@@ -16,6 +16,7 @@ INSERT INTO "translation" ("id", "en", "fr") VALUES
 	('access.comment.name', 'Comment', 'Commentaire'),
 	('access.video_mgmt.name', 'Video management', 'Gestion des vidéos'),
 	('access.moderator.name', 'Moderation', 'Modération'),
+	('access.options.name', 'Options', 'Options'),
 	('role.admin.name', 'Admin', 'Administrateur'),
 	('role.user.name', 'User', 'Utilisateur'),
 	('role.editor.name', 'Editor', 'Éditeur'),
@@ -38,7 +39,8 @@ INSERT INTO "access" ("id", "name") VALUES
 	('annotate', 'access.annotate.name'),
 	('comment', 'access.comment.name'),
 	('video_mgmt', 'access.video_mgmt.name'),
-	('moderator', 'access.moderator.name');
+	('moderator', 'access.moderator.name'),
+	('options', 'access.options.name');
 
 INSERT INTO "role" ("id", "name") VALUES
 	('admin', 'role.admin.name'),
@@ -55,6 +57,7 @@ INSERT INTO "role_has_access" ("role", "access") VALUES
 	('admin', 'comment'),
 	('admin', 'video_mgmt'),
 	('admin', 'moderator'),
+	('admin', 'options'),
 	('user', 'segment'),
 	('user', 'comment'),
 	('editor', 'segment'),
@@ -1556,6 +1559,7 @@ INSERT INTO "translation" ("id", "en", "fr") VALUES
 	('tag.location.name', 'Location', 'Lieu'),
 	('tag.event.name', 'Event', 'Événement'),
 	('tag.year.name', 'Year', 'Année'),
+	('tag.year.hint', 'A year, e.g. 2024', 'Une année, par ex. 2024'),
 	('tag.country.name', 'Country', 'Pays'),
 	('tag.source.name', 'Source', 'Source'),
 	('tag_value.location.outdoor.name', 'Outdoor', 'Extérieur'),
@@ -1816,12 +1820,12 @@ INSERT INTO "translation" ("id", "en", "fr") VALUES
 	('tag_value.country.ZMB.name', 'Zambia', 'Zambie'),
 	('tag_value.country.ZWE.name', 'Zimbabwe', 'Zimbabwe');
 
-INSERT INTO "tag" ("id", "name", "value_format") VALUES
-	('location', 'tag.location.name', NULL),
-	('event', 'tag.event.name', NULL),
-	('year', 'tag.year.name', 'year'),
-	('country', 'tag.country.name', NULL),
-	('source', 'tag.source.name', NULL);
+INSERT INTO "tag" ("id", "name", "value_format", "regexp", "hint", "input_mode") VALUES
+	('location', 'tag.location.name', 'list', NULL, NULL, 'text'),
+	('event', 'tag.event.name', 'list', NULL, NULL, 'text'),
+	('year', 'tag.year.name', 'regexp', '[12][0-9]{3}', 'tag.year.hint', 'numeric'),
+	('country', 'tag.country.name', 'list', NULL, NULL, 'text'),
+	('source', 'tag.source.name', 'list', NULL, NULL, 'text');
 
 INSERT INTO "tag_value" ("tag", "id", "name") VALUES
 	('location', 'outdoor', 'tag_value.location.outdoor.name'),

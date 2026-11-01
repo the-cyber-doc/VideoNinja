@@ -46,6 +46,13 @@ test('menu with user management access', async ({ page }) => {
 	await expect(page.getByRole('menuitem')).toHaveText(['Profile', 'User Management', 'About', 'Log out']);
 });
 
+test('menu with the options access: Options below User Management', async ({ page }) => {
+	await loggedInAs(page, { ...ADMIN, access: ['segment', 'user_mgmt', 'options'] });
+	await page.goto('/');
+	await page.getByRole('button', { name: 'User menu' }).click();
+	await expect(page.getByRole('menuitem')).toHaveText(['Profile', 'User Management', 'Options', 'About', 'Log out']);
+});
+
 test('About: the app, its version and build, the database version, links and copyright', async ({ page }) => {
 	await loggedInAs(page, USER);
 	await page.route('/api/about', (r) => r.fulfill({ json: { db_version: 1, db_schema: 1 } }));

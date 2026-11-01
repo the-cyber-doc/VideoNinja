@@ -1,9 +1,13 @@
 <script lang="ts">
 	// Tags as removable chips. Add: type or pick a tag name (only existing tags:
-	// admins define them), then its value: one of its fixed values, or free text.
+	// admins define them on the Options page), then its value as the tag's rule says:
+	// one of its fixed values, text (its hint as placeholder, its keyboard), or none.
 	// Shown by their (translated) names, kept by ID: a language change relabels them.
 	import IconButton from '../IconButton.svelte';
 	import { t } from '../i18n.svelte';
+	import { valueProblem } from '../tags';
+	import { rules } from '../validation';
+	import ErrorMessage from '../ErrorMessage.svelte';
 	import type { Tag, TagIn } from '../api/types';
 
 	let { available, value = $bindable(), label }: { available: Tag[]; value: TagIn[]; label: string } = $props();
@@ -22,20 +26,13 @@
 		return value ? t('upload.tag.chip', { name: tagName(tag.id), value }) : tagName(tag.id);
 	}
 
-	// The server checks it again.
-	const valueOk = $derived.by(() => {
-		if (!chosen) return false;
-		if (chosen.values) return !!tagValue;
-		if (chosen.format === 'year') {
-			const year = Number(tagValue);
-			return /^[0-9]{4}$/.test(tagValue) && year >= chosen.min! && year <= chosen.max!;
-		}
-		return true;
-	});
+	// The server checks it again. Shown once something is typed.
+	const problem = $derived(chosen ? valueProblem(chosen, tagValue.trim()) : null);
+	const valueOk = $derived(!!chosen && !problem);
 
 	function add() {
 		if (!chosen || !valueOk) return;
-		value.push(tagValue ? { id: chosen.id, value: tagValue } : { id: chosen.id });
+		value.push(chosen.format ? { id: chosen.id, value: tagValue.trim() } : { id: chosen.id });
 		name = '';
 		tagValue = '';
 	}
@@ -84,31 +81,25 @@
 						<option value={v.id}>{v.name}</option>
 					{/each}
 				</select>
-			{:else if chosen?.format === 'year'}
-				<input
-					type="number"
-					inputmode="numeric"
-					min={chosen.min}
-					max={chosen.max}
-					step="1"
-					value={tagValue}
-					oninput={(e) => (tagValue = e.currentTarget.value)}
-					onkeydown={(e) => e.key === 'Enter' && (e.preventDefault(), add())}
-					placeholder={t('upload.tag.year', { min: chosen.min!, max: chosen.max! })}
-					aria-label={t('upload.tag.year', { min: chosen.min!, max: chosen.max! })}
-				/>
-			{:else if chosen}
+			{:else if chosen?.format}
+				{@const label = chosen.hint ?? t('upload.tag.value')}
 				<input
 					bind:value={tagValue}
-					placeholder={t('upload.tag.value')}
-					aria-label={t('upload.tag.value')}
-					maxlength="64"
+					inputmode={chosen.input_mode === 'numeric' ? 'numeric' : 'text'}
+					placeholder={label}
+					aria-label={label}
+					aria-invalid={!!tagValue && !!problem}
+					maxlength={rules.tag_value.max_length}
+					onkeydown={(e) => e.key === 'Enter' && (e.preventDefault(), add())}
 				/>
 			{/if}
 			<button type="button" class="secondary" disabled={!valueOk} onclick={add}>
 				{t('upload.add')}
 			</button>
 		</div>
+		{#if chosen && tagValue && problem}
+			<ErrorMessage error={t(problem.key, { ...problem.params, tag: chosen.name })} role={null} />
+		{/if}
 	{/if}
 </fieldset>
 

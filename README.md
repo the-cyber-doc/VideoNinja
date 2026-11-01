@@ -297,7 +297,7 @@ npm run test:browser
 Useful options:
 
 ```bash
-npx playwright test --project chromium --project pwa --project e2e   # skip WebKit
+npx playwright test --project chromium --project pwa --project e2e --project options   # skip WebKit
 npx playwright test --ui              # interactive: step through, see each action
 npx playwright test --headed          # watch the browser
 npx playwright codegen https://localhost:4173   # record clicks as test code (your own preview)
@@ -647,7 +647,7 @@ database as failing otherwise.
 |---|---|---|
 | 1 | v0.0.6 (efae32a) | — |
 | 2 | the four containers | `heartbeat` (the encoder's liveness, for `/health`), `video.thumbs_dirty` (segment thumbnails made by the encoder) |
-| 3 | indexes, moderation | Indexes on the columns looked up in the growing tables (video, segment, comment, session, upload), foreign keys included; the `moderator` access (edit and delete anyone's comments), given to the `admin` role |
+| 3 | indexes, moderation | Indexes on the columns looked up in the growing tables (video, segment, comment, session, upload), foreign keys included; the `moderator` access (edit and delete anyone's comments), given to the `admin` role; tags' explicit `value_format` (`list`, `regexp`, `free`, `NULL` = no value) with `regexp`, `hint`, `input_mode`, `min_value`, `max_value`, and the `options` access (the Options page), given to the `admin` role |
 
 Transactions: the API and the encoder write to the same file from two
 processes. Connections (`db.connect`) are in autocommit mode; every change of
@@ -681,28 +681,28 @@ segment, at upload or later on the Videos page; editing a segment keeps it).
 Both `ON DELETE SET NULL`. The annotation API sends display names (the user's
 name, else the username), never user IDs.
 
-Tags: a tag's name and its fixed values' names are translated (`tag.name`,
+Tags are edited on the **Options** page (see [Users](#users)
+below). A tag's name and its fixed values' names are translated (`tag.name`,
 `tag_value.name`: translation IDs `tag.<id>.name`, `tag_value.<tag>.<id>.name`,
-every language filled). A tag with rows in `tag_value` takes one of them
-(shown sorted by name in the user's language), and `video_has_tags` /
-`segment_has_tags` store that value's ID, never its name. A tag without takes
-text, stored as typed and not translated, in its `value_format`: `NULL` = any
-text, `year` = a year from 100 years ago to this year. Seeded (`db_v<N>_init.sql`):
-location (outdoor, dojo), event (seminar, class, demo), year, country (the
-249 ISO 3166-1 alpha-3 codes, e.g. `CHE`, named in English and French), and
-source (YouTube, Onmitsukage, Kanninkan: where the video comes from).
-Example:
+every language filled; the IDs are made from the tag's and value's, never typed).
+`tag.value_format` says what the tag's value is:
 
-```sql
-INSERT INTO "translation" ("id", "en", "fr") VALUES
-	('tag.place.name', 'Place', 'Lieu'),
-	('tag_value.place.dojo.name', 'Dojo', 'Dojo'),
-	('tag_value.place.outdoor.name', 'Outdoor', 'Extérieur');
-INSERT INTO "tag" ("id", "name") VALUES ('place', 'tag.place.name');
-INSERT INTO "tag_value" ("tag", "id", "name") VALUES
-	('place', 'dojo', 'tag_value.place.dojo.name'),
-	('place', 'outdoor', 'tag_value.place.outdoor.name');
-```
+| `value_format` | Value (`video_has_tags` / `segment_has_tags`) |
+|---|---|
+| `list` | the ID of one of its `tag_value` rows (shown by name, sorted in the user's language) |
+| `regexp` | text that `tag.regexp` matches entirely (Python and JavaScript syntax) |
+| `free` | any text, not empty |
+| `NULL` | none (the tag alone) |
+
+Text values are stored as typed, never translated. `regexp` and `free` tags may
+carry input hints: `hint` (translated, `tag.<id>.hint`: the placeholder and the
+help shown with an error), `input_mode` (`text` or `numeric`: the keyboard) and,
+numeric, `min_value` / `max_value` (bounds of the number, checked as well). The
+frontend gets these from `/api/tags` and checks values with them; the server
+checks again. Seeded (`db_v<N>_init.sql`): location (outdoor, dojo), event
+(seminar, class, demo), country (the 249 ISO 3166-1 alpha-3 codes, e.g. `CHE`,
+named in English and French), source (YouTube, Onmitsukage, Kanninkan: where the
+video comes from), all `list`; year: `regexp` `[12][0-9]{3}`, numeric keyboard.
 
 ### API errors
 
@@ -1108,13 +1108,25 @@ reset, deactivate or delete their own account.
 
 Roles and what they allow (accesses):
 
-| Role | `segment` | `comment` | `annotate` | `upload` | `video_mgmt` | `moderator` | `user_mgmt` |
-|---|---|---|---|---|---|---|---|
-| `user` | ✓ | ✓ | | | | | |
-| `editor` | ✓ | ✓ | ✓ | | | | |
-| `uploader` | ✓ | ✓ | ✓ | ✓ | | | |
-| `video_mgmt` | ✓ | ✓ | ✓ | ✓ | ✓ | | |
-| `admin` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Role | `segment` | `comment` | `annotate` | `upload` | `video_mgmt` | `moderator` | `user_mgmt` | `options` |
+|---|---|---|---|---|---|---|---|---|
+| `user` | ✓ | ✓ | | | | | | |
+| `editor` | ✓ | ✓ | ✓ | | | | | |
+| `uploader` | ✓ | ✓ | ✓ | ✓ | | | | |
+| `video_mgmt` | ✓ | ✓ | ✓ | ✓ | ✓ | | | |
+| `admin` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+
+**Options** (user menu, below User Management; `options` access, i.e. admins)
+edits what the application offers to choose from, in collapsible sections.
+**Tags:** each tag's ID, its name in every language and its format: a **list**
+of values (each with an ID and a name in every language; the translation IDs
+are shown as they will be stored), a **regular expression** (refused until
+valid; a test field says whether a value matches), **free** text, or **no
+value**. Text formats also take a hint, a keyboard (text or numeric) and, for
+numbers, bounds. Changing an ID renames it everywhere (videos and segments
+included). A tag or value still used by a video or segment cannot be deleted,
+and a new format or rule that values already stored would not follow is
+refused (the count is shown).
 
 **Videos** (top menu, right of Upload; `video_mgmt` access) lists every
 published video in four collapsible sections: **In progress** (some
@@ -1520,7 +1532,8 @@ journalctl -t docker-videoninja-encoder -o cat | jq -c 'select(.video_id == 42)'
 `invite.shown`; `access.denied`, `request.cross_site`, `comment.denied`,
 `upload.denied`; `upload.accepted`, `video.submitted`, `video.retried`,
 `video.deleted`, `annotations.saved`, `comment.created`, `comment.edited`,
-`comment.deleted`. Refusals and failures are warnings, the rest info. They carry
+`comment.deleted`, `tag.created`, `tag.saved` (`previous_id`: renamed when it
+differs), `tag.deleted`. Refusals and failures are warnings, the rest info. They carry
 who (`user_id`) and what (`target_user_id`, `video_id`, `comment_id`…), never a
 password, token or TOTP secret.
 

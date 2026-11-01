@@ -770,7 +770,11 @@
           "format": {
             "anyOf": [
               {
-                "const": "year",
+                "enum": [
+                  "list",
+                  "regexp",
+                  "free"
+                ],
                 "type": "string"
               },
               {
@@ -779,8 +783,28 @@
             ],
             "title": "Format"
           },
+          "hint": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hint"
+          },
           "id": {
             "title": "Id",
+            "type": "string"
+          },
+          "input_mode": {
+            "default": "text",
+            "enum": [
+              "text",
+              "numeric"
+            ],
+            "title": "Input Mode",
             "type": "string"
           },
           "max": {
@@ -809,6 +833,17 @@
             "title": "Name",
             "type": "string"
           },
+          "pattern": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pattern"
+          },
           "values": {
             "anyOf": [
               {
@@ -829,6 +864,227 @@
           "name"
         ],
         "title": "Tag",
+        "type": "object"
+      },
+      "TagDefinition": {
+        "properties": {
+          "format": {
+            "anyOf": [
+              {
+                "enum": [
+                  "list",
+                  "regexp",
+                  "free"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Format"
+          },
+          "hint": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hint"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "input_mode": {
+            "enum": [
+              "text",
+              "numeric"
+            ],
+            "title": "Input Mode",
+            "type": "string"
+          },
+          "max": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max"
+          },
+          "min": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Min"
+          },
+          "names": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Names",
+            "type": "object"
+          },
+          "regexp": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Regexp"
+          },
+          "used": {
+            "title": "Used",
+            "type": "integer"
+          },
+          "values": {
+            "items": {
+              "$ref": "#/components/schemas/TagValueDefinition"
+            },
+            "title": "Values",
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "names",
+          "format",
+          "regexp",
+          "hint",
+          "input_mode",
+          "min",
+          "max",
+          "values",
+          "used"
+        ],
+        "title": "TagDefinition",
+        "type": "object"
+      },
+      "TagDefinitionIn": {
+        "properties": {
+          "format": {
+            "anyOf": [
+              {
+                "enum": [
+                  "list",
+                  "regexp",
+                  "free"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Format"
+          },
+          "hint": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "maxLength": 128,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hint"
+          },
+          "id": {
+            "maxLength": 32,
+            "minLength": 1,
+            "pattern": "^[a-z0-9_]+$",
+            "title": "Id",
+            "type": "string"
+          },
+          "input_mode": {
+            "default": "text",
+            "enum": [
+              "text",
+              "numeric"
+            ],
+            "title": "Input Mode",
+            "type": "string"
+          },
+          "max": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max"
+          },
+          "min": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Min"
+          },
+          "names": {
+            "additionalProperties": {
+              "maxLength": 64,
+              "minLength": 1,
+              "type": "string"
+            },
+            "title": "Names",
+            "type": "object"
+          },
+          "regexp": {
+            "anyOf": [
+              {
+                "maxLength": 256,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Regexp"
+          },
+          "values": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/TagValueIn"
+            },
+            "title": "Values",
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "names"
+        ],
+        "title": "TagDefinitionIn",
         "type": "object"
       },
       "TagIn": {
@@ -874,6 +1130,72 @@
           "name"
         ],
         "title": "TagValue",
+        "type": "object"
+      },
+      "TagValueDefinition": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "names": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Names",
+            "type": "object"
+          },
+          "used": {
+            "title": "Used",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "names",
+          "used"
+        ],
+        "title": "TagValueDefinition",
+        "type": "object"
+      },
+      "TagValueIn": {
+        "properties": {
+          "id": {
+            "maxLength": 32,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9_\\-]+$",
+            "title": "Id",
+            "type": "string"
+          },
+          "names": {
+            "additionalProperties": {
+              "maxLength": 64,
+              "minLength": 1,
+              "type": "string"
+            },
+            "title": "Names",
+            "type": "object"
+          },
+          "previous_id": {
+            "anyOf": [
+              {
+                "maxLength": 32,
+                "minLength": 1,
+                "pattern": "^[A-Za-z0-9_\\-]+$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Previous Id"
+          }
+        },
+        "required": [
+          "id",
+          "names"
+        ],
+        "title": "TagValueIn",
         "type": "object"
       },
       "TokenIn": {
@@ -1308,6 +1630,284 @@
         "summary": "Roles",
         "tags": [
           "users"
+        ]
+      }
+    },
+    "/api/admin/tags": {
+      "get": {
+        "description": "Every tag as the Options page edits it, sorted by name in the request's language.",
+        "operationId": "list_tag_definitions_api_admin_tags_get",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "time-zone",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Time-Zone"
+            }
+          },
+          {
+            "in": "header",
+            "name": "accept-language",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Accept-Language"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/TagDefinition"
+                  },
+                  "title": "Response List Tag Definitions Api Admin Tags Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "An error (core/errors.py: ERRORS)"
+          }
+        },
+        "summary": "List Tag Definitions",
+        "tags": [
+          "options"
+        ]
+      },
+      "post": {
+        "operationId": "create_tag_api_admin_tags_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "time-zone",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Time-Zone"
+            }
+          },
+          {
+            "in": "header",
+            "name": "accept-language",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Accept-Language"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TagDefinitionIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TagDefinition"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "An error (core/errors.py: ERRORS)"
+          }
+        },
+        "summary": "Create Tag",
+        "tags": [
+          "options"
+        ]
+      }
+    },
+    "/api/admin/tags/{tag_id}": {
+      "delete": {
+        "description": "Only a tag no video or segment uses.",
+        "operationId": "delete_tag_api_admin_tags__tag_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tag_id",
+            "required": true,
+            "schema": {
+              "title": "Tag Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "time-zone",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Time-Zone"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "An error (core/errors.py: ERRORS)"
+          }
+        },
+        "summary": "Delete Tag",
+        "tags": [
+          "options"
+        ]
+      },
+      "put": {
+        "description": "The whole tag: a new ID renames it; values missing from `values` are deleted.",
+        "operationId": "save_tag_api_admin_tags__tag_id__put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tag_id",
+            "required": true,
+            "schema": {
+              "title": "Tag Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "time-zone",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Time-Zone"
+            }
+          },
+          {
+            "in": "header",
+            "name": "accept-language",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Accept-Language"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TagDefinitionIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TagDefinition"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "An error (core/errors.py: ERRORS)"
+          }
+        },
+        "summary": "Save Tag",
+        "tags": [
+          "options"
         ]
       }
     },
@@ -2597,7 +3197,7 @@
     },
     "/api/tags": {
       "get": {
-        "description": "Every tag, sorted by name in the request's language, and its values too.",
+        "description": "Every tag, sorted by name in the request's language, with its rule.",
         "operationId": "list_tags_api_tags_get",
         "parameters": [
           {

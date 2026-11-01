@@ -12,6 +12,7 @@ const api = vi.hoisted(() => ({
 	listRoles: vi.fn(),
 	listPerformers: vi.fn(),
 	listTags: vi.fn(),
+	listTagDefinitions: vi.fn(),
 	uploadLimits: vi.fn(),
 	uploadsAvailable: vi.fn()
 }));
@@ -19,12 +20,13 @@ vi.mock('#lib/api/setup.js', () => ({ isInitialized: api.isInitialized }));
 vi.mock('#lib/api/auth.js', () => ({ currentUser: api.currentUser }));
 vi.mock('#lib/api/users.js', () => ({ listUsers: api.listUsers, listRoles: api.listRoles }));
 vi.mock('#lib/api/performers.js', () => ({ listPerformers: api.listPerformers }));
-vi.mock('#lib/api/tags.js', () => ({ listTags: api.listTags }));
+vi.mock('#lib/api/tags.js', () => ({ listTags: api.listTags, listTagDefinitions: api.listTagDefinitions }));
 vi.mock('#lib/api/uploads.js', () => ({ uploadLimits: api.uploadLimits, uploadsAvailable: api.uploadsAvailable }));
 
 const { load: layout } = await import('./+layout');
 const { load: usersPage } = await import('./admin/users/+page');
 const { load: uploadPage } = await import('./upload/+page');
+const { load: optionsPage } = await import('./options/+page');
 const root = await import('../+layout');
 
 const user = (...access: string[]) => ({ id: 1, username: 'admin', access });
@@ -82,6 +84,21 @@ describe('user management', () => {
 		api.listUsers.mockRejectedValue(failed);
 		api.listRoles.mockResolvedValue([]);
 		expect(await usersPage(event({ user: user('user_mgmt') }).event)).toEqual({ users: [], roles: [], error: failed });
+	});
+});
+
+describe('options page', () => {
+	it('the options access first, then every tag definition', async () => {
+		api.listTagDefinitions.mockResolvedValue([{ id: 'year' }]);
+		expect(await optionsPage(event({ user: user('options') }).event)).toEqual({ tags: [{ id: 'year' }], error: null });
+		expect(await redirectOf(optionsPage(event({ user: user('user_mgmt') }).event) as Promise<unknown>)).toBe('/');
+		expect(await redirectOf(optionsPage(event({ user: null }).event) as Promise<unknown>)).toBe('/');
+	});
+
+	it('a failed load: no tags and the error', async () => {
+		const failed = new ApiError(500, 'internal');
+		api.listTagDefinitions.mockRejectedValue(failed);
+		expect(await optionsPage(event({ user: user('options') }).event)).toEqual({ tags: [], error: failed });
 	});
 });
 
