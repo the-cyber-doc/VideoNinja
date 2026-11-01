@@ -1490,9 +1490,27 @@
             "title": "Segment Count",
             "type": "integer"
           },
+          "tags": {
+            "items": {
+              "$ref": "#/components/schemas/TagIn"
+            },
+            "title": "Tags",
+            "type": "array"
+          },
           "uploaded_at": {
             "title": "Uploaded At",
             "type": "string"
+          },
+          "uploaded_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Uploaded By"
           }
         },
         "required": [
@@ -1501,7 +1519,9 @@
           "uploaded_at",
           "duration_s",
           "all_segments_done",
-          "segment_count"
+          "segment_count",
+          "uploaded_by",
+          "tags"
         ],
         "title": "VideoOut",
         "type": "object"
@@ -3619,7 +3639,7 @@
     },
     "/api/videos": {
       "get": {
-        "description": "Every published video, newest upload first.",
+        "description": "Every published video with its tags, newest upload first.",
         "operationId": "list_videos_api_videos_get",
         "parameters": [
           {

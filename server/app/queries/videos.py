@@ -64,12 +64,25 @@ def user_videos(con: sqlite3.Connection, user_id: int, since: str) -> list[sqlit
 
 
 def published_videos(con: sqlite3.Connection) -> list[sqlite3.Row]:
-    """Every published video with its number of segments, newest upload first."""
+    """Every published video with its number of segments, newest upload first. uploaded_by:
+    the uploader's display name (name, else username); None if unknown or deleted."""
     return con.execute(
         'SELECT v."id", v."original_filename", v."uploaded_at", v."duration_s", v."all_segments_done",'
+        ' COALESCE(u."name", u."username") AS "uploaded_by",'
         ' (SELECT count(*) FROM "segment" s WHERE s."video" = v."id") AS "segment_count"'
-        ' FROM "video" v WHERE v."status" = \'published\''
-        ' ORDER BY datetime(v."uploaded_at") DESC, v."id" DESC'
+        ' FROM "video" v LEFT JOIN "user" u ON u."id" = v."uploaded_by" AND u."id" <> ?'
+        " WHERE v.\"status\" = 'published'"
+        ' ORDER BY datetime(v."uploaded_at") DESC, v."id" DESC',
+        (DELETED_USER_ID,),
+    ).fetchall()
+
+
+def published_video_tags(con: sqlite3.Connection) -> list[sqlite3.Row]:
+    """The tags of every published video (video, tag, value), by video then tag."""
+    return con.execute(
+        'SELECT t."video", t."tag", t."value" FROM "video_has_tags" t'
+        ' JOIN "video" v ON v."id" = t."video" AND v."status" = \'published\''
+        ' ORDER BY t."video", t."tag"'
     ).fetchall()
 
 

@@ -35,6 +35,8 @@ class VideoOut(BaseModel):
     duration_s: float | None  # None: published before durations were kept
     all_segments_done: bool
     segment_count: int
+    uploaded_by: str | None  # the uploader's display name (never an ID); None: unknown
+    tags: list[TagIn]  # the video's own (not its segments')
 
 
 class _AnnotationsBase(BaseModel):
@@ -72,8 +74,12 @@ def _tags(rows: Iterable[sqlite3.Row]) -> list[TagIn]:
 
 @router.get("/videos")
 def list_videos(_: User = Depends(manager), con: sqlite3.Connection = Depends(db.get_db)) -> list[VideoOut]:
-    """Every published video, newest upload first."""
-    return [VideoOut(**dict(r)) for r in queries.videos.published_videos(con)]
+    """Every published video with its tags, newest upload first."""
+    with db.read(con):  # the videos and their tags from the same moment
+        tags: dict[int, list[sqlite3.Row]] = {}
+        for r in queries.videos.published_video_tags(con):
+            tags.setdefault(r["video"], []).append(r)
+        return [VideoOut(**dict(r), tags=_tags(tags.get(r["id"], []))) for r in queries.videos.published_videos(con)]
 
 
 @router.get("/videos/{video_id}/annotations")

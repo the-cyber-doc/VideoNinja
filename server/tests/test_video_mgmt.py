@@ -86,6 +86,11 @@ def test_needs_video_mgmt(admin):
 def test_list_published_videos(admin):
     add_video(2, all_done=True, uploaded_at="2026-03-01T00:00:00+00:00")
     add_video(3, status="queued")  # not playable yet: not listed
+    add_video(4, uploaded_at="2025-12-01T00:00:00+00:00")
+    sql("UPDATE video SET uploaded_by = 1 WHERE id = 1")  # the admin: its display name
+    sql("UPDATE video SET uploaded_by = 0 WHERE id = 4")  # the deleted user: unknown
+    sql("INSERT INTO video_has_tags (video, tag, value) VALUES (1, 'place', 'Noda'), (1, 'year', '2026')")
+    sql("INSERT INTO video_has_tags (video, tag, value) VALUES (3, 'place', 'Tokyo')")  # not published
     assert admin.get("/api/videos").json() == [
         {
             "id": 2,
@@ -94,6 +99,8 @@ def test_list_published_videos(admin):
             "duration_s": 30.0,
             "all_segments_done": True,
             "segment_count": 0,
+            "uploaded_by": None,
+            "tags": [],
         },
         {
             "id": 1,
@@ -102,6 +109,18 @@ def test_list_published_videos(admin):
             "duration_s": 60.5,
             "all_segments_done": False,
             "segment_count": 2,
+            "uploaded_by": "Admin",
+            "tags": [{"id": "place", "value": "Noda"}, {"id": "year", "value": "2026"}],
+        },
+        {
+            "id": 4,
+            "original_filename": "v4.mp4",
+            "uploaded_at": "2025-12-01T00:00:00+00:00",
+            "duration_s": 30.0,
+            "all_segments_done": False,
+            "segment_count": 0,
+            "uploaded_by": None,
+            "tags": [],
         },
     ]
     assert admin.get("/api/videos/3/annotations").status_code == 404

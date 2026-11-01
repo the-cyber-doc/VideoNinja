@@ -20,6 +20,8 @@ const STACK = process.env.E2E_BASE_URL;
 // tests/e2e: account.spec.ts first (it sets the instance up and leaves the admin's
 // credentials in .e2e/admin.json), then the specs that log in with them.
 const E2E_FIRST = 'account.spec.ts';
+// tests/stack: the Videos page's filter and sort first (project "videos"), then the rest.
+const STACK_VIDEOS = 'videos.spec.ts';
 const STACK_PROJECTS = [
 	{
 		name: 'e2e',
@@ -37,12 +39,23 @@ const STACK_PROJECTS = [
 		retries: 0
 	},
 	{
+		// The Videos page's filter and sort, on videos of its own: before "stack", so they are
+		// the only ones (and before its last tests use up the login budget).
+		name: 'videos',
+		testDir: 'tests/stack',
+		testMatch: STACK_VIDEOS,
+		use: { ...devices['Desktop Chrome'], baseURL: STACK },
+		dependencies: ['e2e', 'options'],
+		retries: 0
+	},
+	{
 		name: 'stack',
 		testDir: 'tests/stack',
+		testIgnore: STACK_VIDEOS,
 		use: { ...devices['Desktop Chrome'], baseURL: STACK },
 		// The admin account the e2e tests created (.e2e/admin.json); after the Options tests,
 		// whose logins its last tests would otherwise rate-limit.
-		dependencies: ['e2e', 'options'],
+		dependencies: ['e2e', 'options', 'videos'],
 		retries: 0
 	}
 ];

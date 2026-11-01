@@ -640,7 +640,7 @@ export interface paths {
         };
         /**
          * List Videos
-         * @description Every published video, newest upload first.
+         * @description Every published video with its tags, newest upload first.
          */
         get: operations["list_videos_api_videos_get"];
         put?: never;
@@ -1396,8 +1396,12 @@ export interface components {
             original_filename: string;
             /** Segment Count */
             segment_count: number;
+            /** Tags */
+            tags: components["schemas"]["TagIn"][];
             /** Uploaded At */
             uploaded_at: string;
+            /** Uploaded By */
+            uploaded_by: string | null;
         };
     };
     responses: never;

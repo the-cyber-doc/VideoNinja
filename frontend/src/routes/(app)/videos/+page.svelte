@@ -1,7 +1,8 @@
 <script lang="ts">
 	// Every published video, in four collapsible sections by how far its annotation
 	// is. Open, a section's thumbnails scroll inside it. A thumbnail opens the
-	// annotation panel (/videos/<id>). Needs the "video_mgmt" access.
+	// annotation panel (/videos/<id>). Needs the "video_mgmt" access. The filter button
+	// opens a pane that filters and sorts them (inside each section), kept on this device.
 	import ErrorMessage from '#lib/ErrorMessage.svelte';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
@@ -13,13 +14,25 @@
 	import { formatTime } from '#lib/time.js';
 	import { offline, removeVideos, savedVideos } from '#lib/offline.svelte.js';
 	import SavedBadge from '#lib/SavedBadge.svelte';
-	import type { VideoRow } from '#lib/api/types.js';
+	import type { Tag, VideoRow } from '#lib/api/types.js';
+	import { listTags } from '#lib/api/tags.js';
 	import { listVideos } from '#lib/api/videos.js';
+	import FilterPane from '#lib/videos/FilterPane.svelte';
+	import {
+		activeCount,
+		effective,
+		filterOptions,
+		loadFilter,
+		matches,
+		saveFilter,
+		sortVideos
+	} from '#lib/videos/filter.js';
 	import { videoThumbnailUrl, videoUrl } from '#lib/media.js';
 	import { SECTIONS, videoSection } from '#lib/videos/annotations.js';
 
 	const allowed = $derived(hasAccess('video_mgmt'));
 	let videos = $state<VideoRow[] | null>(null);
+	let tags = $state<Tag[]>([]); // for the filter: names, kinds and list values
 	let error = $state<unknown>(null);
 	let failed = $state<Record<number, boolean>>({});
 	const saved = page.url.searchParams.has('saved'); // back from the panel
@@ -33,10 +46,28 @@
 			(list) => (videos = list),
 			(e) => (error = e)
 		);
+		listTags().then(
+			(list) => (tags = list),
+			(e) => (error = e)
+		);
 	});
 
+	// The filter as chosen (kept as is, even what no video offers now), and what applies of it.
+	let filter = $state(loadFilter());
+	let paneOpen = $state(false);
+	$effect(() => saveFilter($state.snapshot(filter)));
+	const options = $derived(filterOptions(videos ?? [], tags));
+	const applied = $derived(effective(filter, options));
+	const active = $derived(activeCount(applied));
+	const kept = $derived(
+		sortVideos(
+			(videos ?? []).filter((v) => matches(v, applied)),
+			applied.sort
+		)
+	);
+
 	const groups = $derived(
-		SECTIONS.map((section) => ({ section, videos: (videos ?? []).filter((v) => videoSection(v) === section) }))
+		SECTIONS.map((section) => ({ section, videos: kept.filter((v) => videoSection(v) === section) }))
 	);
 	// The first section with videos starts open.
 	const firstOpen = $derived(groups.find((g) => g.videos.length)?.section);
@@ -56,19 +87,32 @@
 	<div class="page">
 		<header>
 			<h1>{t('videos.title')}</h1>
-			{#if offline.available}
-				{@const label = stored ? t('videos.remove_saved', { n: stored }) : t('videos.none_saved')}
+			<div class="actions">
 				<IconButton
-					{label}
-					icon="phone"
+					label={active ? t('videos.filter.active', { n: active }) : t('videos.filter')}
+					icon="filter"
 					iconSize={22}
 					size="lg"
 					round
-					class="remove"
-					disabled={!stored}
-					onclick={removeSaved}
+					class="filter{active ? ' active' : ''}"
+					aria-haspopup="dialog"
+					disabled={!videos?.length}
+					onclick={() => (paneOpen = true)}
 				/>
-			{/if}
+				{#if offline.available}
+					{@const label = stored ? t('videos.remove_saved', { n: stored }) : t('videos.none_saved')}
+					<IconButton
+						{label}
+						icon="phone"
+						iconSize={22}
+						size="lg"
+						round
+						class="remove"
+						disabled={!stored}
+						onclick={removeSaved}
+					/>
+				{/if}
+			</div>
 		</header>
 		{#if saved}<p class="ok" role="status">{t('videos.saved')}</p>{/if}
 		{#if removed}<p class="ok" role="status">{t('videos.removed')}</p>{/if}
@@ -79,6 +123,11 @@
 		{:else if videos && !videos.length}
 			<p class="hint centered">{t('videos.none')}</p>
 		{:else if videos}
+			{#if active}
+				<p class="hint centered" role="status">{t('videos.filter.shown', { n: kept.length, total: videos.length })}</p>
+			{/if}
+			{#if !kept.length}<p class="hint centered">{t('videos.filtered_none')}</p>{/if}
+			<FilterPane bind:open={paneOpen} bind:filter {options} shown={kept.length} total={videos.length} />
 			{#each groups as group (group.section)}
 				<Section
 					title={t(`videos.section.${group.section}` as MessageKey)}
@@ -143,11 +192,21 @@
 		text-align: center;
 		margin: 0;
 	}
-	/* The round "remove saved videos" button (an IconButton): its place, and the page's background. */
-	header :global(.remove) {
+	/* At the right of the same line: the filter button, then "remove saved videos" (IconButtons). */
+	.actions {
 		grid-column: 3;
 		justify-self: end;
+		display: flex;
+		gap: var(--space-2);
+	}
+	.actions :global(.filter),
+	.actions :global(.remove) {
 		background: var(--bg);
+	}
+	/* Something filtered or sorted otherwise: the button says so in the accent colour. */
+	.actions :global(.filter.active) {
+		color: var(--accent);
+		border-color: var(--accent);
 	}
 	.ok {
 		color: var(--ok);

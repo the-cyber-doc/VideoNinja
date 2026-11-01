@@ -12,10 +12,12 @@ const MANAGER = ['segment', 'comment', 'annotate', 'upload', 'video_mgmt'];
 const video = (id: number, segment_count: number, all_segments_done: boolean, duration_s: number | null = 65.4) => ({
 	id,
 	original_filename: `kata-${id}.mp4`,
-	uploaded_at: '2027-01-15T09:00:00+01:00',
+	uploaded_at: `2027-01-${10 + 10 - id}T09:00:00+01:00`, // newest first, as the server lists them
 	duration_s,
 	all_segments_done,
-	segment_count
+	segment_count,
+	uploaded_by: 'Hana' as string | null,
+	tags: [] as { id: string; value: string | null }[]
 });
 const VIDEOS = [
 	video(1, 2, false), // in progress
@@ -338,6 +340,137 @@ test('leaving with unsaved changes asks first', async ({ page }) => {
 	answer = true;
 	await page.getByRole('button', { name: 'Cancel' }).press('Enter');
 	await expect(page).toHaveURL('/videos');
+});
+
+// The filter pane: what the videos offer, inside each section, kept on this device.
+const FILTERED = [
+	{
+		...video(1, 2, false, 30),
+		uploaded_at: '2027-01-10T09:00:00+01:00',
+		tags: [
+			{ id: 'location', value: 'noda' },
+			{ id: 'year', value: '2019' }
+		]
+	},
+	{
+		...video(2, 0, false, 200),
+		uploaded_by: 'Akira',
+		uploaded_at: '2027-01-12T09:00:00+01:00',
+		tags: [{ id: 'location', value: 'dojo' }]
+	},
+	{ ...video(3, 0, false, null), uploaded_by: null, uploaded_at: '2027-01-14T09:00:00+01:00' },
+	{ ...video(4, 0, false, 90), uploaded_at: '2027-01-16T09:00:00+01:00', tags: [{ id: 'year', value: '2024' }] },
+	{ ...video(5, 3, true, 600), uploaded_by: 'Akira', uploaded_at: '2027-01-18T09:00:00+01:00' }
+];
+const FILTER_TAGS = [
+	{
+		id: 'location',
+		name: 'Location',
+		format: 'list',
+		input_mode: 'text',
+		values: [
+			{ id: 'dojo', name: 'Dojo' },
+			{ id: 'noda', name: 'Noda' },
+			{ id: 'park', name: 'Park' }
+		]
+	},
+	{ id: 'year', name: 'Year', format: 'regexp', pattern: '[12][0-9]{3}', input_mode: 'numeric' }
+];
+
+test('filter and sort: a pane with what the videos offer, applied in each section, kept', async ({ page }) => {
+	await setup(page);
+	await page.route('/api/videos', (r) => r.fulfill({ json: FILTERED }));
+	await page.route('/api/tags', (r) => r.fulfill({ json: FILTER_TAGS }));
+	await page.goto('/videos');
+	const counts = page.locator('details.section summary .count');
+	await expect(counts).toHaveText(['1 video(s)', '3 video(s)', '1 video(s)', '0 video(s)']);
+	await expect(page.getByRole('button', { name: /remove|saved/i })).toHaveCount(0); // no service worker: alone
+
+	const button = page.getByRole('button', { name: 'Filter and sort' });
+	await button.click();
+	const pane = page.getByRole('dialog', { name: 'Filter and sort' });
+	await expect(pane).toBeVisible();
+	await expect(pane.getByRole('status')).toHaveText('5 of 5 video(s) shown');
+	await expect(pane.locator('legend')).toHaveText([
+		'Order',
+		'Duration',
+		'Uploaded on',
+		'Uploaded by',
+		'Location',
+		'Year'
+	]);
+	await expect(pane.getByRole('group', { name: 'Uploaded by' }).getByRole('checkbox')).toHaveCount(3);
+	await expect(pane.getByLabel('a deleted user')).toBeVisible(); // the unknown uploader
+	await expect(pane.getByRole('group', { name: 'Location' }).getByRole('checkbox')).toHaveCount(2); // Park: unused
+	const duration = pane.getByRole('group', { name: 'Duration' });
+	await expect(duration).toContainText('0:30');
+	await expect(duration).toContainText('10:00');
+
+	// A multiselection: any of those checked.
+	await pane.getByLabel('Hana').check();
+	await expect(pane.getByRole('status')).toHaveText('2 of 5 video(s) shown');
+	await pane.getByLabel('Akira').check();
+	await expect(pane.getByRole('status')).toHaveText('4 of 5 video(s) shown');
+	await pane.getByLabel('Akira').uncheck();
+	// Every criterion: Hana's videos in Noda.
+	await pane.getByLabel('Noda').check();
+	await expect(pane.getByRole('status')).toHaveText('1 of 5 video(s) shown');
+	await pane.getByRole('button', { name: 'Done' }).click();
+	await expect(pane).toBeHidden();
+	await expect(counts).toHaveText(['1 video(s)', '0 video(s)', '0 video(s)', '0 video(s)']);
+	await expect(page.getByRole('button', { name: 'Filter and sort (2 active)' })).toBeVisible();
+
+	// Kept on this device.
+	await page.reload();
+	await expect(counts).toHaveText(['1 video(s)', '0 video(s)', '0 video(s)', '0 video(s)']);
+	await page.getByRole('button', { name: 'Filter and sort (2 active)' }).click();
+	await pane.getByRole('button', { name: 'Reset' }).click();
+	await expect(pane.getByRole('status')).toHaveText('5 of 5 video(s) shown');
+	await expect(pane.getByLabel('Hana')).not.toBeChecked();
+
+	// A slider between the videos' bounds: the longest 90 s and less (the unknown duration left out).
+	const longest = duration.getByRole('slider', { name: 'Duration, to' });
+	await longest.fill('90');
+	await expect(duration).toContainText('1:30');
+	await expect(pane.getByRole('status')).toHaveText('2 of 5 video(s) shown');
+	await longest.press('End'); // all the way back: no filter (the unknown duration back too)
+	await expect(pane.getByRole('status')).toHaveText('5 of 5 video(s) shown');
+	// A numeric tag: a slider over the values used.
+	const year = pane.getByRole('group', { name: 'Year' });
+	await expect(year).toContainText('2019');
+	await expect(year).toContainText('2024');
+	await year.getByRole('slider', { name: 'Year, from' }).press('ArrowRight');
+	await expect(pane.getByRole('status')).toHaveText('1 of 5 video(s) shown');
+	await year.getByRole('slider', { name: 'Year, from' }).press('Home');
+
+	// Sorted inside each section: To annotate by duration, longest first, the unknown last.
+	await pane.getByLabel('Sort by').selectOption({ label: 'Duration' });
+	await pane.getByLabel('Direction').selectOption({ label: 'Longest first' });
+	await page.keyboard.press('Escape');
+	await expect(pane).toBeHidden();
+	await expect(page.getByRole('status')).toHaveText('5 of 5 video(s) shown');
+	const toAnnotate = section(page, 'To annotate');
+	await toAnnotate.locator('summary').click();
+	await expect(toAnnotate.locator('.file')).toHaveText(['kata-2.mp4', 'kata-4.mp4', 'kata-3.mp4']);
+	await page.getByRole('button', { name: 'Filter and sort (1 active)' }).click();
+	await pane.getByLabel('Direction').selectOption({ label: 'Shortest first' });
+	await pane.getByRole('button', { name: 'Close' }).click();
+	await expect(toAnnotate.locator('.file')).toHaveText(['kata-4.mp4', 'kata-2.mp4', 'kata-3.mp4']);
+});
+
+test('filter: nothing matching says so', async ({ page }) => {
+	await page.addInitScript(() =>
+		localStorage.setItem('videos.filter', JSON.stringify({ uploadedBy: ['Hana'], duration: [0, 1] }))
+	);
+	await setup(page);
+	await page.goto('/videos');
+	await expect(page.getByText('No video matches the filter.')).toBeVisible();
+	await expect(page.locator('details.section summary .count')).toHaveText([
+		'0 video(s)',
+		'0 video(s)',
+		'0 video(s)',
+		'0 video(s)'
+	]);
 });
 
 test('in French', async ({ page }) => {
