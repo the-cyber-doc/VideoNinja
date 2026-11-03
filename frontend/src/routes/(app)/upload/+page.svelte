@@ -8,6 +8,7 @@
 	import { onDestroy } from 'svelte';
 	import { addPerformer } from '#lib/api/performers.js';
 	import { loadCatalog } from '#lib/catalog.svelte.js';
+	import { url } from '#lib/base.js';
 	import { t } from '#lib/i18n.svelte.js';
 	import AnnotationPanel from '#lib/upload/AnnotationPanel.svelte';
 	import { saveDraft } from '#lib/upload/draft.svelte.js';
@@ -59,7 +60,10 @@
 <svelte:window onbeforeunload={(e) => flow.busy && e.preventDefault()} />
 
 <div class="page">
-	<h1>{t('upload.title')}</h1>
+	<header>
+		<h1>{t('upload.title')}</h1>
+		<a class="codecs" href={url('/upload/codecs')}>{t('upload.codecs_link')}</a>
+	</header>
 
 	{#if flow.unavailable}<ErrorMessage error={t('upload.unavailable')} />{/if}
 	{#if flow.message}<p class="ok" role="status">{flow.message}</p>{/if}
@@ -143,9 +147,32 @@
 		display: grid;
 		gap: var(--space-4);
 	}
+	/* The title centred, the codecs link at its right (under it on phones). */
+	header {
+		display: grid;
+		grid-template-columns: 1fr auto 1fr;
+		align-items: center;
+		gap: var(--space-2);
+	}
 	h1 {
+		grid-column: 2;
 		text-align: center;
 		margin-bottom: 0;
+	}
+	.codecs {
+		justify-self: end;
+		font-size: var(--text-sm);
+	}
+	@media (max-width: 40rem) {
+		header {
+			grid-template-columns: 1fr;
+		}
+		h1 {
+			grid-column: 1;
+		}
+		.codecs {
+			justify-self: center;
+		}
 	}
 	h2 {
 		font-size: var(--text-lg);

@@ -26,6 +26,7 @@ vi.mock('#lib/api/uploads.js', () => ({ uploadLimits: api.uploadLimits, uploadsA
 const { load: layout } = await import('./+layout');
 const { load: usersPage } = await import('./admin/users/+page');
 const { load: uploadPage } = await import('./upload/+page');
+const { load: codecsPage } = await import('./upload/codecs/+page');
 const { load: optionsPage } = await import('./options/+page');
 const root = await import('../+layout');
 
@@ -129,6 +130,14 @@ describe('upload page', () => {
 			available: true,
 			error: failed
 		});
+	});
+});
+
+describe('test local codecs page', () => {
+	it('the upload access, else home', async () => {
+		expect(await codecsPage(event({ user: user('upload') }).event)).toBeUndefined();
+		expect(await redirectOf(codecsPage(event({ user: user('comment') }).event) as Promise<unknown>)).toBe('/');
+		expect(await redirectOf(codecsPage(event({ user: null }).event) as Promise<unknown>)).toBe('/');
 	});
 });
 

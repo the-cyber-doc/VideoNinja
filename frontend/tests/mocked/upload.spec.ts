@@ -670,6 +670,21 @@ test('a tag follows its rule: pattern and bounds, hint and keyboard, or no value
 	await expect(video.locator('.chip')).toHaveText(['Year: 2024', 'Rain']);
 });
 
+test('"Test local codecs" beside the title opens that page', async ({ page }) => {
+	await setup(page);
+	await page.goto('/upload');
+	const title = page.getByRole('heading', { level: 1, name: 'Upload a video' });
+	const link = page.getByRole('link', { name: 'Test local codecs' });
+	await expect(link).toHaveAttribute('href', '/upload/codecs');
+	// Beside it on a wide screen: the same line, to its right.
+	const [t, l] = await Promise.all([title.boundingBox(), link.boundingBox()]);
+	expect(l!.x).toBeGreaterThan(t!.x + t!.width);
+	expect(Math.abs(l!.y + l!.height / 2 - (t!.y + t!.height / 2))).toBeLessThan(t!.height / 2);
+	await link.click();
+	await expect(page).toHaveURL('/upload/codecs');
+	await expect(page.getByRole('heading', { level: 1, name: 'Test local codecs' })).toBeVisible();
+});
+
 test('in French', async ({ page }) => {
 	await page.addInitScript(() => localStorage.setItem('lang', 'fr'));
 	await setup(page);

@@ -145,6 +145,36 @@ test('a segment added on the Videos page gets its thumbnail from the encoder', a
 		.toBe(true);
 });
 
+test('Test local codecs: the samples served by nginx, the page runs its tests', async ({ page }) => {
+	test.setTimeout(240_000);
+	// Static files of the frontend: public, with their media types (nginx's mime.types).
+	for (const [file, type] of [
+		['h264-aac.mp4', 'video/mp4'],
+		['h265-aac.mp4', 'video/mp4'],
+		['h265-10bit-aac.mp4', 'video/mp4'],
+		['av1-opus.mp4', 'video/mp4'],
+		['vp8-vorbis.webm', 'video/webm'],
+		['vp9-opus.webm', 'video/webm'],
+		['av1-opus.webm', 'video/webm']
+	]) {
+		const res = await page.request.get(`format-samples/${file}`);
+		expect(res.status(), file).toBe(200);
+		expect(res.headers()['content-type'], file).toBe(type);
+	}
+
+	await logIn(page);
+	await page.goto('upload');
+	await page.getByRole('link', { name: 'Test local codecs' }).click();
+	await expect(page).toHaveURL(/upload\/codecs$/);
+	await page.getByRole('button', { name: 'Run the tests' }).click();
+	await expect(page.getByRole('button', { name: 'Run the tests' })).toBeEnabled({ timeout: 200_000 });
+	// Playwright's Chromium decodes, plays and encodes H.264 + AAC (not H.265: no such codecs in it).
+	await expect(page.locator('table.decoding tr[data-id="h264-aac"] td').first()).toHaveText('120/120');
+	await expect(page.locator('table.encoding tr[data-id="mp4-h264-aac"] td').first()).toHaveText(
+		'yes (120 frames read back)'
+	);
+});
+
 test('Options: a tag value in use cannot be removed, nor its tag deleted', async ({ page }) => {
 	page.on('dialog', (d) => d.accept());
 	await logIn(page);

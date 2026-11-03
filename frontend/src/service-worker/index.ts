@@ -39,7 +39,13 @@ const ROOT = `${BASE}/`; // the single-page app's shell
 const escaped = BASE.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const path = (pattern: string) => new RegExp(`^${escaped}${pattern}$`);
 // Manifest paths are relative to the base path, where the service worker is.
-const ASSETS = new Set([...immutable, ...assets].map((file) => new URL(file.path, sw.location.href).pathname));
+// Not the "Test local codecs" page's sample clips (static/format-samples/): fetched only
+// when someone runs its tests, never downloaded by everyone with each version.
+const ASSETS = new Set(
+	[...immutable, ...assets.filter((file) => !file.path.startsWith('format-samples/'))].map(
+		(file) => new URL(file.path, sw.location.href).pathname
+	)
+);
 // API reads also kept for offline use (network first).
 const OFFLINE_API = [path('/api/setup/status'), path('/api/auth/me'), path('/api/techniques/[^/]+/comments')];
 const CATALOG = `${BASE}/api/catalog`;

@@ -1241,6 +1241,20 @@ Unfinished work is kept on the device and resumed by choosing the same file
 again (until logout). A file the browser cannot play (some AVI/DV/MPEG-2, or
 H.265 in Firefox) can still be sent with "Define segments later".
 
+**Test local codecs** (the link beside the upload page's title, same `upload`
+access) shows which video and audio formats the device can play, decode and
+encode: first the browser's own answers for 20 common formats (H.264, H.265,
+VP8, VP9, AV1; AAC, Opus, Vorbis, FLAC, MP3), then, with **Run the tests**,
+short sample clips really decoded, played and encoded in seven formats, each
+one decoded back. Nothing is sent: **Copy my results** puts them (JSON, with an
+optional name) on the clipboard, for whoever asked. Useful to know which
+formats a group of devices shares before changing how videos are stored or
+encoded. A test that gets no answer in time (some browsers' decoders hang) says
+so; reloading the page frees the browser's codecs. The samples
+(`frontend/static/format-samples/`, test patterns only, public like the rest of
+the frontend) are made by `tools/codec-samples.sh`; the service worker never
+precaches them.
+
 Encoding happens on the Pi, one video at a time, in software: a 1080p video
 takes roughly as long as several times its duration with the `medium` preset
 (measure on your Pi; `VIDEONINJA_X265_PRESET=fast` halves it). Interlaced

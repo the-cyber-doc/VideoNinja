@@ -57,7 +57,10 @@ COPY frontend/package.json frontend/package-lock.json ./
 RUN npm ci --no-audit --no-fund
 COPY frontend/ ./
 COPY server/app/validation.json /src/server/app/validation.json
-RUN BASE_PATH="${BASE_PATH}" APP_VERSION="${APP_VERSION}" APP_COMMIT="${APP_COMMIT}" npm run build
+# The build, readable by nginx's user whatever the checkout's umask (static/ files keep
+# their modes: icons, the codecs page's samples).
+RUN BASE_PATH="${BASE_PATH}" APP_VERSION="${APP_VERSION}" APP_COMMIT="${APP_COMMIT}" npm run build \
+    && chmod -R u=rwX,go=rX build
 
 # The app's Python packages, in a virtual environment that the final images
 # copy as is (same base image: same interpreter path). pip itself is removed.

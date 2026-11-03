@@ -557,6 +557,87 @@
 	},
 
 	"upload.title": { "en": "Upload a video", "fr": "Téléverser une vidéo" },
+	"upload.codecs_link": { "en": "Test local codecs", "fr": "Tester les codecs locaux" },
+	"codecs.title": { "en": "Test local codecs", "fr": "Tester les codecs locaux" },
+	"codecs.intro": {
+		"en": "Which video and audio formats this device can play, decode and encode. Nothing is sent: copy the results and send them to whoever asked you.",
+		"fr": "Les formats vidéo et audio que cet appareil sait lire, décoder et encoder. Rien n'est envoyé : copiez les résultats et transmettez-les à la personne qui vous l'a demandé."
+	},
+	"codecs.answers": { "en": "What the browser says", "fr": "Ce que dit le navigateur" },
+	"codecs.answers_hint": {
+		"en": "Its own answers: quick, but not proofs. The real tests below try them.",
+		"fr": "Ses propres réponses : rapides, mais pas des preuves. Les tests réels ci-dessous les vérifient."
+	},
+	"codecs.checking": { "en": "Asking the browser…", "fr": "Interrogation du navigateur…" },
+	"codecs.legend": {
+		"en": "“?”: the browser could not tell. “hardware”: played efficiently, usually by the graphics chip.",
+		"fr": "« ? » : le navigateur ne sait pas. « matériel » : lu efficacement, en général par la puce graphique."
+	},
+	"codecs.col.format": { "en": "Format", "fr": "Format" },
+	"codecs.col.play_mp4": { "en": "Plays (MP4)", "fr": "Lit (MP4)" },
+	"codecs.col.play_webm": { "en": "Plays (WebM)", "fr": "Lit (WebM)" },
+	"codecs.col.encode_hw": { "en": "Encodes (hardware)", "fr": "Encode (matériel)" },
+	"codecs.col.encode": { "en": "Encodes", "fr": "Encode" },
+	"codecs.col.decode": { "en": "Decodes", "fr": "Décode" },
+	"codecs.yes": { "en": "yes", "fr": "oui" },
+	"codecs.no": { "en": "no", "fr": "non" },
+	"codecs.unknown": { "en": "?", "fr": "?" },
+	"codecs.play.not_smooth": { "en": "not smooth", "fr": "saccadé" },
+	"codecs.play.hardware": { "en": "hardware", "fr": "matériel" },
+	"codecs.tests": { "en": "Real tests", "fr": "Tests réels" },
+	"codecs.tests_hint": {
+		"en": "Short sample videos (4 s) really decoded frame by frame and played, then one of them encoded in every format and decoded back. About a minute, a few minutes when a format hangs.",
+		"fr": "De courtes vidéos d'exemple (4 s) réellement décodées image par image et lues, puis l'une d'elles encodée dans chaque format et relue. Environ une minute, quelques minutes si un format bloque."
+	},
+	"codecs.run": { "en": "Run the tests", "fr": "Lancer les tests" },
+	"codecs.step.decode": { "en": "Decoding {name}…", "fr": "Décodage de {name}…" },
+	"codecs.step.encode": { "en": "Encoding to {name}…", "fr": "Encodage en {name}…" },
+	"codecs.col.sample": { "en": "Sample", "fr": "Échantillon" },
+	"codecs.col.frames": { "en": "Video frames", "fr": "Images vidéo" },
+	"codecs.col.audio": { "en": "Audio", "fr": "Son" },
+	"codecs.col.plays": { "en": "Plays", "fr": "Lit" },
+	"codecs.col.problem": { "en": "Problem", "fr": "Problème" },
+	"codecs.col.target": { "en": "Encoded to (from {name})", "fr": "Encodé en (depuis {name})" },
+	"codecs.col.result": { "en": "Result", "fr": "Résultat" },
+	"codecs.col.time": { "en": "Time", "fr": "Durée" },
+	"codecs.col.size": { "en": "Size", "fr": "Taille" },
+	"codecs.frames_back": { "en": "yes ({n} frames read back)", "fr": "oui ({n} images relues)" },
+	"codecs.seconds": { "en": "{n} s", "fr": "{n} s" },
+	"codecs.kilobytes": { "en": "{n} KB", "fr": "{n} Ko" },
+	"codecs.no_source": {
+		"en": "No sample decoded whole: nothing to encode from.",
+		"fr": "Aucun échantillon décodé entièrement : rien à encoder."
+	},
+	"codecs.error.download": {
+		"en": "The sample could not be downloaded",
+		"fr": "L'échantillon n'a pas pu être téléchargé"
+	},
+	"codecs.error.no_video": { "en": "No video in the file", "fr": "Pas de vidéo dans le fichier" },
+	"codecs.error.cannot_decode": {
+		"en": "This browser cannot decode this video",
+		"fr": "Ce navigateur ne sait pas décoder cette vidéo"
+	},
+	"codecs.error.no_encoder": {
+		"en": "This browser has no encoder for this format",
+		"fr": "Ce navigateur n'a pas d'encodeur pour ce format"
+	},
+	"codecs.error.cannot_convert": {
+		"en": "This conversion is not possible here",
+		"fr": "Cette conversion est impossible ici"
+	},
+	"codecs.error.timeout": {
+		"en": "No answer in time: the browser's codecs may be stuck (reload the page)",
+		"fr": "Pas de réponse à temps : les codecs du navigateur sont peut-être bloqués (rechargez la page)"
+	},
+	"codecs.error.failed": { "en": "Failed", "fr": "Échec" },
+	"codecs.name": { "en": "Your name or device (optional)", "fr": "Votre nom ou appareil (facultatif)" },
+	"codecs.name_placeholder": { "en": "e.g. Anna, iPhone 13", "fr": "p. ex. Anna, iPhone 13" },
+	"codecs.copy": { "en": "Copy my results", "fr": "Copier mes résultats" },
+	"codecs.copied": { "en": "Copied", "fr": "Copié" },
+	"codecs.copy_hint": {
+		"en": "Then send them (mail, messenger…) to whoever asked you.",
+		"fr": "Puis envoyez-les (courriel, messagerie…) à la personne qui vous l'a demandé."
+	},
 	"upload.choose": { "en": "Video file", "fr": "Fichier vidéo" },
 	"upload.hint_local": {
 		"en": "The video is opened on this device: nothing is sent before you press Proceed.",
