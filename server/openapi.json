@@ -833,7 +833,7 @@
             "title": "Name",
             "type": "string"
           },
-          "pattern": {
+          "regexp": {
             "anyOf": [
               {
                 "type": "string"
@@ -842,7 +842,7 @@
                 "type": "null"
               }
             ],
-            "title": "Pattern"
+            "title": "Regexp"
           },
           "values": {
             "anyOf": [

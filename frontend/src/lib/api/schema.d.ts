@@ -1191,8 +1191,8 @@ export interface components {
             min?: number | null;
             /** Name */
             name: string;
-            /** Pattern */
-            pattern?: string | null;
+            /** Regexp */
+            regexp?: string | null;
             /** Values */
             values?: components["schemas"]["TagValue"][] | null;
         };

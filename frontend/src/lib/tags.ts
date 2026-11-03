@@ -5,7 +5,7 @@ import type { MessageKey } from './i18n.svelte';
 import type { Tag } from './api/types';
 
 /** The rule part of a tag (an Options page draft has it too, before it is saved). */
-export type TagRule = Pick<Tag, 'format' | 'values' | 'pattern' | 'min' | 'max'>;
+export type TagRule = Pick<Tag, 'format' | 'values' | 'regexp' | 'min' | 'max'>;
 
 /** Why a value is refused: a message (error.tag.*, the server's own) and its params, but the tag. */
 export interface Problem {
@@ -35,8 +35,8 @@ export function valueProblem(rule: TagRule, value: string): Problem | null {
 	if (rule.format === 'list') {
 		return rule.values?.some((v) => v.id === value) ? null : { key: 'error.tag.value', params: {} };
 	}
-	if (rule.format === 'regexp' && !compilePattern(rule.pattern ?? '')?.test(value)) {
-		return { key: 'error.tag.pattern', params: { pattern: rule.pattern ?? '' } };
+	if (rule.format === 'regexp' && !compilePattern(rule.regexp ?? '')?.test(value)) {
+		return { key: 'error.tag.pattern', params: { pattern: rule.regexp ?? '' } };
 	}
 	if (rule.min != null || rule.max != null) {
 		const number = NUMBER.test(value) ? Number(value) : null;

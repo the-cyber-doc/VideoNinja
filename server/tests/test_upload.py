@@ -226,7 +226,7 @@ def test_seeded_tags(admin):
             "id": "year",
             "name": {"en": "Year", "fr": "Année"}[lang],
             "format": "regexp",
-            "pattern": "[12][0-9]{3}",
+            "regexp": "[12][0-9]{3}",
             "hint": {"en": "A year, e.g. 2024", "fr": "Une année, par ex. 2024"}[lang],
             "input_mode": "numeric",
         }

@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { CATALOG as FULL, KETO, KOKU } from '../catalog';
 import { fulfillClip } from '../clip';
+import type { Tag } from '../../src/lib/api/types';
 
 // The editor's video. Not the hidden one that measures the frame duration for a moment (aria-hidden).
 const PLAYER = 'video:not([aria-hidden="true"])';
@@ -305,7 +306,7 @@ test('tags of the video and of a segment: picked from drop-downs, saved by ID', 
 				},
 				{ id: 'rain', name: 'Rain', input_mode: 'text' },
 				{ id: 'year', name: 'Year', format: 'regexp', regexp: '[12][0-9]{3}', input_mode: 'numeric' }
-			]
+			] satisfies Tag[]
 		})
 	);
 	await page.goto('/videos/1');
@@ -449,7 +450,7 @@ const FILTERED = [
 	{ ...video(4, 0, false, 90), uploaded_at: '2027-01-16T09:00:00+01:00', tags: [{ id: 'year', value: '2024' }] },
 	{ ...video(5, 3, true, 600), uploaded_by: 'Akira', uploaded_at: '2027-01-18T09:00:00+01:00' }
 ];
-const FILTER_TAGS = [
+const FILTER_TAGS: Tag[] = [
 	{
 		id: 'location',
 		name: 'Location',
@@ -461,7 +462,7 @@ const FILTER_TAGS = [
 			{ id: 'park', name: 'Park' }
 		]
 	},
-	{ id: 'year', name: 'Year', format: 'regexp', pattern: '[12][0-9]{3}', input_mode: 'numeric' }
+	{ id: 'year', name: 'Year', format: 'regexp', regexp: '[12][0-9]{3}', input_mode: 'numeric' }
 ];
 
 test('filter and sort: a pane with what the videos offer, applied in each section, kept', async ({ page }) => {

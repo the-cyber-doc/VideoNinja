@@ -26,7 +26,7 @@ class Tag(BaseModel):
     name: str  # in the request's language
     format: Format | None = None  # None: no value
     values: list[TagValue] | None = None  # "list": its values, sorted by name
-    pattern: str | None = None  # "regexp": the whole value matches it
+    regexp: str | None = None  # "regexp": the whole value matches it
     hint: str | None = None  # "regexp", "free": placeholder and help, in the request's language
     input_mode: InputMode = "text"  # the keyboard
     min: int | None = None  # numeric: bounds of the number
@@ -49,7 +49,7 @@ def list_tags(
             id=r["id"],
             name=i18n.pick(r, "name", lang, r["id"]),
             format=r["value_format"],
-            pattern=r["regexp"],
+            regexp=r["regexp"],
             hint=i18n.pick(r, "hint", lang),
             input_mode=r["input_mode"],
             min=r["min_value"],

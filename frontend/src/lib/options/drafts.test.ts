@@ -134,7 +134,7 @@ describe('tag drafts', () => {
 		expect(ruleOf(draft, 'fr')).toEqual({
 			format: 'regexp',
 			values: [],
-			pattern: '[12][0-9]{3}',
+			regexp: '[12][0-9]{3}',
 			min: null,
 			max: 2026
 		});

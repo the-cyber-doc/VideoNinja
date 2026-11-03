@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { expect, test, type Browser, type Cookie, type Locator, type Page } from '@playwright/test';
 import { TOTP } from 'otpauth';
+import type { Tag } from '../../src/lib/api/types';
 
 // The Options page on the real backend, after account.spec.ts (project "options": it
 // depends on "e2e", whose admin it logs in as: .e2e/admin.json). Serial: the tests
@@ -174,10 +175,10 @@ test('switch to a regular expression: refused until valid, the test field, saved
 		id: 'venue',
 		name: 'Venue',
 		format: 'regexp',
-		pattern: 'room-[0-9]+',
+		regexp: 'room-[0-9]+',
 		hint: 'room-<number>',
 		input_mode: 'text'
-	});
+	} satisfies Tag);
 });
 
 test('the server checks again what the page lets through', async ({ page }) => {

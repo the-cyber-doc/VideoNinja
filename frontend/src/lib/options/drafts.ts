@@ -158,7 +158,7 @@ export function ruleOf(d: TagDraft, lang: Lang): TagRule {
 	return {
 		format: body.format,
 		values: d.values.map((v) => ({ id: v.id.trim(), name: v.names[lang] })),
-		pattern: body.regexp,
+		regexp: body.regexp,
 		min: body.min,
 		max: body.max
 	};

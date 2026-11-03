@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { compilePattern, hintId, nameId, valueNameId, valueProblem } from './tags';
 
-const year = { format: 'regexp' as const, pattern: '[12][0-9]{3}' };
+const year = { format: 'regexp' as const, regexp: '[12][0-9]{3}' };
 
 describe('tag rules', () => {
 	it('a pattern matches the whole value, else none', () => {

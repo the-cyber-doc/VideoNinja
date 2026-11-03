@@ -42,7 +42,7 @@ const TAGS: Tag[] = [
 	},
 	{ id: 'note', name: 'Note', format: 'free', input_mode: 'text' },
 	{ id: 'unused', name: 'Unused', format: 'free', input_mode: 'text' },
-	{ id: 'year', name: 'Year', format: 'regexp', pattern: '[12][0-9]{3}', input_mode: 'numeric' },
+	{ id: 'year', name: 'Year', format: 'regexp', regexp: '[12][0-9]{3}', input_mode: 'numeric' },
 	{ id: 'level', name: 'Level', format: 'free', input_mode: 'text', min: 1, max: 9 },
 	{ id: 'code', name: 'Code', format: 'free', input_mode: 'numeric' } // a value not a number: text
 ];

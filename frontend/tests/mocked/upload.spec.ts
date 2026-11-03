@@ -1,6 +1,7 @@
 import { expect, test, type Page, type Request } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 import { CATALOG as FULL, KOKU, STAFF } from '../catalog';
+import type { Tag } from '../../src/lib/api/types';
 
 // The editor's video. Not the hidden one that measures the frame duration for a moment (aria-hidden).
 const PLAYER = 'video:not([aria-hidden="true"])';
@@ -30,8 +31,9 @@ interface Fake {
 	limits: { max_bytes: number; extensions: string[] };
 }
 
-// As the server sends them: names in the request's language, sorted by name.
-const TAGS: Record<string, object[]> = {
+// As the server sends them (typed: a wrong field fails `npm run check`): names in the
+// request's language, sorted by name.
+const TAGS: Record<string, Tag[]> = {
 	en: [
 		{ id: 'note', name: 'Note', format: 'free', input_mode: 'text' },
 		{
@@ -49,7 +51,7 @@ const TAGS: Record<string, object[]> = {
 			id: 'year',
 			name: 'Year',
 			format: 'regexp',
-			pattern: '[12][0-9]{3}',
+			regexp: '[12][0-9]{3}',
 			hint: 'A year, e.g. 2024',
 			input_mode: 'numeric',
 			max: 2026
@@ -72,7 +74,7 @@ const TAGS: Record<string, object[]> = {
 			id: 'year',
 			name: 'Année',
 			format: 'regexp',
-			pattern: '[12][0-9]{3}',
+			regexp: '[12][0-9]{3}',
 			hint: 'Une année, par ex. 2024',
 			input_mode: 'numeric',
 			max: 2026
