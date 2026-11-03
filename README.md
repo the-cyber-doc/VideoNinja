@@ -1036,6 +1036,66 @@ docker build -f server/Dockerfile --target nginx --build-arg BASE_PATH=/other -t
 docker build -f server/Dockerfile --target nginx --build-arg BASE_PATH= -t videoninja-nginx:root .
 ```
 
+#### Container and service names
+
+`container_name` is yours to choose: the containers find each other by their
+**service names** (the keys under `services:`), through Docker's DNS on the
+`backend` network, never by container name. Change the `container_name:` lines
+freely (they name `docker ps`, the logs and journald's `docker-<name>` tags).
+
+The service names `api`, `tusd` and `nginx` are expected by:
+
+| Who | Calls | Where it is set |
+|---|---|---|
+| nginx | `api:8000`, `tusd:1080` | inside the nginx image (`nginx.conf`) |
+| tusd | `api:8000` (its hooks) | `-hooks-http=` in this file |
+| the API | `tusd:1080` (`/health`, the upload page's check) | `VIDEONINJA_TUSD_URL`, default in the api image |
+| the encoder | `api:8000` (catalogue rebuilds) | `VIDEONINJA_API_URL`, default in the encoder image |
+| the api healthcheck | `nginx:8080` | `healthcheck:` in this file |
+
+Nothing calls the encoder: its service name is free.
+
+To give the other services names of your own, keep the expected names as
+**network aliases** on `backend`: nothing else changes, not even the images.
+For example:
+
+```yaml
+services:
+  vn-nginx:
+    container_name: my-nginx
+    networks:
+      edge: {}
+      backend:
+        aliases: [nginx]   # the api's healthcheck
+    depends_on: [vn-api, vn-tusd]   # depends_on uses the new service names
+    # … the rest as above
+
+  vn-api:
+    container_name: my-api
+    networks:
+      backend:
+        aliases: [api]     # nginx, tusd's hooks, the encoder
+    # … the rest as above
+
+  vn-tusd:
+    container_name: my-tusd
+    networks:
+      backend:
+        aliases: [tusd]    # nginx, the API's checks
+    # … the rest as above
+
+  vn-encoder:              # no alias needed
+    container_name: my-encoder
+    networks: [backend]
+    # … the rest as above
+```
+
+The aliases go on `backend`: every call between the containers goes through
+it. `networks:` becomes a map as soon as one network has aliases, so list the
+others as keys too (`edge: {}`). Only `depends_on` uses the new service names.
+Check with `docker compose ps` (the api's health covers nginx, tusd and the
+encoder) or `curl http://127.0.0.1:8080/videoninja/health`.
+
 ### 3. First start
 
 ```bash
