@@ -1,79 +1,22 @@
-import { readFileSync } from 'node:fs';
-import {
-	expect,
-	test,
-	type APIRequestContext,
-	type APIResponse,
-	type Browser,
-	type BrowserContext,
-	type Cookie
-} from '@playwright/test';
-import { TOTP } from 'otpauth';
+import { expect, test, type APIRequestContext, type Browser, type BrowserContext, type Cookie } from '@playwright/test';
+import { admin, loggedIn, register } from '../accounts';
 
 // Test local codecs on the real backend (project "options": after account.spec.ts, whose
 // admin invites the accounts here): the 'upload' access decided by real roles, and the page
 // really running its tests in this browser (Playwright's Chromium: H.264 + AAC, no H.265).
-// Every credential POST through `credentialPost`: on the stack, nginx's limit (60/min,
-// burst 30) is mostly used up by the specs before.
+// Every credential POST through ../accounts (nginx's limit, shared with options.spec.ts).
 test.describe.configure({ mode: 'serial' });
 
-interface Account {
-	username: string;
-	password: string;
-	totpSecret: string;
+/** An account with this role, invited by the admin and registered through the API, logged in. */
+async function account(request: APIRequestContext, browser: Browser, role: string): Promise<BrowserContext> {
+	return loggedIn(browser, await register(request, `codecs_${role}_${Date.now() % 100000}`, role));
 }
 
 let adminCookies: Cookie[] = [];
 
-/** A credential POST; on nginx's 429, waits as Retry-After says and tries again. `data` is
- * made again for each try (a TOTP code may have expired). */
-async function credentialPost(request: APIRequestContext, path: string, data: () => object): Promise<APIResponse> {
-	for (let attempt = 0; ; attempt++) {
-		const res = await request.post(path, { data: data() });
-		if (res.status() !== 429 || attempt === 20) return res;
-		await new Promise((done) => setTimeout(done, Number(res.headers()['retry-after'] ?? 5) * 1000));
-	}
-}
-
-/** A context of its own, logged in through the API (its session cookie kept by the context). */
-async function loggedIn(browser: Browser, who: Account): Promise<BrowserContext> {
-	const context = await browser.newContext({
-		baseURL: test.info().project.use.baseURL,
-		ignoreHTTPSErrors: true,
-		locale: 'en-US'
-	});
-	const res = await credentialPost(context.request, 'api/auth/login', () => ({
-		username: who.username,
-		password: who.password,
-		totp_code: new TOTP({ secret: who.totpSecret }).generate()
-	}));
-	expect(res.status()).toBe(200);
-	return context;
-}
-
-/** An account with this role, invited by the admin and registered through the API, logged in. */
-async function account(admin: APIRequestContext, browser: Browser, role: string): Promise<BrowserContext> {
-	const username = `codecs_${role}_${Date.now() % 100000}`;
-	const invite = await admin.post('api/admin/users', { data: { username, role } });
-	expect(invite.status()).toBe(201);
-	const { token } = await invite.json();
-	const enrol = await credentialPost(admin, 'api/register/totp', () => ({ token }));
-	expect(enrol.status()).toBe(200);
-	const { secret } = await enrol.json();
-	const who = { username, password: `${username}'s long password`, totpSecret: secret };
-	const done = await credentialPost(admin, 'api/register/complete', () => ({
-		token,
-		password: who.password,
-		totp_secret: secret,
-		totp_code: new TOTP({ secret }).generate()
-	}));
-	expect(done.status()).toBe(204);
-	return loggedIn(browser, who);
-}
-
 // The admin (left by account.spec.ts) logs in once; the accounts are made with its session.
 test.beforeAll(async ({ browser }) => {
-	const context = await loggedIn(browser, JSON.parse(readFileSync('.e2e/admin.json', 'utf8')));
+	const context = await loggedIn(browser, admin());
 	adminCookies = await context.cookies();
 	await context.close();
 });

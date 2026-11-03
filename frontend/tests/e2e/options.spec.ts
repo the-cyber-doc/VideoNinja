@@ -1,7 +1,6 @@
-import { readFileSync } from 'node:fs';
 import { expect, test, type Browser, type Cookie, type Locator, type Page } from '@playwright/test';
-import { TOTP } from 'otpauth';
 import type { Tag } from '../../src/lib/api/types';
+import { admin, loggedIn, register } from '../accounts';
 
 // The Options page on the real backend, after account.spec.ts (project "options": it
 // depends on "e2e", whose admin it logs in as: .e2e/admin.json). Serial: the tests
@@ -9,16 +8,11 @@ import type { Tag } from '../../src/lib/api/types';
 test.describe.configure({ mode: 'serial' });
 
 // The admin logs in once, every test reuses the session: on the real stack, nginx limits
-// credential POSTs (60/min, burst 30), and account.spec.ts has used most of them.
+// credential POSTs (60/min, burst 30), shared with codecs.spec.ts running beside this one.
 let adminCookies: Cookie[] = [];
 
 test.beforeAll(async ({ browser }) => {
-	const context = await browser.newContext({
-		baseURL: test.info().project.use.baseURL,
-		ignoreHTTPSErrors: true,
-		locale: 'en-US'
-	});
-	await logIn(await context.newPage());
+	const context = await loggedIn(browser, admin());
 	adminCookies = await context.cookies();
 	await context.close();
 });
@@ -26,22 +20,6 @@ test.beforeAll(async ({ browser }) => {
 test.beforeEach(async ({ context }) => {
 	await context.addCookies(adminCookies);
 });
-
-interface Account {
-	username: string;
-	password: string;
-	totpSecret: string;
-}
-
-async function logIn(page: Page, account?: Account) {
-	const who: Account = account ?? JSON.parse(readFileSync('.e2e/admin.json', 'utf8'));
-	await page.goto('login');
-	await page.getByLabel('Username').fill(who.username);
-	await page.getByLabel('Password').fill(who.password);
-	await page.getByLabel('Authenticator code').fill(new TOTP({ secret: who.totpSecret }).generate());
-	await page.getByRole('button', { name: 'Log in' }).click();
-	await expect(page.getByText('Logged in as')).toBeVisible();
-}
 
 const tag = (page: Page, name: string): Locator =>
 	page.locator('details.tag', { has: page.locator('summary', { hasText: name }) });
@@ -204,30 +182,15 @@ test('delete the tag', async ({ page }) => {
 	expect((await uploadTags(page)).venue).toBeUndefined();
 });
 
-/** A user with the "user" role, registered through the API (an invitation, then the registration). */
-async function newUser(page: Page, browser: Browser, baseURL?: string): Promise<Page> {
-	const username = `hana${Date.now() % 100000}`;
-	const invite = await (await page.request.post('api/admin/users', { data: { username, role: 'user' } })).json();
-	const { secret } = await (await page.request.post('api/register/totp', { data: { token: invite.token } })).json();
-	const account = { username, password: 'hana long password', totpSecret: secret };
-	const done = await page.request.post('api/register/complete', {
-		data: {
-			token: invite.token,
-			password: account.password,
-			totp_secret: secret,
-			totp_code: new TOTP({ secret }).generate()
-		}
-	});
-	expect(done.status()).toBe(204);
-	// A context of its own (test.use's storageState applies to the test's context only).
-	const context = await browser.newContext({ baseURL, ignoreHTTPSErrors: true, locale: 'en-US' });
-	const other = await context.newPage();
-	await logIn(other, account);
-	return other;
+/** A user with the "user" role, registered through the API, logged in in a context of its own. */
+async function newUser(page: Page, browser: Browser): Promise<Page> {
+	const hana = await register(page.request, `hana${Date.now() % 100000}`, 'user');
+	return (await loggedIn(browser, hana)).newPage();
 }
 
-test('without the options access: no menu entry, no page, 403', async ({ page, browser, baseURL }) => {
-	const hana = await newUser(page, browser, baseURL);
+test('without the options access: no menu entry, no page, 403', async ({ page, browser }) => {
+	const hana = await newUser(page, browser);
+	await hana.goto('./');
 	await hana.getByRole('button', { name: 'User menu' }).click();
 	await expect(hana.getByRole('menu').getByRole('menuitem')).toHaveText(['Profile', 'About', 'Log out']);
 	await hana.goto('options');

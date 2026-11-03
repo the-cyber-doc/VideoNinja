@@ -1,16 +1,5 @@
-import { readFileSync } from 'node:fs';
-import {
-	expect,
-	test,
-	type APIRequestContext,
-	type APIResponse,
-	type Browser,
-	type BrowserContext,
-	type Cookie,
-	type Locator,
-	type Page
-} from '@playwright/test';
-import { TOTP } from 'otpauth';
+import { expect, test, type Browser, type Cookie, type Locator, type Page } from '@playwright/test';
+import { admin, loggedIn, register } from '../accounts';
 
 // The real containers only (tools/test-e2e-stack.sh), project "videos": the Videos page's
 // filter and sort on videos really uploaded (tusd), encoded (encoder) and published, by
@@ -26,47 +15,12 @@ const A = 'clip-6s.webm';
 const B = 'clip-9s.webm';
 const C = 'clip-12s.webm';
 
-interface Account {
-	username: string;
-	password: string;
-	totpSecret: string;
-}
-
 let adminCookies: Cookie[] = [];
-
-/**
- * A credential POST (login, registration) through nginx's limit (60/min, burst 30), which
- * the earlier projects have mostly used up: on its 429, waits as Retry-After says and
- * tries again. `data` is made again for each try (a TOTP code may have expired).
- */
-async function credentialPost(request: APIRequestContext, path: string, data: () => object): Promise<APIResponse> {
-	for (let attempt = 0; ; attempt++) {
-		const res = await request.post(path, { data: data() });
-		if (res.status() !== 429 || attempt === 20) return res;
-		await new Promise((done) => setTimeout(done, Number(res.headers()['retry-after'] ?? 5) * 1000));
-	}
-}
-
-/** A context of its own, logged in through the API (its session cookie kept by the context). */
-async function loggedIn(browser: Browser, who: Account): Promise<BrowserContext> {
-	const context = await browser.newContext({
-		baseURL: test.info().project.use.baseURL,
-		ignoreHTTPSErrors: true,
-		locale: 'en-US'
-	});
-	const res = await credentialPost(context.request, 'api/auth/login', () => ({
-		username: who.username,
-		password: who.password,
-		totp_code: new TOTP({ secret: who.totpSecret }).generate()
-	}));
-	expect(res.status()).toBe(200);
-	return context;
-}
 
 // The admin (left by tests/e2e/account.spec.ts: its last password and authenticator) logs
 // in once, every test reuses the session.
 test.beforeAll(async ({ browser }) => {
-	const context = await loggedIn(browser, JSON.parse(readFileSync('.e2e/admin.json', 'utf8')));
+	const context = await loggedIn(browser, admin());
 	adminCookies = await context.cookies();
 	await context.close();
 });
@@ -77,22 +31,7 @@ test.beforeEach(async ({ context }) => {
 
 /** An uploader, invited and registered through the API, logged in in a context of its own. */
 async function uploader(page: Page, browser: Browser, username: string, name: string): Promise<Page> {
-	const invite = await page.request.post('api/admin/users', { data: { username, role: 'uploader' } });
-	expect(invite.status()).toBe(201);
-	const { token } = await invite.json();
-	const enrol = await credentialPost(page.request, 'api/register/totp', () => ({ token }));
-	expect(enrol.status()).toBe(200);
-	const { secret } = await enrol.json();
-	const account = { username, password: `${username}'s long password`, totpSecret: secret };
-	const done = await credentialPost(page.request, 'api/register/complete', () => ({
-		token,
-		name,
-		password: account.password,
-		totp_secret: secret,
-		totp_code: new TOTP({ secret }).generate()
-	}));
-	expect(done.status()).toBe(204);
-	return (await loggedIn(browser, account)).newPage();
+	return (await loggedIn(browser, await register(page.request, username, 'uploader', name))).newPage();
 }
 
 /** Uploaded as a video without technique (no segment to define). */
