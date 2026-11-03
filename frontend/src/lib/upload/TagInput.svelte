@@ -1,5 +1,5 @@
 <script lang="ts">
-	// Tags as removable chips. Add: type or pick a tag name (only existing tags:
+	// Tags as removable chips. Add: pick a tag in the drop-down (only existing tags:
 	// admins define them on the Options page), then its value as the tag's rule says:
 	// one of its fixed values, text (its hint as placeholder, its keyboard), or none.
 	// Shown by their (translated) names, kept by ID: a language change relabels them.
@@ -12,12 +12,10 @@
 
 	let { available, value = $bindable(), label }: { available: Tag[]; value: TagIn[]; label: string } = $props();
 
-	const id = $props.id();
-	let name = $state('');
+	let tagId = $state('');
 	let tagValue = $state('');
-	const unused = $derived(available.filter((tag) => !value.some((v) => v.id === tag.id)));
-	const same = (a: string, b: string) => a.localeCompare(b, undefined, { sensitivity: 'base' }) === 0;
-	const chosen = $derived(unused.find((tag) => same(tag.name, name.trim())));
+	const unused = $derived(available.filter((tag) => !value.some((v) => v.id === tag.id))); // the server's order
+	const chosen = $derived(unused.find((tag) => tag.id === tagId));
 
 	const tagName = (id: string) => available.find((tag) => tag.id === id)?.name ?? id;
 	function chip(tag: TagIn) {
@@ -33,7 +31,7 @@
 	function add() {
 		if (!chosen || !valueOk) return;
 		value.push(chosen.format ? { id: chosen.id, value: tagValue.trim() } : { id: chosen.id });
-		name = '';
+		tagId = '';
 		tagValue = '';
 	}
 </script>
@@ -62,18 +60,12 @@
 		<p class="hint">{t('upload.tag.none')}</p>
 	{:else if unused.length}
 		<div class="add">
-			<input
-				list="{id}-names"
-				bind:value={name}
-				placeholder={t('upload.tag.add')}
-				aria-label={t('upload.tag.add')}
-				onkeydown={(e) => e.key === 'Enter' && (e.preventDefault(), add())}
-			/>
-			<datalist id="{id}-names">
+			<select bind:value={tagId} aria-label={t('upload.tag.add')} onchange={() => (tagValue = '')}>
+				<option value="">{t('upload.tag.add')}</option>
 				{#each unused as tag (tag.id)}
-					<option value={tag.name}></option>
+					<option value={tag.id}>{tag.name}</option>
 				{/each}
-			</datalist>
+			</select>
 			{#if chosen?.values}
 				<select bind:value={tagValue} aria-label={t('upload.tag.value')}>
 					<option value="">{t('upload.tag.value')}</option>

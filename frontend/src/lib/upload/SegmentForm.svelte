@@ -22,6 +22,7 @@
 		tags,
 		problems,
 		selected,
+		reveal = false,
 		onselect,
 		onaddperformer,
 		ondelete
@@ -33,10 +34,17 @@
 		tags: Tag[];
 		problems: SegmentField[];
 		selected: boolean;
+		/** Scrolled into view (the segment the page opens on). */
+		reveal?: boolean;
 		onselect: () => void;
 		onaddperformer: (name: string) => Promise<Performer>;
 		ondelete: () => void;
 	} = $props();
+
+	let article = $state<HTMLElement>();
+	$effect(() => {
+		if (reveal) article?.scrollIntoView({ block: 'center' });
+	});
 
 	const ADD = '\u0000add'; // the "Add a performer…" option
 	let adding = $state(false);
@@ -90,7 +98,7 @@
 	}
 </script>
 
-<article class="segment" class:selected aria-label={t('upload.segment_n', { n: number })}>
+<article bind:this={article} class="segment" class:selected aria-label={t('upload.segment_n', { n: number })}>
 	<header>
 		<button type="button" class="link" onclick={onselect}>
 			<strong>{t('upload.segment_n', { n: number })}</strong>

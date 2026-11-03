@@ -287,6 +287,93 @@ test('annotate a published video: its segments loaded, Proceed saves them, nothi
 	expect(sent.filter((s) => s.path.startsWith('/files') || s.path.includes('/submit'))).toEqual([]); // no upload
 });
 
+test('tags of the video and of a segment: picked from drop-downs, saved by ID', async ({ page }) => {
+	const sent = await setup(page);
+	// Registered last: it wins over setup's empty list. As the server sends them: sorted by name.
+	await page.route('/api/tags', (r) =>
+		r.fulfill({
+			json: [
+				{
+					id: 'location',
+					name: 'Location',
+					format: 'list',
+					input_mode: 'text',
+					values: [
+						{ id: 'dojo', name: 'Dojo' },
+						{ id: 'outdoor', name: 'Outdoor' }
+					]
+				},
+				{ id: 'rain', name: 'Rain', input_mode: 'text' },
+				{ id: 'year', name: 'Year', format: 'regexp', regexp: '[12][0-9]{3}', input_mode: 'numeric' }
+			]
+		})
+	);
+	await page.goto('/videos/1');
+
+	// The video's: a list tag (its values in a second drop-down), then a text one.
+	const video = page.locator('.card', { has: page.getByText('Tags of the video') });
+	const tag = video.getByLabel('Add a tag');
+	await expect(tag.locator('option')).toHaveText(['Add a tag', 'Location', 'Rain', 'Year']);
+	const add = video.getByRole('button', { name: 'Add', exact: true });
+	await expect(add).toBeDisabled(); // nothing chosen
+	await tag.selectOption({ label: 'Location' });
+	await expect(video.getByLabel('Value').locator('option')).toHaveText(['Value', 'Dojo', 'Outdoor']);
+	await expect(add).toBeDisabled(); // no value yet
+	await video.getByLabel('Value').selectOption({ label: 'Outdoor' });
+	await add.click();
+	await tag.selectOption({ label: 'Year' });
+	await video.getByLabel('Value').fill('2024');
+	await add.click();
+	await expect(video.locator('.chip')).toHaveText(['Location: Outdoor', 'Year: 2024']);
+	await expect(tag.locator('option')).toHaveText(['Add a tag', 'Rain']); // a tag once only
+	await expect(tag).toHaveValue(''); // ready for the next one
+
+	// A segment's: the same drop-downs; a tag without value is added alone.
+	const first = page.getByRole('article', { name: 'Segment 1' });
+	await first.getByLabel('Add a tag').selectOption({ label: 'Rain' });
+	await expect(first.getByLabel('Value')).toHaveCount(0);
+	await first.getByRole('button', { name: 'Add', exact: true }).click();
+	await expect(first.locator('.chip')).toHaveText(['Rain']);
+	// Removed: offered again.
+	await video.getByRole('button', { name: 'Remove the tag Location' }).click();
+	await expect(tag.locator('option')).toHaveText(['Add a tag', 'Location', 'Rain']);
+
+	await page.getByRole('checkbox', { name: /All the segments have been created/ }).check();
+	await page.getByRole('button', { name: 'Proceed' }).click();
+	await expect(page).toHaveURL('/videos?saved');
+	const put = sent.find((s) => s.method === 'PUT')!;
+	expect(put.body).toMatchObject({
+		tags: [{ id: 'year', value: '2024' }],
+		segments: [
+			{ id: 11, tags: [{ id: 'rain' }] },
+			{ id: 12, tags: [] }
+		]
+	});
+});
+
+test("opened from a segment's link (?segment=<id>): that segment selected, scrolled to, the video at its begin", async ({
+	page
+}) => {
+	await page.setViewportSize({ width: 1280, height: 500 }); // the second form below the fold
+	await setup(page);
+	await page.goto('/videos/1?segment=12');
+	const second = page.getByRole('article', { name: 'Segment 2' });
+	await expect(second).toHaveClass(/\bselected\b/);
+	await expect(page.getByRole('article', { name: 'Segment 1' })).not.toHaveClass(/\bselected\b/);
+	await expect(second).toBeInViewport();
+	const video = page.locator(PLAYER).first();
+	await expect.poll(() => video.evaluate((v: HTMLVideoElement) => v.currentTime)).toBeCloseTo(2, 1);
+	await expect(page.getByText('0:02 / 0:04')).toBeVisible(); // the marker too
+});
+
+test('a segment the video no longer has (?segment=<id>): opened as usual', async ({ page }) => {
+	await setup(page);
+	await page.goto('/videos/1?segment=99');
+	await expect(page.getByRole('article', { name: 'Segment 2' })).toBeVisible();
+	await expect(page.locator('article.selected')).toHaveCount(0);
+	await expect(page.getByText('0:00 / 0:04')).toBeVisible();
+});
+
 test("who did what: the file name, its uploader, each segment's author (mine for a new one)", async ({ page }) => {
 	await setup(page);
 	await page.goto('/videos/1');

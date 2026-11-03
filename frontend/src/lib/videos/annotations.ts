@@ -1,7 +1,7 @@
 // Video management (the Videos page): the annotation as the server keeps it
 // (../api/videos.ts), converted to and from the annotation panel's form, and the
 // page's sections.
-import { pathOf, sectionId, type Catalog } from '../catalog.svelte';
+import { pathOf, sectionId, type Catalog, type Segment } from '../catalog.svelte';
 import type { Annotations, AnnotationsOut, TagIn, VideoRow } from '../api/types';
 import type { Annotation, Mode } from '../upload/draft.svelte';
 import { allSegmentsDone, wholeSeconds } from '../upload/rules';
@@ -61,4 +61,15 @@ export function toAnnotations(annotation: Annotation): Annotations {
 			tags: s.tags
 		}))
 	};
+}
+
+/** The Videos page of a segment's video, opened on that segment (without the base path). */
+export const segmentHref = (segment: Pick<Segment, 'id' | 'video'>) => `/videos/${segment.video}?segment=${segment.id}`;
+
+/** The segment the page opens on (its `segment` parameter, a segment ID): its key in the
+ * form and where it begins. null without one, or one this video no longer has. */
+export function focusedSegment(annotation: Annotation, param: string | null): { key: number; begin: number } | null {
+	if (!param || !/^[0-9]+$/.test(param)) return null;
+	const found = annotation.segments.find((s) => s.id === Number(param));
+	return found ? { key: found.key, begin: found.begin } : null;
 }

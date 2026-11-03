@@ -1,10 +1,12 @@
 <script lang="ts">
 	// Annotating a published video again: the upload's annotation panel, with the
 	// video from the server and its saved segments and tags. Proceed saves them
-	// (nothing is uploaded). Needs the "video_mgmt" access.
+	// (nothing is uploaded). Needs the "video_mgmt" access. ?segment=<id> (a segment
+	// thumbnail's link): opens on that segment (selected, the video at its begin).
 	import ErrorMessage from '#lib/ErrorMessage.svelte';
 	import { untrack } from 'svelte';
 	import { beforeNavigate, goto } from '$app/navigation';
+	import { page } from '$app/state';
 	import { url } from '#lib/base.js';
 	import { loadCatalog, type Catalog } from '#lib/catalog.svelte.js';
 	import { i18n, t } from '#lib/i18n.svelte.js';
@@ -17,7 +19,7 @@
 	import type { Annotation } from '#lib/upload/draft.svelte.js';
 	import { getAnnotations, saveAnnotations } from '#lib/api/videos.js';
 	import { videoUrl } from '#lib/media.js';
-	import { toAnnotation, toAnnotations } from '#lib/videos/annotations.js';
+	import { focusedSegment, toAnnotation, toAnnotations } from '#lib/videos/annotations.js';
 	import type { PageProps } from './$types';
 
 	let { params }: PageProps = $props();
@@ -27,6 +29,7 @@
 	let catalog = $state<Catalog | null>(null);
 	let annotation = $state<Annotation | null>(null);
 	let about = $state({ filename: '', uploadedBy: null as string | null });
+	let focus = $state<{ key: number; begin: number } | null>(null); // ?segment=<id>: the one to open on
 	let saved = ''; // the annotation as loaded or last saved: unsaved changes ask before leaving
 	let performers = $state<Performer[]>([]);
 	let tags = $state<Tag[]>([]);
@@ -48,6 +51,7 @@
 					catalog = c;
 					about = { filename: a.original_filename, uploadedBy: a.uploaded_by };
 					annotation = toAnnotation(a, c);
+					focus = focusedSegment(annotation, page.url.searchParams.get('segment'));
 					saved = JSON.stringify(annotation);
 				},
 				(e) => (error = e)
@@ -112,6 +116,7 @@
 				{performers}
 				{tags}
 				busy={saving}
+				{focus}
 				onaddperformer={newPerformer}
 				onproceed={proceed}
 				oncancel={() => goto(url('/videos'))}

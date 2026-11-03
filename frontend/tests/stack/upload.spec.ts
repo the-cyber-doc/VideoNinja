@@ -105,6 +105,19 @@ test('the segment plays: its clip cut by nginx, its thumbnail served', async ({ 
 	await expect.poll(() => video.evaluate((v: HTMLVideoElement) => v.currentTime)).toBeGreaterThan(0.2); // playing
 });
 
+test("a segment's link opens its video's page, on that segment (the admin manages videos)", async ({ page }) => {
+	await logIn(page);
+	await page.goto('schools/gyokko/taijutsu/jo_ryaku/koku');
+	const link = page.locator(`li[data-id="${segment.id}"]`).getByRole('link', { name: 'Open in its video' });
+	const href = `videos/${segment.video}?segment=${segment.id}`;
+	await expect(link).toHaveAttribute('href', new RegExp(`/${href.replace('?', '\\?')}$`)); // under the base path
+	await link.click();
+	await expect(page).toHaveURL(href);
+	// Its Videos page, through nginx. Playwright's Chromium cannot play the encoded H.265,
+	// so the selected segment and the seek are checked by tests/mocked/videos.spec.ts.
+	await expect(page.locator('.about .filename')).toHaveText('clip.webm');
+});
+
 test('a segment added on the Videos page gets its thumbnail from the encoder', async ({ page }) => {
 	await logIn(page);
 	const annotations = await (await page.request.get(`api/videos/${segment.video}/annotations`)).json();

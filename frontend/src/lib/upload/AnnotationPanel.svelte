@@ -4,7 +4,7 @@
 	// Cancel / Proceed. Used by the upload page (a local file) and the Videos page
 	// (a published video); what Proceed does is the page's.
 	import ErrorMessage from '../ErrorMessage.svelte';
-	import type { Snippet } from 'svelte';
+	import { untrack, type Snippet } from 'svelte';
 	import type { Catalog } from '../catalog.svelte';
 	import { t } from '../i18n.svelte';
 	import { displayName } from '../session.svelte';
@@ -28,6 +28,7 @@
 		onaddperformer,
 		onproceed,
 		oncancel,
+		focus = null,
 		children
 	}: {
 		src: string;
@@ -46,13 +47,17 @@
 		onaddperformer: (name: string) => Promise<Performer>;
 		onproceed: () => void;
 		oncancel: () => void;
+		/** The segment to open on (the Videos page's link from a thumbnail): selected,
+		 * the video at its begin, its form scrolled to once the video is loaded. */
+		focus?: { key: number; begin: number } | null;
 		/** Shown above the buttons (e.g. the upload's progress). */
 		children?: Snippet;
 	} = $props();
 
 	let duration = $state(0);
 	let playable = $state(true);
-	let selected = $state<number | null>(null);
+	let selected = $state<number | null>(untrack(() => focus?.key ?? null));
+	let loaded = $state(false); // the video: the layout above the forms is final
 
 	const ready = $derived(!blocker && canProceed(annotation, duration, playable));
 	const reason = $derived.by(() => {
@@ -79,7 +84,15 @@
 		<strong class="filename">{filename}</strong>
 		<span class="uploader">{t('upload.uploaded_by', { name: uploadedBy ?? t('common.deleted_user') })}</span>
 	</div>
-	<Editor {src} bind:draft={annotation} bind:duration bind:playable bind:selected />
+	<Editor
+		{src}
+		bind:draft={annotation}
+		bind:duration
+		bind:playable
+		bind:selected
+		start={focus?.begin}
+		onready={() => (loaded = true)}
+	/>
 	{#if !playable}
 		<ErrorMessage error={t('upload.not_playable')} role={null} />
 	{/if}
@@ -119,6 +132,7 @@
 				{tags}
 				problems={segmentProblems(segment, duration)}
 				selected={segment.key === selected}
+				reveal={loaded && segment.key === focus?.key}
 				onselect={() => (selected = segment.key)}
 				{onaddperformer}
 				ondelete={() => annotation.segments.splice(i, 1)}

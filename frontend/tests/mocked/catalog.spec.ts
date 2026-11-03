@@ -26,12 +26,10 @@ const COMMENTS = [
 	}
 ];
 
-async function loggedIn(page: Page) {
+async function loggedIn(page: Page, access = ['segment']) {
 	await page.route('/api/setup/status', (r) => r.fulfill({ json: { initialized: true } }));
 	await page.route('/api/auth/me', (r) =>
-		r.fulfill({
-			json: { username: 'kenji', name: null, role: 'user', role_name: 'User', access: ['segment'] }
-		})
+		r.fulfill({ json: { username: 'kenji', name: null, role: 'user', role_name: 'User', access } })
 	);
 	await page.route('/api/catalog', (r) => r.fulfill({ json: CATALOG }));
 	await page.route(`/api/techniques/${KOKU}/comments`, (r) => r.fulfill({ json: COMMENTS }));
@@ -166,6 +164,7 @@ test('technique page: segment thumbnails, then comments newest first', async ({ 
 	await expect(videos.getByRole('button', { name: 'Play the segment (0:15)' })).toHaveCount(2);
 	await expect(videos.locator('img').first()).toHaveAttribute('src', '/media/segment/7/thumbnail');
 	await expect(videos.locator('img').last()).toHaveAttribute('src', '/media/segment/8/thumbnail');
+	await expect(videos.getByRole('link', { name: 'Open in its video' })).toHaveCount(0); // not a video manager
 
 	const comments = page.locator('.comment');
 	await expect(comments).toHaveCount(2);
@@ -188,6 +187,30 @@ test('without a service worker, nothing can be kept offline: no download buttons
 	await page.goto(KOKU_PAGE);
 	await expect(page.getByRole('button', { name: /Play the segment/ })).toHaveCount(2);
 	await expect(page.getByRole('button', { name: /offline|this device/ })).toHaveCount(0);
+});
+
+test("video managers: each thumbnail links to its video's page, on that segment (bottom left)", async ({ page }) => {
+	await loggedIn(page, ['segment', 'video_mgmt']);
+	await page.goto(KOKU_PAGE);
+	const links = page.locator('section').first().getByRole('link', { name: 'Open in its video' });
+	await expect(links).toHaveCount(2);
+	await expect(links.first()).toHaveAttribute('href', '/videos/1?segment=7');
+	await expect(links.last()).toHaveAttribute('href', '/videos/1?segment=8');
+	await expect(links.first()).toHaveAttribute('title', 'Open in its video');
+
+	// Over the picture, in its bottom left corner (alone: no service worker, no offline button).
+	const item = page.locator('li[data-id="7"]');
+	const [picture, link] = await Promise.all([item.locator('img').boundingBox(), links.first().boundingBox()]);
+	expect(link!.x - picture!.x).toBeGreaterThan(0);
+	expect(link!.x - picture!.x).toBeLessThan(10);
+	const bottom = picture!.y + picture!.height;
+	expect(bottom - (link!.y + link!.height)).toBeGreaterThan(0);
+	expect(bottom - (link!.y + link!.height)).toBeLessThan(10);
+
+	// A link, not the play button: no player, the Videos page instead.
+	await links.first().click();
+	await expect(page).toHaveURL('/videos/1?segment=7');
+	await expect(page.getByRole('dialog')).toHaveCount(0);
 });
 
 test('clicking a segment plays its clip in a dialog', async ({ page }) => {

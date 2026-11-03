@@ -42,15 +42,7 @@
 </script>
 
 {#if offline.available && paths.length}
-	<button
-		type="button"
-		class="offline"
-		class:saved={all && !busy}
-		class:busy
-		title={label}
-		aria-label={label}
-		onclick={toggle}
-	>
+	<button type="button" class="media-button" title={label} aria-label={label} onclick={toggle}>
 		{#if busy}
 			<svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
 				<circle cx="12" cy="12" r={RADIUS} fill="none" stroke="currentColor" stroke-opacity="0.35" stroke-width="3" />
@@ -71,30 +63,3 @@
 		{/if}
 	</button>
 {/if}
-
-<style>
-	.offline {
-		display: flex;
-		align-items: center;
-		gap: var(--space-1);
-		min-width: 1.9rem;
-		min-height: 1.9rem;
-		padding: var(--space-1) var(--space-1);
-		font-size: var(--text-xs);
-		font-variant-numeric: tabular-nums;
-		line-height: 1;
-		color: var(--on-media);
-		background: var(--scrim);
-		border: 0;
-		border-radius: var(--radius-sm);
-		cursor: pointer;
-	}
-	.offline:hover,
-	.offline:focus-visible {
-		background: var(--scrim-hover);
-	}
-	.offline:focus-visible {
-		outline: 2px solid var(--accent);
-		outline-offset: 2px;
-	}
-</style>

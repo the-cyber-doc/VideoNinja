@@ -392,6 +392,7 @@
 	},
 	"technique.no_videos": { "en": "No videos yet.", "fr": "Pas encore de vidéo." },
 	"technique.play": { "en": "Play the segment ({duration})", "fr": "Lire le segment ({duration})" },
+	"technique.open_video": { "en": "Open in its video", "fr": "Ouvrir dans sa vidéo" },
 	"player.label": { "en": "{title}, segment of {duration}", "fr": "{title}, segment de {duration}" },
 	"player.close": { "en": "Close", "fr": "Fermer" },
 	"player.speed": { "en": "Speed", "fr": "Vitesse" },

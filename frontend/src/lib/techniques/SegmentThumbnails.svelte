@@ -1,7 +1,8 @@
 <script lang="ts">
 	// The thumbnails of a technique's video segments, with their duration. Clicking
 	// one plays its clip (SegmentPlayer). Bottom right of each: whether its clip is
-	// on this device, and a button to download or remove it (OfflineToggle).
+	// on this device, and a button to download or remove it (OfflineToggle). Bottom
+	// left: a link to its video's page, on that segment (SegmentLink, video managers).
 	// Pictures and clips are served by /media/segment/<id>… (session + access
 	// checked by the app), and kept by the service worker for offline use.
 	import type { Segment } from '../catalog.svelte';
@@ -9,6 +10,7 @@
 	import { segmentDuration, thumbnailUrl } from '../media';
 	import OfflineToggle from '../OfflineToggle.svelte';
 	import { formatTime } from '../time';
+	import SegmentLink from './SegmentLink.svelte';
 	import SegmentPlayer from './SegmentPlayer.svelte';
 
 	let { segments, title }: { segments: Segment[]; title: string } = $props();
@@ -29,8 +31,11 @@
 					{/if}
 					<span class="duration">{duration}</span>
 				</button>
-				<!-- Over the picture's bottom right, beside the play button (not inside it). -->
-				<span class="corner"><OfflineToggle segments={[segment]} /></span>
+				<!-- Over the picture's bottom corners, beside the play button (not inside it). -->
+				<span class="corner">
+					<SegmentLink {segment} />
+					<span class="end"><OfflineToggle segments={[segment]} /></span>
+				</span>
 			</li>
 		{/each}
 	</ul>
@@ -70,18 +75,22 @@
 	li {
 		position: relative;
 	}
-	/* The picture's area (same width and ratio), its content at the bottom right. */
+	/* The picture's area (same width and ratio): the link at the bottom left, the
+	   offline button at the bottom right (each in its corner, the other one or not). */
 	.corner {
 		position: absolute;
 		inset: 0 0 auto 0;
 		aspect-ratio: 16 / 9;
 		display: flex;
 		align-items: flex-end;
-		justify-content: flex-end;
 		padding: var(--space-1);
 		pointer-events: none;
 	}
-	.corner :global(button) {
+	.end {
+		margin-inline-start: auto;
+	}
+	.corner :global(button),
+	.corner :global(a) {
 		pointer-events: auto;
 	}
 	img,

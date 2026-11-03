@@ -242,6 +242,34 @@ test('logout deletes the cached user data', async ({ page, context, at }) => {
 	);
 });
 
+test("a video manager's thumbnail: the link bottom left, the offline button bottom right", async ({
+	page,
+	context,
+	at
+}) => {
+	await fakeApi(context);
+	// Registered last: wins over fakeApi's user.
+	await context.route('**/api/auth/me', (r) => r.fulfill({ json: { ...USER, access: ['segment', 'video_mgmt'] } }));
+	await controlled(page, at(TECHNIQUE_PAGE));
+	const item = page.locator('li[data-id="7"]');
+	const link = item.getByRole('link', { name: 'Open in its video' });
+	const toggle = item.getByRole('button', { name: 'Download for offline use (1 video(s))' });
+	await expect(link).toHaveAttribute('href', at('/videos/1?segment=7')); // under the base path too
+	await expect(toggle).toBeVisible();
+	const [picture, left, right] = await Promise.all([item.locator('img'), link, toggle].map((l) => l.boundingBox()));
+	expect(left!.x - picture!.x).toBeLessThan(10);
+	expect(picture!.x + picture!.width - (right!.x + right!.width)).toBeLessThan(10);
+	expect(left!.y + left!.height).toBeCloseTo(right!.y + right!.height, 0); // one row, at the bottom
+	expect(left!.width).toBeCloseTo(right!.width, 0); // the same button look
+	expect(left!.height).toBeCloseTo(right!.height, 0);
+	const look = (l: typeof link) =>
+		l.evaluate((e) => {
+			const s = getComputedStyle(e);
+			return [s.backgroundColor, s.color, s.borderRadius];
+		});
+	expect(await look(link)).toEqual(await look(toggle));
+});
+
 test('Videos page: the phone right of the title removes every saved video, their badges back to the cloud', async ({
 	page,
 	context,

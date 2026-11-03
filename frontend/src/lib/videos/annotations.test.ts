@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import type { Catalog } from '../catalog.svelte';
 import type { AnnotationsOut } from '../api/types';
-import { toAnnotation, toAnnotations, videoSection } from './annotations';
+import type { Annotation } from '../upload/draft.svelte';
+import { focusedSegment, segmentHref, toAnnotation, toAnnotations, videoSection } from './annotations';
 
 const catalog = {
 	schools: [],
@@ -130,5 +131,29 @@ describe('a technique no longer in the catalogue', () => {
 			section: '',
 			technique: 'gone.x'
 		});
+	});
+});
+
+describe('from a segment to its video', () => {
+	it("the Videos page of the segment's video, on that segment", () => {
+		expect(segmentHref({ id: 12, video: 3 })).toBe('/videos/3?segment=12');
+	});
+
+	const segment = (key: number, begin: number, id?: number) =>
+		({ key, id, begin, end: begin + 2 }) as Annotation['segments'][number];
+	const annotation = { segments: [segment(1, 0, 11), segment(2, 5, 12), segment(3, 9)] } as Annotation;
+
+	it('the segment named by the parameter: its key and begin', () => {
+		expect(focusedSegment(annotation, '12')).toEqual({ key: 2, begin: 5 });
+	});
+
+	it.each([
+		['no parameter', null],
+		['empty', ''],
+		['not an ID', '1.5'],
+		['not a number', 'abc'],
+		["another video's, or deleted since", '99']
+	])('none: %s', (_, param) => {
+		expect(focusedSegment(annotation, param)).toBeNull();
 	});
 });

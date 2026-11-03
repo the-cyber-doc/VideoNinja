@@ -257,7 +257,7 @@ test('segments by drag and by I/O, complete them, proceed: upload then submit', 
 	await first.getByPlaceholder("Performer's name").fill('Noguchi');
 	await first.getByRole('button', { name: 'Add' }).first().click();
 	await expect(first.getByLabel('Performer')).toHaveValue('noguchi');
-	await first.getByPlaceholder('Add a tag').fill('place'); // any case
+	await first.getByLabel('Add a tag').selectOption({ label: 'Place' });
 	await first.getByLabel('Value').selectOption({ label: 'Outdoor' });
 	await first.getByRole('button', { name: 'Add', exact: true }).click();
 	await expect(first.getByText('Place: Outdoor')).toBeVisible();
@@ -620,14 +620,17 @@ test('tags: shown by their translated names, kept by ID', async ({ page }) => {
 	await setup(page);
 	await openClip(page);
 	const video = page.locator('.card', { has: page.getByText('Tags of the video') });
-	await video.getByPlaceholder('Add a tag').fill('Place');
+	const names = video.getByLabel('Add a tag').locator('option');
+	await expect(names).toHaveText(['Add a tag', 'Note', 'Place', 'Rain', 'Year']);
+	await video.getByLabel('Add a tag').selectOption({ label: 'Place' });
 	await expect(video.getByLabel('Value').locator('option')).toHaveText(['Value', 'Dojo', 'Outdoor']);
 	await video.getByLabel('Value').selectOption({ label: 'Outdoor' });
 	await video.getByRole('button', { name: 'Add', exact: true }).click();
-	await video.getByPlaceholder('Add a tag').fill('note');
+	await video.getByLabel('Add a tag').selectOption({ label: 'Note' });
 	await video.getByLabel('Value').fill('Très bien');
 	await video.getByRole('button', { name: 'Add', exact: true }).click();
 	await expect(video.locator('.chip')).toHaveText(['Place: Outdoor', 'Note: Très bien']);
+	await expect(names).toHaveText(['Add a tag', 'Rain', 'Year']); // a tag once only
 
 	// Another language: the names are reloaded and the chips relabelled; free text stays as typed.
 	await page.getByRole('button', { name: 'Language: English' }).click();
@@ -640,7 +643,7 @@ test('a tag follows its rule: pattern and bounds, hint and keyboard, or no value
 	await setup(page);
 	await openClip(page);
 	const video = page.locator('.card', { has: page.getByText('Tags of the video') });
-	await video.getByPlaceholder('Add a tag').fill('Year');
+	await video.getByLabel('Add a tag').selectOption({ label: 'Year' });
 	const year = video.getByLabel('A year, e.g. 2024');
 	await expect(year).toHaveAttribute('inputmode', 'numeric');
 	const add = video.getByRole('button', { name: 'Add', exact: true });
@@ -659,7 +662,7 @@ test('a tag follows its rule: pattern and bounds, hint and keyboard, or no value
 	await add.click();
 
 	// No value: the tag alone.
-	await video.getByPlaceholder('Add a tag').fill('Rain');
+	await video.getByLabel('Add a tag').selectOption({ label: 'Rain' });
 	await expect(video.getByLabel('Value')).toHaveCount(0);
 	await add.click();
 	await expect(video.locator('.chip')).toHaveText(['Year: 2024', 'Rain']);

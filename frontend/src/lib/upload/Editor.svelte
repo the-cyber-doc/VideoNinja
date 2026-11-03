@@ -20,7 +20,9 @@
 		duration = $bindable(0),
 		playable = $bindable(true),
 		selected = $bindable(null),
-		video = $bindable()
+		video = $bindable(),
+		start,
+		onready
 	}: {
 		src: string;
 		draft: Annotation;
@@ -28,6 +30,10 @@
 		playable?: boolean;
 		selected?: number | null;
 		video?: HTMLVideoElement;
+		/** Where the marker starts (seconds), once the video is loaded. */
+		start?: number;
+		/** The video is loaded (playable or not). */
+		onready?: () => void;
 	} = $props();
 
 	let current = $state(0);
@@ -137,6 +143,8 @@
 		if (!video) return;
 		duration = video.duration;
 		playable = video.videoWidth > 0;
+		if (playable && start) seek(start);
+		onready?.();
 		if (!playable) return;
 		const url = src;
 		frame = await measureFrame(url, frame);
