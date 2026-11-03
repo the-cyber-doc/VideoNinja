@@ -46,7 +46,7 @@ RUN wget -q -O tusd.tar.gz "https://github.com/tus/tusd/archive/refs/tags/v${TUS
     && mkdir -p /out/srv/uploads
 
 # The frontend, built for the base path (links, API and media URLs, service worker).
-FROM dhi.io/node:26.12.1-alpine3.24-dev AS frontend
+FROM dhi.io/node:26.13.0-alpine3.24-dev AS frontend
 USER root
 ARG BASE_PATH=/videoninja
 # Shown on the About page: the release ("0.0.5") and the commit (CI passes both).
