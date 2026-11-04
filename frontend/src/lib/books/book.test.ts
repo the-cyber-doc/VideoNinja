@@ -3,8 +3,20 @@
 import { describe, expect, it, vi } from 'vitest';
 import { ApiError } from '../api/client';
 import type { BookRow } from '../api/types';
-import { BookPage, DEPS, downloadPdf, type BookPageDeps } from './book.svelte';
+import { BookPage, DEPS, downloadPdf, saveFile, type BookPageDeps } from './book.svelte';
 import type { ViewerControls } from './ViewerPages.svelte';
+
+const COMMENT = {
+	id: 3,
+	annotation: 5,
+	user: 'Ren',
+	created_at: '2026-11-02T10:00:00+01:00',
+	modified_at: '2026-11-02T10:00:00+01:00',
+	lang: 'en',
+	text: 'Seen',
+	mine: false
+};
+const WORDS = { technique: () => 'Technique: x', unknownAuthor: 'a deleted user' };
 
 const BOOK: BookRow = {
 	id: 7,
@@ -40,6 +52,8 @@ function streamed(chunks: number[][], length = true, status = 200) {
 function fakes(over: Partial<BookPageDeps> = {}): BookPageDeps {
 	return {
 		fetch: vi.fn(async () => streamed([[1, 2], [3]])),
+		listBookComments: vi.fn(async () => [COMMENT]),
+		save: vi.fn(),
 		editBook: vi.fn(async (_id, body) => ({ ...BOOK, reference: body.reference, tags: body.tags })) as never,
 		replaceThumbnail: vi.fn(async () => undefined),
 		uploadPicture: vi.fn(async () => 'tus-9'),
@@ -59,6 +73,7 @@ const controls = (over: Partial<ViewerControls> = {}): ViewerControls => ({
 	recolor: vi.fn(),
 	crop: vi.fn(async () => new Blob(['crop'])),
 	firstPage: vi.fn(async () => new Blob(['jpeg'])),
+	annotatedCopy: vi.fn(async () => new TextEncoder().encode('%PDF copy').buffer),
 	...over
 });
 
@@ -172,6 +187,35 @@ describe('BookPage', () => {
 		expect([page.error, page.editing, page.saving]).toEqual([refused, true, false]);
 	});
 
+	it('downloads a copy with its annotations and their comments', async () => {
+		const deps = fakes();
+		const page = new BookPage(BOOK, [], deps);
+		await page.download(WORDS, '2026-11-04'); // no PDF, no viewer yet: nothing
+		expect(deps.listBookComments).not.toHaveBeenCalled();
+		await page.load();
+		const viewer = controls();
+		await page.ready(viewer);
+		await page.download(WORDS, '2026-11-04');
+		expect(deps.listBookComments).toHaveBeenCalledWith(7);
+		expect(viewer.annotatedCopy).toHaveBeenCalledWith(page.pdf, []);
+		const [file, name] = (deps.save as ReturnType<typeof vi.fn>).mock.calls[0];
+		expect([file.type, await file.text(), name]).toEqual([
+			'application/pdf',
+			'%PDF copy',
+			'densho (annotated 2026-11-04).pdf'
+		]);
+		expect(page.downloading).toBe(false);
+	});
+
+	it('a failed download: the error said', async () => {
+		const failure = new ApiError(500, 'internal');
+		const page = new BookPage(BOOK, [], fakes({ listBookComments: async () => Promise.reject(failure) }));
+		await page.load();
+		await page.ready(controls());
+		await page.download(WORDS, '2026-11-04');
+		expect([page.error, page.downloading]).toEqual([failure, false]);
+	});
+
 	it('the real dependencies', async () => {
 		const real = vi.fn(async () => new Response('ok'));
 		vi.stubGlobal('fetch', real);
@@ -179,5 +223,20 @@ describe('BookPage', () => {
 		expect(real).toHaveBeenCalledWith('/media/book/7');
 		vi.unstubAllGlobals();
 		expect(new BookPage(BOOK, []).annotations.bookId).toBe(7);
+	});
+});
+
+describe('saveFile', () => {
+	it('a link the browser follows, its URL let go later', () => {
+		vi.useFakeTimers();
+		const link = { href: '', download: '', click: vi.fn() };
+		vi.stubGlobal('document', { createElement: () => link });
+		const revoke = vi.spyOn(URL, 'revokeObjectURL');
+		saveFile(new Blob(['x']), 'copy.pdf');
+		expect([link.href.startsWith('blob:'), link.download, link.click.mock.calls.length]).toEqual([true, 'copy.pdf', 1]);
+		vi.advanceTimersByTime(60_000);
+		expect(revoke).toHaveBeenCalledWith(link.href);
+		vi.useRealTimers();
+		vi.unstubAllGlobals();
 	});
 });

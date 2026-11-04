@@ -62,8 +62,17 @@ or ID encoding (Base62/Sqids).
   SegmentForm; `placeOf` in catalog.svelte.ts; note, colours from `colors.ts`, delete via the plugin). API
   `api/book_annotations.py` (GET/POST `/api/books/<id>/annotations`, PATCH/DELETE `/api/book-annotations/<id>`: own or
   `moderator`, `target` = JSON text, codes `book_annotation.*`), crops `/media/book-annotation/<id>/image` (every user);
-  encoder `books.run_pictures` (thumbnails then crops `note-<id>.jpg`) + `sweep_orphans` (every 10 min). Next (plan):
-  comments on annotations + annotated download (4b), technique-page notes (5).
+  encoder `books.run_pictures` (thumbnails then crops `note-<id>.jpg`) + `sweep_orphans` (every 10 min). Comments on
+  annotations: `api/book_comments.py` (GET/POST `/api/book-annotations/<id>/comments` (book_mgmt; POST also `comment`),
+  GET `/api/books/<id>/comments` (every thread, `annotation` field), PATCH/DELETE `/api/book-comments/<id>`: own with
+  `comment` + `book_mgmt`, or `moderator`; models `CommentIn`/`CommentOut` shared, `BookCommentOut` adds `annotation`;
+  codes `comment.*`, audit `book_comment.*`); UI: `$lib/techniques/Comments.svelte` takes a `source`
+  (`CommentSource`: `techniqueComments(id)` in api/comments.ts, `annotationComments(id)` in api/books.ts), shown under
+  the selected annotation. Annotated download: `BookPage.download(words, day)` → `listBookComments` →
+  `annotated.ts` `annotatedObjects` (row's target + author/dates + contents = technique line (kanji romaji — full URL)
+  and note; comments = TEXT replies `inReplyToId`) → `ViewerControls.annotatedCopy` → `pdf.ts` `annotatedCopy` (fresh
+  document from the uploaded bytes, `saveAsCopy`) → `saveFile`, name `annotatedName`. Test reads the copy back in Node
+  with EmbedPDF (`tests/pdf-annotations.ts`). Next (plan): technique-page notes (PR 5).
   `video_mgmt` (role `video_mgmt` = every access but `user_mgmt`, `moderator`, `options` and `book_mgmt`; admins and
   `content_mgmt` too) =
   Videos page: `GET /api/videos` (+ `uploaded_by` display name, the video's own `tags`), `GET`/`PUT /api/videos/<id>/annotations`

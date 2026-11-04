@@ -67,6 +67,8 @@ export type BookEdit = Schemas['BookEditIn'];
 export type BookAnnotation = Schemas['AnnotationOut'];
 export type BookAnnotationIn = Schemas['AnnotationIn'];
 export type BookAnnotationChange = Schemas['AnnotationChange'];
+/** A comment on an annotation (a thread each). */
+export type BookComment = Schemas['BookCommentOut'];
 
 // Options
 /** A tag as the Options page edits it: names in every language, how often it is used. */

@@ -2,7 +2,8 @@
 	// The book's annotations beside the viewer, by page: what each one marks (its quote, or
 	// its crop for a region), its technique, its note, who made it. Clicking one shows it in
 	// the viewer; the selected one opens its fields: the technique (../TechniquePicker),
-	// the note, the colour, delete. Each user changes their own (a moderator any).
+	// the note, the colour, delete (each user changes their own, a moderator any), and its
+	// comments (a thread, $lib/techniques/Comments).
 	import type { BookAnnotation } from '../api/types';
 	import { emptyPlace, placeOf, type Catalog } from '../catalog.svelte';
 	import IconButton from '../IconButton.svelte';
@@ -10,6 +11,8 @@
 	import { annotationImageUrl } from '../media';
 	import { hasAccess } from '../session.svelte';
 	import TechniquePicker from '../TechniquePicker.svelte';
+	import { annotationComments } from '../api/books';
+	import Comments from '../techniques/Comments.svelte';
 	import { rules } from '../validation';
 	import { uidOf, type BookAnnotations } from './annotations.svelte';
 	import { ANNOTATION_COLORS } from './colors';
@@ -127,6 +130,11 @@
 						</div>
 					</div>
 				{/if}
+				{#if selected}
+					<section class="thread" aria-label={t('books.annotations.comments')}>
+						<Comments source={annotationComments(row.id)} empty={t('books.annotations.no_comments')} />
+					</section>
+				{/if}
 			</li>
 		{/each}
 	</ol>
@@ -223,6 +231,11 @@
 		flex-wrap: wrap;
 		align-items: center;
 		gap: var(--space-2);
+	}
+	.thread {
+		padding-top: var(--space-2);
+		border-top: 1px solid var(--border);
+		font-size: var(--text-sm);
 	}
 	.colors {
 		display: flex;

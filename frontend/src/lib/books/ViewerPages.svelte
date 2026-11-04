@@ -12,6 +12,8 @@
 		crop(pageIndex: number, rect: Box): Promise<Blob | null>;
 		/** Page 1 as the book's thumbnail (null: not rendered). */
 		firstPage(): Promise<Blob | null>;
+		/** A copy of the PDF (as uploaded) with these annotations written in it. */
+		annotatedCopy(pdf: ArrayBuffer, annotations: { pageIndex: number }[]): Promise<ArrayBuffer>;
 	}
 </script>
 
@@ -32,7 +34,7 @@
 	import { t } from '../i18n.svelte';
 	import { revive, SQUARE, uidOf, type BookAnnotations } from './annotations.svelte';
 	import { token } from './colors';
-	import { cropOf, THUMBNAIL_WIDTH, type Box, type PageEngine } from './pdf';
+	import { annotatedCopy, cropOf, THUMBNAIL_WIDTH, type Box, type CopyEngine, type PageEngine } from './pdf';
 
 	let {
 		documentId,
@@ -91,6 +93,7 @@
 				annotation.provides?.updateAnnotation(target.pageIndex, target.id, patch);
 			},
 			crop: (pageIndex, rect) => cropOf(pageEngine, d, pageIndex, rect),
+			annotatedCopy: (pdf, list) => annotatedCopy(engine as unknown as CopyEngine, pdf, list),
 			async firstPage() {
 				const page = d.pages[0];
 				if (!page) return null;

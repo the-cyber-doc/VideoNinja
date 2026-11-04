@@ -6,6 +6,7 @@ import { errorFromBody } from '../api/client';
 import * as books from '../api/books';
 import type { BookAnnotation, BookRow, TagIn } from '../api/types';
 import { bookUrl } from '../media';
+import { annotatedName, annotatedObjects, type Words } from './annotated';
 import { BookAnnotations, type AnnotationDeps } from './annotations.svelte';
 import { uploadPicture } from './pictures';
 import { problems, toDraft, toReference, type ReferenceDraft } from './reference';
@@ -13,14 +14,28 @@ import type { ViewerControls } from './ViewerPages.svelte';
 
 export interface BookPageDeps {
 	fetch: typeof fetch;
+	listBookComments: typeof books.listBookComments;
+	/** The browser saves a file (a download). */
+	save: (file: Blob, name: string) => void;
 	editBook: typeof books.editBook;
 	replaceThumbnail: typeof books.replaceThumbnail;
 	uploadPicture: typeof uploadPicture;
 	annotations: Omit<AnnotationDeps, 'crop' | 'upload'>;
 }
 
+/** A file the browser downloads, through a link it clicks. */
+export function saveFile(file: Blob, name: string) {
+	const link = document.createElement('a');
+	link.href = URL.createObjectURL(file);
+	link.download = name;
+	link.click();
+	setTimeout(() => URL.revokeObjectURL(link.href), 60_000);
+}
+
 export const DEPS: BookPageDeps = {
 	fetch: (...args) => fetch(...args),
+	listBookComments: books.listBookComments,
+	save: saveFile,
 	editBook: books.editBook,
 	replaceThumbnail: books.replaceThumbnail,
 	uploadPicture,
@@ -76,6 +91,7 @@ export class BookPage {
 	tags = $state<TagIn[]>([]);
 	saving = $state(false);
 	saved = $state(false);
+	downloading = $state(false);
 	readonly problems = $derived(this.draft ? problems(this.draft) : {});
 
 	constructor(
@@ -112,6 +128,25 @@ export class BookPage {
 			this.book.has_thumbnail = true; // published by the server within seconds
 		} catch {
 			// not essential: tried again the next time the book is opened
+		}
+	}
+
+	/** Download a copy of the PDF with every annotation and comment written in it. */
+	async download(words: Words, day: string) {
+		const pdf = this.pdf;
+		const controls = this.controls;
+		if (!pdf || !controls) return;
+		this.downloading = true;
+		this.error = null;
+		try {
+			const comments = await this.deps.listBookComments(this.book.id);
+			const objects = annotatedObjects(this.annotations.rows, comments, words);
+			const copy = await controls.annotatedCopy(pdf, objects);
+			this.deps.save(new Blob([copy], { type: 'application/pdf' }), annotatedName(this.book.original_filename, day));
+		} catch (e) {
+			this.error = e;
+		} finally {
+			this.downloading = false;
 		}
 	}
 

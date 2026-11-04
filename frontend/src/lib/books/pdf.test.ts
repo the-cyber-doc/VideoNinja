@@ -16,7 +16,7 @@ const createPdfiumEngine = vi.fn<(url: string, options: object) => Promise<typeo
 vi.mock('@embedpdf/engines/pdfium-direct-engine', () => ({ createPdfiumEngine }));
 vi.mock('@embedpdf/pdfium/pdfium.wasm?url', () => ({ default: '/pdfium.wasm' }));
 
-const { cropOf, CROP_SIZE, readPdf, THUMBNAIL_WIDTH } = await import('./pdf');
+const { annotatedCopy, cropOf, CROP_SIZE, readPdf, THUMBNAIL_WIDTH } = await import('./pdf');
 
 const PAGE = { index: 0, size: { width: 595, height: 842 } };
 const file = new Blob(['%PDF-1.4']);
@@ -93,5 +93,39 @@ describe('a region as a picture', () => {
 		expect(await cropOf(pageEngine(), DOC, 0, box(0, 0, 0, 10))).toBeNull();
 		const broken = { ...pageEngine(), renderPageRect: () => failing() };
 		expect(await cropOf(broken as never, DOC, 0, box(0, 0, 10, 10))).toBeNull();
+	});
+});
+
+describe('annotatedCopy', () => {
+	it('a fresh document from the bytes, the annotations in order, saved, closed', async () => {
+		const doc = { pages: [{ index: 0, size: { width: 1, height: 1 } }] };
+		const created: object[] = [];
+		const engine = {
+			openDocumentBuffer: vi.fn<(file: { content: ArrayBuffer }) => ReturnType<typeof task<typeof doc>>>(() =>
+				task(doc)
+			),
+			createPageAnnotation: vi.fn((_d: unknown, _p: unknown, a: object) => (created.push(a), task('id'))),
+			saveAsCopy: vi.fn(() => task(new ArrayBuffer(3))),
+			closeDocument: vi.fn(() => task(true))
+		};
+		const pdf = new ArrayBuffer(8);
+		const copy = await annotatedCopy(engine, pdf, [{ pageIndex: 0 }, { pageIndex: 4 }, { pageIndex: 0 }]);
+		expect(copy.byteLength).toBe(3);
+		expect(engine.openDocumentBuffer.mock.calls[0][0]).toMatchObject({ content: expect.any(ArrayBuffer) });
+		expect(created).toEqual([{ pageIndex: 0 }, { pageIndex: 0 }]); // no page 5: skipped
+		expect(engine.closeDocument).toHaveBeenCalledWith(doc);
+		expect(pdf.byteLength).toBe(8); // the original kept
+	});
+
+	it('closed even when saving fails', async () => {
+		const doc = { pages: [] };
+		const engine = {
+			openDocumentBuffer: () => task(doc),
+			createPageAnnotation: () => task('id'),
+			saveAsCopy: () => failing(),
+			closeDocument: vi.fn(() => task(true))
+		};
+		await expect(annotatedCopy(engine as never, new ArrayBuffer(1), [])).rejects.toThrow('broken');
+		expect(engine.closeDocument).toHaveBeenCalled();
 	});
 });

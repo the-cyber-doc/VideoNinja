@@ -1,6 +1,8 @@
 import { readFileSync } from 'node:fs';
 import { expect, test, type Page } from '@playwright/test';
 import type { BookRow, Tag } from '../../src/lib/api/types';
+import { CATALOG } from '../catalog';
+import { pdfAnnotations } from '../pdf-annotations';
 
 // A 1×1 PNG (the books' thumbnails).
 const PNG = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFBQIAX8jx0gAAAABJRU5ErkJggg==';
@@ -484,4 +486,82 @@ test('saved annotations shown; the selected one gets a note, a colour, or is del
 	await item.getByRole('button', { name: 'Delete the annotation' }).click();
 	await expect.poll(() => saved.deleted).toEqual([5]);
 	await expect(page.locator('section.annotations li')).toHaveCount(0);
+});
+
+// --- comments on an annotation; the copy with every annotation and comment in it ---
+
+const SAVED_TARGET = {
+	type: 9,
+	id: 'saved-1',
+	pageIndex: 0,
+	rect: { origin: { x: 60, y: 78 }, size: { width: 141, height: 23 } },
+	segmentRects: [{ origin: { x: 60, y: 78 }, size: { width: 141, height: 23 } }],
+	color: '#FFCD45',
+	opacity: 0.5,
+	author: 'Aiko'
+};
+const SAVED_ROW = {
+	...HIGHLIGHT_ROW,
+	target: JSON.stringify(SAVED_TARGET),
+	quote: 'Togakure-ryu',
+	note: 'The first school',
+	technique: 'gyokko.taijutsu.jo_ryaku.koku'
+};
+const THREAD_COMMENT = {
+	id: 30,
+	annotation: 5,
+	user: 'Ren',
+	created_at: '2026-11-02T10:00:00+01:00',
+	modified_at: '2026-11-02T10:00:00+01:00',
+	lang: 'en',
+	text: 'Seen in the dojo',
+	mine: false
+};
+
+test('an annotation’s comments: its thread, a new one added', async ({ page }) => {
+	await viewing(page, [annotationRow(5, SAVED_ROW)]);
+	const thread = [THREAD_COMMENT];
+	await page.route('/api/book-annotations/5/comments', (r) => {
+		if (r.request().method() === 'POST') {
+			thread.push({ ...THREAD_COMMENT, id: 31, user: 'Aiko', mine: true, ...r.request().postDataJSON() });
+			return r.fulfill({ status: 201, json: thread.at(-1) });
+		}
+		return r.fulfill({ json: thread });
+	});
+	await page.goto('/books/7');
+	await pageBox(page);
+	const item = page.locator('section.annotations li[data-id="5"]');
+	await item.getByRole('button', { name: /Page 1/ }).click();
+	const comments = item.getByRole('region', { name: 'Comments on this annotation' });
+	await expect(comments).toContainText('Seen in the dojo');
+	await comments.getByRole('button', { name: 'Add a comment' }).click();
+	await comments.getByRole('textbox').fill('And in the scroll');
+	await comments.getByRole('button', { name: 'Save' }).click();
+	await expect(comments).toContainText('And in the scroll');
+});
+
+test('downloaded with its annotations: in the PDF, with author, technique, note and the comments as replies', async ({
+	page
+}) => {
+	await viewing(page, [annotationRow(5, SAVED_ROW)]);
+	await page.route('/api/books/7/comments', (r) => r.fulfill({ json: [THREAD_COMMENT] }));
+	await page.route('/api/catalog', (r) => r.fulfill({ json: CATALOG }));
+	await page.goto('/books/7');
+	await pageBox(page);
+	const download = page.waitForEvent('download');
+	await page.getByRole('button', { name: 'Download with annotations' }).click();
+	const file = await download;
+	// WebKit writes the spaces as underscores.
+	expect(file.suggestedFilename()).toMatch(/^book[ _]\(annotated[ _]\d{4}-\d{2}-\d{2}\)\.pdf$/);
+	const saved = test.info().outputPath('annotated.pdf'); // saveAs: the browser may run elsewhere (Docker)
+	await file.saveAs(saved);
+	const annotations = await pdfAnnotations(readFileSync(saved));
+	const highlight = annotations.find((a) => a.type === 9)!;
+	expect(highlight.author).toBe('Aiko');
+	expect(highlight.contents).toMatch(
+		/^Technique: \S+ Koku — https:\/\/localhost:\d+\/schools\/gyokko\/taijutsu\/jo_ryaku\/koku\n\nThe first school$/
+	);
+	const reply = annotations.find((a) => a.type === 1)!;
+	expect([reply.author, reply.contents, reply.inReplyToId]).toEqual(['Ren', 'Seen in the dojo', highlight.id]);
+	expect(annotations).toHaveLength(2);
 });

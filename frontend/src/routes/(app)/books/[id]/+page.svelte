@@ -9,7 +9,8 @@
 	import Citation from '#lib/books/Citation.svelte';
 	import ReferenceForm from '#lib/books/ReferenceForm.svelte';
 	import Viewer from '#lib/books/Viewer.svelte';
-	import { loadCatalog, type Catalog } from '#lib/catalog.svelte.js';
+	import { catalogHref, loadCatalog, pathOf, type Catalog } from '#lib/catalog.svelte.js';
+	import type { Words } from '#lib/books/annotated.js';
 	import ErrorMessage from '#lib/ErrorMessage.svelte';
 	import { t } from '#lib/i18n.svelte.js';
 	import { bookUrl } from '#lib/media.js';
@@ -22,6 +23,22 @@
 	// svelte-ignore state_referenced_locally
 	const page = data.book ? new BookPage(data.book, data.annotations) : null;
 	let catalog = $state<Catalog | null>(null);
+
+	// How the downloaded copy names a technique: kanji, romaji and its page's full address.
+	const words: Words = {
+		technique: (id) => {
+			const technique = catalog?.techniques.find((x) => x.id === id);
+			const path = catalog && pathOf(catalog, id);
+			if (!technique || !path) return null;
+			return t('books.download_annotated.technique', {
+				name: `${technique.kanji} ${technique.romaji}`,
+				url: new URL(catalogHref(path), location.href).href
+			});
+		},
+		get unknownAuthor() {
+			return t('common.deleted_user');
+		}
+	};
 
 	onMount(() => {
 		if (page?.book.status === 'published') void page.load();
@@ -46,6 +63,16 @@
 			<p class="reference"><Citation reference={page.book.reference} /></p>
 			<div class="actions">
 				<a href={bookUrl(page.book.id)} download={page.book.original_filename}>{t('books.download')}</a>
+				{#if page.book.status === 'published'}
+					<button
+						type="button"
+						class="secondary"
+						disabled={!page.controls || page.downloading}
+						onclick={() => page.download(words, new Date().toISOString().slice(0, 10))}
+					>
+						{page.downloading ? t('books.download_annotated.busy') : t('books.download_annotated')}
+					</button>
+				{/if}
 				{#if !page.editing}
 					<button type="button" class="secondary" onclick={() => page.edit()}>{t('books.edit')}</button>
 				{/if}

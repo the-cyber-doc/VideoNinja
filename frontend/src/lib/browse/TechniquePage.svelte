@@ -3,6 +3,7 @@
 	import Breadcrumbs from '../Breadcrumbs.svelte';
 	import { catalogCrumbs, segmentsOf, type CatalogPath } from '../catalog.svelte';
 	import { t } from '../i18n.svelte';
+	import { techniqueComments } from '../api/comments';
 	import Comments from '../techniques/Comments.svelte';
 	import SegmentThumbnails from '../techniques/SegmentThumbnails.svelte';
 	import CatalogView from './CatalogView.svelte';
@@ -25,7 +26,7 @@
 				</section>
 				<section>
 					<h2>{t('technique.comments')}</h2>
-					<Comments technique={technique.id} />
+					<Comments source={techniqueComments(technique.id)} />
 				</section>
 			</article>
 		{/if}

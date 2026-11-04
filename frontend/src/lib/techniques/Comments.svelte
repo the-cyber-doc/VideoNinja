@@ -1,18 +1,25 @@
 <script lang="ts">
-	// The comments of a technique, last modified first (sorted by the server), with
-	// "Add a comment" for users with the "comment" access, who change their own;
-	// users with the "moderator" access change anyone's. Not in the catalogue:
-	// loaded from the API each time and after every change; offline, the service
+	// A list of comments (a technique's, last modified first; an annotation's thread, oldest
+	// first: the server's order), with "Add a comment" for users with the "comment" access,
+	// who change their own; users with the "moderator" access change anyone's. Not in the
+	// catalogue: loaded from the API each time and after every change; offline, the service
 	// worker answers with the last copy seen (writing needs a connection).
 	import ErrorMessage from '../ErrorMessage.svelte';
 	import { t } from '../i18n.svelte';
 	import { hasAccess } from '../session.svelte';
 	import CommentCard from './CommentCard.svelte';
 	import CommentForm from './CommentForm.svelte';
-	import { addComment, deleteComment, editComment, listComments } from '../api/comments';
+	import type { CommentSource } from '../api/comments';
 	import type { Comment, CommentIn } from '../api/types';
 
-	let { technique }: { technique: string } = $props();
+	let {
+		source,
+		empty = t('technique.no_comments')
+	}: {
+		source: CommentSource;
+		/** Shown when there is none. */
+		empty?: string;
+	} = $props();
 	let comments = $state<Promise<Comment[]>>(new Promise(() => {}));
 	let adding = $state(false);
 	let error = $state<unknown>(null);
@@ -20,18 +27,18 @@
 	const canModerate = $derived(hasAccess('moderator'));
 
 	function reload() {
-		comments = listComments(technique);
+		comments = source.list();
 	}
-	$effect(reload); // and when the technique changes
+	$effect(reload); // and when the source changes (another technique, another annotation)
 
 	async function add(comment: CommentIn) {
-		await addComment(technique, comment);
+		await source.add(comment);
 		adding = false;
 		reload();
 	}
 
 	async function edit(id: number, comment: CommentIn) {
-		await editComment(id, comment);
+		await source.edit(id, comment);
 		reload();
 	}
 
@@ -39,7 +46,7 @@
 		if (!confirm(t('comments.delete_confirm'))) return;
 		error = null;
 		try {
-			await deleteComment(id);
+			await source.remove(id);
 		} catch (e) {
 			error = navigator.onLine ? e : t('comments.offline');
 			return;
@@ -74,7 +81,7 @@
 			{/each}
 		</ol>
 	{:else}
-		<p class="hint">{t('technique.no_comments')}</p>
+		<p class="hint">{empty}</p>
 	{/if}
 {:catch e}
 	<!-- Offline and never seen online: nothing cached. -->

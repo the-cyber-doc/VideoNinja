@@ -91,3 +91,30 @@ export async function cropOf(engine: PageEngine, doc: PageDoc, pageIndex: number
 		return null;
 	}
 }
+
+/** What annotatedCopy uses of the engine (PdfEngine). */
+export interface CopyEngine {
+	openDocumentBuffer(file: { id: string; content: ArrayBuffer }): { toPromise(): Promise<PageDoc> };
+	createPageAnnotation(doc: PageDoc, page: unknown, annotation: object): { toPromise(): Promise<unknown> };
+	saveAsCopy(doc: PageDoc): { toPromise(): Promise<ArrayBuffer> };
+	closeDocument(doc: PageDoc): { toPromise(): Promise<unknown> };
+}
+
+/** A copy of the PDF (its bytes as uploaded) with these annotations written in it, in
+ * order (an annotation before its replies). The PDF itself is not changed. */
+export async function annotatedCopy(
+	engine: CopyEngine,
+	pdf: ArrayBuffer,
+	annotations: { pageIndex: number }[]
+): Promise<ArrayBuffer> {
+	const doc = await engine.openDocumentBuffer({ id: `copy-${Date.now()}`, content: pdf.slice(0) }).toPromise();
+	try {
+		for (const a of annotations) {
+			const page = doc.pages[a.pageIndex];
+			if (page) await engine.createPageAnnotation(doc, page, a).toPromise();
+		}
+		return await engine.saveAsCopy(doc).toPromise();
+	} finally {
+		await engine.closeDocument(doc).toPromise();
+	}
+}

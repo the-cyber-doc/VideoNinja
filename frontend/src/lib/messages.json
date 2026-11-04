@@ -359,6 +359,9 @@
 	"books.no_thumbnail": { "en": "PDF", "fr": "PDF" },
 	"books.uploaded": { "en": "Uploaded by {name} on {date}", "fr": "Téléversé par {name} le {date}" },
 	"books.download": { "en": "Download the PDF", "fr": "Télécharger le PDF" },
+	"books.download_annotated": { "en": "Download with annotations", "fr": "Télécharger avec les annotations" },
+	"books.download_annotated.busy": { "en": "Preparing the PDF…", "fr": "Préparation du PDF…" },
+	"books.download_annotated.technique": { "en": "Technique: {name} — {url}", "fr": "Technique : {name} — {url}" },
 	"books.queued": { "en": "Being published…", "fr": "Publication en cours…" },
 	"books.failed": { "en": "Not published: {error}", "fr": "Non publié : {error}" },
 	"books.delete": { "en": "Delete", "fr": "Supprimer" },
@@ -437,6 +440,8 @@
 	"books.annotations.delete_confirm": { "en": "Delete this annotation?", "fr": "Supprimer cette annotation ?" },
 	"books.annotations.by": { "en": "By {name}, {date}", "fr": "Par {name}, {date}" },
 	"books.annotations.crop": { "en": "The region annotated", "fr": "La zone annotée" },
+	"books.annotations.comments": { "en": "Comments on this annotation", "fr": "Commentaires sur cette annotation" },
+	"books.annotations.no_comments": { "en": "No comment yet.", "fr": "Pas encore de commentaire." },
 	"books.upload.title": { "en": "Upload a book", "fr": "Téléverser un livre" },
 	"books.upload.intro": {
 		"en": "A PDF: read on this device first (its first page becomes the thumbnail), then sent with its reference.",

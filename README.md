@@ -1200,8 +1200,17 @@ the encoder). Each annotation is saved at once, one row each: the PDF on the ser
 never changed (the browser's copy only). In the list beside the PDF, the selected
 annotation takes a technique (school › … › technique, as for segments: its page will
 show it), a note and a colour, or is deleted; each user changes their own, moderators
-anyone's. A book without a first-page picture gets one when opened. Comments on
-annotations and a download with the annotations in the PDF come next.
+anyone's. Each annotation has its comments (a thread, oldest first; written with the
+`comment` access, each user changing their own, moderators anyone's). A book without a
+first-page picture gets one when opened.
+
+**Download with annotations** gives a copy of the PDF with every annotation written in it
+as a standard PDF annotation (highlight, square), with its author, its dates and, as its
+text, its technique (kanji, romaji and the address of its page) and its note; each comment
+is a reply to its annotation (its own author and date): Acrobat, Firefox, Okular and
+Preview show them as threads. The copy is made in the browser from the PDF as uploaded;
+nothing is sent back, the server's file never changes. **Download the PDF** stays the
+book as uploaded.
 
 **Upload a book** (the last section of the Upload page, `book_mgmt` access): choose
 a PDF (at most 1 GiB). It is read on the device first: its SHA-256 ("This book is
@@ -1659,7 +1668,8 @@ journalctl -t docker-videoninja-encoder -o cat | jq -c 'select(.video_id == 42)'
 `invite.shown`; `access.denied`, `request.cross_site`, `comment.denied`, `book_annotation.denied`,
 `upload.denied`; `upload.accepted`, `video.submitted`, `video.retried`,
 `video.deleted`, `book.submitted`, `book.deleted`, `book.edited`, `book_annotation.created`,
-`book_annotation.edited`, `book_annotation.deleted`, `annotations.saved`, `comment.created`, `comment.edited`,
+`book_annotation.edited`, `book_annotation.deleted`, `book_comment.created`, `book_comment.edited`,
+`book_comment.deleted`, `annotations.saved`, `comment.created`, `comment.edited`,
 `comment.deleted`, `tag.created`, `tag.saved` (`previous_id`: renamed when it
 differs), `tag.deleted`. Refusals and failures are warnings, the rest info. They carry
 who (`user_id`) and what (`target_user_id`, `video_id`, `comment_id`…), never a
