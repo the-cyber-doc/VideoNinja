@@ -227,6 +227,38 @@ test('a user without user management access sees no menu entry and gets 403', as
 	);
 });
 
+test('user management: another role from the drop-down, applied at the user’s next request', async ({
+	page,
+	browser
+}) => {
+	// kenji logged in on his own page, before and after: the same session throughout.
+	const own = await browser.newContext({ baseURL: test.info().project.use.baseURL, ignoreHTTPSErrors: true });
+	const theirs = await own.newPage();
+	await logIn(theirs, kenji);
+	const upload = theirs.getByRole('navigation', { name: 'Main navigation' }).getByRole('link', { name: 'Upload' });
+	await expect(upload).toHaveCount(0);
+	expect((await theirs.request.get('api/uploads/limits')).status()).toBe(403);
+
+	await logIn(page);
+	await page.goto('admin/users');
+	await expect(page.getByRole('row', { name: /admin/ }).getByRole('combobox')).toHaveCount(0); // not one's own
+	const role = page.getByRole('row', { name: /kenji/ }).getByRole('combobox', { name: 'Role of kenji' });
+	await expect(role).toHaveValue('user');
+	await role.selectOption({ label: 'Uploader' });
+	await expect(role).toBeEnabled();
+	await page.reload(); // saved in the database
+	await expect(role).toHaveValue('uploader');
+
+	await theirs.reload();
+	await expect(upload).toBeVisible();
+	expect((await theirs.request.get('api/uploads/limits')).status()).toBe(200);
+
+	await role.selectOption({ label: 'User' }); // as before, for the tests after this one
+	await expect(role).toBeEnabled();
+	await expect.poll(async () => (await theirs.request.get('api/uploads/limits')).status()).toBe(403);
+	await own.close();
+});
+
 test('user management: reset a registered account', async ({ page }) => {
 	await logIn(page);
 	await page.goto('admin/users');

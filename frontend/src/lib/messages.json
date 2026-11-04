@@ -97,6 +97,10 @@
 		"en": "You cannot delete your own account.",
 		"fr": "Vous ne pouvez pas supprimer votre propre compte."
 	},
+	"error.user.role_self": {
+		"en": "You cannot change your own role.",
+		"fr": "Vous ne pouvez pas modifier votre propre rôle."
+	},
 	"error.user.no_invite": {
 		"en": "This user has no valid invitation.",
 		"fr": "Cet utilisateur n'a pas d'invitation valide."
@@ -785,6 +789,7 @@
 
 	"users.new_user": { "en": "New user", "fr": "Nouvel utilisateur" },
 	"users.role": { "en": "Role", "fr": "Rôle" },
+	"users.role_of": { "en": "Role of {username}", "fr": "Rôle de {username}" },
 	"users.invite_link_for": { "en": "Invitation link for", "fr": "Lien d'invitation pour" },
 	"users.valid_until": { "en": ", valid until {expires}.", "fr": ", valable jusqu'au {expires}." },
 	"users.copied": { "en": "Copied to the clipboard.", "fr": "Copié dans le presse-papiers." },

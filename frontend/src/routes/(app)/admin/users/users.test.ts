@@ -8,7 +8,8 @@ const mocks = vi.hoisted(() => ({
 	getInvite: vi.fn(),
 	resetUser: vi.fn(),
 	deactivateUser: vi.fn(),
-	deleteUser: vi.fn()
+	deleteUser: vi.fn(),
+	setRole: vi.fn()
 }));
 vi.mock('$app/navigation', () => ({ invalidate: mocks.invalidate }));
 vi.mock('#lib/api/users.js', () => ({
@@ -16,7 +17,8 @@ vi.mock('#lib/api/users.js', () => ({
 	getInvite: mocks.getInvite,
 	resetUser: mocks.resetUser,
 	deactivateUser: mocks.deactivateUser,
-	deleteUser: mocks.deleteUser
+	deleteUser: mocks.deleteUser,
+	setRole: mocks.setRole
 }));
 
 const invite = { token: 'tok', expires_at: '2026-11-05T10:00:00+01:00' };
@@ -69,6 +71,20 @@ describe('user management actions', () => {
 		mocks.resetUser.mockRejectedValue(refused);
 		expect(await admin.reset(kenji)).toBe(false);
 		expect([admin.error, admin.busy]).toEqual([refused, false]);
+	});
+
+	it('another role: sent, the list reloaded; refused: false, the error kept, the list as it was', async () => {
+		mocks.setRole.mockResolvedValue(undefined);
+		const admin = new UserAdmin();
+		expect(await admin.changeRole(kenji, 'uploader')).toBe(true);
+		expect(mocks.setRole).toHaveBeenCalledWith(2, { role: 'uploader' });
+		expect(mocks.invalidate).toHaveBeenCalledWith('app:users');
+		mocks.invalidate.mockClear();
+		const refused = new ApiError(422, 'user.unknown_role');
+		mocks.setRole.mockRejectedValue(refused);
+		expect(await admin.changeRole(kenji, 'shogun')).toBe(false);
+		expect([admin.error, admin.busy]).toEqual([refused, false]);
+		expect(mocks.invalidate).not.toHaveBeenCalled();
 	});
 
 	it('deactivate: the list reloaded', async () => {

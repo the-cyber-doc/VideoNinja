@@ -1163,8 +1163,12 @@ pending invitation: they are logged out and can neither log in nor register.
 invitation link. **Delete** removes the user for good; their comments, the
 segments they identified and the videos they uploaded are kept, given to a
 generic "deleted user" (shown as "a deleted user"; never listed, nobody can log
-in as it). Deactivating and deleting ask for a confirmation. Admins cannot
-reset, deactivate or delete their own account.
+in as it). Deactivating and deleting ask for a confirmation.
+
+The **Role** column is a drop-down of every role: choosing another one saves it at once. The
+user stays logged in, and the new role's accesses (menus, pages, API) apply from their next
+request (a page reload shows the new menus). Admins cannot reset, deactivate or delete their
+own account, nor change their own role (their row shows it as text).
 
 Roles and what they allow (accesses):
 
@@ -1680,7 +1684,8 @@ journalctl -t docker-videoninja-encoder -o cat | jq -c 'select(.video_id == 42)'
 `server/app/domain/audit.py`): `setup.completed`; `login.succeeded`, `login.failed`
 (with the client's address, never the username typed), `logout`,
 `credentials.throttled`; `password.wrong`, `password.changed`, `totp.replaced`,
-`totp.undecryptable`; `user.invited`, `user.reset`, `user.deactivated`, `user.deleted`, `user.registered`,
+`totp.undecryptable`; `user.invited`, `user.reset`, `user.deactivated`, `user.deleted`, `user.role_changed` (`role`,
+`previous_role`), `user.registered`,
 `invite.shown`; `access.denied`, `request.cross_site`, `comment.denied`, `book_annotation.denied`,
 `upload.denied`; `upload.accepted`, `video.submitted`, `video.retried`,
 `video.deleted`, `book.submitted`, `book.deleted`, `book.edited`, `book_annotation.created`,

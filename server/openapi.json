@@ -1496,6 +1496,20 @@
         "title": "RegisterCompleteIn",
         "type": "object"
       },
+      "RoleIn": {
+        "properties": {
+          "role": {
+            "maxLength": 32,
+            "title": "Role",
+            "type": "string"
+          }
+        },
+        "required": [
+          "role"
+        ],
+        "title": "RoleIn",
+        "type": "object"
+      },
       "RoleOut": {
         "properties": {
           "id": {
@@ -3354,6 +3368,68 @@
           }
         },
         "summary": "Reset User",
+        "tags": [
+          "users"
+        ]
+      }
+    },
+    "/api/admin/users/{user_id}/role": {
+      "put": {
+        "description": "Give the user another role. Their sessions stay: a session reads its user's role on\nevery request, so the new accesses apply at their next one. Never one's own (an admin\nwould lose User Management).",
+        "operationId": "set_role_api_admin_users__user_id__role_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "schema": {
+              "title": "User Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "header",
+            "name": "time-zone",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Time-Zone"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RoleIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "An error (core/errors.py: ERRORS)"
+          }
+        },
+        "summary": "Set Role",
         "tags": [
           "users"
         ]

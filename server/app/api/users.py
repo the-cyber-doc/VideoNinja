@@ -41,6 +41,10 @@ class CreateIn(BaseModel):
     role: str = field("role_id")
 
 
+class RoleIn(BaseModel):
+    role: str = field("role_id")
+
+
 class InviteOut(BaseModel):
     token: str  # the link is <origin>/register#<token>
     expires_at: str  # e.g. "2026-10-30T12:13:38+01:00" (app/clock.py)
@@ -125,6 +129,26 @@ def reset_user(user_id: int, me: User = Depends(admin), con: sqlite3.Connection 
         queries.sessions.delete_user_sessions(con, user_id)
     audit.event("user.reset", target_user_id=user_id)
     return _invite_out(con, user_id, token)
+
+
+@router.put("/users/{user_id}/role", status_code=status.HTTP_204_NO_CONTENT)
+def set_role(
+    user_id: int, body: RoleIn, me: User = Depends(admin), con: sqlite3.Connection = Depends(db.get_db)
+) -> None:
+    """Give the user another role. Their sessions stay: a session reads its user's role on
+    every request, so the new accesses apply at their next one. Never one's own (an admin
+    would lose User Management)."""
+    if user_id == me.id:
+        raise ApiError("user.role_self")
+    with db.write(con):
+        if not queries.users.user_exists(con, user_id):
+            raise ApiError("user.unknown")
+        if not queries.users.role_exists(con, body.role):
+            raise ApiError("user.unknown_role")
+        before = queries.users.role_of(con, user_id)
+        queries.users.set_user_role(con, user_id, body.role)
+    if before != body.role:
+        audit.event("user.role_changed", target_user_id=user_id, role=body.role, previous_role=before)
 
 
 @router.post("/users/{user_id}/deactivate", status_code=status.HTTP_204_NO_CONTENT)

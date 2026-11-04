@@ -194,6 +194,7 @@ def test_access_control(admin, client):
         ("get", "/api/admin/users/1/invite", None),
         ("post", "/api/admin/users/1/reset", None),
         ("post", "/api/admin/users/1/deactivate", None),
+        ("put", "/api/admin/users/1/role", {"role": "admin"}),
         ("delete", "/api/admin/users/1", None),
     ]
     for method, path, body in calls:
@@ -351,13 +352,53 @@ def test_the_deleted_user_is_neither_listed_nor_managed(admin):
     for method, path in [
         ("post", "/api/admin/users/0/reset"),
         ("post", "/api/admin/users/0/deactivate"),
+        ("put", "/api/admin/users/0/role"),
         ("delete", "/api/admin/users/0"),
         ("post", "/api/admin/users/9999/deactivate"),
         ("delete", "/api/admin/users/9999"),
     ]:
-        r = getattr(admin, method)(path)
+        r = getattr(admin, method)(path, **({"json": {"role": "user"}} if method == "put" else {}))
         assert (r.status_code, r.json()["code"]) == (404, "user.unknown"), path
     # Nobody logs in as it, nor creates it.
     r = admin.post("/api/auth/login", json={"username": "#deleted", "password": "x" * 12, "totp_code": "123456"})
     assert r.status_code in (401, 422)
     assert admin.post("/api/admin/users", json={"username": "#deleted", "role": "user"}).status_code == 422
+
+
+def roles(admin) -> dict[str, str]:
+    return {u["username"]: u["role"] for u in admin.get("/api/admin/users").json()}
+
+
+def test_change_role(admin, caplog):
+    """The new role's accesses apply at the user's next request, in the session they already have."""
+    secret = register(create(admin))
+    kenji = user_login("kenji", USER_PASSWORD, pyotp.TOTP(secret).now())
+    user_id = user_id_of(admin)
+    assert "upload" not in kenji.get("/api/auth/me").json()["access"]
+
+    assert admin.put(f"/api/admin/users/{user_id}/role", json={"role": "uploader"}).status_code == 204
+    assert roles(admin)["kenji"] == "uploader"
+    assert f"user.role_changed target_user_id={user_id} role=uploader previous_role=user" in caplog.text
+    me = kenji.get("/api/auth/me").json()  # still logged in: the same session
+    assert (me["role"], "upload" in me["access"]) == ("uploader", True)
+
+    caplog.clear()  # the same role again: nothing changed, nothing logged
+    assert admin.put(f"/api/admin/users/{user_id}/role", json={"role": "uploader"}).status_code == 204
+    assert "user.role_changed" not in caplog.text
+
+    assert admin.put(f"/api/admin/users/{user_id}/role", json={"role": "user"}).status_code == 204
+    assert "upload" not in kenji.get("/api/auth/me").json()["access"]  # taken away as soon
+
+
+def test_change_role_checks(admin):
+    create(admin)
+    user_id = user_id_of(admin)
+    r = admin.put(f"/api/admin/users/{user_id}/role", json={"role": "shogun"})
+    assert (r.status_code, r.json()["code"]) == (422, "user.unknown_role")
+    r = admin.put(f"/api/admin/users/{user_id}/role", json={"role": "Not an ID!"})
+    assert r.status_code == 422  # the role ID's own rule
+    r = admin.put(f"/api/admin/users/{user_id_of(admin, 'admin')}/role", json={"role": "user"})
+    assert (r.status_code, r.json()["code"]) == (400, "user.role_self")
+    r = admin.put("/api/admin/users/9999/role", json={"role": "user"})
+    assert (r.status_code, r.json()["code"]) == (404, "user.unknown")
+    assert roles(admin) == {"admin": "admin", "kenji": "user"}

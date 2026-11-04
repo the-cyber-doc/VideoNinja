@@ -24,6 +24,7 @@ export type UserRow = Schemas['UserRow'];
 export type Role = Schemas['RoleOut'];
 export type Invite = Schemas['InviteOut'];
 export type NewUser = Schemas['CreateIn'];
+export type RoleChange = Schemas['RoleIn'];
 export type Credentials = Schemas['LoginIn'];
 export type PasswordChange = Schemas['PasswordIn'];
 export type TotpConfirm = Schemas['TotpConfirmIn'];

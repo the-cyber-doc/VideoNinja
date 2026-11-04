@@ -192,6 +192,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/users/{user_id}/role": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Set Role
+         * @description Give the user another role. Their sessions stay: a session reads its user's role on
+         *     every request, so the new accesses apply at their next one. Never one's own (an admin
+         *     would lose User Management).
+         */
+        put: operations["set_role_api_admin_users__user_id__role_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/auth/login": {
         parameters: {
             query?: never;
@@ -1601,6 +1623,11 @@ export interface components {
             /** Totp Secret */
             totp_secret: string;
         };
+        /** RoleIn */
+        RoleIn: {
+            /** Role */
+            role: string;
+        };
         /** RoleOut */
         RoleOut: {
             /** Id */
@@ -2348,6 +2375,41 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["InviteOut"];
                 };
+            };
+            /** @description An error (core/errors.py: ERRORS) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    set_role_api_admin_users__user_id__role_put: {
+        parameters: {
+            query?: never;
+            header?: {
+                "time-zone"?: string | null;
+            };
+            path: {
+                user_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RoleIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description An error (core/errors.py: ERRORS) */
             default: {

@@ -32,6 +32,7 @@ EVENTS: dict[str, int] = {
     "user.reset": INFO,  # credentials and sessions removed, new invitation
     "user.deactivated": INFO,  # credentials, sessions and invitation removed
     "user.deleted": INFO,  # content given to the deleted user
+    "user.role_changed": INFO,  # from one role to another (applies at the user's next request)
     "user.registered": INFO,
     "invite.shown": INFO,  # an admin read an invitation link again
     # Refusals

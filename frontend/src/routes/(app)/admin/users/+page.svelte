@@ -30,6 +30,10 @@
 		if (confirm(t('users.deactivate_confirm', { username: user.username }))) admin.deactivate(user);
 	};
 
+	const changeRole = async (user: UserRow, select: HTMLSelectElement) => {
+		if (!(await admin.changeRole(user, select.value))) select.value = user.role; // refused: as it was
+	};
+
 	const remove = (user: UserRow) => {
 		if (confirm(t('users.delete_confirm', { username: user.username }))) admin.remove(user);
 	};
@@ -115,7 +119,24 @@
 						</td>
 						<td>{user.username}</td>
 						<td>{user.name ?? ''}</td>
-						<td>{data.roles.find((r) => r.id === user.role)?.name ?? user.role}</td>
+						<td>
+							{#if user.username === session.user?.username}
+								<!-- One's own role: never changed here (the server refuses it). -->
+								{data.roles.find((r) => r.id === user.role)?.name ?? user.role}
+							{:else}
+								<select
+									class="role"
+									aria-label={t('users.role_of', { username: user.username })}
+									value={user.role}
+									onchange={(e) => changeRole(user, e.currentTarget)}
+									disabled={admin.busy}
+								>
+									{#each data.roles as r (r.id)}
+										<option value={r.id}>{r.name}</option>
+									{/each}
+								</select>
+							{/if}
+						</td>
 						<td class="actions">
 							{#if user.username !== session.user?.username}
 								{#if user.status === 'invited'}
@@ -222,6 +243,10 @@
 	}
 	td.status.off {
 		color: var(--muted);
+	}
+	select.role {
+		width: 100%;
+		min-width: 9rem;
 	}
 	td.actions {
 		text-align: right;

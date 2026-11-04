@@ -1,9 +1,9 @@
-// User management's actions (create a user, copy an invitation link again, reset,
+// User management's actions (create a user, copy an invitation link again, change a role, reset,
 // deactivate or delete an account) and their state: busy, the last error, the last link handed out. The list
 // itself is the page's data (+page.ts), loaded again after a change.
 import { invalidate } from '$app/navigation';
 import type { Invite, UserRow } from '#lib/api/types.js';
-import { createUser, deactivateUser, deleteUser, getInvite, resetUser } from '#lib/api/users.js';
+import { createUser, deactivateUser, deleteUser, getInvite, resetUser, setRole } from '#lib/api/users.js';
 import { url } from '#lib/base.js';
 
 /** An invitation link handed out: shown so it can be copied by hand too. */
@@ -28,6 +28,13 @@ export class UserAdmin {
 		});
 
 	copyInvite = (user: UserRow) => this.#run(async () => this.#show(user.username, await getInvite(user.id)));
+
+	/** Another role for the user (false: refused, the error shown; the page shows the old one again). */
+	changeRole = (user: UserRow, role: string) =>
+		this.#run(async () => {
+			await setRole(user.id, { role });
+			await invalidate('app:users');
+		});
 
 	/** The password, authenticator and sessions removed; a new invitation. Confirm first. */
 	reset = (user: UserRow) =>

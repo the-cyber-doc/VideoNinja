@@ -119,6 +119,7 @@ const CALLS: [string, () => Promise<unknown>, string, string, unknown][] = [
 	],
 	['invite', () => users.getInvite(2), 'GET', '/api/admin/users/2/invite', undefined],
 	['reset', () => users.resetUser(2), 'POST', '/api/admin/users/2/reset', {}],
+	['role', () => users.setRole(2, { role: 'uploader' }), 'PUT', '/api/admin/users/2/role', { role: 'uploader' }],
 	['deactivate', () => users.deactivateUser(2), 'POST', '/api/admin/users/2/deactivate', {}],
 	['delete user', () => users.deleteUser(2), 'DELETE', '/api/admin/users/2', undefined],
 	['videos', videos.listVideos, 'GET', '/api/videos', undefined],

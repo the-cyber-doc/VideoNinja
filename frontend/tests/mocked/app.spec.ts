@@ -265,6 +265,60 @@ test('user list: deactivate, reactivate and delete, after confirming', async ({ 
 	]);
 });
 
+test('user list: a role changed from its drop-down (every role); one’s own role not', async ({ page }) => {
+	await loggedInAs(page, ADMIN);
+	const ROLES = [
+		{ id: 'admin', name: 'Admin' },
+		{ id: 'uploader', name: 'Uploader' },
+		{ id: 'user', name: 'User' }
+	];
+	let users = [
+		{ id: 1, username: 'admin', name: 'Sensei', role: 'admin', status: 'registered' },
+		{ id: 2, username: 'hana', name: 'Hana', role: 'user', status: 'registered' }
+	];
+	const sent: { method: string; path: string; body: unknown }[] = [];
+	let refuse = false;
+	await page.route('/api/admin/roles', (r) => r.fulfill({ json: ROLES }));
+	await page.route('/api/admin/users', (r) => r.fulfill({ json: users }));
+	await page.route('/api/admin/users/*/role', (r) => {
+		const path = new URL(r.request().url()).pathname;
+		const body = r.request().postDataJSON() as { role: string };
+		sent.push({ method: r.request().method(), path, body });
+		if (refuse)
+			return r.fulfill({
+				status: 422,
+				json: { code: 'user.unknown_role', detail: 'Unknown role', params: {} }
+			});
+		users = users.map((u) => (u.id === 2 ? { ...u, role: body.role } : u));
+		return r.fulfill({ status: 204 });
+	});
+	await page.goto('/admin/users');
+	const row = (name: string) => page.getByRole('row', { name: new RegExp(name) });
+
+	// One's own role: shown, never a drop-down (the server refuses it anyway).
+	await expect(row('admin').getByRole('combobox')).toHaveCount(0);
+	await expect(row('admin')).toContainText('Admin');
+
+	// Another user's: every role offered, theirs chosen.
+	const role = row('hana').getByRole('combobox', { name: 'Role of hana' });
+	await expect(role).toHaveValue('user');
+	await expect(role.locator('option')).toHaveText(['Admin', 'Uploader', 'User']);
+
+	await role.selectOption('uploader');
+	await expect
+		.poll(() => sent)
+		.toEqual([{ method: 'PUT', path: '/api/admin/users/2/role', body: { role: 'uploader' } }]);
+	await expect(role).toHaveValue('uploader'); // the list loaded again shows it
+	await expect(role).toBeEnabled();
+
+	// Refused: said, and the drop-down shows the role the user still has.
+	refuse = true;
+	await role.selectOption('admin');
+	await expect(page.getByRole('alert')).toHaveText('Unknown role.');
+	await expect(role).toHaveValue('uploader');
+	expect(sent).toHaveLength(2);
+});
+
 test('user list in French: the new actions', async ({ page }) => {
 	await page.addInitScript(() => localStorage.setItem('lang', 'fr'));
 	await loggedInAs(page, ADMIN);
@@ -277,6 +331,7 @@ test('user list in French: the new actions', async ({ page }) => {
 	await expect(row.getByRole('cell').first()).toHaveAttribute('title', 'Désactivé');
 	await expect(row.getByRole('button', { name: "Réactiver (nouveau lien d'invitation)" })).toBeVisible();
 	await expect(row.getByRole('button', { name: "Supprimer l'utilisateur" })).toBeVisible();
+	await expect(row.getByRole('combobox', { name: 'Rôle de jiro' })).toHaveValue('user');
 });
 
 test('registration with an invalid link explains what to do', async ({ page }) => {

@@ -105,6 +105,15 @@ def set_user_time_zone(con: sqlite3.Connection, user_id: int, time_zone: str) ->
     con.execute('UPDATE "user" SET "time_zone" = ? WHERE "id" = ?', (time_zone, user_id))
 
 
+def role_of(con: sqlite3.Connection, user_id: int) -> str:
+    """The role of a user known to exist."""
+    return str(con.execute('SELECT "role" FROM "user" WHERE "id" = ?', (user_id,)).fetchone()[0])
+
+
+def set_user_role(con: sqlite3.Connection, user_id: int, role: str) -> None:
+    con.execute('UPDATE "user" SET "role" = ? WHERE "id" = ?', (role, user_id))
+
+
 def set_user_name(con: sqlite3.Connection, user_id: int, name: str | None) -> None:
     con.execute('UPDATE "user" SET "name" = ? WHERE "id" = ?', (name, user_id))
 
