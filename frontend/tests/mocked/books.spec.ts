@@ -652,3 +652,42 @@ test('no book about it: nothing shown; a book manager opens the book on the anno
 	await pageBox(page);
 	await expect(page.locator('section.annotations li[data-id="5"]')).toHaveClass(/selected/);
 });
+
+test('a PDF without its fonts: the missing font fetched from the app (never a CDN), the page drawn', async ({
+	page
+}) => {
+	await viewing(page);
+	await page.route('/media/book/7', (r) =>
+		r.fulfill({ contentType: 'application/pdf', body: readFileSync('tests/fixtures/book-jp.pdf') })
+	);
+	const elsewhere: string[] = [];
+	// Every request on the page's own origin (blob: workers and data: are the page's too).
+	const host = new URL(test.info().project.use.baseURL!).host;
+	page.on('request', (r) => {
+		const at = new URL(r.url());
+		if (!['blob:', 'data:'].includes(at.protocol) && at.host !== host) elsewhere.push(r.url());
+	});
+	const font = page.waitForResponse((r) => /\/_app\/immutable\/pdf-fonts\/[^/]+\/jp\/NotoSansJP-/.test(r.url()));
+	await page.goto('/books/7');
+	await pageBox(page);
+	expect((await font).status()).toBe(200);
+	expect(elsewhere).toEqual([]);
+	// The text drawn (with the app's font): dark pixels in its band of the page (48 pt glyphs on a
+	// 400 pt baseline, from the bottom of a 595 pt page).
+	const sheet = page.locator('.page[data-page="1"] img').first();
+	await expect
+		.poll(() =>
+			sheet.evaluate((img: HTMLImageElement) => {
+				const canvas = document.createElement('canvas');
+				[canvas.width, canvas.height] = [img.naturalWidth, img.naturalHeight];
+				const context = canvas.getContext('2d')!;
+				context.drawImage(img, 0, 0);
+				const top = Math.round(img.naturalHeight * (150 / 595));
+				const band = context.getImageData(0, top, img.naturalWidth, Math.round(img.naturalHeight * (50 / 595)));
+				let dark = 0;
+				for (let i = 0; i < band.data.length; i += 4) if (band.data[i] < 100) dark++;
+				return dark;
+			})
+		)
+		.toBeGreaterThan(500);
+});

@@ -1224,7 +1224,11 @@ a PDF (at most 1 GiB). It is read on the device first: its SHA-256 ("This book i
 already on the server"), its number of pages, the title and author the PDF gives
 itself (offered in the form), and its first page, shown and sent as the thumbnail
 (nothing is fetched from elsewhere: the PDF engine, EmbedPDF's PDFium in
-WebAssembly, is served by the app and loaded by these pages only). Then its
+WebAssembly, is served by the app and loaded by these pages only, in a background
+worker). A PDF that does not embed its fonts is drawn with fallback fonts (Noto, for
+Latin, Greek, Cyrillic, Japanese, Chinese, Korean, Arabic and Hebrew text, regular and
+bold), also served by the app (about 48 MB in the image) and downloaded by the browser
+only when a page needs one; the PDF itself is not changed. Then its
 reference: the type of work (book, chapter, journal article, thesis, manuscript:
 densho, makimono), its authors, editors and translators (family and given name, or
 a name "as written": an organisation, a single name, a Japanese name family name

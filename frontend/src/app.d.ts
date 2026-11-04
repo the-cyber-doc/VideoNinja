@@ -5,6 +5,8 @@ declare global {
 	const __BASE_PATH__: string;
 	/** Version, commit and date of the build (vite.config.ts): use $lib/about.ts. */
 	const __APP_VERSION__: string;
+	/** EmbedPDF's font packages' version: the fallback fonts' folder (vite.config.ts). */
+	const __PDF_FONTS_VERSION__: string;
 	const __APP_BUILD__: string;
 	const __BUILD_DATE__: string;
 

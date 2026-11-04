@@ -23,7 +23,11 @@ vi.mock('$app/service-worker', () => ({ self: sw }));
 vi.mock('$app/env', () => ({ version: '2' }));
 vi.mock('$app/manifest', () => ({
 	assets: [{ path: 'favicon.svg' }, { path: 'format-samples/h264-aac.mp4' }],
-	immutable: [{ path: '_app/immutable/app.js' }, { path: '_app/immutable/assets/pdfium.BJ2Yip8Q.wasm' }]
+	immutable: [
+		{ path: '_app/immutable/app.js' },
+		{ path: '_app/immutable/assets/pdfium.BJ2Yip8Q.wasm' },
+		{ path: '_app/immutable/pdf-fonts/1.0.0/jp/NotoSansJP-Regular.otf' }
+	]
 }));
 
 let storage: FakeCacheStorage;

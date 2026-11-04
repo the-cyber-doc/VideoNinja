@@ -50,8 +50,10 @@ or ID encoding (Base62/Sqids).
   one grid, no sections). `(app)/books/[id]` (`+page.ts`: book, annotations if published, tags): `$lib/books/book.svelte.ts`
   `BookPage` (PDF fetched once with progress, `downloadPdf`; reference edit `PUT /api/books/<id>`; no thumbnail → page 1
   rendered and `PUT /api/books/<id>/thumbnail`, once per visit), `Viewer.svelte` (EmbedPDF plugins 2.15.1 exact: document
-  manager from the buffer, `permissions: {enforceDocumentPermissions: false}`, engine `worker: false` (a blob: worker is
-  refused by the CSP, kept as is), active document read from `context.coreState` (EmbedPDF's shortcut misses one opened at
+  manager from the buffer, `permissions: {enforceDocumentPermissions: false}`, engine in EmbedPDF's worker (a blob: URL:
+  the meta CSP (vite.config.ts `kit.csp`) has `worker-src 'self' blob:` like nginx's header; .wasm and font URLs absolute;
+  objects given to the engine are `$state.snapshot`s (postMessage cannot clone proxies)), active document read from
+  `context.coreState` (EmbedPDF's shortcut misses one opened at
   start); rendered only once `pluginsReady`, `autoMountDomElements={false}` (else EmbedPDF switches branches and our
   tree mounts again); `onInitialized` imports the rows and subscribes once), `ViewerPages.svelte` (EmbedPDF's own tools
   `highlight` / `square`; the page's RenderLayer with `pointer-events: none` and the page `user-select: none` (an image
@@ -366,12 +368,18 @@ the encoder waits for the version; `/health` fails on a mismatch.
   SHA-256 = `book.sha256sum`). Uploads carry tus metadata `kind` (`video` default | `book` | `image`;
   `upload.kind`, `upload_hooks.KINDS`: access, size `limits.BOOK_MAX_BYTES` 1 GiB / `IMAGE_MAX_BYTES` 2 MiB, extensions,
   duplicate check); a video submit refuses other kinds. The browser reads the PDF (`$lib/books/pdf.ts`: EmbedPDF
-  `@embedpdf/engines` 2.15.1 exact, direct PDFium engine, `fontFallback: null` (CSP 'self'), page count, metadata, page 1
+  `@embedpdf/engines` 2.15.1 exact, worker PDFium engine, fallback fonts as the viewer, page count, metadata, page 1
   as a 480 px JPEG) before uploading. The encoder (`app/encoder/books.py`, before each video job): SHA-256, `%PDF-` /
   `%%EOF` markers only (no PDF parser server-side), thumbnail re-encoded by ffmpeg (`limits.IMAGE_FORMAT` `jpeg_pipe`,
   ≤ 480 wide, metadata dropped; failure → published without), bad file → failed for good, unexpected → 3 attempts.
   nginx: `/protected-book/<user id>/…book.pdf` (`limit_conn` 2, `Content-Disposition: attachment` via the map
   `$content_disposition`), `/protected-book-image/` (no PDF). The SW never precaches `pdfium.*.wasm`.
+- Fallback fonts (PDFs that do not embed theirs): EmbedPDF's font packages (`@embedpdf/fonts-*`, Noto, OFL), regular
+  and bold only (`$lib/books/font-sets.ts` `FONT_SETS`), copied into the client build by vite.config.ts `pdfFonts()` at
+  `_app/immutable/pdf-fonts/<their version>/<set>/` (~48 MB; immutable; never precached by the SW); `fonts.ts`
+  `fontFallback()` = EmbedPDF's config with absolute app URLs (never a CDN). They load only in EmbedPDF's worker
+  (synchronous binary XHR), hence worker mode. nginx types font/ttf, font/otf. PDFium cannot embed a font into existing
+  text: the file is never rewritten (the user chose fallback rendering only). Test: tests/fixtures/book-jp.pdf.
 - References: `app/domain/references.py` `Reference` = one CSL-JSON item (hyphenated aliases, `extra=forbid`, types
   book|chapter|article-journal|thesis|manuscript; `Name` family+given or literal; `Date` `date-parts` one date), stored by
   `to_json()` (no nulls), answered with nulls. Frontend: `$lib/books/reference.ts` (fields per type, draft ↔ CSL,

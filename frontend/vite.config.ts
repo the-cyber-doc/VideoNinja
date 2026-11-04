@@ -3,6 +3,11 @@ import basicSsl from '@vitejs/plugin-basic-ssl';
 import { sveltekit } from '@sveltejs/kit/vite';
 import { defineConfig } from 'vitest/config';
 import { execSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
+import path from 'node:path';
+import type { Plugin } from 'vite';
+import { FONT_SETS, fontsPath } from './src/lib/books/font-sets';
 
 // Where the browser sees the app: '' (the domain's root, default) or e.g.
 // '/videoninja' (a subfolder; the Docker image's build argument). Build time only.
@@ -32,6 +37,34 @@ const APP_COMMIT = commit
 	? commit.replace(/^([0-9a-f]{7})[0-9a-f]{33}$/, '$1')
 	: (git('rev-parse --short HEAD') ?? 'unknown') + dirty;
 
+// Fallback fonts for PDFs without embedded fonts ($lib/books/fonts.ts): copied from
+// EmbedPDF's font packages into the client build, under a folder named after their version.
+const require = createRequire(import.meta.url);
+/** A font package's folder (its main file is in dist/; it exports no package.json). */
+const fontPackage = (name: string) => path.resolve(path.dirname(require.resolve(`@embedpdf/fonts-${name}`)), '..');
+const PDF_FONTS_VERSION: string = JSON.parse(
+	readFileSync(path.join(fontPackage('latin'), 'package.json'), 'utf8')
+).version;
+function pdfFonts(): Plugin {
+	return {
+		name: 'pdf-fonts',
+		apply: 'build',
+		generateBundle(options) {
+			if (options.format !== 'es' || !this.environment || this.environment.name !== 'client') return;
+			for (const set of FONT_SETS) {
+				const folder = path.join(fontPackage(set.name), 'fonts');
+				for (const font of set.files) {
+					this.emitFile({
+						type: 'asset',
+						fileName: `${fontsPath(PDF_FONTS_VERSION)}/${set.name}/${font.file}`,
+						source: readFileSync(path.join(folder, font.file))
+					});
+				}
+			}
+		}
+	};
+}
+
 export default defineConfig({
 	cacheDir: `node_modules/.vite${suffix}`,
 	// For the app's code ($lib/base.ts) and the service worker.
@@ -39,11 +72,13 @@ export default defineConfig({
 		__BASE_PATH__: JSON.stringify(BASE_PATH),
 		__APP_VERSION__: JSON.stringify(APP_VERSION),
 		__APP_BUILD__: JSON.stringify(APP_COMMIT),
-		__BUILD_DATE__: JSON.stringify(new Date().toISOString())
+		__BUILD_DATE__: JSON.stringify(new Date().toISOString()),
+		__PDF_FONTS_VERSION__: JSON.stringify(PDF_FONTS_VERSION)
 	},
 	plugins: [
 		// Dev over https: the session cookie is Secure (__Host-), as in production.
 		basicSsl(),
+		pdfFonts(),
 		sveltekit({
 			compilerOptions: {
 				// Force runes mode for the project, except for libraries. Can be removed in svelte 6.
@@ -70,7 +105,9 @@ export default defineConfig({
 			// Script policy in a <meta> of the page, with the hash of SvelteKit's inline
 			// boot script (it changes with every build). nginx sends the rest of the
 			// Content-Security-Policy; both apply, so only this exact inline script runs.
-			csp: { mode: 'hash', directives: { 'script-src': ['self', 'wasm-unsafe-eval'] } }
+			// worker-src as nginx's header: EmbedPDF's PDF engine runs in a worker made from a blob: URL
+			// (its fallback fonts load only there).
+			csp: { mode: 'hash', directives: { 'script-src': ['self', 'wasm-unsafe-eval'], 'worker-src': ['self', 'blob:'] } }
 		})
 	],
 	server: {

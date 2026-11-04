@@ -1,10 +1,9 @@
 <script lang="ts">
 	// A book's PDF, shown and annotated with EmbedPDF (PDFium in WebAssembly, served by the
-	// app; no font fetched from elsewhere). The document is the browser's copy: annotations
+	// app; fonts the PDF lacks from the app too: ./fonts.ts). The document is the browser's copy: annotations
 	// change it in memory only (the server's file is never written); ViewerPages saves each
 	// change through `annotations` (BookAnnotations). Read-only PDFs (permissions) can be
-	// annotated too: the copy is ours. The engine runs in the page: a worker made from a
-	// blob: URL is refused by the app's Content-Security-Policy, kept as it is.
+	// annotated too: the copy is ours.
 	import wasmUrl from '@embedpdf/pdfium/pdfium.wasm?url';
 	import { createPluginRegistration } from '@embedpdf/core';
 	import { EmbedPDF } from '@embedpdf/core/svelte';
@@ -22,6 +21,7 @@
 	import ErrorMessage from '../ErrorMessage.svelte';
 	import { t } from '../i18n.svelte';
 	import type { BookAnnotations } from './annotations.svelte';
+	import { fontFallback } from './fonts';
 	import ViewerPages, { type ViewerControls } from './ViewerPages.svelte';
 
 	let {
@@ -39,8 +39,10 @@
 		onready: (controls: ViewerControls) => void;
 	} = $props();
 
-	// In the page (not a worker from a blob: URL, which the app's CSP refuses).
-	const pdfEngine = usePdfiumEngine({ wasmUrl, fontFallback: null, worker: false });
+	// In EmbedPDF's worker (a blob: URL: the CSP's worker-src allows it): PDF work off the
+	// page's thread, and its fallback fonts load only there (a synchronous binary request).
+	// The .wasm's address absolute: the worker resolves nothing relative.
+	const pdfEngine = usePdfiumEngine({ wasmUrl: new URL(wasmUrl, location.href).href, fontFallback: fontFallback() });
 	// The document and the author are the ones the page opened with.
 	// svelte-ignore state_referenced_locally
 	const plugins = [

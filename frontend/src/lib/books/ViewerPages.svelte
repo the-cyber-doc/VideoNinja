@@ -73,7 +73,8 @@
 	});
 
 	$effect(() => {
-		const d = doc;
+		// A plain copy: the engine's worker receives it by postMessage (a reactive proxy cannot be cloned).
+		const d = doc && $state.snapshot(doc);
 		const pageEngine = engine as unknown as PageEngine;
 		if (!d) return;
 		onready({

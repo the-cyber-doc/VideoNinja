@@ -40,10 +40,13 @@ const escaped = BASE.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const path = (pattern: string) => new RegExp(`^${escaped}${pattern}$`);
 // Manifest paths are relative to the base path, where the service worker is.
 // Not the "Test local codecs" page's sample clips (static/format-samples/), nor the PDF
-// engine (PDFium's WebAssembly, ~5 MB, for the book pages: online only): fetched only when
+// engine (PDFium's WebAssembly, ~5 MB) and its fallback fonts (~40 MB), for the book
+// pages (online only): fetched only when
 // someone uses them, never downloaded by everyone with each version.
 const ON_DEMAND = (file: { path: string }) =>
-	file.path.startsWith('format-samples/') || /(^|\/)pdfium\.[^/]*\.wasm$/.test(file.path);
+	file.path.startsWith('format-samples/') ||
+	/(^|\/)pdfium\.[^/]*\.wasm$/.test(file.path) ||
+	file.path.includes('/pdf-fonts/');
 const ASSETS = new Set(
 	[...immutable, ...assets]
 		.filter((file) => !ON_DEMAND(file))

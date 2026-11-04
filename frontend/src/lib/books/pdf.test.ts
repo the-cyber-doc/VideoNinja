@@ -12,10 +12,12 @@ const engine = {
 	closeDocument: vi.fn(() => task(true)),
 	destroy: vi.fn(() => task(true))
 };
-const createPdfiumEngine = vi.fn<(url: string, options: object) => Promise<typeof engine>>(async () => engine);
-vi.mock('@embedpdf/engines/pdfium-direct-engine', () => ({ createPdfiumEngine }));
+const createPdfiumEngine = vi.fn<(url: string, options: object) => typeof engine>(() => engine);
+vi.stubGlobal('location', { href: 'http://localhost/books' }); // the worker gets absolute addresses
+vi.mock('@embedpdf/engines/pdfium-worker-engine', () => ({ createPdfiumEngine }));
 vi.mock('@embedpdf/pdfium/pdfium.wasm?url', () => ({ default: '/pdfium.wasm' }));
 
+const { fontFallback } = await import('./fonts');
 const { annotatedCopy, cropOf, CROP_SIZE, readPdf, THUMBNAIL_WIDTH } = await import('./pdf');
 
 const PAGE = { index: 0, size: { width: 595, height: 842 } };
@@ -32,7 +34,7 @@ describe('readPdf', () => {
 	it('pages, metadata, the first page as a JPEG; no font from elsewhere; the engine closed', async () => {
 		const facts = await readPdf(file);
 		expect(facts).toEqual({ pages: 3, title: 'Ninjutsu', author: null, thumbnail: expect.any(Blob) });
-		expect(createPdfiumEngine).toHaveBeenCalledWith('/pdfium.wasm', { fontFallback: null });
+		expect(createPdfiumEngine).toHaveBeenCalledWith('http://localhost/pdfium.wasm', { fontFallback: fontFallback() });
 		expect(engine.renderPage).toHaveBeenCalledWith(expect.anything(), PAGE, {
 			scaleFactor: THUMBNAIL_WIDTH / 595,
 			imageType: 'image/jpeg',

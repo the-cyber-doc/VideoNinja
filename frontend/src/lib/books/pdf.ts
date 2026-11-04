@@ -1,9 +1,10 @@
 // What the browser reads from a PDF before uploading it: its page count, its own
 // metadata (title, author: offered to the reference form) and its first page as a
 // JPEG (the book's thumbnail). EmbedPDF's PDFium engine (WebAssembly), loaded on
-// demand (only the pages that need it get the chunk and the .wasm). Never a fallback
-// font from a CDN (fontFallback null: the CSP allows 'self' only).
+// demand (only the pages that need it get the chunk and the .wasm). Fonts the PDF does not
+// embed come from the app (./fonts.ts), never a CDN (the CSP allows 'self' only).
 import wasmUrl from '@embedpdf/pdfium/pdfium.wasm?url';
+import { fontFallback } from './fonts';
 
 /** Thumbnail width in pixels (the server re-encodes it, at most this wide). */
 export const THUMBNAIL_WIDTH = 480;
@@ -17,8 +18,9 @@ export interface PdfFacts {
 }
 
 export async function readPdf(file: Blob): Promise<PdfFacts> {
-	const { createPdfiumEngine } = await import('@embedpdf/engines/pdfium-direct-engine');
-	const engine = await createPdfiumEngine(wasmUrl, { fontFallback: null });
+	// In EmbedPDF's worker, as the viewer (fonts the PDF lacks load only there).
+	const { createPdfiumEngine } = await import('@embedpdf/engines/pdfium-worker-engine');
+	const engine = createPdfiumEngine(new URL(wasmUrl, location.href).href, { fontFallback: fontFallback() });
 	try {
 		const content = await file.arrayBuffer();
 		const doc = await engine.openDocumentBuffer({ id: 'upload', content }).toPromise();
