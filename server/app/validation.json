@@ -9,6 +9,7 @@
 	"totp_secret": { "min_length": 32, "max_length": 32, "pattern": "^[A-Z2-7]+$" },
 	"totp_code": { "min_length": 6, "max_length": 6, "pattern": "^[0-9]+$" },
 	"sha256": { "min_length": 64, "max_length": 64, "pattern": "^[0-9a-f]+$" },
+	"tus_id": { "min_length": 32, "max_length": 32, "pattern": "^[0-9a-f]+$" },
 	"original_filename": { "min_length": 1, "max_length": 255, "pattern": "^[^\\/\\\\]+$" },
 	"catalog_id": { "min_length": 1, "max_length": 96 },
 	"performer_name": { "min_length": 1, "max_length": 64 },
@@ -18,5 +19,11 @@
 	"tag_name": { "min_length": 1, "max_length": 64 },
 	"tag_hint": { "min_length": 1, "max_length": 128 },
 	"tag_regexp": { "min_length": 1, "max_length": 256 },
-	"comment_text": { "min_length": 1, "max_length": 4000 }
+	"comment_text": { "min_length": 1, "max_length": 4000 },
+	"reference_text": { "min_length": 1, "max_length": 500 },
+	"reference_short": { "min_length": 1, "max_length": 64 },
+	"reference_name": { "min_length": 1, "max_length": 128 },
+	"reference_note": { "min_length": 1, "max_length": 2000 },
+	"reference_url": { "min_length": 1, "max_length": 2000, "pattern": "^https?://\\S+$" },
+	"reference_language": { "min_length": 2, "max_length": 35, "pattern": "^[a-z]{2,3}(-[A-Za-z0-9]{1,8})*$" }
 }

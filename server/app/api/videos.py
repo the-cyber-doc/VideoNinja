@@ -103,7 +103,7 @@ def submit(
     with db.write(con):
         segments.check(con, body.tags, body.segments)
         upload = queries.uploads.upload(con, tus_id)
-        if upload is None or upload["user"] != me.id or upload["state"] == "deleted":
+        if upload is None or upload["user"] != me.id or upload["state"] == "deleted" or upload["kind"] != "video":
             raise ApiError("upload.unknown")
         if upload["state"] != "finished":
             raise ApiError("upload.not_finished")
@@ -133,13 +133,18 @@ def submit(
 class UploadLimits(BaseModel):
     max_bytes: int
     extensions: list[str]  # lower case, without the dot
+    book_max_bytes: int  # a book's PDF (the "book_mgmt" access)
 
 
 @router.get("/uploads/limits")
 def upload_limits(_: User = Depends(uploader)) -> UploadLimits:
     """What the upload page may send (checked again by the pre-create hook, and the
     content by ffprobe before encoding): the page refuses other files at once."""
-    return UploadLimits(max_bytes=settings.current().max_upload_bytes, extensions=limits.extensions())
+    return UploadLimits(
+        max_bytes=settings.current().max_upload_bytes,
+        extensions=limits.extensions(),
+        book_max_bytes=limits.BOOK_MAX_BYTES,
+    )
 
 
 def _wait_finished(con: sqlite3.Connection, tus_id: str) -> None:

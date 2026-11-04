@@ -3,7 +3,15 @@ import { readdirSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import * as about from './about';
 import type { Segment } from './catalog.svelte';
-import { clipUrl, segmentDuration, thumbnailUrl, videoThumbnailUrl, videoUrl } from './media';
+import {
+	bookThumbnailUrl,
+	bookUrl,
+	clipUrl,
+	segmentDuration,
+	thumbnailUrl,
+	videoThumbnailUrl,
+	videoUrl
+} from './media';
 import { NAV } from './nav';
 
 const segment = { id: 4, video: 2, technique: 't', begin_s: 12, end_s: 27, performer: 'p' } as Segment;
@@ -17,6 +25,7 @@ describe('media URLs', () => {
 			'/media/video/2/thumbnail'
 		]);
 		expect(segmentDuration(segment)).toBe(15);
+		expect([bookUrl(3), bookThumbnailUrl(3)]).toEqual(['/media/book/3', '/media/book/3/thumbnail']);
 	});
 });
 

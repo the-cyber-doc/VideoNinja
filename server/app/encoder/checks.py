@@ -27,6 +27,13 @@ class JobError(Exception):
         self.retryable = retryable
 
 
+def upload_files(uploads: Path, tus_id: str) -> list[Path]:
+    """An upload's files in tusd's folder: the data, <id>.info, <id>.lock."""
+    if not tus_id or "/" in tus_id or tus_id.startswith("."):
+        raise JobError(f"Invalid upload ID {tus_id!r}")
+    return [uploads / tus_id, uploads / f"{tus_id}.info", uploads / f"{tus_id}.lock"]
+
+
 def check_complete(original: Path, info: Path) -> None:
     """tusd's file store keeps the announced Size in <id>.info, but not the
     offset (it stays 0): the data received is the file's size on disk."""

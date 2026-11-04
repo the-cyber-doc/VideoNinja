@@ -128,7 +128,7 @@ once.
 | `VIDEONINJA_DB_KEY` | unset | The key itself (base64), instead of a file. Setting it together with `VIDEONINJA_DB_KEY_FILE` refuses the start. The app removes it from its environment once read, so the tools it runs (tusd in development, brotli, zopfli) don't inherit it. Prefer the file (Docker secret): a variable shows in `docker inspect`. |
 | `VIDEONINJA_CATALOG_DIR` | `catalog/` next to the database (image: `/srv/catalog`) | Catalogue snapshots (static JSON files, see [Catalogue updates](#catalogue-updates)). |
 | `VIDEONINJA_X_ACCEL` | unset (image: `1`) | `1`: behind nginx, `/api/catalog` answers with `X-Accel-Redirect` and nginx sends the file. Unset: the app sends the file itself (development, no nginx). |
-| `VIDEONINJA_MEDIA_DIR` | `media/` next to the database (image: `/srv/media`) | Encoded videos and thumbnails (`video/<h2>/<sha256>/…`), written by the encoding queue. Without nginx the app serves the thumbnails from here. |
+| `VIDEONINJA_MEDIA_DIR` | `media/` next to the database (image: `/srv/media`) | Encoded videos and thumbnails (`video/<h2>/<sha256>/…`), books and theirs (`book/<h2>/<sha256>/…`), written by the encoding queue. Without nginx the app serves the thumbnails from here. |
 | `VIDEONINJA_UPLOAD_DIR` | `uploads/` next to the database (image: `/srv/uploads`) | tusd's folder: originals waiting to be encoded. |
 | `VIDEONINJA_MAX_UPLOAD_BYTES` | `21474836480` (20 GiB) | Largest upload accepted (the app's tusd hook; tusd's `-max-size` gets the same value). The upload page refuses a larger file at once. |
 | `VIDEONINJA_INPUT_FORMATS` | `mov,matroska,avi,mpegts,mpeg,dv,asf` | The ffmpeg demuxers allowed for uploads (`-format_whitelist`): MP4/MOV/M4V/3GP, MKV/WebM, AVI, MTS/M2TS/TS, MPG/VOB, DV, WMV. They also give the file extensions the upload page and tusd's hook accept. Any other name stops the start. |
@@ -1178,8 +1178,28 @@ Roles and what they allow (accesses):
 | `content_mgmt` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | | | |
 | `admin` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
 
-**Books** (top menu, between Upload and Videos; `book_mgmt` access) will hold
-reference books (PDF) and their annotations; the page is empty for now.
+**Books** (top menu, between Upload and Videos; `book_mgmt` access) lists every
+reference book (PDF), newest upload first: its first page, its reference as a
+bibliography entry (Chicago style), who uploaded it and when, its number of pages,
+and a link to download the PDF. A book being published or that failed says so and
+can be deleted (by its uploader or an admin). Filters, sorting and annotations come
+next.
+
+**Upload a book** (the last section of the Upload page, `book_mgmt` access): choose
+a PDF (at most 1 GiB). It is read on the device first: its SHA-256 ("This book is
+already on the server"), its number of pages, the title and author the PDF gives
+itself (offered in the form), and its first page, shown and sent as the thumbnail
+(nothing is fetched from elsewhere: the PDF engine, EmbedPDF's PDFium in
+WebAssembly, is served by the app and loaded by these pages only). Then its
+reference: the type of work (book, chapter, journal article, thesis, manuscript:
+densho, makimono), its authors, editors and translators (family and given name, or
+a name "as written": an organisation, a single name, a Japanese name family name
+first), and the fields of that type (original title in kanji, edition, series,
+publisher, place, date, ISBN, DOI, web address, language, note), with the
+bibliography entry it gives, live. Stored as CSL-JSON (the format of Zotero,
+BibTeX converters and Pandoc), shown in the style of The Chicago Manual of Style
+(18th edition, notes and bibliography). Tags as for videos. **Upload** sends the PDF
+and its thumbnail (tus, resumable); the server publishes the book within seconds.
 
 **Options** (user menu, below User Management; `options` access, i.e. admins)
 edits what the application offers to choose from, in collapsible sections.
@@ -1547,6 +1567,16 @@ request; after an interruption it asks for the offset (`HEAD`) and continues.
   (complete, SHA-256 as announced), encodes it with `encode-videos.sh` at low
   priority, writes `video/<h2>/<sha256>/{video.mp4, thumb.jpg,
   segment-<id>.jpg}`, publishes it and asks the API to rebuild the catalogue.
+- Books first (seconds each, never behind an hours-long video): the encoder checks
+  the PDF (complete, SHA-256 as announced, its `%PDF-` header and `%%EOF` trailer:
+  no PDF parser on the server, only the browser reads PDFs), re-encodes the
+  thumbnail JPEG the browser made (ffmpeg, `jpeg_pipe` only: a picture and nothing
+  else; the book is published without it if that fails), and writes
+  `book/<h2>/<sha256>/{book.pdf, thumb.jpg}`. The PDF is stored as uploaded, never
+  rewritten. Uploads say what they hold (tus metadata `kind`: `video`, `book`,
+  `image`): a book needs `book_mgmt` (`.pdf`, 1 GiB at most), its thumbnail too
+  (`.jpg`, 2 MiB at most). nginx sends PDFs as downloads (`Content-Disposition:
+  attachment`, two at a time per user), never shown by the browser's own viewer.
   A restart puts an interrupted encoding back in the queue (3 tries at most; a
   clean stop does not count as a try).
 - ffmpeg and ffprobe read local files only (`-protocol_whitelist file`: no
@@ -1610,7 +1640,7 @@ journalctl -t docker-videoninja-encoder -o cat | jq -c 'select(.video_id == 42)'
 `totp.undecryptable`; `user.invited`, `user.reset`, `user.deactivated`, `user.deleted`, `user.registered`,
 `invite.shown`; `access.denied`, `request.cross_site`, `comment.denied`,
 `upload.denied`; `upload.accepted`, `video.submitted`, `video.retried`,
-`video.deleted`, `annotations.saved`, `comment.created`, `comment.edited`,
+`video.deleted`, `book.submitted`, `book.deleted`, `annotations.saved`, `comment.created`, `comment.edited`,
 `comment.deleted`, `tag.created`, `tag.saved` (`previous_id`: renamed when it
 differs), `tag.deleted`. Refusals and failures are warnings, the rest info. They carry
 who (`user_id`) and what (`target_user_id`, `video_id`, `comment_id`…), never a

@@ -71,6 +71,10 @@ ERRORS: dict[str, tuple[int, str]] = {
     "video.exists": (409, "This video already exists"),
     "video.not_failed": (409, "Only a failed video can be retried"),
     "video.not_deletable": (409, "Published or encoding videos cannot be deleted here"),
+    # Books (app/api/books.py)
+    "book.unknown": (404, "Unknown book"),
+    "book.exists": (409, "This book already exists"),
+    "book.not_deletable": (409, "Published books cannot be deleted here"),
     "performer.empty_name": (422, "Empty name"),
     "performer.exists": (409, "This performer already exists"),
     # Annotations (app/segments.py)
@@ -105,6 +109,8 @@ ERRORS: dict[str, tuple[int, str]] = {
     "validation.segment_order": (422, "A segment must end after it begins"),
     "validation.comment_empty": (422, "The comment is empty"),
     "validation.translations": (422, "A text is needed in every language"),
+    "validation.reference_name": (422, "A name is a family name (and a given name) or a literal name"),
+    "validation.reference_date": (422, "A date is a year, a month (1-12) and a day (1-31)"),
     "validation.invalid": (422, "A value is not valid"),
 }
 
@@ -122,6 +128,8 @@ VALIDATION: dict[str, tuple[str, dict[str, str]]] = {
     "segment_order": ("validation.segment_order", {}),
     "comment_empty": ("validation.comment_empty", {}),
     "translations": ("validation.translations", {}),
+    "reference_name": ("validation.reference_name", {}),
+    "reference_date": ("validation.reference_date", {}),
 }
 
 Params = Mapping[str, str | int | float]

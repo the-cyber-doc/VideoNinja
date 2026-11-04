@@ -98,7 +98,7 @@ describe('checkbox and file checks', () => {
 
 	it('limits not known: the server decides; a name without extension is a wrong type', () => {
 		expect(refusal({ name: 'kata', size: 1 }, null)).toBe('');
-		expect(refusal({ name: 'kata', size: 1 }, { max_bytes: 10, extensions: ['mp4'] })).toBe('type');
-		expect(refusal({ name: 'kata.MP4', size: 1 }, { max_bytes: 10, extensions: ['mp4'] })).toBe('');
+		expect(refusal({ name: 'kata', size: 1 }, { max_bytes: 10, extensions: ['mp4'], book_max_bytes: 10 })).toBe('type');
+		expect(refusal({ name: 'kata.MP4', size: 1 }, { max_bytes: 10, extensions: ['mp4'], book_max_bytes: 10 })).toBe('');
 	});
 });

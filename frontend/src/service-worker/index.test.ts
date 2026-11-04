@@ -23,7 +23,7 @@ vi.mock('$app/service-worker', () => ({ self: sw }));
 vi.mock('$app/env', () => ({ version: '2' }));
 vi.mock('$app/manifest', () => ({
 	assets: [{ path: 'favicon.svg' }, { path: 'format-samples/h264-aac.mp4' }],
-	immutable: [{ path: '_app/immutable/app.js' }]
+	immutable: [{ path: '_app/immutable/app.js' }, { path: '_app/immutable/assets/pdfium.BJ2Yip8Q.wasm' }]
 }));
 
 let storage: FakeCacheStorage;
@@ -87,7 +87,7 @@ function lifecycle(type: 'install' | 'activate') {
 }
 
 describe('versions of the app', () => {
-	it("installed: its files and the shell cached (not the codecs page's samples), active at once", async () => {
+	it("installed: its files and the shell cached (not the codecs page's samples, nor the PDF engine), active at once", async () => {
 		for (const path of ['/favicon.svg', '/_app/immutable/app.js', '/']) network[path] = () => new Response(path);
 		await lifecycle('install');
 		const shell = await storage.open('shell-2');

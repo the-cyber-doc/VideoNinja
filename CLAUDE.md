@@ -41,8 +41,10 @@ or ID encoding (Base62/Sqids).
   `options` (admin role only) = Options page (`/options`, user menu below User Management) +
   `/api/admin/tags…` (`api/options.py`: GET definitions, POST, PUT `<id>` = the whole tag, DELETE).
   `book_mgmt` (roles `book_mgmt`, `content_mgmt`, admin) = Books menu entry (between Upload and Videos) + `(app)/books`
-  (`+page.ts` checks it); work in progress, plan: upload PDFs, grid + filter, EmbedPDF annotations, annotated download,
-  technique-page notes.
+  (`+page.ts` checks it, loads `GET /api/books`: one grid, Chicago reference, delete of queued/failed by uploader or
+  `user_mgmt`) + `(app)/upload/book` (also `upload`: tusd's hooks check both; link at the end of the upload page) +
+  `api/books.py` (`/api/books/exists`, `POST`/`GET /api/books`, `DELETE /api/books/<id>`) + `/media/book/<id>[/thumbnail]`.
+  Next (plan): filter/sort, EmbedPDF viewer + annotations + annotated download, technique-page notes.
   `video_mgmt` (role `video_mgmt` = every access but `user_mgmt`, `moderator`, `options` and `book_mgmt`; admins and
   `content_mgmt` too) =
   Videos page: `GET /api/videos` (+ `uploaded_by` display name, the video's own `tags`), `GET`/`PUT /api/videos/<id>/annotations`
@@ -192,7 +194,7 @@ the encoder waits for the version; `/health` fails on a mismatch.
   segment's delete button (new segments and the upload page: the current user).
 - Databases are migrated, never rebuilt (see Schema above).
 - Queries: `app/queries/` package, one module per table or purpose (users, sessions, invites, config,
-  catalog, comments, performers, tags, uploads, videos, segments, queue, thumbnails); called by module,
+  catalog, comments, performers, tags, uploads, videos, books, segments, queue, thumbnails); called by module,
   `queries.users.insert_user(…)` (no flat re-export). Every SQL statement there, `?` parameters only
   (column lists built from constants carry `# nosec B608` with the reason). The logged-in user is the frozen
   `queries.users.User` (id, username, name, role, time_zone, `access` frozenset; never credentials:
@@ -222,14 +224,14 @@ the encoder waits for the version; `/health` fails on a mismatch.
   `e.message`. Test `lib/api/boundary.test.ts`: no `/api/` URL nor `api(`/`ndjson(` outside `lib/api/` (and
   the SW). Server side: an answer the frontend reads is a model, never `dict[str, …]`, and model names are
   unique (`tests/test_openapi.py`). Media URLs: `$lib/media.ts`.
-- HTTP layer (`app/api/`): one router per module (about, auth, catalog, comments, health, media,
+- HTTP layer (`app/api/`): one router per module (about, auth, books, catalog, comments, health, media,
   performers, profile, register, setup, tags, upload_hooks, users, video_mgmt, videos), `api.ROUTERS`
   included by main.py in that order; `api/deps.py` = the dependencies (`session_token`, `current_user`,
   `user_zone`, `require_access`, `rebuild_after_write`). Rules and storage stay outside (`app/domain/snapshot.py`,
   `tusd.py` (the process), `tags.py` (rules), `segments.py`…) and never import `api` (only main.py does).
   Routers call those modules qualified (`snapshot.rebuild_now()`), so tests patch the owning module.
   Loggers `app.api.<module>` (the setup token's: `app.api.setup`).
-- Encoder package (`app/encoder/`): `queue.py` (`Encoder` worker: job loop, encode, publish, fail;
+- Encoder package (`app/encoder/`): `books.py` (book step, `run_once`, before each video), `queue.py` (`Encoder` worker: job loop, encode, publish, fail;
   module `start`/`stop`/`running`), `checks.py` (ffprobe/ffmpeg runs, `needs_encoding`, `strip_metadata`,
   `JobError`…), `thumbnails.py` (`thumbnail`, `middle`, `refresh` of marked videos), `heartbeat.py`
   (`beat`, `run`, `healthy`), `notify.py` (`catalog_changed`), `cli.py` (`main`; `__main__.py` calls it:
@@ -328,6 +330,21 @@ the encoder waits for the version; `/health` fails on a mismatch.
   fails the video for good; the script: `-T` / `-L`), output via temporary files,
   group killed and reaped at the end. Uploads ≤ `VIDEONINJA_MAX_UPLOAD_BYTES` (20 GiB; tusd `-max-size`
   too); tusd's pre-create hook refuses other extensions (415); the page knows both (`/api/uploads/limits`).
+- Books: `book/<h2>/<sha256>/{book.pdf, thumb.jpg}` (`paths.book_dir()`), the PDF as uploaded (never rewritten; its
+  SHA-256 = `book.sha256sum`). Uploads carry tus metadata `kind` (`video` default | `book` | `image`;
+  `upload.kind`, `upload_hooks.KINDS`: access, size `limits.BOOK_MAX_BYTES` 1 GiB / `IMAGE_MAX_BYTES` 2 MiB, extensions,
+  duplicate check); a video submit refuses other kinds. The browser reads the PDF (`$lib/books/pdf.ts`: EmbedPDF
+  `@embedpdf/engines` 2.15.1 exact, direct PDFium engine, `fontFallback: null` (CSP 'self'), page count, metadata, page 1
+  as a 480 px JPEG) before uploading. The encoder (`app/encoder/books.py`, before each video job): SHA-256, `%PDF-` /
+  `%%EOF` markers only (no PDF parser server-side), thumbnail re-encoded by ffmpeg (`limits.IMAGE_FORMAT` `jpeg_pipe`,
+  ≤ 480 wide, metadata dropped; failure → published without), bad file → failed for good, unexpected → 3 attempts.
+  nginx: `/protected-book/<user id>/…book.pdf` (`limit_conn` 2, `Content-Disposition: attachment` via the map
+  `$content_disposition`), `/protected-book-image/` (no PDF). The SW never precaches `pdfium.*.wasm`.
+- References: `app/domain/references.py` `Reference` = one CSL-JSON item (hyphenated aliases, `extra=forbid`, types
+  book|chapter|article-journal|thesis|manuscript; `Name` family+given or literal; `Date` `date-parts` one date), stored by
+  `to_json()` (no nulls), answered with nulls. Frontend: `$lib/books/reference.ts` (fields per type, draft ↔ CSL,
+  `problems`), `citation.ts` (Chicago 18 bibliography as `Run[]`, words via `t()` `citation.*`, en serial comma, fr
+  « »), `Citation.svelte`, `ReferenceForm.svelte`, `upload.svelte.ts` `BookUpload` (deps injected, `upload.test.ts`).
 - Segment thumbnails after the Videos page: the API only sets `segment.thumbnail` NULL (new/re-timed) and
   increments `video.thumbs_dirty`; the encoder's thumbnails thread makes them, deletes orphan
   `segment-*.jpg`, decrements by what it saw. The API has no ffmpeg and no media mount.
@@ -492,7 +509,8 @@ the encoder waits for the version; `/health` fails on a mismatch.
 - e2e on the real containers: `tools/test-e2e-stack.sh [--images X.Y.Z]` (throwaway instance: empty DB,
   folders, key in a temp dir; compose project `videoninja-e2e`; token from the api log). Playwright:
   `E2E_BASE_URL` → only projects `e2e` + `options` + `videos` + `stack` (tests/stack: upload → tusd → encoder → nginx
-  clip, thumbnails, /health, a used tag value refused on the Options page), no webServer; `E2E_SETUP_TOKEN`.
+  clip, thumbnails, /health, a used tag value refused on the Options page; books.spec: a PDF → tusd → encoder → nginx
+  attachment + thumbnail, 403 without `book_mgmt`), no webServer; `E2E_SETUP_TOKEN`.
   e2e paths are relative to the base URL ('login', './'). Project `e2e` = tests/e2e/account.spec.ts only
   (`E2E_FIRST`), project `options` = the other tests/e2e specs (depends on `e2e`), `videos` =
   tests/stack/videos.spec.ts (`STACK_VIDEOS`; depends on both: two uploaders registered through the API upload

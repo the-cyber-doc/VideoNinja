@@ -17,6 +17,10 @@ client only names the segment. Files: <media>/video/<h2>/<sha256>/<file name>
   /protected-video/<user id>/…, at most 3 transfers per user (the editor plays
   the file with three video elements: player, frame measurement, film strip).
   Thumbnails are not limited.
+- /media/book/<id> and /media/book/<id>/thumbnail: a published book (PDF, sent as an
+  attachment: never shown by the browser itself) and its first page (book_mgmt access).
+  PDFs: /protected-book/<user id>/…, two transfers per user; thumbnails:
+  /protected-book-image/… (book/<h2>/<sha256>/, no PDF there).
 
 Without nginx (development), the app serves the files itself from the media
 folder (paths.py), without download limits; it cuts each clip once with ffmpeg
@@ -46,6 +50,8 @@ segment_access = require_access("segment")
 INTERNAL_PREFIX = "/protected"
 CLIP_PREFIX = "/protected-clip"  # + /<user id>: one transfer per user (nginx limit_conn)
 VIDEO_PREFIX = "/protected-video"  # + /<user id>: three per user
+BOOK_PREFIX = "/protected-book"  # + /<user id>: two per user
+BOOK_IMAGE_PREFIX = "/protected-book-image"
 SHA256 = re.compile(r"[0-9a-f]{64}")
 FILE_NAME = re.compile(r"[A-Za-z0-9_-][A-Za-z0-9._-]*")  # no path, no leading dot
 NO_STORE = {"Cache-Control": "private, no-store"}  # as nginx for /protected/
@@ -188,3 +194,38 @@ def video_thumbnail(
 ) -> Response:
     row = queries.videos.published_video(con, video_id)
     return _video_file(con, video_id, row["thumbnail"] if row else None)
+
+
+# --- books (book_mgmt) ---
+
+book_access = require_access("book_mgmt")
+
+
+def _book_file(con: sqlite3.Connection, book_id: int, name: str | None, prefix: str) -> Response:
+    row = queries.books.published_book(con, book_id)
+    if row is None or not name or not SHA256.fullmatch(row["sha256sum"]) or not FILE_NAME.fullmatch(name):
+        raise _not_found()
+    relative = f"{row['sha256sum'][:2]}/{row['sha256sum']}/{name}"
+    if settings.current().x_accel:
+        return Response(headers={"X-Accel-Redirect": f"{prefix}/{relative}"})
+    path = paths.book_dir() / relative
+    if not path.is_file():
+        raise _not_found()
+    if name == "book.pdf":  # as nginx: a download, never displayed by the browser
+        return FileResponse(
+            path, media_type="application/pdf", headers={**NO_STORE, "Content-Disposition": "attachment"}
+        )
+    return FileResponse(path, headers=NO_STORE)
+
+
+@router.get("/book/{book_id}")
+def book_pdf(book_id: int, user: User = Depends(book_access), con: sqlite3.Connection = Depends(db.get_db)) -> Response:
+    return _book_file(con, book_id, "book.pdf", f"{BOOK_PREFIX}/{user.id}")
+
+
+@router.get("/book/{book_id}/thumbnail")
+def book_thumbnail(
+    book_id: int, _: User = Depends(book_access), con: sqlite3.Connection = Depends(db.get_db)
+) -> Response:
+    row = queries.books.published_book(con, book_id)
+    return _book_file(con, book_id, row["thumbnail"] if row else None, BOOK_IMAGE_PREFIX)

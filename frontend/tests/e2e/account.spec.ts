@@ -114,7 +114,7 @@ test('user menu: Profile first, User Management and Options for admins, About, L
 test('About: the version of the database the server runs on', async ({ page }) => {
 	await logIn(page);
 	await (await openMenu(page)).getByRole('menuitem', { name: 'About' }).click();
-	await expect(page.getByText('Database version 3', { exact: true })).toBeVisible(); // db.EXPECTED_VERSION
+	await expect(page.getByText('Database version 4', { exact: true })).toBeVisible(); // db.EXPECTED_VERSION
 	await expect(page.getByText('this release ships')).toHaveCount(0);
 });
 

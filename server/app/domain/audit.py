@@ -44,6 +44,8 @@ EVENTS: dict[str, int] = {
     "video.submitted": INFO,
     "video.retried": INFO,
     "video.deleted": INFO,
+    "book.submitted": INFO,
+    "book.deleted": INFO,
     "annotations.saved": INFO,
     "comment.created": INFO,
     "comment.edited": INFO,

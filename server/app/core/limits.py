@@ -9,6 +9,7 @@
   network, no data: URLs, no playlists pointing elsewhere.
 """
 
+from collections.abc import Sequence
 from pathlib import PurePath
 
 from . import settings
@@ -16,14 +17,25 @@ from . import settings
 # The app's own files (encoded, published): MP4 only.
 OWN_FORMATS = "mov"
 
+# Books (PDF) and the JPEGs the browser makes (a book's first page, an annotation's
+# crop): fixed, below VIDEONINJA_MAX_UPLOAD_BYTES (tusd's own -max-size). A book this
+# size still fits in the browser's memory (it reads the whole file for the thumbnail).
+BOOK_MAX_BYTES = 1 << 30
+IMAGE_MAX_BYTES = 2 << 20
+BOOK_EXTENSIONS = ("pdf",)
+IMAGE_EXTENSIONS = ("jpg", "jpeg")
+# ffmpeg reads the browser's JPEGs as this demuxer only (the file has no extension).
+IMAGE_FORMAT = "jpeg_pipe"
+
 
 def extensions() -> list[str]:
     """The accepted files' extensions: those of VIDEONINJA_INPUT_FORMATS."""
     return [ext for name in settings.current().input_formats for ext in settings.INPUT_FORMATS[name]]
 
 
-def accepted_name(filename: str) -> bool:
-    return PurePath(filename).suffix.lower().removeprefix(".") in extensions()
+def accepted_name(filename: str, allowed: Sequence[str] | None = None) -> bool:
+    """The file's extension is among `allowed` (default: the video formats')."""
+    return PurePath(filename).suffix.lower().removeprefix(".") in (extensions() if allowed is None else allowed)
 
 
 def ffmpeg_input(own: bool = False) -> list[str]:

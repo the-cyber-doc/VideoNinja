@@ -13,7 +13,7 @@ def upload_dir() -> Path:
 
 
 def media_dir() -> Path:
-    """video/ (video_dir) and, in development, clips/ (media.py)."""
+    """video/ (video_dir), book/ (book_dir) and, in development, clips/ (media.py)."""
     return settings.current().media_dir
 
 
@@ -21,3 +21,9 @@ def video_dir() -> Path:
     """<h2>/<sha256>/{video.mp4, thumb.jpg, segment-<id>.jpg}: one folder per video,
     named after the encoded file's SHA-256 (the original would go alongside)."""
     return media_dir() / "video"
+
+
+def book_dir() -> Path:
+    """<h2>/<sha256>/{book.pdf, thumb.jpg}: one folder per book, named after the PDF's
+    SHA-256 (stored as uploaded: never rewritten)."""
+    return media_dir() / "book"

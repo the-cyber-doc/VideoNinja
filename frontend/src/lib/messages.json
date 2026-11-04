@@ -151,6 +151,12 @@
 		"en": "A video being encoded or already published cannot be deleted here.",
 		"fr": "Une vidéo en cours d'encodage ou déjà publiée ne peut pas être supprimée ici."
 	},
+	"error.book.unknown": { "en": "This book does not exist (any more).", "fr": "Ce livre n'existe pas (ou plus)." },
+	"error.book.exists": { "en": "This book is already on the server.", "fr": "Ce livre est déjà sur le serveur." },
+	"error.book.not_deletable": {
+		"en": "A published book cannot be deleted here.",
+		"fr": "Un livre publié ne peut pas être supprimé ici."
+	},
 	"error.performer.empty_name": { "en": "Enter a name.", "fr": "Saisissez un nom." },
 	"error.performer.exists": {
 		"en": "This performer already exists.",
@@ -234,6 +240,14 @@
 	"error.validation.translations": {
 		"en": "A text is needed in every language.",
 		"fr": "Un texte est nécessaire dans chaque langue."
+	},
+	"error.validation.reference_name": {
+		"en": "A name is a family name (with or without a given name), or a name written as is.",
+		"fr": "Un nom est un nom de famille (avec ou sans prénom), ou un nom écrit tel quel."
+	},
+	"error.validation.reference_date": {
+		"en": "A date is a year, then optionally a month (1–12) and a day (1–31).",
+		"fr": "Une date est une année, puis éventuellement un mois (1–12) et un jour (1–31)."
 	},
 	"error.validation.missing": {
 		"en": "A required value is missing.",
@@ -327,6 +341,143 @@
 	"nav.books": { "en": "Books", "fr": "Livres" },
 	"books.title": { "en": "Books", "fr": "Livres" },
 	"books.none": { "en": "No book yet.", "fr": "Pas encore de livre." },
+	"books.pages": { "en": "{n} page(s)", "fr": "{n} page(s)" },
+	"books.count": { "en": "{n} book(s)", "fr": "{n} livre(s)" },
+	"books.no_thumbnail": { "en": "PDF", "fr": "PDF" },
+	"books.uploaded": { "en": "Uploaded by {name} on {date}", "fr": "Téléversé par {name} le {date}" },
+	"books.download": { "en": "Download the PDF", "fr": "Télécharger le PDF" },
+	"books.queued": { "en": "Being published…", "fr": "Publication en cours…" },
+	"books.failed": { "en": "Not published: {error}", "fr": "Non publié : {error}" },
+	"books.delete": { "en": "Delete", "fr": "Supprimer" },
+	"books.delete_confirm": { "en": "Delete {name}?", "fr": "Supprimer {name} ?" },
+	"books.upload.title": { "en": "Upload a book", "fr": "Téléverser un livre" },
+	"books.upload.intro": {
+		"en": "A PDF: read on this device first (its first page becomes the thumbnail), then sent with its reference.",
+		"fr": "Un PDF : lu d’abord sur cet appareil (sa première page devient la vignette), puis envoyé avec sa référence."
+	},
+	"books.upload.link": { "en": "Upload a book (PDF)", "fr": "Téléverser un livre (PDF)" },
+	"books.upload.link_hint": {
+		"en": "Reference books and scans of scrolls, annotated later on the Books page.",
+		"fr": "Livres de référence et numérisations de rouleaux, annotés ensuite sur la page Livres."
+	},
+	"books.upload.choose": { "en": "Choose a PDF file", "fr": "Choisir un fichier PDF" },
+	"books.upload.reading": { "en": "Reading the PDF…", "fr": "Lecture du PDF…" },
+	"books.upload.first_page": { "en": "First page of the book", "fr": "Première page du livre" },
+	"books.upload.no_picture": {
+		"en": "No picture of the first page: the book is uploaded without one.",
+		"fr": "Pas d’image de la première page : le livre est téléversé sans."
+	},
+	"books.upload.tags": { "en": "Tags of the book", "fr": "Étiquettes du livre" },
+	"books.upload.sending": { "en": "Uploading the PDF", "fr": "Envoi du PDF" },
+	"books.upload.submitting": { "en": "Saving the reference…", "fr": "Enregistrement de la référence…" },
+	"books.upload.send": { "en": "Upload", "fr": "Téléverser" },
+	"books.upload.cancel": { "en": "Cancel", "fr": "Annuler" },
+	"books.upload.cancel_confirm": {
+		"en": "Stop the upload? What was sent is deleted.",
+		"fr": "Arrêter le téléversement ? Ce qui a été envoyé est supprimé."
+	},
+	"books.upload.leave_confirm": {
+		"en": "The book is being uploaded: leaving stops it. Leave anyway?",
+		"fr": "Le livre est en cours d’envoi : partir l’arrête. Partir quand même ?"
+	},
+	"books.upload.done": {
+		"en": "Uploaded: the book is published in a few seconds.",
+		"fr": "Téléversé : le livre est publié dans quelques secondes."
+	},
+	"books.upload.to_books": { "en": "See the books", "fr": "Voir les livres" },
+	"citation.and": { "en": "and", "fr": "et" },
+	"citation.et_al": { "en": "et al.", "fr": "et al." },
+	"citation.ed": { "en": "ed.", "fr": "dir." },
+	"citation.eds": { "en": "eds.", "fr": "dir." },
+	"citation.edited_by": { "en": "Edited by {names}", "fr": "Sous la direction de {names}" },
+	"citation.edited_by_in": { "en": "edited by {names}", "fr": "sous la direction de {names}" },
+	"citation.translated_by": { "en": "Translated by {names}", "fr": "Traduit par {names}" },
+	"citation.in": { "en": "In", "fr": "Dans" },
+	"citation.vol": { "en": "Vol. {n}", "fr": "Vol. {n}" },
+	"citation.no": { "en": "no. {n}", "fr": "nᵒ {n}" },
+	"citation.edition": { "en": "{n} ed.", "fr": "{n} éd." },
+	"citation.first_published": { "en": "First published {year}", "fr": "Première publication en {year}" },
+	"citation.manuscript": { "en": "Manuscript", "fr": "Manuscrit" },
+	"books.reference.title_missing": { "en": "A title is needed.", "fr": "Un titre est nécessaire." },
+	"books.reference.date_invalid": {
+		"en": "A date is a year, or year-month, or year-month-day (1981, 1981-05, 1981-05-12).",
+		"fr": "Une date est une année, ou année-mois, ou année-mois-jour (1981, 1981-05, 1981-05-12)."
+	},
+	"books.reference.too_long": { "en": "Too long.", "fr": "Trop long." },
+	"books.reference.invalid": { "en": "Not in the expected form.", "fr": "Pas dans la forme attendue." },
+	"books.reference.family_missing": {
+		"en": "A given name needs its family name.",
+		"fr": "Un prénom a besoin de son nom de famille."
+	},
+	"books.upload.not_pdf": {
+		"en": "Only PDF files can be uploaded here.",
+		"fr": "Seuls des fichiers PDF peuvent être téléversés ici."
+	},
+	"books.upload.too_large": {
+		"en": "This file is too large (at most {size} MB).",
+		"fr": "Ce fichier est trop volumineux (au plus {size} Mo)."
+	},
+	"books.upload.duplicate": { "en": "This book is already on the server.", "fr": "Ce livre est déjà sur le serveur." },
+	"books.upload.unreadable": { "en": "This PDF cannot be read.", "fr": "Ce PDF ne peut pas être lu." },
+	"books.reference.title": { "en": "Reference", "fr": "Référence" },
+	"books.reference.type": { "en": "Type of work", "fr": "Type d’ouvrage" },
+	"books.reference.type.book": { "en": "Book", "fr": "Livre" },
+	"books.reference.type.chapter": { "en": "Chapter of a book", "fr": "Chapitre d’un livre" },
+	"books.reference.type.article-journal": { "en": "Journal article", "fr": "Article de revue" },
+	"books.reference.type.thesis": { "en": "Thesis", "fr": "Thèse" },
+	"books.reference.type.manuscript": { "en": "Manuscript (densho, makimono…)", "fr": "Manuscrit (densho, makimono…)" },
+	"books.reference.names": { "en": "Authors, editors, translators", "fr": "Auteurs, directeurs, traducteurs" },
+	"books.reference.names_hint": {
+		"en": "Family name and given name; or “as written” for an organisation, a single name or a Japanese name written family name first (Hatsumi Masaaki).",
+		"fr": "Nom de famille et prénom ; ou « tel quel » pour une organisation, un nom unique ou un nom japonais écrit nom de famille d’abord (Hatsumi Masaaki)."
+	},
+	"books.reference.role": { "en": "Role", "fr": "Rôle" },
+	"books.reference.role.author": { "en": "Author", "fr": "Auteur" },
+	"books.reference.role.editor": { "en": "Editor", "fr": "Directeur de publication" },
+	"books.reference.role.translator": { "en": "Translator", "fr": "Traducteur" },
+	"books.reference.family": { "en": "Family name", "fr": "Nom de famille" },
+	"books.reference.given": { "en": "Given name", "fr": "Prénom" },
+	"books.reference.literal_name": { "en": "Name, as written", "fr": "Nom, tel qu’écrit" },
+	"books.reference.as_written": { "en": "As written", "fr": "Tel quel" },
+	"books.reference.add_name": { "en": "Add a name", "fr": "Ajouter un nom" },
+	"books.reference.remove_name": { "en": "Remove name {n}", "fr": "Retirer le nom {n}" },
+	"books.reference.preview": {
+		"en": "Bibliography entry (Chicago style)",
+		"fr": "Entrée bibliographique (style Chicago)"
+	},
+	"books.reference.field.title": { "en": "Title", "fr": "Titre" },
+	"books.reference.field.original-title": { "en": "Original title (kanji)", "fr": "Titre original (kanji)" },
+	"books.reference.field.container-title": { "en": "Book or journal it is in", "fr": "Livre ou revue qui le contient" },
+	"books.reference.field.edition": { "en": "Edition", "fr": "Édition" },
+	"books.reference.field.volume": { "en": "Volume", "fr": "Volume" },
+	"books.reference.field.issue": { "en": "Issue", "fr": "Numéro" },
+	"books.reference.field.page": { "en": "Pages", "fr": "Pages" },
+	"books.reference.field.collection-title": { "en": "Series", "fr": "Collection" },
+	"books.reference.field.collection-number": { "en": "Number in the series", "fr": "Numéro dans la collection" },
+	"books.reference.field.genre": { "en": "Kind", "fr": "Nature" },
+	"books.reference.field.publisher": {
+		"en": "Publisher (university for a thesis)",
+		"fr": "Éditeur (université pour une thèse)"
+	},
+	"books.reference.field.publisher-place": { "en": "Place of publication", "fr": "Lieu de publication" },
+	"books.reference.field.archive": { "en": "Kept by", "fr": "Conservé par" },
+	"books.reference.field.archive-place": { "en": "Where", "fr": "Lieu" },
+	"books.reference.field.issued": { "en": "Date", "fr": "Date" },
+	"books.reference.field.original-date": { "en": "First published", "fr": "Première publication" },
+	"books.reference.field.number-of-pages": { "en": "Number of pages", "fr": "Nombre de pages" },
+	"books.reference.field.ISBN": { "en": "ISBN", "fr": "ISBN" },
+	"books.reference.field.ISSN": { "en": "ISSN", "fr": "ISSN" },
+	"books.reference.field.DOI": { "en": "DOI", "fr": "DOI" },
+	"books.reference.field.URL": { "en": "Web address", "fr": "Adresse web" },
+	"books.reference.field.language": { "en": "Language (code)", "fr": "Langue (code)" },
+	"books.reference.field.note": { "en": "Note", "fr": "Note" },
+	"books.reference.placeholder.date": { "en": "1981, 1981-05 or 1981-05-12", "fr": "1981, 1981-05 ou 1981-05-12" },
+	"books.reference.placeholder.url": { "en": "https://…", "fr": "https://…" },
+	"books.reference.placeholder.language": { "en": "ja, en, fr…", "fr": "ja, en, fr…" },
+	"books.reference.placeholder.edition": { "en": "2, or Rev. ed.", "fr": "2, ou éd. rev." },
+	"books.reference.placeholder.page": { "en": "12–34", "fr": "12–34" },
+	"books.reference.placeholder.thesis": { "en": "PhD diss.", "fr": "Thèse de doctorat" },
+	"books.reference.placeholder.manuscript": { "en": "Makimono", "fr": "Makimono" },
 	"nav.videos": { "en": "Videos", "fr": "Vidéos" },
 	"videos.title": { "en": "Videos", "fr": "Vidéos" },
 	"videos.section.in_progress": { "en": "In progress", "fr": "En cours" },

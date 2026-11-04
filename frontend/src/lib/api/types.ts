@@ -55,6 +55,14 @@ export type SavedSegment = Schemas['AnnotatedSegment'];
 export type Annotations = Schemas['Annotations'];
 export type AnnotationsOut = Schemas['AnnotationsOut'];
 
+// Books
+/** A book's reference: one CSL-JSON item (absent fields: missing or null). */
+export type Reference = Schemas['Reference'];
+export type ReferenceName = Schemas['Name'];
+export type ReferenceDate = Schemas['Date'];
+export type BookIn = Schemas['BookIn'];
+export type BookRow = Schemas['BookOut'];
+
 // Options
 /** A tag as the Options page edits it: names in every language, how often it is used. */
 export type TagDefinition = Schemas['TagDefinition'];

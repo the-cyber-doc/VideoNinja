@@ -5,7 +5,7 @@ import type { Draft } from './draft.svelte';
 import { UploadFlow, type FlowDeps } from './flow.svelte';
 import type { UploadCallbacks } from './upload';
 
-const LIMITS = { max_bytes: 1000, extensions: ['mp4', 'mkv'] };
+const LIMITS = { max_bytes: 1000, extensions: ['mp4', 'mkv'], book_max_bytes: 100 };
 const file = (name = 'kata.mp4', size = 10) => new File([new Uint8Array(size)], name);
 const draftOf = (sha256: string, f: File): Draft => ({
 	sha256,

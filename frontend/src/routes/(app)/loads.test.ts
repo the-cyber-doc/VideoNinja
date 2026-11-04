@@ -14,7 +14,8 @@ const api = vi.hoisted(() => ({
 	listTags: vi.fn(),
 	listTagDefinitions: vi.fn(),
 	uploadLimits: vi.fn(),
-	uploadsAvailable: vi.fn()
+	uploadsAvailable: vi.fn(),
+	listBooks: vi.fn()
 }));
 vi.mock('#lib/api/setup.js', () => ({ isInitialized: api.isInitialized }));
 vi.mock('#lib/api/auth.js', () => ({ currentUser: api.currentUser }));
@@ -22,12 +23,14 @@ vi.mock('#lib/api/users.js', () => ({ listUsers: api.listUsers, listRoles: api.l
 vi.mock('#lib/api/performers.js', () => ({ listPerformers: api.listPerformers }));
 vi.mock('#lib/api/tags.js', () => ({ listTags: api.listTags, listTagDefinitions: api.listTagDefinitions }));
 vi.mock('#lib/api/uploads.js', () => ({ uploadLimits: api.uploadLimits, uploadsAvailable: api.uploadsAvailable }));
+vi.mock('#lib/api/books.js', () => ({ listBooks: api.listBooks }));
 
 const { load: layout } = await import('./+layout');
 const { load: usersPage } = await import('./admin/users/+page');
 const { load: uploadPage } = await import('./upload/+page');
 const { load: codecsPage } = await import('./upload/codecs/+page');
 const { load: booksPage } = await import('./books/+page');
+const { load: bookUploadPage } = await import('./upload/book/+page');
 const { load: optionsPage } = await import('./options/+page');
 const root = await import('../+layout');
 
@@ -108,12 +111,12 @@ describe('upload page', () => {
 	it('its access first; what the annotation needs and what the server takes', async () => {
 		api.listPerformers.mockResolvedValue([{ id: 'p' }]);
 		api.listTags.mockResolvedValue([{ id: 't' }]);
-		api.uploadLimits.mockResolvedValue({ max_bytes: 1, extensions: ['mp4'] });
+		api.uploadLimits.mockResolvedValue({ max_bytes: 1, extensions: ['mp4'], book_max_bytes: 1 });
 		api.uploadsAvailable.mockResolvedValue(false);
 		expect(await uploadPage(event({ user: user('upload') }).event)).toEqual({
 			performers: [{ id: 'p' }],
 			tags: [{ id: 't' }],
-			limits: { max_bytes: 1, extensions: ['mp4'] },
+			limits: { max_bytes: 1, extensions: ['mp4'], book_max_bytes: 1 },
 			available: false,
 			error: null
 		});
@@ -143,10 +146,36 @@ describe('test local codecs page', () => {
 });
 
 describe('books page', () => {
-	it('needs the book_mgmt access', async () => {
-		expect(await booksPage(event({ user: user('book_mgmt') }).event)).toBeUndefined();
+	it('needs the book_mgmt access; the books, or the failure', async () => {
+		api.listBooks.mockResolvedValue([{ id: 1 }]);
+		const { event: e, depends } = event({ user: user('book_mgmt') });
+		expect(await booksPage(e)).toEqual({ books: [{ id: 1 }], error: null });
+		expect(depends).toHaveBeenCalledWith('app:books');
+		const failure = new ApiError(500, 'internal');
+		api.listBooks.mockRejectedValue(failure);
+		expect(await booksPage(event({ user: user('book_mgmt') }).event)).toEqual({ books: [], error: failure });
 		expect(await redirectOf(booksPage(event({ user: user('video_mgmt') }).event) as Promise<unknown>)).toBe('/');
 		expect(await redirectOf(booksPage(event({ user: null }).event) as Promise<unknown>)).toBe('/');
+	});
+});
+
+describe('book upload page', () => {
+	it('needs book_mgmt and upload; the tags and the largest PDF', async () => {
+		api.listTags.mockResolvedValue([{ id: 'year' }]);
+		api.uploadLimits.mockResolvedValue({ max_bytes: 9, extensions: [], book_max_bytes: 5 });
+		const { event: e, depends } = event({ user: user('book_mgmt', 'upload') });
+		expect(await bookUploadPage(e)).toEqual({ tags: [{ id: 'year' }], maxBytes: 5, error: null });
+		expect(depends).toHaveBeenCalledWith('app:lang');
+		const failure = new ApiError(500, 'internal');
+		api.listTags.mockRejectedValue(failure);
+		api.uploadLimits.mockRejectedValue(failure);
+		expect(await bookUploadPage(event({ user: user('book_mgmt', 'upload') }).event)).toEqual({
+			tags: [],
+			maxBytes: null,
+			error: failure
+		});
+		for (const u of [user('book_mgmt'), user('upload'), null])
+			expect(await redirectOf(bookUploadPage(event({ user: u }).event) as Promise<unknown>)).toBe('/');
 	});
 });
 

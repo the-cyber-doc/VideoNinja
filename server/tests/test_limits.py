@@ -61,7 +61,11 @@ def test_invalid_settings_refuse_start(monkeypatch, variable, value):
 def test_the_upload_page_gets_them(admin, monkeypatch):  # noqa: F811
     monkeypatch.setenv("VIDEONINJA_MAX_UPLOAD_BYTES", "1000")
     monkeypatch.setenv("VIDEONINJA_INPUT_FORMATS", "matroska")
-    assert admin.get("/api/uploads/limits").json() == {"max_bytes": 1000, "extensions": ["mkv", "webm"]}
+    assert admin.get("/api/uploads/limits").json() == {
+        "max_bytes": 1000,
+        "extensions": ["mkv", "webm"],
+        "book_max_bytes": limits.BOOK_MAX_BYTES,
+    }
 
 
 def test_upload_limits_need_the_upload_access(client, admin_secret):

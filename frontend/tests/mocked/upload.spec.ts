@@ -28,7 +28,7 @@ interface Fake {
 	submitted: unknown[];
 	mine: unknown[];
 	tusRequests: string[];
-	limits: { max_bytes: number; extensions: string[] };
+	limits: { max_bytes: number; extensions: string[]; book_max_bytes: number };
 }
 
 // As the server sends them (typed: a wrong field fails `npm run check`): names in the
@@ -90,7 +90,7 @@ async function setup(page: Page, user = UPLOADER, over: Partial<Fake> = {}): Pro
 		submitted: [],
 		mine: [],
 		tusRequests: [],
-		limits: { max_bytes: 20 * 1024 ** 3, extensions: ['mp4', 'mov', 'mkv', 'webm'] },
+		limits: { max_bytes: 20 * 1024 ** 3, extensions: ['mp4', 'mov', 'mkv', 'webm'], book_max_bytes: 1024 ** 3 },
 		...over
 	};
 	page.on('dialog', (d) => d.accept());
@@ -201,7 +201,7 @@ test('only the accepted types can be picked; others are refused before hashing',
 
 test('a file over the size limit is refused before hashing; in French', async ({ page }) => {
 	await page.addInitScript(() => localStorage.setItem('lang', 'fr'));
-	await setup(page, UPLOADER, { limits: { max_bytes: CLIP_SIZE - 1, extensions: ['webm'] } });
+	await setup(page, UPLOADER, { limits: { max_bytes: CLIP_SIZE - 1, extensions: ['webm'], book_max_bytes: 1 } });
 	await page.goto('/upload');
 	await page.getByLabel('Fichier vidéo').setInputFiles(CLIP);
 	const max = new Intl.NumberFormat('fr', { maximumSignificantDigits: 3 }).format((CLIP_SIZE - 1) / 1024 ** 3);

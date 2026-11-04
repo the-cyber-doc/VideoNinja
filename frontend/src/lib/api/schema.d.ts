@@ -243,6 +243,71 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/books": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Books
+         * @description Every book (queued, failed, published) with its reference and tags, newest upload first.
+         */
+        get: operations["list_books_api_books_get"];
+        put?: never;
+        /**
+         * Submit Book
+         * @description Queue a finished PDF upload (and its thumbnail's) for the encoder, with its reference and tags.
+         */
+        post: operations["submit_book_api_books_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/books/exists": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Book Exists
+         * @description True if a book (published, pending or failed) is this file: checked before uploading.
+         */
+        get: operations["book_exists_api_books_exists_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/books/{book_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete Book
+         * @description Drop a book that is not published yet (queued or failed): by its uploader or an admin
+         *     (user_mgmt). The encoder deletes its uploads.
+         */
+        delete: operations["delete_book_api_books__book_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/catalog": {
         parameters: {
             query?: never;
@@ -809,6 +874,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/media/book/{book_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Book Pdf */
+        get: operations["book_pdf_media_book__book_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/media/book/{book_id}/thumbnail": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Book Thumbnail */
+        get: operations["book_thumbnail_media_book__book_id__thumbnail_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/media/segment/{segment_id}": {
         parameters: {
             query?: never;
@@ -957,6 +1056,58 @@ export interface components {
             /** Available */
             available: boolean;
         };
+        /** BookExistsOut */
+        BookExistsOut: {
+            /** Exists */
+            exists: boolean;
+        };
+        /** BookIn */
+        BookIn: {
+            /** Original Filename */
+            original_filename: string;
+            /** Pages */
+            pages?: number | null;
+            reference: components["schemas"]["Reference"];
+            /**
+             * Tags
+             * @default []
+             */
+            tags: components["schemas"]["TagIn"][];
+            /** Thumbnail Upload */
+            thumbnail_upload?: string | null;
+            /** Upload */
+            upload: string;
+        };
+        /** BookOut */
+        BookOut: {
+            /** Error */
+            error: string | null;
+            /** Has Thumbnail */
+            has_thumbnail: boolean;
+            /** Id */
+            id: number;
+            /** Original Filename */
+            original_filename: string;
+            /** Pages */
+            pages: number | null;
+            reference: components["schemas"]["Reference"];
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "queued" | "published" | "failed";
+            /** Tags */
+            tags: components["schemas"]["TagIn"][];
+            /** Uploaded At */
+            uploaded_at: string;
+            /** Uploaded By */
+            uploaded_by: string | null;
+        };
+        /** BookSubmittedOut */
+        BookSubmittedOut: {
+            /** Id */
+            id: number;
+        };
         /** CommentIn */
         CommentIn: {
             /**
@@ -990,6 +1141,14 @@ export interface components {
             role: string;
             /** Username */
             username: string;
+        };
+        /**
+         * Date
+         * @description CSL's date: {"date-parts": [[year, month?, day?]]} (one date, no range).
+         */
+        Date: {
+            /** Date-Parts */
+            "date-parts": number[][];
         };
         /** ExistsOut */
         ExistsOut: {
@@ -1043,6 +1202,20 @@ export interface components {
             /** Username */
             username: string;
         };
+        /**
+         * Name
+         * @description A person or an organisation: family + given (inverted in the bibliography), or
+         *     a literal name shown as is (an organisation, a single name, a Japanese name written
+         *     family name first: "Hatsumi Masaaki").
+         */
+        Name: {
+            /** Family */
+            family?: string | null;
+            /** Given */
+            given?: string | null;
+            /** Literal */
+            literal?: string | null;
+        };
         /** NameIn */
         NameIn: {
             /** Name */
@@ -1066,6 +1239,69 @@ export interface components {
         PerformerIn: {
             /** Name */
             name: string;
+        };
+        /**
+         * Reference
+         * @description The fields each type uses are the frontend's choice (ReferenceForm); the server
+         *     takes any of them for any type, checks their form, and needs a title.
+         */
+        Reference: {
+            /** Doi */
+            DOI?: string | null;
+            /** Isbn */
+            ISBN?: string | null;
+            /** Issn */
+            ISSN?: string | null;
+            /** Url */
+            URL?: string | null;
+            accessed?: components["schemas"]["Date"] | null;
+            /** Archive */
+            archive?: string | null;
+            /** Archive-Place */
+            "archive-place"?: string | null;
+            /** Author */
+            author?: components["schemas"]["Name"][] | null;
+            /** Collection-Number */
+            "collection-number"?: string | null;
+            /** Collection-Title */
+            "collection-title"?: string | null;
+            /** Container-Title */
+            "container-title"?: string | null;
+            /** Edition */
+            edition?: string | null;
+            /** Editor */
+            editor?: components["schemas"]["Name"][] | null;
+            /** Genre */
+            genre?: string | null;
+            /** Issue */
+            issue?: string | null;
+            issued?: components["schemas"]["Date"] | null;
+            /** Language */
+            language?: string | null;
+            /** Note */
+            note?: string | null;
+            /** Number-Of-Pages */
+            "number-of-pages"?: string | null;
+            "original-date"?: components["schemas"]["Date"] | null;
+            /** Original-Title */
+            "original-title"?: string | null;
+            /** Page */
+            page?: string | null;
+            /** Publisher */
+            publisher?: string | null;
+            /** Publisher-Place */
+            "publisher-place"?: string | null;
+            /** Title */
+            title: string;
+            /** Translator */
+            translator?: components["schemas"]["Name"][] | null;
+            /**
+             * Type
+             * @enum {string}
+             */
+            type: "book" | "chapter" | "article-journal" | "thesis" | "manuscript";
+            /** Volume */
+            volume?: string | null;
         };
         /** RegisterCompleteIn */
         RegisterCompleteIn: {
@@ -1330,6 +1566,8 @@ export interface components {
         };
         /** UploadLimits */
         UploadLimits: {
+            /** Book Max Bytes */
+            book_max_bytes: number;
             /** Extensions */
             extensions: string[];
             /** Max Bytes */
@@ -1889,6 +2127,136 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["UserOut"];
                 };
+            };
+            /** @description An error (core/errors.py: ERRORS) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    list_books_api_books_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "time-zone"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BookOut"][];
+                };
+            };
+            /** @description An error (core/errors.py: ERRORS) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    submit_book_api_books_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "time-zone"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BookIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BookSubmittedOut"];
+                };
+            };
+            /** @description An error (core/errors.py: ERRORS) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    book_exists_api_books_exists_get: {
+        parameters: {
+            query: {
+                sha256: string;
+            };
+            header?: {
+                "time-zone"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BookExistsOut"];
+                };
+            };
+            /** @description An error (core/errors.py: ERRORS) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    delete_book_api_books__book_id__delete: {
+        parameters: {
+            query?: never;
+            header?: {
+                "time-zone"?: string | null;
+            };
+            path: {
+                book_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description An error (core/errors.py: ERRORS) */
             default: {
@@ -2972,6 +3340,72 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description An error (core/errors.py: ERRORS) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    book_pdf_media_book__book_id__get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "time-zone"?: string | null;
+            };
+            path: {
+                book_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description An error (core/errors.py: ERRORS) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    book_thumbnail_media_book__book_id__thumbnail_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "time-zone"?: string | null;
+            };
+            path: {
+                book_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
             };
             /** @description An error (core/errors.py: ERRORS) */
             default: {

@@ -64,6 +64,12 @@ describe('startUpload', () => {
 		return { upload: uploads.at(-1)!, callbacks, returned: upload };
 	}
 
+	it('a book or a picture says so (kind); a video says nothing (the default)', () => {
+		const callbacks = { onUrl: vi.fn(), onProgress: vi.fn(), onSuccess: vi.fn(), onRetry: vi.fn(), onError: vi.fn() };
+		startUpload(new File(['x'], 'd.pdf'), { sha256: 'abc', originalFilename: 'd.pdf', kind: 'book' }, callbacks);
+		expect(uploads.at(-1)!.options.metadata).toEqual({ filename: 'd.pdf', original_sha256: 'abc', kind: 'book' });
+	});
+
 	it('to /files/, resumed from the draft’s URL, in chunks, with the hash and the name', () => {
 		const { upload } = start('/files/old');
 		expect(upload.started).toBe(true);

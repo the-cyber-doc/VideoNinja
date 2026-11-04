@@ -3,6 +3,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import * as about from './about';
 import * as auth from './auth';
+import * as books from './books';
 import * as catalog from './catalog';
 import { ApiError } from './client';
 import * as comments from './comments';
@@ -128,7 +129,17 @@ const CALLS: [string, () => Promise<unknown>, string, string, unknown][] = [
 		'PUT',
 		'/api/videos/5/annotations',
 		{ all_segments_done: false, segments: [], tags: [] }
-	]
+	],
+	['books', books.listBooks, 'GET', '/api/books', undefined],
+	[
+		'submit book',
+		() =>
+			books.submitBook({ upload: 'u', original_filename: 'd.pdf', reference: { type: 'book', title: 'T' }, tags: [] }),
+		'POST',
+		'/api/books',
+		{ upload: 'u', original_filename: 'd.pdf', reference: { type: 'book', title: 'T' }, tags: [] }
+	],
+	['delete book', () => books.deleteBook(3), 'DELETE', '/api/books/3', undefined]
 ];
 
 describe('API modules', () => {
@@ -146,6 +157,9 @@ describe('API modules', () => {
 		const sent = server({ exists: true });
 		expect(await uploads.videoExists('ab12')).toBe(true);
 		expect(sent[0].path).toBe('/api/videos/exists?original_sha256=ab12');
+		const book = server({ exists: false });
+		expect(await books.bookExists('cd34')).toBe(false);
+		expect(book[0].path).toBe('/api/books/exists?sha256=cd34');
 	});
 
 	it('the logged-in user, or null when nobody is', async () => {

@@ -1,7 +1,8 @@
 """The encoding queue: the worker (a background thread of the app, or of its own
 container), one video at a time.
 
-Loop: delete the originals no longer needed, claim the oldest queued video,
+Loop: delete the originals no longer needed, publish the queued books (books.py),
+claim the oldest queued video,
 check its original (complete, SHA-256 as announced, long enough), encode it
 with tools/encode-videos/encode-videos.sh (libx265, NNEDI3 deinterlacing, HDR
 tone mapping) unless it is already in that format (then its streams are only
@@ -47,7 +48,7 @@ from typing import Any
 
 from .. import queries
 from ..core import clock, db, logs, paths, procs, settings
-from . import checks, heartbeat, notify, thumbnails
+from . import books, checks, heartbeat, notify, thumbnails
 from .checks import JobError
 
 log = logging.getLogger(__name__)
@@ -115,7 +116,8 @@ class Encoder:
         while not self.stopping.is_set():
             try:
                 self.housekeeping()
-                if not self.run_once():
+                # Books first: seconds each, they never wait for an hours-long video.
+                if not books.run_once(self.stopping) and not self.run_once():
                     self.stopping.wait(POLL_S)
             except Exception:
                 log.exception("Encoder error")
@@ -220,9 +222,7 @@ class Encoder:
     # --- one job ---
 
     def upload_files(self, tus_id: str) -> list[Path]:
-        if not tus_id or "/" in tus_id or tus_id.startswith("."):
-            raise JobError(f"Invalid upload ID {tus_id!r}")
-        return [self.uploads / tus_id, self.uploads / f"{tus_id}.info", self.uploads / f"{tus_id}.lock"]
+        return checks.upload_files(self.uploads, tus_id)
 
     def process_job(self, job: dict[str, Any], work: Path) -> dict[str, Any]:
         video = job["video"]

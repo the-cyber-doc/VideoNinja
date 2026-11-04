@@ -200,6 +200,182 @@
         "title": "AvailabilityOut",
         "type": "object"
       },
+      "BookExistsOut": {
+        "properties": {
+          "exists": {
+            "title": "Exists",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "exists"
+        ],
+        "title": "BookExistsOut",
+        "type": "object"
+      },
+      "BookIn": {
+        "properties": {
+          "original_filename": {
+            "maxLength": 255,
+            "minLength": 1,
+            "pattern": "^[^\\/\\\\]+$",
+            "title": "Original Filename",
+            "type": "string"
+          },
+          "pages": {
+            "anyOf": [
+              {
+                "maximum": 100000.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pages"
+          },
+          "reference": {
+            "$ref": "#/components/schemas/Reference"
+          },
+          "tags": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/TagIn"
+            },
+            "maxItems": 50,
+            "title": "Tags",
+            "type": "array"
+          },
+          "thumbnail_upload": {
+            "anyOf": [
+              {
+                "maxLength": 32,
+                "minLength": 32,
+                "pattern": "^[0-9a-f]+$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Thumbnail Upload"
+          },
+          "upload": {
+            "maxLength": 32,
+            "minLength": 32,
+            "pattern": "^[0-9a-f]+$",
+            "title": "Upload",
+            "type": "string"
+          }
+        },
+        "required": [
+          "upload",
+          "original_filename",
+          "reference"
+        ],
+        "title": "BookIn",
+        "type": "object"
+      },
+      "BookOut": {
+        "properties": {
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "has_thumbnail": {
+            "title": "Has Thumbnail",
+            "type": "boolean"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "original_filename": {
+            "title": "Original Filename",
+            "type": "string"
+          },
+          "pages": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pages"
+          },
+          "reference": {
+            "$ref": "#/components/schemas/Reference"
+          },
+          "status": {
+            "enum": [
+              "queued",
+              "published",
+              "failed"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "tags": {
+            "items": {
+              "$ref": "#/components/schemas/TagIn"
+            },
+            "title": "Tags",
+            "type": "array"
+          },
+          "uploaded_at": {
+            "title": "Uploaded At",
+            "type": "string"
+          },
+          "uploaded_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Uploaded By"
+          }
+        },
+        "required": [
+          "id",
+          "original_filename",
+          "status",
+          "error",
+          "pages",
+          "reference",
+          "uploaded_at",
+          "uploaded_by",
+          "has_thumbnail",
+          "tags"
+        ],
+        "title": "BookOut",
+        "type": "object"
+      },
+      "BookSubmittedOut": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "title": "BookSubmittedOut",
+        "type": "object"
+      },
       "CommentIn": {
         "properties": {
           "lang": {
@@ -294,6 +470,31 @@
           "role"
         ],
         "title": "CreateIn",
+        "type": "object"
+      },
+      "Date": {
+        "additionalProperties": false,
+        "description": "CSL's date: {\"date-parts\": [[year, month?, day?]]} (one date, no range).",
+        "properties": {
+          "date-parts": {
+            "items": {
+              "items": {
+                "maximum": 9999.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              "type": "array"
+            },
+            "maxItems": 1,
+            "minItems": 1,
+            "title": "Date-Parts",
+            "type": "array"
+          }
+        },
+        "required": [
+          "date-parts"
+        ],
+        "title": "Date",
         "type": "object"
       },
       "ExistsOut": {
@@ -413,6 +614,53 @@
         "title": "LoginIn",
         "type": "object"
       },
+      "Name": {
+        "additionalProperties": false,
+        "description": "A person or an organisation: family + given (inverted in the bibliography), or\na literal name shown as is (an organisation, a single name, a Japanese name written\nfamily name first: \"Hatsumi Masaaki\").",
+        "properties": {
+          "family": {
+            "anyOf": [
+              {
+                "maxLength": 128,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Family"
+          },
+          "given": {
+            "anyOf": [
+              {
+                "maxLength": 128,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Given"
+          },
+          "literal": {
+            "anyOf": [
+              {
+                "maxLength": 128,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Literal"
+          }
+        },
+        "title": "Name",
+        "type": "object"
+      },
       "NameIn": {
         "properties": {
           "name": {
@@ -479,6 +727,372 @@
           "name"
         ],
         "title": "PerformerIn",
+        "type": "object"
+      },
+      "Reference": {
+        "additionalProperties": false,
+        "description": "The fields each type uses are the frontend's choice (ReferenceForm); the server\ntakes any of them for any type, checks their form, and needs a title.",
+        "properties": {
+          "DOI": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Doi"
+          },
+          "ISBN": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Isbn"
+          },
+          "ISSN": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Issn"
+          },
+          "URL": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "minLength": 1,
+                "pattern": "^https?://\\S+$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Url"
+          },
+          "accessed": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Date"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "archive": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Archive"
+          },
+          "archive-place": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Archive-Place"
+          },
+          "author": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/Name"
+                },
+                "maxItems": 20,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Author"
+          },
+          "collection-number": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Collection-Number"
+          },
+          "collection-title": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Collection-Title"
+          },
+          "container-title": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Container-Title"
+          },
+          "edition": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Edition"
+          },
+          "editor": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/Name"
+                },
+                "maxItems": 20,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Editor"
+          },
+          "genre": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Genre"
+          },
+          "issue": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Issue"
+          },
+          "issued": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Date"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "language": {
+            "anyOf": [
+              {
+                "maxLength": 35,
+                "minLength": 2,
+                "pattern": "^[a-z]{2,3}(-[A-Za-z0-9]{1,8})*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Language"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "number-of-pages": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Number-Of-Pages"
+          },
+          "original-date": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Date"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "original-title": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Original-Title"
+          },
+          "page": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Page"
+          },
+          "publisher": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Publisher"
+          },
+          "publisher-place": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Publisher-Place"
+          },
+          "title": {
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Title",
+            "type": "string"
+          },
+          "translator": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/Name"
+                },
+                "maxItems": 20,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Translator"
+          },
+          "type": {
+            "enum": [
+              "book",
+              "chapter",
+              "article-journal",
+              "thesis",
+              "manuscript"
+            ],
+            "title": "Type",
+            "type": "string"
+          },
+          "volume": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Volume"
+          }
+        },
+        "required": [
+          "type",
+          "title"
+        ],
+        "title": "Reference",
         "type": "object"
       },
       "RegisterCompleteIn": {
@@ -1290,6 +1904,10 @@
       },
       "UploadLimits": {
         "properties": {
+          "book_max_bytes": {
+            "title": "Book Max Bytes",
+            "type": "integer"
+          },
           "extensions": {
             "items": {
               "type": "string"
@@ -1304,7 +1922,8 @@
         },
         "required": [
           "max_bytes",
-          "extensions"
+          "extensions",
+          "book_max_bytes"
         ],
         "title": "UploadLimits",
         "type": "object"
@@ -2425,6 +3044,232 @@
         "summary": "Me",
         "tags": [
           "auth"
+        ]
+      }
+    },
+    "/api/books": {
+      "get": {
+        "description": "Every book (queued, failed, published) with its reference and tags, newest upload first.",
+        "operationId": "list_books_api_books_get",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "time-zone",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Time-Zone"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/BookOut"
+                  },
+                  "title": "Response List Books Api Books Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "An error (core/errors.py: ERRORS)"
+          }
+        },
+        "summary": "List Books",
+        "tags": [
+          "books"
+        ]
+      },
+      "post": {
+        "description": "Queue a finished PDF upload (and its thumbnail's) for the encoder, with its reference and tags.",
+        "operationId": "submit_book_api_books_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "time-zone",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Time-Zone"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BookIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BookSubmittedOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "An error (core/errors.py: ERRORS)"
+          }
+        },
+        "summary": "Submit Book",
+        "tags": [
+          "books"
+        ]
+      }
+    },
+    "/api/books/exists": {
+      "get": {
+        "description": "True if a book (published, pending or failed) is this file: checked before uploading.",
+        "operationId": "book_exists_api_books_exists_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "sha256",
+            "required": true,
+            "schema": {
+              "maxLength": 64,
+              "minLength": 64,
+              "pattern": "^[0-9a-f]+$",
+              "title": "Sha256",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "time-zone",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Time-Zone"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BookExistsOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "An error (core/errors.py: ERRORS)"
+          }
+        },
+        "summary": "Book Exists",
+        "tags": [
+          "books"
+        ]
+      }
+    },
+    "/api/books/{book_id}": {
+      "delete": {
+        "description": "Drop a book that is not published yet (queued or failed): by its uploader or an admin\n(user_mgmt). The encoder deletes its uploads.",
+        "operationId": "delete_book_api_books__book_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "book_id",
+            "required": true,
+            "schema": {
+              "title": "Book Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "header",
+            "name": "time-zone",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Time-Zone"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "An error (core/errors.py: ERRORS)"
+          }
+        },
+        "summary": "Delete Book",
+        "tags": [
+          "books"
         ]
       }
     },
@@ -4153,6 +4998,118 @@
         "summary": "Upload Auth",
         "tags": [
           "internal"
+        ]
+      }
+    },
+    "/media/book/{book_id}": {
+      "get": {
+        "operationId": "book_pdf_media_book__book_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "book_id",
+            "required": true,
+            "schema": {
+              "title": "Book Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "header",
+            "name": "time-zone",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Time-Zone"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "An error (core/errors.py: ERRORS)"
+          }
+        },
+        "summary": "Book Pdf",
+        "tags": [
+          "media"
+        ]
+      }
+    },
+    "/media/book/{book_id}/thumbnail": {
+      "get": {
+        "operationId": "book_thumbnail_media_book__book_id__thumbnail_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "book_id",
+            "required": true,
+            "schema": {
+              "title": "Book Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "header",
+            "name": "time-zone",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Time-Zone"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "An error (core/errors.py: ERRORS)"
+          }
+        },
+        "summary": "Book Thumbnail",
+        "tags": [
+          "media"
         ]
       }
     },

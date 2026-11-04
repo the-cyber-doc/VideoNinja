@@ -13,3 +13,7 @@ export const segmentDuration = (segment: Segment) => segment.end_s - segment.beg
 // Whole videos (the Videos page: the "video_mgmt" access).
 export const videoUrl = (id: number) => url(`/media/video/${id}`);
 export const videoThumbnailUrl = (id: number) => url(`/media/video/${id}/thumbnail`);
+
+// Books (the "book_mgmt" access): the PDF (a download) and its first page.
+export const bookUrl = (id: number) => url(`/media/book/${id}`);
+export const bookThumbnailUrl = (id: number) => url(`/media/book/${id}/thumbnail`);

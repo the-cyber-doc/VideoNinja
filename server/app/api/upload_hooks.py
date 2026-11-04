@@ -7,6 +7,11 @@
   forwarded session cookie) and the announced file, and names the upload;
   post-finish marks it complete.
 
+What an upload holds is its "kind" metadata (default video): a video (the "upload"
+access, the video formats, VIDEONINJA_MAX_UPLOAD_BYTES), a book (PDF, "book_mgmt",
+limits.BOOK_MAX_BYTES) or an image the browser made for a book (JPEG, "book_mgmt",
+limits.IMAGE_MAX_BYTES).
+
 nginx routes neither from outside (/internal/ is not proxied; the auth
 subrequest is an internal location). The encoder checks every file (size,
 SHA-256) before encoding it.
@@ -16,8 +21,9 @@ import json
 import re
 import secrets
 import sqlite3
+from collections.abc import Callable, Sequence
 from http.cookies import CookieError, SimpleCookie
-from typing import Any
+from typing import Any, NamedTuple
 
 from fastapi import APIRouter, Depends, Header, Request, status
 
@@ -63,37 +69,69 @@ def _session_token(headers: dict[str, list[str]]) -> str | None:
     return None
 
 
+class _Kind(NamedTuple):
+    access: str
+    max_bytes: Callable[[], int]
+    extensions: Callable[[], Sequence[str]]
+    known: Callable[[sqlite3.Connection, str], bool]  # a duplicate (refused)
+    exists_code: str
+
+
+KINDS = {
+    "video": _Kind(
+        "upload",
+        lambda: settings.current().max_upload_bytes,
+        limits.extensions,
+        queries.videos.video_known,
+        "video.exists",
+    ),
+    "book": _Kind(
+        "book_mgmt",
+        lambda: limits.BOOK_MAX_BYTES,
+        lambda: limits.BOOK_EXTENSIONS,
+        queries.books.book_known,
+        "book.exists",
+    ),
+    "image": _Kind("book_mgmt", lambda: limits.IMAGE_MAX_BYTES, lambda: limits.IMAGE_EXTENSIONS, lambda *_: False, ""),
+}
+
+
 def _pre_create(con: sqlite3.Connection, event: dict[str, Any]) -> dict[str, Any]:
     token = _session_token(event.get("HTTPRequest", {}).get("Header") or {})
     user = security.session_user(con, token) if token else None
     if user is None:
         return _reject("auth.not_logged_in")
     logs.add(user_id=user.id)
-    if "upload" not in user.access:
-        audit.event("access.denied", access="upload")
-        return _reject("auth.access_denied")
-
     upload = event.get("Upload") or {}
     meta = upload.get("MetaData") or {}
+    kind_name = meta.get("kind") or "video"
+    kind = KINDS.get(kind_name)
+    if kind is None:
+        return _reject("upload.invalid_metadata")
+    for access in dict.fromkeys(("upload", kind.access)):
+        if access not in user.access:
+            audit.event("access.denied", access=access)
+            return _reject("auth.access_denied")
+
     original_sha256 = meta.get("original_sha256", "")
     size = upload.get("Size")
     if upload.get("SizeIsDeferred") or not isinstance(size, int) or size <= 0:
         return _reject("upload.size_unknown")
-    if size > settings.current().max_upload_bytes:
+    if size > kind.max_bytes():
         return _reject("upload.too_large")
     # "filename": the tus metadata convention (tus-js-client); stored as video.original_filename.
     if not SHA256.fullmatch(original_sha256) or not FILENAME.fullmatch(meta.get("filename", "")):
         return _reject("upload.invalid_metadata")
-    if not limits.accepted_name(meta["filename"]):
+    if not limits.accepted_name(meta["filename"], kind.extensions()):
         return _reject("upload.type_refused")
     with db.write(con):
-        if queries.videos.video_known(con, original_sha256):
-            return _reject("video.exists")
+        if kind.known(con, original_sha256):
+            return _reject(kind.exists_code)
         tus_id = secrets.token_hex(16)  # the upload's file name in tusd's folder
         # The hook has no browser request: the user's saved timezone.
         created = clock.at(0, clock.user_zone(user.time_zone))
-        queries.uploads.insert_upload(con, tus_id, user.id, original_sha256, size, created)
-    audit.event("upload.accepted", tus_id=tus_id, size=size)
+        queries.uploads.insert_upload(con, tus_id, user.id, original_sha256, size, created, kind_name)
+    audit.event("upload.accepted", tus_id=tus_id, size=size, kind=kind_name)
     return {"ChangeFileInfo": {"ID": tus_id}}
 
 

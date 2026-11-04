@@ -13,7 +13,7 @@ from app.api import videos
 from app.core import clock, db, i18n
 from app.core.errors import ApiError
 from app.domain import security, segments, snapshot
-from app.encoder import checks, heartbeat, notify, queue, thumbnails
+from app.encoder import books, checks, heartbeat, notify, queue, thumbnails
 
 from .conftest import connect
 from .test_auth import login
@@ -99,8 +99,20 @@ def video_row(video_id):
     )
 
 
-def hook(client, type_, cookie=None, size=1000, sha=ORIGINAL, filename="kata.mov", tus_id="", offset=0, deferred=False):
+def hook(
+    client,
+    type_,
+    cookie=None,
+    size=1000,
+    sha=ORIGINAL,
+    filename="kata.mov",
+    tus_id="",
+    offset=0,
+    deferred=False,
+    kind=None,
+):
     headers = {"Cookie": [f"{security.session_cookie()[0]}={cookie}"]} if cookie else {}
+    meta = {"original_sha256": sha, "filename": filename, **({"kind": kind} if kind else {})}
     return client.post(
         "/internal/tusd-hook",
         json={
@@ -111,7 +123,7 @@ def hook(client, type_, cookie=None, size=1000, sha=ORIGINAL, filename="kata.mov
                     "Size": size,
                     "SizeIsDeferred": deferred,
                     "Offset": offset,
-                    "MetaData": {"original_sha256": sha, "filename": filename},
+                    "MetaData": meta,
                 },
                 "HTTPRequest": {"Method": "POST", "URI": "/files/", "Header": headers},
             },
@@ -686,6 +698,7 @@ def test_worker_survives_its_errors(enc, monkeypatch, caplog):
         return done
 
     enc.housekeeping, enc.run_once = housekeeping, run_once
+    monkeypatch.setattr(books, "run_once", lambda stopping: False)  # no book waits
     enc.run()
     assert len(rounds) == 3 and "Encoder error" in caplog.text
 
