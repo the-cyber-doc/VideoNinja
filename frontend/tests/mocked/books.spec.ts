@@ -565,3 +565,90 @@ test('downloaded with its annotations: in the PDF, with author, technique, note 
 	expect([reply.author, reply.contents, reply.inReplyToId]).toEqual(['Ren', 'Seen in the dojo', highlight.id]);
 	expect(annotations).toHaveLength(2);
 });
+
+// --- the technique's page: what the books say about it ---
+
+const KOKU_PAGE = '/schools/gyokko/taijutsu/jo_ryaku/koku';
+const NOTES = [
+	{
+		id: 5,
+		book_id: 7,
+		page: 3,
+		kind: 'text',
+		quote: 'Koku: the empty space',
+		note: 'The key point',
+		has_image: false,
+		created_by: 'Aiko',
+		created_at: '2026-11-01T10:00:00+01:00',
+		modified_at: '2026-11-01T10:00:00+01:00',
+		reference: BOOK.reference,
+		comments: [{ ...THREAD_COMMENT, annotation: undefined }]
+	},
+	{
+		id: 6,
+		book_id: 7,
+		page: 9,
+		kind: 'region',
+		quote: null,
+		note: null,
+		has_image: true,
+		created_by: null,
+		created_at: '2026-11-01T10:00:00+01:00',
+		modified_at: '2026-11-03T10:00:00+01:00',
+		reference: BOOK.reference,
+		comments: []
+	}
+];
+
+async function techniquePage(page: Page, user: object, notes: object[]) {
+	await setup(page, user);
+	await page.route('/api/catalog', (r) => r.fulfill({ json: { ...CATALOG, segments: [] } }));
+	await page.route('/api/techniques/*/comments', (r) => r.fulfill({ json: [] }));
+	await page.route('/api/techniques/*/book-notes', (r) => r.fulfill({ json: notes }));
+	await page.route('/media/book-annotation/6/image', (r) =>
+		r.fulfill({ contentType: 'image/png', body: Buffer.from(PNG, 'base64') })
+	);
+}
+
+test('a technique’s page: the books’ annotations about it, after the description, before the videos', async ({
+	page
+}) => {
+	const plain = { username: 'kenji', name: null, role: 'user', role_name: 'User', access: ['segment', 'comment'] };
+	await techniquePage(
+		page,
+		plain,
+		NOTES.map((n) => ({ ...n, book_id: null }))
+	);
+	await page.goto(KOKU_PAGE);
+	const books = page.getByRole('heading', { name: 'In the books', level: 2 });
+	await expect(books).toBeVisible();
+	const headings = await page.getByRole('heading', { level: 2 }).allTextContents();
+	expect(headings.indexOf('In the books')).toBeLessThan(headings.indexOf('Videos'));
+	const [first, second] = await page.getByRole('article', { name: 'An annotation from a book' }).all();
+	await expect(first.locator('blockquote')).toHaveText('Koku: the empty space');
+	await expect(first).toContainText('The key point');
+	await expect(first).toContainText('Hatsumi, Masaaki. Ninjutsu. (PDF page 3)');
+	await expect(first.locator('.source i')).toHaveText('Ninjutsu');
+	await expect(first).toContainText('By Aiko, Nov 1, 2026');
+	await expect(first.getByRole('list', { name: 'Comments on this annotation' })).toContainText('Seen in the dojo');
+	await expect(second.getByRole('img', { name: 'The region annotated' })).toBeVisible();
+	await expect(second).toContainText('By a deleted user');
+	await expect(page.getByRole('link', { name: 'Open in the book' })).toHaveCount(0); // not a book manager
+});
+
+test('no book about it: nothing shown; a book manager opens the book on the annotation', async ({ page }) => {
+	await techniquePage(page, BOOKS, []);
+	await page.goto(KOKU_PAGE);
+	await expect(page.getByRole('heading', { name: 'Comments', level: 2 })).toBeVisible();
+	await expect(page.getByRole('heading', { name: 'In the books' })).toHaveCount(0);
+
+	await viewing(page, [annotationRow(5, SAVED_ROW)]);
+	await page.unroute('/api/techniques/*/book-notes');
+	await page.route('/api/catalog', (r) => r.fulfill({ json: { ...CATALOG, segments: [] } })); // the technique's
+	await page.route('/api/techniques/*/book-notes', (r) => r.fulfill({ json: NOTES.slice(0, 1) }));
+	await page.goto(KOKU_PAGE);
+	await page.getByRole('link', { name: 'Open in the book' }).click();
+	await expect(page).toHaveURL('/books/7?annotation=5');
+	await pageBox(page);
+	await expect(page.locator('section.annotations li[data-id="5"]')).toHaveClass(/selected/);
+});

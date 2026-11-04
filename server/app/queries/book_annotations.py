@@ -122,3 +122,15 @@ def image_of(con: sqlite3.Connection, annotation_id: int) -> sqlite3.Row | None:
             (annotation_id,),
         )
     )
+
+
+def technique_notes(con: sqlite3.Connection, technique_id: str, me: int) -> list[sqlite3.Row]:
+    """The annotations about a technique, in published books only, with their book's
+    reference: by book (newest upload first), then page."""
+    return con.execute(
+        f'SELECT {_COLUMNS}, b."reference", b."original_filename"'  # nosec B608 - constant columns
+        f' {_FROM} JOIN "book" b ON b."id" = a."book"'
+        ' WHERE a."technique" = ? AND b."status" = \'published\''
+        ' ORDER BY datetime(b."uploaded_at") DESC, b."id" DESC, a."page", a."id"',
+        (me, DELETED_USER_ID, technique_id),
+    ).fetchall()

@@ -50,7 +50,11 @@ const ASSETS = new Set(
 		.map((file) => new URL(file.path, sw.location.href).pathname)
 );
 // API reads also kept for offline use (network first).
-const OFFLINE_API = [path('/api/setup/status'), path('/api/auth/me'), path('/api/techniques/[^/]+/comments')];
+const OFFLINE_API = [
+	path('/api/setup/status'),
+	path('/api/auth/me'),
+	path('/api/techniques/[^/]+/(comments|book-notes)')
+];
 const CATALOG = `${BASE}/api/catalog`;
 const CLIP = path('/media/segment/\\d+');
 const THUMBNAIL = path('/media/(segment|video)/\\d+/thumbnail');

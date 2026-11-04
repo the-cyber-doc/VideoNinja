@@ -174,6 +174,7 @@ const CALLS: [string, () => Promise<unknown>, string, string, unknown][] = [
 		undefined
 	],
 	['book comments', () => books.listBookComments(3), 'GET', '/api/books/3/comments', undefined],
+	['technique notes', () => books.techniqueNotes('a.b c'), 'GET', '/api/techniques/a.b%20c/book-notes', undefined],
 	[
 		'comment an annotation',
 		() => books.annotationComments(4).add({ text: 't', lang: 'en' }),

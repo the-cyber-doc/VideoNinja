@@ -1,5 +1,6 @@
 """Comments on the annotations of books."""
 
+import json
 import sqlite3
 
 from .rows import inserted, one
@@ -63,3 +64,12 @@ def update_comment(con: sqlite3.Connection, comment_id: int, lang: str, text: st
 
 def delete_comment(con: sqlite3.Connection, comment_id: int) -> None:
     con.execute('DELETE FROM "book_comment" WHERE "id" = ?', (comment_id,))
+
+
+def comments_of(con: sqlite3.Connection, annotation_ids: list[int], user_id: int) -> list[sqlite3.Row]:
+    """The threads of these annotations, in one query (the IDs as one JSON parameter)."""
+    return con.execute(
+        f"SELECT {_COLUMNS} {_FROM}"  # nosec B608 - constant parts
+        f' WHERE c."annotation" IN (SELECT "value" FROM json_each(?)) {_ORDER}',
+        (user_id, DELETED_USER_ID, json.dumps(annotation_ids)),
+    ).fetchall()

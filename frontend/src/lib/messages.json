@@ -653,6 +653,10 @@
 		"fr": "Ce clip ne peut pas être lu. Hors ligne, seuls les clips déjà regardés sont disponibles."
 	},
 	"technique.comments": { "en": "Comments", "fr": "Commentaires" },
+	"technique.books": { "en": "In the books", "fr": "Dans les livres" },
+	"technique.book_note": { "en": "An annotation from a book", "fr": "Une annotation d’un livre" },
+	"technique.book_page": { "en": "(PDF page {n})", "fr": "(page {n} du PDF)" },
+	"technique.open_book": { "en": "Open in the book", "fr": "Ouvrir dans le livre" },
 	"technique.no_comments": { "en": "No comments yet.", "fr": "Pas encore de commentaire." },
 	"comments.add": { "en": "Add a comment", "fr": "Ajouter un commentaire" },
 	"comments.text": { "en": "Your comment", "fr": "Votre commentaire" },

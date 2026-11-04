@@ -97,7 +97,9 @@ export class BookPage {
 	constructor(
 		book: BookRow,
 		rows: BookAnnotation[],
-		private readonly deps: BookPageDeps = DEPS
+		private readonly deps: BookPageDeps = DEPS,
+		/** The annotation to show first (?annotation=<id>, from a technique's page). */
+		private focus: number | null = null
 	) {
 		this.book = book;
 		this.annotations = new BookAnnotations(book.id, rows, {
@@ -118,6 +120,9 @@ export class BookPage {
 	/** The viewer is ready: its helpers serve the annotations; a missing first page is made. */
 	async ready(controls: ViewerControls) {
 		this.controls = controls; // the latest (the viewer says it again when its document changes)
+		const focused = this.annotations.rows.find((r) => r.id === this.focus);
+		this.focus = null; // once
+		if (focused) controls.select(focused);
 		if (this.book.has_thumbnail || this.#thumbnailTried) return;
 		this.#thumbnailTried = true;
 		try {

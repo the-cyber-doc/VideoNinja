@@ -2170,6 +2170,108 @@
         "title": "TagValueIn",
         "type": "object"
       },
+      "TechniqueNoteOut": {
+        "properties": {
+          "book_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Book Id"
+          },
+          "comments": {
+            "items": {
+              "$ref": "#/components/schemas/CommentOut"
+            },
+            "title": "Comments",
+            "type": "array"
+          },
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "created_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created By"
+          },
+          "has_image": {
+            "title": "Has Image",
+            "type": "boolean"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "kind": {
+            "enum": [
+              "text",
+              "region"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "modified_at": {
+            "title": "Modified At",
+            "type": "string"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "page": {
+            "title": "Page",
+            "type": "integer"
+          },
+          "quote": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Quote"
+          },
+          "reference": {
+            "$ref": "#/components/schemas/Reference"
+          }
+        },
+        "required": [
+          "id",
+          "book_id",
+          "page",
+          "kind",
+          "quote",
+          "note",
+          "has_image",
+          "created_by",
+          "created_at",
+          "modified_at",
+          "reference",
+          "comments"
+        ],
+        "title": "TechniqueNoteOut",
+        "type": "object"
+      },
       "TokenIn": {
         "properties": {
           "token": {
@@ -5304,6 +5406,69 @@
         "summary": "List Tags",
         "tags": [
           "tags"
+        ]
+      }
+    },
+    "/api/techniques/{technique_id}/book-notes": {
+      "get": {
+        "description": "What the books say about a technique: every logged-in user (the technique's page).",
+        "operationId": "technique_notes_api_techniques__technique_id__book_notes_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "technique_id",
+            "required": true,
+            "schema": {
+              "title": "Technique Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "time-zone",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Time-Zone"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/TechniqueNoteOut"
+                  },
+                  "title": "Response Technique Notes Api Techniques  Technique Id  Book Notes Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "An error (core/errors.py: ERRORS)"
+          }
+        },
+        "summary": "Technique Notes",
+        "tags": [
+          "book annotations"
         ]
       }
     },

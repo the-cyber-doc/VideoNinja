@@ -1212,6 +1212,13 @@ Preview show them as threads. The copy is made in the browser from the PDF as up
 nothing is sent back, the server's file never changes. **Download the PDF** stays the
 book as uploaded.
 
+**On a technique's page**, after its description and before its videos, **In the books**
+shows every annotation about it (from published books), to every logged-in user: the text
+highlighted or the region's picture, the note, the book's reference (Chicago) and the PDF
+page, who made it and when, and its comments. Book managers also get **Open in the book**,
+which opens the book on that annotation; the others never get the book itself. Like the
+comments, the last copy seen is kept for offline reading.
+
 **Upload a book** (the last section of the Upload page, `book_mgmt` access): choose
 a PDF (at most 1 GiB). It is read on the device first: its SHA-256 ("This book is
 already on the server"), its number of pages, the title and author the PDF gives

@@ -134,6 +134,17 @@ describe('BookPage', () => {
 		expect(deps.replaceThumbnail).not.toHaveBeenCalled(); // it has its first page
 	});
 
+	it('opened on an annotation (from a technique’s page): shown once the viewer is ready, once', async () => {
+		const row = { id: 5, page: 2 } as never;
+		const page = new BookPage(BOOK, [], fakes(), 5);
+		page.annotations.rows = [row];
+		const viewer = controls();
+		await page.ready(viewer);
+		await page.ready(viewer);
+		expect(viewer.select).toHaveBeenCalledTimes(1);
+		expect(viewer.select).toHaveBeenCalledWith(row);
+	});
+
 	it('no first page: made from the viewer, once per visit', async () => {
 		const deps = fakes();
 		const page = new BookPage({ ...BOOK, has_thumbnail: false }, [], deps);

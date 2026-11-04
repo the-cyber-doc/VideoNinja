@@ -72,7 +72,11 @@ or ID encoding (Base62/Sqids).
   `annotated.ts` `annotatedObjects` (row's target + author/dates + contents = technique line (kanji romaji — full URL)
   and note; comments = TEXT replies `inReplyToId`) → `ViewerControls.annotatedCopy` → `pdf.ts` `annotatedCopy` (fresh
   document from the uploaded bytes, `saveAsCopy`) → `saveFile`, name `annotatedName`. Test reads the copy back in Node
-  with EmbedPDF (`tests/pdf-annotations.ts`). Next (plan): technique-page notes (PR 5).
+  with EmbedPDF (`tests/pdf-annotations.ts`). Technique pages: `GET /api/techniques/<id>/book-notes` (every user;
+  `TechniqueNoteOut`: published books only, reference, comments in one query (`comments_of`, json_each), `book_id` only
+  with `book_mgmt`) → `$lib/techniques/BookNotes.svelte` between the description and the videos (hidden when empty;
+  framed like a comment; "Open in the book" → `/books/<id>?annotation=<id>`, `BookPage` `focus` selects it once ready);
+  the SW keeps it network-first like comments (`OFFLINE_API`).
   `video_mgmt` (role `video_mgmt` = every access but `user_mgmt`, `moderator`, `options` and `book_mgmt`; admins and
   `content_mgmt` too) =
   Videos page: `GET /api/videos` (+ `uploaded_by` display name, the video's own `tags`), `GET`/`PUT /api/videos/<id>/annotations`

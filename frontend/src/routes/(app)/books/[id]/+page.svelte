@@ -3,6 +3,7 @@
 	// beside it. Page logic: $lib/books/book.svelte.ts (BookPage). The 'book_mgmt' access (+page.ts).
 	import { onMount } from 'svelte';
 	import { beforeNavigate } from '$app/navigation';
+	import { page as pageState } from '$app/state';
 	import { url } from '#lib/base.js';
 	import AnnotationList from '#lib/books/AnnotationList.svelte';
 	import { BookPage } from '#lib/books/book.svelte.js';
@@ -19,9 +20,10 @@
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
+	const focus = Number(pageState.url.searchParams.get('annotation')) || null; // from a technique's page
 	// The book the page opened with (a reload brings a newer one).
 	// svelte-ignore state_referenced_locally
-	const page = data.book ? new BookPage(data.book, data.annotations) : null;
+	const page = data.book ? new BookPage(data.book, data.annotations, undefined, focus) : null;
 	let catalog = $state<Catalog | null>(null);
 
 	// How the downloaded copy names a technique: kanji, romaji and its page's full address.

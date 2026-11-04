@@ -141,6 +141,16 @@ describe('network first (the user, the setup status, comments)', () => {
 		network['/api/auth/me'] = offline;
 		await expect(request('/api/auth/me').response).rejects.toThrow('Failed to fetch');
 	});
+
+	it('a technique’s comments and book notes too', async () => {
+		for (const what of ['comments', 'book-notes']) {
+			const url = `/api/techniques/a.b/${what}`;
+			network[url] = () => new Response(what);
+			expect(await text(request(url))).toBe(what);
+			network[url] = offline;
+			expect(await text(request(url))).toBe(what);
+		}
+	});
 });
 
 describe('the catalogue (stale-while-revalidate, per language)', () => {

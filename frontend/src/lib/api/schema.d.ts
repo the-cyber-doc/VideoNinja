@@ -741,6 +741,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/techniques/{technique_id}/book-notes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Technique Notes
+         * @description What the books say about a technique: every logged-in user (the technique's page).
+         */
+        get: operations["technique_notes_api_techniques__technique_id__book_notes_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/techniques/{technique_id}/comments": {
         parameters: {
             query?: never;
@@ -1791,6 +1811,35 @@ export interface components {
             };
             /** Previous Id */
             previous_id?: string | null;
+        };
+        /** TechniqueNoteOut */
+        TechniqueNoteOut: {
+            /** Book Id */
+            book_id: number | null;
+            /** Comments */
+            comments: components["schemas"]["CommentOut"][];
+            /** Created At */
+            created_at: string;
+            /** Created By */
+            created_by: string | null;
+            /** Has Image */
+            has_image: boolean;
+            /** Id */
+            id: number;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "text" | "region";
+            /** Modified At */
+            modified_at: string;
+            /** Note */
+            note: string | null;
+            /** Page */
+            page: number;
+            /** Quote */
+            quote: string | null;
+            reference: components["schemas"]["Reference"];
         };
         /** TokenIn */
         TokenIn: {
@@ -3526,6 +3575,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Tag"][];
+                };
+            };
+            /** @description An error (core/errors.py: ERRORS) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    technique_notes_api_techniques__technique_id__book_notes_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "time-zone"?: string | null;
+            };
+            path: {
+                technique_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TechniqueNoteOut"][];
                 };
             };
             /** @description An error (core/errors.py: ERRORS) */

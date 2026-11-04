@@ -11,7 +11,8 @@ import type {
 	CommentIn,
 	BookEdit,
 	BookIn,
-	BookRow
+	BookRow,
+	TechniqueNote
 } from './types';
 
 /** True if a book (published, waiting or failed) is this file. */
@@ -42,6 +43,10 @@ export const annotationComments = (id: number): CommentSource => ({
 	edit: editBookComment,
 	remove: deleteBookComment
 });
+
+/** What the books say about a technique (every logged-in user; its page). */
+export const techniqueNotes = (technique: string) =>
+	api<TechniqueNote[]>(`/api/techniques/${encodeURIComponent(technique)}/book-notes`);
 
 // Annotations (the viewer).
 export const listAnnotations = (bookId: number) => api<BookAnnotation[]>(`/api/books/${bookId}/annotations`);

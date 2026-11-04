@@ -4,10 +4,16 @@ makes, published by the encoder), the PDF annotation itself as JSON (`target`: w
 viewer shows and a downloaded copy gets), an optional note, colour and technique (the
 technique's page shows it). The PDF is never written. Each user changes only their own,
 except moderators (the author stays), as for comments.
+
+A technique's page shows the annotations about it to every logged-in user
+(/api/techniques/<id>/book-notes): the quote or the region's picture, the note, the
+book's reference, who and when, and the comments; only book managers get the book's ID
+(the link to open it): the books stay theirs.
 """
 
 import json
 import sqlite3
+from collections import defaultdict
 from datetime import tzinfo
 from typing import Literal
 
@@ -20,9 +26,11 @@ from ..core import clock, db
 from ..core.errors import ApiError
 from ..core.validation import field
 from ..domain import audit
+from ..domain.references import Reference
 from ..queries.users import User
 from .books import UploadIn, own_finished, wait_finished
-from .deps import require_access, user_zone
+from .comments import CommentOut
+from .deps import current_user, require_access, user_zone
 
 router = APIRouter(prefix="/api", tags=["book annotations"])
 manager = require_access("book_mgmt")
@@ -82,6 +90,21 @@ class AnnotationOut(BaseModel):
     created_at: str  # e.g. "2026-10-23T12:13:38+02:00" (app/clock.py)
     modified_at: str
     mine: bool  # made by the caller: they may change it
+
+
+class TechniqueNoteOut(BaseModel):
+    id: int
+    book_id: int | None  # None without the "book_mgmt" access: no link to the book
+    page: int  # the PDF's page (its own numbering may differ)
+    kind: Literal["text", "region"]
+    quote: str | None
+    note: str | None
+    has_image: bool  # a region's picture: /media/book-annotation/<id>/image
+    created_by: str | None  # display name; None: unknown or deleted
+    created_at: str
+    modified_at: str
+    reference: Reference
+    comments: list[CommentOut]  # oldest first
 
 
 def _published(con: sqlite3.Connection, book_id: int) -> None:
@@ -201,3 +224,27 @@ def attach_image(
         replaced = queries.book_annotations.set_image_upload(con, annotation_id, body.upload)
         if replaced:
             queries.uploads.set_upload_state(con, replaced, "deleted")
+
+
+@router.get("/techniques/{technique_id}/book-notes")
+def technique_notes(
+    technique_id: str, me: User = Depends(current_user), con: sqlite3.Connection = Depends(db.get_db)
+) -> list[TechniqueNoteOut]:
+    """What the books say about a technique: every logged-in user (the technique's page)."""
+    with db.read(con):
+        if not queries.catalog.technique_exists(con, technique_id):
+            raise ApiError("technique.unknown")
+        rows = queries.book_annotations.technique_notes(con, technique_id, me.id)
+        comments: defaultdict[int, list[CommentOut]] = defaultdict(list)
+        for c in queries.book_comments.comments_of(con, [r["id"] for r in rows], me.id):
+            comments[c["annotation"]].append(CommentOut(**{k: c[k] for k in CommentOut.model_fields}))
+    managed = "book_mgmt" in me.access
+    return [
+        TechniqueNoteOut(
+            **{k: r[k] for k in TechniqueNoteOut.model_fields if k not in ("book_id", "reference", "comments")},
+            book_id=r["book"] if managed else None,
+            reference=Reference.model_validate(json.loads(r["reference"])),
+            comments=comments[r["id"]],
+        )
+        for r in rows
+    ]

@@ -1,9 +1,10 @@
 <script lang="ts">
-	// A technique: description, thumbnails of its video segments, comments.
+	// A technique: description, what the books say about it, thumbnails of its video segments, comments.
 	import Breadcrumbs from '../Breadcrumbs.svelte';
 	import { catalogCrumbs, segmentsOf, type CatalogPath } from '../catalog.svelte';
 	import { t } from '../i18n.svelte';
 	import { techniqueComments } from '../api/comments';
+	import BookNotes from '../techniques/BookNotes.svelte';
 	import Comments from '../techniques/Comments.svelte';
 	import SegmentThumbnails from '../techniques/SegmentThumbnails.svelte';
 	import CatalogView from './CatalogView.svelte';
@@ -20,6 +21,7 @@
 				{#if technique.description}
 					<p class="description">{technique.description}</p>
 				{/if}
+				<BookNotes technique={technique.id} />
 				<section>
 					<h2>{t('technique.videos')}</h2>
 					<SegmentThumbnails segments={segmentsOf(c, technique.id)} title={technique.romaji} />

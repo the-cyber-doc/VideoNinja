@@ -9,6 +9,7 @@ test.describe.configure({ mode: 'serial' });
 test.setTimeout(120_000);
 
 const PDF = 'tests/fixtures/book.pdf';
+const KOKU = 'gyokko.taijutsu.jo_ryaku.koku';
 let adminCookies: Cookie[] = [];
 let bookId = 0;
 
@@ -58,9 +59,22 @@ test('nginx serves the PDF as uploaded (a download) and its first page', async (
 	await expect.poll(() => img.evaluate((i: HTMLImageElement) => i.naturalWidth)).toBe(480);
 });
 
-test('without book_mgmt: neither the list nor the files', async ({ page, browser }) => {
+test('without book_mgmt: neither the list nor the files; the techniques’ annotations, without the book', async ({
+	page,
+	browser
+}) => {
+	const target = JSON.stringify({ type: 5, id: 'stack-1', pageIndex: 0, rect: { origin: { x: 1, y: 1 } } });
+	const created = await page.request.post(`api/books/${bookId}/annotations`, {
+		data: { page: 1, kind: 'region', target, note: 'Stack note', technique: KOKU }
+	});
+	expect(created.status()).toBe(201);
+
 	const viewer = await loggedIn(browser, await register(page.request, 'yuki', 'user', 'Yuki'));
 	for (const path of ['api/books', `media/book/${bookId}`, `media/book/${bookId}/thumbnail`])
 		expect((await viewer.request.get(path)).status(), path).toBe(403);
+	const notes = await (await viewer.request.get(`api/techniques/${KOKU}/book-notes`)).json();
+	expect(notes.map((n: { note: string; book_id: number | null }) => [n.note, n.book_id])).toEqual([
+		['Stack note', null]
+	]);
 	await viewer.close();
 });
