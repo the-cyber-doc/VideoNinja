@@ -73,10 +73,10 @@
 		color: var(--muted);
 	}
 	.yes {
-		color: var(--accent);
+		color: var(--ok);
 		font-weight: 600;
 	}
 	.no {
-		color: var(--muted);
+		color: var(--error);
 	}
 </style>
