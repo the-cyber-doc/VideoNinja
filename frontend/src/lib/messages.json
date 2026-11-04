@@ -426,6 +426,10 @@
 	"books.annotations.page": { "en": "Page {n}", "fr": "Page {n}" },
 	"books.annotations.region": { "en": "A region of the page", "fr": "Une zone de la page" },
 	"books.annotations.no_quote": { "en": "Highlighted (no text found)", "fr": "Surligné (pas de texte trouvé)" },
+	"books.annotations.garbled": {
+		"en": "The PDF gives no readable text here (its font has no character map): this quote is garbled. Mark a region instead to keep a picture of it.",
+		"fr": "Le PDF ne donne pas de texte lisible ici (sa police n’a pas de table des caractères) : cette citation est illisible. Marquez plutôt une zone pour en garder une image."
+	},
 	"books.annotations.note": { "en": "Note", "fr": "Note" },
 	"books.annotations.technique": { "en": "Technique", "fr": "Technique" },
 	"books.annotations.no_technique": { "en": "No technique", "fr": "Aucune technique" },
@@ -656,6 +660,10 @@
 	"technique.books": { "en": "In the books", "fr": "Dans les livres" },
 	"technique.book_note": { "en": "An annotation from a book", "fr": "Une annotation d’un livre" },
 	"technique.book_page": { "en": "(PDF page {n})", "fr": "(page {n} du PDF)" },
+	"technique.book_note_garbled": {
+		"en": "The book’s text could not be read here (the PDF gives it garbled).",
+		"fr": "Le texte du livre n’a pas pu être lu ici (le PDF le donne illisible)."
+	},
 	"technique.open_book": { "en": "Open in the book", "fr": "Ouvrir dans le livre" },
 	"technique.no_comments": { "en": "No comments yet.", "fr": "Pas encore de commentaire." },
 	"comments.add": { "en": "Add a comment", "fr": "Ajouter un commentaire" },

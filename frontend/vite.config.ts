@@ -7,7 +7,7 @@ import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import path from 'node:path';
 import type { Plugin } from 'vite';
-import { FONT_SETS, fontsPath } from './src/lib/books/font-sets';
+import { FONT_SETS, fontsPath } from './src/lib/books/font-sets.ts';
 
 // Where the browser sees the app: '' (the domain's root, default) or e.g.
 // '/videoninja' (a subfolder; the Docker image's build argument). Build time only.

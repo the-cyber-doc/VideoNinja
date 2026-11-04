@@ -8,6 +8,7 @@
 	import type { TechniqueNote } from '../api/types';
 	import { url } from '../base';
 	import Citation from '../books/Citation.svelte';
+	import { looksGarbled } from '../books/quality';
 	import { i18n, t } from '../i18n.svelte';
 	import { annotationImageUrl } from '../media';
 	import CommentCard from './CommentCard.svelte';
@@ -35,6 +36,7 @@
 							<img src={annotationImageUrl(note.id)} alt={t('books.annotations.crop')} loading="lazy" />
 						{:else if note.quote}
 							<blockquote>{note.quote}</blockquote>
+							{#if looksGarbled(note.quote)}<p class="garbled">{t('technique.book_note_garbled')}</p>{/if}
 						{/if}
 						{#if note.note}<p class="text">{note.note}</p>{/if}
 						<p class="source">
@@ -109,6 +111,10 @@
 	}
 	.text {
 		white-space: pre-line;
+	}
+	.garbled {
+		font-size: var(--text-xs);
+		color: var(--muted);
 	}
 	.source {
 		font-size: var(--text-sm);

@@ -16,6 +16,7 @@
 	import { rules } from '../validation';
 	import { uidOf, type BookAnnotations } from './annotations.svelte';
 	import { ANNOTATION_COLORS } from './colors';
+	import { looksGarbled } from './quality';
 	import type { ViewerControls } from './ViewerPages.svelte';
 
 	let {
@@ -78,6 +79,7 @@
 						{/if}
 					{:else}
 						<q>{row.quote ?? t('books.annotations.no_quote')}</q>
+						{#if looksGarbled(row.quote)}<span class="garbled">{t('books.annotations.garbled')}</span>{/if}
 					{/if}
 					{#if techniqueName(row.technique)}<span class="technique">{techniqueName(row.technique)}</span>{/if}
 					{#if row.note && !selected}<span class="note">{row.note}</span>{/if}
@@ -188,6 +190,11 @@
 	.note {
 		overflow-wrap: anywhere;
 		font-size: var(--text-sm);
+	}
+	/* A quote the PDF gave unreadable: said, in the error colour (a note, not an alert). */
+	.garbled {
+		font-size: var(--text-xs);
+		color: var(--error);
 	}
 	.technique {
 		font-weight: 600;

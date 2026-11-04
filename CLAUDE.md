@@ -374,6 +374,11 @@ the encoder waits for the version; `/health` fails on a mismatch.
   ≤ 480 wide, metadata dropped; failure → published without), bad file → failed for good, unexpected → 3 attempts.
   nginx: `/protected-book/<user id>/…book.pdf` (`limit_conn` 2, `Content-Disposition: attachment` via the map
   `$content_disposition`), `/protected-book-image/` (no PDF). The SW never precaches `pdfium.*.wasm`.
+- Garbled quotes: PDFs whose fonts have no ToUnicode map give their raw codes as text (in every reader; e.g. letters
+  shifted by 29, control characters for spaces). `$lib/books/quality.ts` `looksGarbled` (heuristic: control/replacement/
+  private-use characters, or ≥ 30 % of the Latin letters in capital, vowel-less or 25+ letter runs; non-Latin text never
+  judged) flags them in AnnotationList (`books.annotations.garbled`, suggests a region) and BookNotes. The user chose the
+  warning only (no editable quote, no OCR, no picture of highlights).
 - Fallback fonts (PDFs that do not embed theirs): EmbedPDF's font packages (`@embedpdf/fonts-*`, Noto, OFL), regular
   and bold only (`$lib/books/font-sets.ts` `FONT_SETS`), copied into the client build by vite.config.ts `pdfFonts()` at
   `_app/immutable/pdf-fonts/<their version>/<set>/` (~48 MB; immutable; never precached by the SW); `fonts.ts`

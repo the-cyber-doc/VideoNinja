@@ -1194,7 +1194,10 @@ checked; different criteria: all of them). Kept on the device.
 (**Edit the reference**: the same form as the upload, its tags too; any book manager),
 **Download the PDF**, and the PDF in a viewer (EmbedPDF's PDFium, in the page) with its
 annotations beside it. **Highlight text**: select text by dragging over it, it is
-highlighted and kept as the annotation's quote. **Mark a region** (scanned pages): draw
+highlighted and kept as the annotation's quote. Some PDFs embed fonts without a map from their
+character codes to letters: every reader then extracts garbled text there (often
+capital letters with no spaces). A quote that looks like that is flagged, in the list
+and on the technique's page; mark a region instead to keep a picture of the text. **Mark a region** (scanned pages): draw
 a box, a picture of it is kept (made by the browser, published by
 the encoder). Each annotation is saved at once, one row each: the PDF on the server is
 never changed (the browser's copy only). In the list beside the PDF, the selected

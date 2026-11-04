@@ -674,3 +674,25 @@ test('a PDF without its fonts: the missing font fetched from the app (never a CD
 		)
 		.toBeGreaterThan(500);
 });
+
+test('a quote the PDF gives garbled (a font without its map): said in the panel and on the technique page', async ({
+	page
+}) => {
+	const garbled = 'RUV\u000fDLUFRQGLWLRQHUV Note: :KHQSRVLWLRQLQJWKHGHYLFH';
+	await viewing(page, [
+		annotationRow(5, { ...SAVED_ROW, quote: garbled }),
+		annotationRow(6, { ...SAVED_ROW, target: JSON.stringify({ ...SAVED_TARGET, id: 'saved-2' }) })
+	]);
+	await page.goto('/books/7');
+	await pageBox(page);
+	await expect(page.locator('section.annotations li[data-id="5"]')).toContainText('this quote is garbled');
+	await expect(page.locator('section.annotations li[data-id="6"]')).not.toContainText('garbled');
+
+	await page.route('/api/catalog', (r) => r.fulfill({ json: { ...CATALOG, segments: [] } }));
+	await page.route('/api/techniques/*/comments', (r) => r.fulfill({ json: [] }));
+	await page.route('/api/techniques/*/book-notes', (r) => r.fulfill({ json: [{ ...NOTES[0], quote: garbled }] }));
+	await page.goto(KOKU_PAGE);
+	await expect(page.getByRole('article', { name: 'An annotation from a book' })).toContainText(
+		'The book’s text could not be read here'
+	);
+});
