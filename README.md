@@ -1182,8 +1182,13 @@ Roles and what they allow (accesses):
 reference book (PDF), newest upload first: its first page, its reference as a
 bibliography entry (Chicago style), who uploaded it and when, its number of pages,
 and a link to download the PDF. A book being published or that failed says so and
-can be deleted (by its uploader or an admin). Filters, sorting and annotations come
-next.
+can be deleted (by its uploader or an admin). The filter button (as on the Videos
+page, accent-coloured while something applies) opens a pane: sort by upload date,
+title, author, year of publication or number of pages (books without that value
+last); a text found in the titles (the original's too) or names, accents ignored;
+the year of publication and the upload day (sliders); authors and editors, types of
+work, languages, publishers, uploaders and the books' tags (checkboxes: any of those
+checked; different criteria: all of them). Kept on the device. Annotations come next.
 
 **Upload a book** (the last section of the Upload page, `book_mgmt` access): choose
 a PDF (at most 1 GiB). It is read on the device first: its SHA-256 ("This book is

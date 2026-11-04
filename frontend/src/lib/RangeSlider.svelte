@@ -2,7 +2,7 @@
 	// A range between two bounds: two sliders on one track (the low end can't pass the
 	// high one), the chosen values shown above them. Whole steps. Named by the parent
 	// (a fieldset's legend), each slider by its own label.
-	import type { Range } from './videos/filter';
+	import type { Range } from './filters/common';
 
 	let {
 		min,

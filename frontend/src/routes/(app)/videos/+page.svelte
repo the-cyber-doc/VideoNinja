@@ -89,7 +89,7 @@
 			<h1>{t('videos.title')}</h1>
 			<div class="actions">
 				<IconButton
-					label={active ? t('videos.filter.active', { n: active }) : t('videos.filter')}
+					label={active ? t('filter.active', { n: active }) : t('filter.open')}
 					icon="filter"
 					iconSize={22}
 					size="lg"

@@ -44,7 +44,11 @@ or ID encoding (Base62/Sqids).
   (`+page.ts` checks it, loads `GET /api/books`: one grid, Chicago reference, delete of queued/failed by uploader or
   `user_mgmt`) + `(app)/upload/book` (also `upload`: tusd's hooks check both; link at the end of the upload page) +
   `api/books.py` (`/api/books/exists`, `POST`/`GET /api/books`, `DELETE /api/books/<id>`) + `/media/book/<id>[/thumbnail]`.
-  Next (plan): filter/sort, EmbedPDF viewer + annotations + annotated download, technique-page notes.
+  Filter pane as on the Videos page (`$lib/books/FilterPane.svelte`, logic `$lib/books/filter.ts`: sort uploaded_at|title|
+  author|year|pages (missing last, `Intl.Collator`), text in titles/names (`fold`: accents ignored), year + upload-day
+  ranges, authors/editors, types, languages (`Intl.DisplayNames`), publishers, uploaders, tags; localStorage `books.filter`;
+  one grid, no sections). Next (plan): EmbedPDF viewer + annotations + annotated download, missing thumbnails made again,
+  technique-page notes.
   `video_mgmt` (role `video_mgmt` = every access but `user_mgmt`, `moderator`, `options` and `book_mgmt`; admins and
   `content_mgmt` too) =
   Videos page: `GET /api/videos` (+ `uploaded_by` display name, the video's own `tags`), `GET`/`PUT /api/videos/<id>/annotations`
@@ -413,7 +417,9 @@ the encoder waits for the version; `/health` fails on a mismatch.
   (modal `<dialog>` at the right, live): sort by upload date / duration, filters duration and upload day
   (`$lib/RangeSlider.svelte`, bounds from the videos), uploaders and list tag values (checkboxes, OR inside,
   AND across), numeric tags (slider), other text tags (contains), valueless tags (present); the video's
-  own tags only. Logic `$lib/videos/filter.ts` (pure, unit-tested: `filterOptions`, `effective` drops
+  own tags only. Shared with the Books pane: `$lib/filters/` (`common.ts`: ranges, days, tag options/criteria/matching,
+  storage; `FilterDialog.svelte` shell with :global fieldset styles, `SortFields`, `Checklist`, `TagFilters`; messages
+  `filter.*`). Logic `$lib/videos/filter.ts` (pure, unit-tested: `filterOptions`, `effective` drops
   full ranges and values no longer offered, `matches`, `sortVideos`: same upload second → by ID in the sort's direction, same duration → server order), kept
   in localStorage `videos.filter`; applied inside each of the four sections.
   The SW posts `media-saved` / `media-deleted`; `$lib/offline.svelte.ts` (SvelteSet of saved

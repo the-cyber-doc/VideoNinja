@@ -42,6 +42,7 @@ test('in French', async ({ page }) => {
 	await page.addInitScript(() => localStorage.setItem('lang', 'fr'));
 	await setup(page);
 	await page.route('/api/books', (r) => r.fulfill({ json: [] }));
+	await page.route('/api/tags', (r) => r.fulfill({ json: [] }));
 	await page.goto('/books');
 	await expect(page.getByRole('heading', { name: 'Livres', level: 1 })).toBeVisible();
 	await expect(page.getByText('Pas encore de livre.')).toBeVisible();
@@ -223,7 +224,7 @@ test('the books: first page, reference, uploader; waiting or failed ones deletab
 		return r.fulfill({ status: 204 });
 	});
 	await page.goto('/books');
-	await expect(page.getByText('3 book(s)')).toBeVisible();
+	await expect(page.getByText('3 book(s)', { exact: true })).toBeVisible();
 	const first = page.locator('li[data-id="1"]');
 	await expect(first).toContainText('Hatsumi, Masaaki. Ninjutsu.');
 	await expect(first).toContainText('Uploaded by Aiko on Oct 23, 2026 · 12 page(s)');
@@ -244,4 +245,101 @@ test('no book yet: the way to upload one', async ({ page }) => {
 	await page.goto('/books');
 	await expect(page.getByText('No book yet.')).toBeVisible();
 	await expect(page.getByRole('link', { name: 'Upload a book (PDF)' })).toHaveAttribute('href', '/upload/book');
+});
+
+// --- filter and sort ---
+
+const LIBRARY: BookRow[] = [
+	{
+		...BOOK,
+		id: 3,
+		reference: {
+			type: 'book',
+			title: 'Ninjutsu',
+			author: [{ family: 'Hatsumi', given: 'Masaaki' }],
+			issued: { 'date-parts': [[1981]] },
+			language: 'en'
+		},
+		uploaded_at: '2026-10-25T10:00:00+02:00',
+		pages: 200,
+		tags: [{ id: 'year', value: '1981' }]
+	},
+	{
+		...BOOK,
+		id: 2,
+		reference: {
+			type: 'manuscript',
+			title: 'Densho',
+			'original-title': '伝書',
+			editor: [{ literal: 'Bujinkan Dōjō' }]
+		},
+		uploaded_at: '2026-10-24T10:00:00+02:00',
+		pages: null,
+		uploaded_by: 'Ren'
+	},
+	{
+		...BOOK,
+		id: 1,
+		reference: {
+			type: 'book',
+			title: 'Art of Invisibility',
+			author: [{ family: 'Hayes', given: 'Stephen K.' }],
+			issued: { 'date-parts': [[1975]] },
+			language: 'ja'
+		},
+		uploaded_at: '2026-10-23T10:00:00+02:00',
+		pages: 120
+	}
+];
+const order = (page: Page) =>
+	page.locator('li.book').evaluateAll((items) => items.map((i) => i.getAttribute('data-id')));
+
+test('filter and sort: a pane with what the books offer, applied at once, kept on this device', async ({ page }) => {
+	const fake = await uploading(page);
+	fake.books = LIBRARY;
+	await page.goto('/books');
+	await expect(page.getByText('3 book(s)', { exact: true })).toBeVisible();
+	expect(await order(page)).toEqual(['3', '2', '1']); // newest upload first
+
+	const button = page.getByRole('button', { name: 'Filter and sort' });
+	await button.click();
+	const pane = page.getByRole('dialog', { name: 'Filter and sort' });
+	await pane.getByLabel('Sort by').selectOption('title');
+	await pane.getByLabel('Direction').selectOption({ label: 'A to Z' });
+	await expect.poll(() => order(page)).toEqual(['1', '2', '3']);
+	await pane.getByLabel('Sort by').selectOption('year');
+	await expect(pane.getByLabel('Direction').locator('option')).toHaveText(['Oldest first', 'Most recent first']);
+	await expect.poll(() => order(page)).toEqual(['1', '3', '2']); // without a date: last
+
+	// The books' own values: names (authors and editors), types, languages (named), tags.
+	await expect(pane.getByRole('group', { name: 'Authors and editors' }).getByRole('checkbox')).toHaveCount(3);
+	await expect(pane.getByRole('group', { name: 'Language' })).toContainText('English');
+	await expect(pane.getByRole('group', { name: 'Language' })).toContainText('Japanese');
+	await pane.getByLabel('Masaaki Hatsumi').check();
+	await pane.getByLabel('Bujinkan Dōjō').check();
+	await expect.poll(() => order(page)).toEqual(['3', '2']);
+	await pane.getByLabel('Manuscript (densho, makimono…)').check();
+	await expect(pane.getByRole('status')).toHaveText('1 of 3 book(s) shown');
+	await pane.getByRole('button', { name: 'Done' }).click();
+	await expect(page.getByRole('button', { name: 'Filter and sort (3 active)' })).toBeVisible();
+	await expect(page.getByRole('status').first()).toHaveText('1 of 3 book(s) shown');
+
+	// Kept on this device: the same after a reload.
+	await page.reload();
+	await expect.poll(() => order(page)).toEqual(['2']);
+	await page.getByRole('button', { name: 'Filter and sort (3 active)' }).click();
+	await pane.getByRole('button', { name: 'Reset' }).click();
+	await expect.poll(() => order(page)).toEqual(['3', '2', '1']);
+
+	// A text in the titles (the original's too) or names, accents ignored; nothing matching says so.
+	await pane.getByLabel('Title or name').fill('dojo');
+	await expect.poll(() => order(page)).toEqual(['2']);
+	await pane.getByLabel('Title or name').fill('伝書');
+	await expect.poll(() => order(page)).toEqual(['2']);
+	await pane.getByLabel('Title or name').fill('nothing like it');
+	await expect(page.getByText('No book matches the filter.')).toBeVisible();
+	await pane.getByLabel('Title or name').fill('');
+	await pane.getByRole('button', { name: 'Close' }).click();
+	await expect(pane).toBeHidden();
+	await expect.poll(() => order(page)).toEqual(['3', '2', '1']);
 });

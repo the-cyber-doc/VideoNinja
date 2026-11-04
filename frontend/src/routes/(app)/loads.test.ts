@@ -146,14 +146,16 @@ describe('test local codecs page', () => {
 });
 
 describe('books page', () => {
-	it('needs the book_mgmt access; the books, or the failure', async () => {
+	it('needs the book_mgmt access; the books and tags, or the failure', async () => {
 		api.listBooks.mockResolvedValue([{ id: 1 }]);
+		api.listTags.mockResolvedValue([{ id: 'year' }]);
 		const { event: e, depends } = event({ user: user('book_mgmt') });
-		expect(await booksPage(e)).toEqual({ books: [{ id: 1 }], error: null });
-		expect(depends).toHaveBeenCalledWith('app:books');
+		expect(await booksPage(e)).toEqual({ books: [{ id: 1 }], tags: [{ id: 'year' }], error: null });
+		expect(depends).toHaveBeenCalledWith('app:books', 'app:lang');
 		const failure = new ApiError(500, 'internal');
 		api.listBooks.mockRejectedValue(failure);
-		expect(await booksPage(event({ user: user('book_mgmt') }).event)).toEqual({ books: [], error: failure });
+		api.listTags.mockRejectedValue(failure);
+		expect(await booksPage(event({ user: user('book_mgmt') }).event)).toEqual({ books: [], tags: [], error: failure });
 		expect(await redirectOf(booksPage(event({ user: user('video_mgmt') }).event) as Promise<unknown>)).toBe('/');
 		expect(await redirectOf(booksPage(event({ user: null }).event) as Promise<unknown>)).toBe('/');
 	});
