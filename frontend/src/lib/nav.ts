@@ -12,5 +12,6 @@ export interface NavEntry {
 export const NAV: NavEntry[] = [
 	{ href: url('/schools'), label: 'nav.schools' },
 	{ href: url('/upload'), label: 'nav.upload', access: 'upload' },
+	{ href: url('/books'), label: 'nav.books', access: 'book_mgmt' },
 	{ href: url('/videos'), label: 'nav.videos', access: 'video_mgmt' }
 ];

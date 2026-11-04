@@ -67,7 +67,6 @@ INSERT INTO "role_has_access" ("role", "access") VALUES
 	('uploader', 'annotate'),
 	('uploader', 'upload'),
 	('uploader', 'comment'),
-	-- Every access but user_mgmt and moderator.
 	('video_mgmt', 'segment'),
 	('video_mgmt', 'comment'),
 	('video_mgmt', 'annotate'),

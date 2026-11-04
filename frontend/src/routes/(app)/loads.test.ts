@@ -27,6 +27,7 @@ const { load: layout } = await import('./+layout');
 const { load: usersPage } = await import('./admin/users/+page');
 const { load: uploadPage } = await import('./upload/+page');
 const { load: codecsPage } = await import('./upload/codecs/+page');
+const { load: booksPage } = await import('./books/+page');
 const { load: optionsPage } = await import('./options/+page');
 const root = await import('../+layout');
 
@@ -138,6 +139,14 @@ describe('test local codecs page', () => {
 		expect(await codecsPage(event({ user: user('upload') }).event)).toBeUndefined();
 		expect(await redirectOf(codecsPage(event({ user: user('comment') }).event) as Promise<unknown>)).toBe('/');
 		expect(await redirectOf(codecsPage(event({ user: null }).event) as Promise<unknown>)).toBe('/');
+	});
+});
+
+describe('books page', () => {
+	it('needs the book_mgmt access', async () => {
+		expect(await booksPage(event({ user: user('book_mgmt') }).event)).toBeUndefined();
+		expect(await redirectOf(booksPage(event({ user: user('video_mgmt') }).event) as Promise<unknown>)).toBe('/');
+		expect(await redirectOf(booksPage(event({ user: null }).event) as Promise<unknown>)).toBe('/');
 	});
 });
 

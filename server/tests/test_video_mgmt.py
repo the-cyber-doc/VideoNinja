@@ -58,9 +58,13 @@ def test_seeded_access_and_role(client, admin_secret):
         "user_mgmt",
         "moderator",
         "options",
-    }  # all but the admin pages, moderation
+        "book_mgmt",
+    }  # all but the admin pages, moderation and books
     assert roles["admin"] == all_accesses
-    assert "video_mgmt" not in roles["user"] | roles["editor"] | roles["uploader"]
+    assert "video_mgmt" not in roles["user"] | roles["editor"] | roles["uploader"] | roles["book_mgmt"]
+    assert roles["book_mgmt"] == {"segment", "comment", "annotate", "upload", "book_mgmt"}
+    assert roles["content_mgmt"] == roles["book_mgmt"] | {"video_mgmt"}
+    assert "book_mgmt" not in roles["user"] | roles["editor"] | roles["uploader"] | roles["video_mgmt"]
     names = sql("SELECT en, fr FROM translation WHERE id = 'role.video_mgmt.name'")
     assert names == [("Video manager", "Gestionnaire de vidéos")]
 

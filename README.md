@@ -1168,13 +1168,18 @@ reset, deactivate or delete their own account.
 
 Roles and what they allow (accesses):
 
-| Role | `segment` | `comment` | `annotate` | `upload` | `video_mgmt` | `moderator` | `user_mgmt` | `options` |
-|---|---|---|---|---|---|---|---|---|
-| `user` | ✓ | ✓ | | | | | | |
-| `editor` | ✓ | ✓ | ✓ | | | | | |
-| `uploader` | ✓ | ✓ | ✓ | ✓ | | | | |
-| `video_mgmt` | ✓ | ✓ | ✓ | ✓ | ✓ | | | |
-| `admin` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Role | `segment` | `comment` | `annotate` | `upload` | `video_mgmt` | `book_mgmt` | `moderator` | `user_mgmt` | `options` |
+|---|---|---|---|---|---|---|---|---|---|
+| `user` | ✓ | ✓ | | | | | | | |
+| `editor` | ✓ | ✓ | ✓ | | | | | | |
+| `uploader` | ✓ | ✓ | ✓ | ✓ | | | | | |
+| `video_mgmt` | ✓ | ✓ | ✓ | ✓ | ✓ | | | | |
+| `book_mgmt` | ✓ | ✓ | ✓ | ✓ | | ✓ | | | |
+| `content_mgmt` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | | | |
+| `admin` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+
+**Books** (top menu, between Upload and Videos; `book_mgmt` access) will hold
+reference books (PDF) and their annotations; the page is empty for now.
 
 **Options** (user menu, below User Management; `options` access, i.e. admins)
 edits what the application offers to choose from, in collapsible sections.
@@ -1188,7 +1193,7 @@ included). A tag or value still used by a video or segment cannot be deleted,
 and a new format or rule that values already stored would not follow is
 refused (the count is shown).
 
-**Videos** (top menu, right of Upload; `video_mgmt` access) lists every
+**Videos** (top menu, right of Books, or of Upload without it; `video_mgmt` access) lists every
 published video in four collapsible sections: **In progress** (some
 techniques, not all), **To annotate** (none yet), **Complete**, and **No
 technique** (marked as containing none). Each thumbnail shows the video's

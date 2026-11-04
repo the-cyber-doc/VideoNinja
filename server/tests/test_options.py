@@ -47,11 +47,18 @@ def created(client, body=PLACE):
     return r.json()
 
 
-def use(tag, value, video=True, segment=None):
+def use(tag, value, video=True, segment=None, book=False):
     if video:
         sql("INSERT INTO video_has_tags (video, tag, value) VALUES (1, ?, ?)", tag, value)
     if segment:
         sql("INSERT INTO segment_has_tags (segment, tag, value) VALUES (?, ?, ?)", segment, tag, value)
+    if book:
+        if not sql("SELECT 1 FROM book WHERE id = 1"):
+            sql(
+                "INSERT INTO book (id, sha256sum, original_filename, reference, uploaded_at)"
+                " VALUES (1, 'f00d', 'densho.pdf', '{}', '2026-01-01T00:00:00Z')"
+            )
+        sql("INSERT INTO book_has_tags (book, tag, value) VALUES (1, ?, ?)", tag, value)
 
 
 def translations(prefix):
@@ -213,7 +220,7 @@ def test_rename_everywhere(admin, caplog):
     caplog.set_level(logging.INFO, "app.audit")
     created(admin)
     use("place", "dojo", segment=1)
-    use("place", "beach", video=False, segment=2)
+    use("place", "beach", video=False, segment=2, book=True)
     body = {
         **PLACE,
         "id": "venue",
@@ -225,12 +232,13 @@ def test_rename_everywhere(admin, caplog):
     }
     r = admin.put("/api/admin/tags/place", json=body)
     assert r.status_code == 200, r.text
-    assert [(v["id"], v["used"]) for v in r.json()["values"]] == [("park", 0), ("dojo", 1), ("beach", 2)]
+    assert [(v["id"], v["used"]) for v in r.json()["values"]] == [("park", 0), ("dojo", 2), ("beach", 2)]
     assert sql("SELECT tag, value FROM video_has_tags") == [("venue", "beach")]
     assert sql("SELECT segment, tag, value FROM segment_has_tags ORDER BY segment") == [
         (1, "venue", "beach"),
         (2, "venue", "dojo"),
     ]
+    assert sql("SELECT tag, value FROM book_has_tags") == [("venue", "dojo")]
     assert translations("tag.place.") == translations("tag_value.place.") == []
     assert translations("tag_value.venue.") == [
         ("tag_value.venue.beach.name", "Was dojo", "Était dojo"),

@@ -324,6 +324,9 @@
 		"fr": "Pas encore de technique dans cette section."
 	},
 	"technique.videos": { "en": "Videos", "fr": "Vidéos" },
+	"nav.books": { "en": "Books", "fr": "Livres" },
+	"books.title": { "en": "Books", "fr": "Livres" },
+	"books.none": { "en": "No book yet.", "fr": "Pas encore de livre." },
 	"nav.videos": { "en": "Videos", "fr": "Vidéos" },
 	"videos.title": { "en": "Videos", "fr": "Vidéos" },
 	"videos.section.in_progress": { "en": "In progress", "fr": "En cours" },

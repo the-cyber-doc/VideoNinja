@@ -256,3 +256,67 @@ def test_v3_gives_tags_an_explicit_format(database, monkeypatch):
     assert sql(database, "SELECT count(*) FROM role_has_access WHERE access = 'options'") == [(0,)]
     assert sql(database, "SELECT tag, value FROM video_has_tags") == [("year", "2024")]
     assert sql(database, "PRAGMA foreign_key_check") == []
+
+
+def test_v4_brings_books_and_their_roles(database, monkeypatch):
+    """v3 → v4: existing uploads are videos; the book_mgmt access for admins and two new roles.
+    v4 → v3: their users get the closest v3 role, books and their uploads go."""
+    build(database, 3)
+    sql(database, "INSERT INTO user (id, username, role) VALUES (5, 'kenji', 'user')")
+    sql(
+        database,
+        "INSERT INTO upload (tus_id, user, original_sha256, size, created_at) VALUES ('t1', 5, 'a', 1, 'x')",
+    )
+    monkeypatch.setattr(db, "EXPECTED_VERSION", 4)
+    db.migrate()
+    assert sql(database, "SELECT kind FROM upload") == [("video",)]
+    accesses = "SELECT access FROM role_has_access WHERE role = ? ORDER BY access"
+    assert sql(database, accesses, "book_mgmt") == [
+        ("annotate",),
+        ("book_mgmt",),
+        ("comment",),
+        ("segment",),
+        ("upload",),
+    ]
+    assert sql(database, accesses, "content_mgmt") == sorted([*sql(database, accesses, "book_mgmt"), ("video_mgmt",)])
+    assert sql(database, "SELECT role FROM role_has_access WHERE access = 'book_mgmt' ORDER BY role") == [
+        ("admin",),
+        ("book_mgmt",),
+        ("content_mgmt",),
+    ]
+
+    sql(database, "INSERT INTO user (id, username, role) VALUES (6, 'aiko', 'book_mgmt'), (7, 'mei', 'content_mgmt')")
+    sql(
+        database,
+        "INSERT INTO upload (tus_id, user, original_sha256, size, created_at, kind)"
+        " VALUES ('t2', 6, 'b', 1, 'x', 'book')",
+    )
+    sql(
+        database,
+        "INSERT INTO book (sha256sum, original_filename, reference, uploaded_by, uploaded_at)"
+        " VALUES ('c', 'densho.pdf', '{}', 6, 'x')",
+    )
+    sql(database, "INSERT INTO book_has_tags (book, tag, value) VALUES (1, 'year', '1950')")
+    sql(
+        database,
+        "INSERT INTO book_annotation (book, page, kind, target, created_by, created_at, modified_at)"
+        " VALUES (1, 3, 'text', '{}', 6, 'x', 'x')",
+    )
+    sql(
+        database,
+        "INSERT INTO book_comment (annotation, user, lang, text, created_at, modified_at)"
+        " VALUES (1, 7, 'en', 'Seen', 'x', 'x')",
+    )
+
+    monkeypatch.setattr(db, "EXPECTED_VERSION", 3)
+    db.migrate()
+    assert sql(database, "SELECT username, role FROM user WHERE id > 0 ORDER BY id") == [
+        ("kenji", "user"),
+        ("aiko", "uploader"),
+        ("mei", "video_mgmt"),
+    ]
+    assert sql(database, "SELECT tus_id, state FROM upload ORDER BY id") == [("t1", "uploading"), ("t2", "deleted")]
+    assert sql(database, "SELECT count(*) FROM translation WHERE id LIKE '%book_mgmt%' OR id LIKE '%content%'") == [
+        (0,)
+    ]
+    assert sql(database, "PRAGMA foreign_key_check") == []

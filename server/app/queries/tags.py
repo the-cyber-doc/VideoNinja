@@ -12,8 +12,11 @@ _TAG = (
     ' n."en" AS "name_en", n."fr" AS "name_fr", h."en" AS "hint_en", h."fr" AS "hint_fr"'
     ' FROM "tag" g JOIN "translation" n ON n."id" = g."name" LEFT JOIN "translation" h ON h."id" = g."hint"'
 )
-# Every (tag, value) put on a video or a segment.
-_USED = 'SELECT "tag", "value" FROM "video_has_tags" UNION ALL SELECT "tag", "value" FROM "segment_has_tags"'
+# Every (tag, value) put on a video, a segment or a book.
+_USED = (
+    'SELECT "tag", "value" FROM "video_has_tags" UNION ALL SELECT "tag", "value" FROM "segment_has_tags"'
+    ' UNION ALL SELECT "tag", "value" FROM "book_has_tags"'
+)
 
 
 def tags(con: sqlite3.Connection) -> list[sqlite3.Row]:
@@ -100,10 +103,10 @@ def insert_value(con: sqlite3.Connection, tag_id: str, value_id: str, name: str)
 
 
 def rename_used(con: sqlite3.Connection, old_id: str, new_id: str, values: Mapping[str, str]) -> None:
-    """Where videos and segments use tag `old_id`: now `new_id`, and its values renamed
+    """Where videos, segments and books use tag `old_id`: now `new_id`, and its values renamed
     (`values`: old → new, swaps included: one statement each)."""
     mapping = json.dumps(values)
-    for table in ("video_has_tags", "segment_has_tags"):
+    for table in ("video_has_tags", "segment_has_tags", "book_has_tags"):
         # Table names are constants (never input).
         con.execute(
             f'UPDATE "{table}" SET "tag" = ?,'  # nosec B608 - constant table names

@@ -38,6 +38,8 @@ def test_translation_columns_match_languages(admin):  # noqa: F811
 def test_roles_are_translated(admin):  # noqa: F811
     assert admin.get("/api/admin/roles").json() == [
         {"id": "admin", "name": "Admin"},
+        {"id": "book_mgmt", "name": "Book manager"},
+        {"id": "content_mgmt", "name": "Content manager"},
         {"id": "editor", "name": "Editor"},
         {"id": "uploader", "name": "Uploader"},
         {"id": "user", "name": "User"},
@@ -48,6 +50,8 @@ def test_roles_are_translated(admin):  # noqa: F811
     assert fr == [
         {"id": "admin", "name": "Administrateur"},
         {"id": "editor", "name": "Éditeur"},
+        {"id": "content_mgmt", "name": "Gestionnaire de contenu"},
+        {"id": "book_mgmt", "name": "Gestionnaire de livres"},
         {"id": "video_mgmt", "name": "Gestionnaire de vidéos"},
         {"id": "uploader", "name": "Téléverseur"},
         {"id": "user", "name": "Utilisateur"},
