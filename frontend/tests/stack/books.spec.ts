@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { expect, test, type Browser, type Cookie, type Page } from '@playwright/test';
 import { admin, loggedIn, register, type Account } from '../accounts';
 import { pdfAnnotations } from '../pdf-annotations';
-import { drag, pageBox } from '../viewer';
+import { bluish, drag, drawnColor, pageBox, yellowish } from '../viewer';
 
 // The real containers only (tools/test-e2e-stack.sh), project "stack": every books feature
 // end to end. Books uploaded through nginx and tusd, checked and published by the encoder
@@ -34,6 +34,7 @@ interface Annotation {
 	color: string | null;
 	technique: string | null;
 	has_image: boolean;
+	target: string;
 }
 
 let adminCookies: Cookie[] = [];
@@ -58,14 +59,28 @@ async function annotations(page: Page, bookId: number): Promise<Annotation[]> {
 	return (await page.request.get(`api/books/${bookId}/annotations`)).json();
 }
 
+/** Where a saved highlight is on the screen (inside its first line, off its edges). */
+async function marked(page: Page, id: number) {
+	const box = await pageBox(page);
+	const pt = box.width / 420; // the fixture's page: 420 pt wide
+	const a = (await annotations(page, ids.text)).find((x) => x.id === id)!;
+	const { origin, size } = JSON.parse(a.target).segmentRects[0];
+	return {
+		x: box.x + origin.x * pt + 3,
+		y: box.y + origin.y * pt + 3,
+		width: size.width * pt - 6,
+		height: size.height * pt - 6
+	};
+}
+
 /** Uploaded on the book upload page, then published by the encoder: its ID. */
 async function upload(page: Page, file: string, form: (page: Page) => Promise<void>) {
-	await page.goto('upload/book');
+	await page.goto('upload');
 	await page.getByLabel('Choose a PDF file').setInputFiles(file);
 	await expect(page.getByRole('img', { name: 'First page of the book' })).toBeVisible({ timeout: 20_000 });
 	await form(page);
 	await page.getByRole('button', { name: 'Upload', exact: true }).click();
-	await expect(page.getByRole('status')).toContainText('Uploaded', { timeout: 60_000 });
+	await expect(page.getByText('Uploaded: the book is published')).toBeVisible({ timeout: 60_000 });
 	const name = file.split('/').pop();
 	const book = async () => (await books(page)).find((b) => b.original_filename === name);
 	await expect.poll(async () => (await book())?.status, { timeout: 60_000 }).toBe('published');
@@ -83,7 +98,7 @@ test('the Books entry: in the menu with book_mgmt; the upload page offers books'
 	const nav = page.getByRole('navigation', { name: 'Main navigation' });
 	await expect(nav.getByRole('link', { name: 'Books' })).toBeVisible();
 	await page.goto('upload');
-	await expect(page.getByRole('link', { name: 'Upload a book (PDF)' })).toBeVisible();
+	await expect(page.getByRole('region', { name: 'Upload a book' }).getByLabel('Choose a PDF file')).toBeVisible();
 });
 
 test('a text PDF: read here, its reference, uploaded through tusd, published by the encoder', async ({ page }) => {
@@ -186,7 +201,8 @@ test('the viewer: a highlight and a region, saved; the region’s crop published
 
 test('an annotation’s technique, note and colour; its comments', async ({ page }) => {
 	await page.goto(`books/${ids.text}`);
-	await pageBox(page);
+	const where = await marked(page, ids.highlight);
+	await expect.poll(() => drawnColor(page, where).then(yellowish)).toBe(true); // the tool's yellow
 	const item = page.locator(`section.annotations li[data-id="${ids.highlight}"]`);
 	await item.getByRole('button', { name: /Page 1/ }).click();
 	await item.getByLabel('School').selectOption('gyokko');
@@ -201,6 +217,10 @@ test('an annotation’s technique, note and colour; its comments', async ({ page
 			return [a.technique, a.note, a.color];
 		})
 		.toEqual([KOKU, 'The first school', '#60A5FA']);
+	await expect.poll(() => drawnColor(page, where).then(bluish)).toBe(true); // drawn blue, not only saved
+	await page.reload(); // and drawn blue from what the server keeps
+	await expect.poll(async () => drawnColor(page, await marked(page, ids.highlight)).then(bluish)).toBe(true);
+	await item.getByRole('button', { name: /Page 1/ }).click(); // selected again: its comments shown
 
 	const comments = item.getByRole('region', { name: 'Comments on this annotation' });
 	await comments.getByRole('button', { name: 'Add a comment' }).click();
@@ -233,6 +253,7 @@ test('the copy with its annotations: in the PDF, the comment as a reply', async 
 	await file.saveAs(saved);
 	const found = await pdfAnnotations(readFileSync(saved));
 	const highlight = found.find((a) => a.type === 9)!;
+	expect(highlight.strokeColor?.toUpperCase()).toBe('#60A5FA'); // its colour, in the PDF too
 	expect(highlight.contents).toMatch(
 		/^Technique: \S+ Koku — https?:\/\/[^/]+\/videoninja\/schools\/gyokko\/taijutsu\/jo_ryaku\/koku\n\nThe first school$/
 	);

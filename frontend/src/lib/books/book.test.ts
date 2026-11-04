@@ -74,6 +74,8 @@ const controls = (over: Partial<ViewerControls> = {}): ViewerControls => ({
 	crop: vi.fn(async () => new Blob(['crop'])),
 	firstPage: vi.fn(async () => new Blob(['jpeg'])),
 	annotatedCopy: vi.fn(async () => new TextEncoder().encode('%PDF copy').buffer),
+	reselect: vi.fn(async () => true),
+	cancelReselect: vi.fn(),
 	...over
 });
 

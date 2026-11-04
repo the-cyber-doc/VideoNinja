@@ -430,6 +430,12 @@
 		"en": "The PDF gives no readable text here (its font has no character map): this quote is garbled. Mark a region instead to keep a picture of it.",
 		"fr": "Le PDF ne donne pas de texte lisible ici (sa police n’a pas de table des caractères) : cette citation est illisible. Marquez plutôt une zone pour en garder une image."
 	},
+	"books.annotations.reselect": { "en": "Change the highlighted text", "fr": "Changer le texte surligné" },
+	"books.annotations.reselect_hint": {
+		"en": "Select the new text on page {n}: the highlight moves to it, its note, technique and comments stay.",
+		"fr": "Sélectionnez le nouveau texte à la page {n} : le surlignage s’y déplace, sa note, sa technique et ses commentaires restent."
+	},
+	"books.annotations.reselect_cancel": { "en": "Keep the text as it is", "fr": "Garder le texte tel quel" },
 	"books.annotations.note": { "en": "Note", "fr": "Note" },
 	"books.annotations.technique": { "en": "Technique", "fr": "Technique" },
 	"books.annotations.no_technique": { "en": "No technique", "fr": "Aucune technique" },
@@ -452,10 +458,6 @@
 		"fr": "Un PDF : lu d’abord sur cet appareil (sa première page devient la vignette), puis envoyé avec sa référence."
 	},
 	"books.upload.link": { "en": "Upload a book (PDF)", "fr": "Téléverser un livre (PDF)" },
-	"books.upload.link_hint": {
-		"en": "Reference books and scans of scrolls, annotated later on the Books page.",
-		"fr": "Livres de référence et numérisations de rouleaux, annotés ensuite sur la page Livres."
-	},
 	"books.upload.choose": { "en": "Choose a PDF file", "fr": "Choisir un fichier PDF" },
 	"books.upload.reading": { "en": "Reading the PDF…", "fr": "Lecture du PDF…" },
 	"books.upload.first_page": { "en": "First page of the book", "fr": "Première page du livre" },

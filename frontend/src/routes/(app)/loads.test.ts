@@ -36,7 +36,6 @@ const { load: usersPage } = await import('./admin/users/+page');
 const { load: uploadPage } = await import('./upload/+page');
 const { load: codecsPage } = await import('./upload/codecs/+page');
 const { load: booksPage } = await import('./books/+page');
-const { load: bookUploadPage } = await import('./upload/book/+page');
 const { load: bookPage } = await import('./books/[id]/+page');
 const { load: optionsPage } = await import('./options/+page');
 const root = await import('../+layout');
@@ -200,26 +199,6 @@ describe('one book', () => {
 		expect(await load('7').promise).toEqual({ book: null, annotations: [], tags: [], error: failure });
 		for (const id of ['x', '0', '1.5'])
 			expect((await load(id).promise.catch((e: { status: number }) => e))!.status).toBe(404);
-	});
-});
-
-describe('book upload page', () => {
-	it('needs book_mgmt and upload; the tags and the largest PDF', async () => {
-		api.listTags.mockResolvedValue([{ id: 'year' }]);
-		api.uploadLimits.mockResolvedValue({ max_bytes: 9, extensions: [], book_max_bytes: 5 });
-		const { event: e, depends } = event({ user: user('book_mgmt', 'upload') });
-		expect(await bookUploadPage(e)).toEqual({ tags: [{ id: 'year' }], maxBytes: 5, error: null });
-		expect(depends).toHaveBeenCalledWith('app:lang');
-		const failure = new ApiError(500, 'internal');
-		api.listTags.mockRejectedValue(failure);
-		api.uploadLimits.mockRejectedValue(failure);
-		expect(await bookUploadPage(event({ user: user('book_mgmt', 'upload') }).event)).toEqual({
-			tags: [],
-			maxBytes: null,
-			error: failure
-		});
-		for (const u of [user('book_mgmt'), user('upload'), null])
-			expect(await redirectOf(bookUploadPage(event({ user: u }).event) as Promise<unknown>)).toBe('/');
 	});
 });
 

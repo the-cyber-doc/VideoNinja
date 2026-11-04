@@ -15,6 +15,7 @@
 	import { saveDraft } from '#lib/upload/draft.svelte.js';
 	import { UploadFlow } from '#lib/upload/flow.svelte.js';
 	import MyUploads from '#lib/upload/MyUploads.svelte';
+	import BookUploadForm from '#lib/books/BookUploadForm.svelte';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
@@ -141,10 +142,7 @@
 	<MyUploads refresh={flow.submitted} />
 
 	{#if hasAccess('book_mgmt')}
-		<section class="card books">
-			<a class="button" href={url('/upload/book')}>{t('books.upload.link')}</a>
-			<p class="hint">{t('books.upload.link_hint')}</p>
-		</section>
+		<BookUploadForm tags={data.tags} maxBytes={data.limits?.book_max_bytes ?? null} />
 	{/if}
 </div>
 
@@ -208,19 +206,6 @@
 	.ok {
 		color: var(--ok);
 		margin: 0;
-	}
-	.books {
-		justify-items: start;
-	}
-	/* A link that looks like the page's buttons. */
-	.books .button {
-		font-weight: 600;
-		padding: var(--space-2) var(--space-4);
-		color: var(--accent-text);
-		background: var(--accent);
-		border: 1px solid transparent;
-		border-radius: var(--radius-sm);
-		text-decoration: none;
 	}
 	.drafts ul {
 		display: grid;

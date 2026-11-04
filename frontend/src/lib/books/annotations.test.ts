@@ -153,7 +153,7 @@ describe('new annotations', () => {
 describe('changes', () => {
 	it('moved: its new place and page; a colour of ours kept, another not', async () => {
 		const deps = fakes();
-		const annotations = new BookAnnotations(7, [row(5, highlight())], deps);
+		const annotations = new BookAnnotations(7, [row(5, highlight(), { quote: 'Togakure-ryū' })], deps);
 		const moved = highlight('h1', { pageIndex: 3, rect: { ...RECT, origin: { x: 5, y: 5 } }, color: '#60A5FA' });
 		annotations.handle(committed('update', moved));
 		await annotations.settled();
@@ -166,6 +166,30 @@ describe('changes', () => {
 		await annotations.settled();
 		const last = (deps.change as ReturnType<typeof vi.fn>).mock.calls.at(-1)![1];
 		expect(last.color).toBeUndefined();
+	});
+
+	it('a highlight recoloured: the colour drawn (strokeColor) saved, not its old deprecated `color`', async () => {
+		const deps = fakes();
+		const annotations = new BookAnnotations(
+			7,
+			[row(5, highlight(), { quote: 'Togakure-ryū', color: '#FFCD45' })],
+			deps
+		);
+		annotations.handle(committed('update', highlight('h1', { strokeColor: '#60A5FA' })));
+		await annotations.settled();
+		expect(deps.change).toHaveBeenCalledWith(5, expect.objectContaining({ color: '#60A5FA' }));
+	});
+
+	it('a highlight given new text (its ends moved): its new quote saved', async () => {
+		const deps = fakes();
+		const annotations = new BookAnnotations(7, [row(5, highlight(), { quote: 'Togakure-ryū' })], deps);
+		const longer = highlight('h1', {
+			rect: { ...RECT, size: { width: 300, height: 30 } },
+			custom: { text: 'Togakure-ryū Ninpō' }
+		});
+		annotations.handle(committed('update', longer));
+		await annotations.settled();
+		expect(deps.change).toHaveBeenCalledWith(5, expect.objectContaining({ quote: 'Togakure-ryū Ninpō' }));
 	});
 
 	it('a region moved: a new crop; recoloured only: none', async () => {

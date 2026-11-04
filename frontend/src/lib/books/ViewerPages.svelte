@@ -9,6 +9,10 @@
 		remove(row: BookAnnotation): void;
 		/** Another colour (highlight fill, region outline). */
 		recolor(row: BookAnnotation, color: string): void;
+		/** A text highlight given the text the user selects next on its page (its ends moved,
+		 * the annotation kept): true once done, false if cancelled (cancelReselect). */
+		reselect(row: BookAnnotation): Promise<boolean>;
+		cancelReselect(): void;
 		crop(pageIndex: number, rect: Box): Promise<Blob | null>;
 		/** Page 1 as the book's thumbnail (null: not rendered). */
 		firstPage(): Promise<Blob | null>;
@@ -29,10 +33,10 @@
 	import { RenderLayer } from '@embedpdf/plugin-render/svelte';
 	import { Scroller, useScroll } from '@embedpdf/plugin-scroll/svelte';
 	import { Viewport } from '@embedpdf/plugin-viewport/svelte';
-	import { SelectionLayer } from '@embedpdf/plugin-selection/svelte';
+	import { SelectionLayer, useSelectionCapability } from '@embedpdf/plugin-selection/svelte';
 	import { useZoom } from '@embedpdf/plugin-zoom/svelte';
 	import { t } from '../i18n.svelte';
-	import { revive, SQUARE, uidOf, type BookAnnotations } from './annotations.svelte';
+	import { revive, uidOf, type BookAnnotations } from './annotations.svelte';
 	import { token } from './colors';
 	import { annotatedCopy, cropOf, THUMBNAIL_WIDTH, type Box, type CopyEngine, type PageEngine } from './pdf';
 
@@ -49,6 +53,7 @@
 	} = $props();
 
 	const annotation = useAnnotation(() => documentId);
+	const selection = useSelectionCapability();
 	const zoom = useZoom(() => documentId);
 	const scroll = useScroll(() => documentId);
 	const documentState = useDocumentState(() => documentId);
@@ -65,6 +70,29 @@
 		annotation.provides?.deselectAnnotation();
 		annotation.provides?.setActiveTool(id);
 	}
+
+	// A highlight waiting for its new text: the next selection the user ends on its page.
+	let retarget = $state<{ row: BookAnnotation; done: (changed: boolean) => void } | null>(null);
+	$effect(() => {
+		const scope = selection.provides?.forDocument(documentId);
+		if (!scope) return;
+		return scope.onEndSelection(async () => {
+			const waiting = retarget;
+			if (!waiting) return;
+			const target = revive(waiting.row.target);
+			const chosen = scope.getFormattedSelection().find((s) => s.pageIndex === target.pageIndex);
+			if (!chosen) return; // another page: still waiting
+			const text = (await scope.getSelectedText().toPromise()).join('\n');
+			retarget = null;
+			annotation.provides?.updateAnnotation(target.pageIndex, target.id, {
+				rect: chosen.rect,
+				segmentRects: chosen.segmentRects,
+				custom: { text }
+			} as never);
+			scope.clear();
+			waiting.done(true);
+		});
+	});
 
 	// The plugin's selection → the panel's (the panel's goes back through select()).
 	$effect(() => {
@@ -89,9 +117,21 @@
 				annotation.provides?.deleteAnnotation(target.pageIndex, target.id);
 			},
 			recolor(row, color) {
+				// Both kinds are drawn in their strokeColor (a highlight's `color` is deprecated: never drawn).
 				const target = revive(row.target);
-				const patch = target.type === SQUARE ? { strokeColor: color } : { color };
-				annotation.provides?.updateAnnotation(target.pageIndex, target.id, patch);
+				annotation.provides?.updateAnnotation(target.pageIndex, target.id, { strokeColor: color });
+			},
+			reselect(row) {
+				retarget?.done(false);
+				annotation.provides?.deselectAnnotation();
+				annotation.provides?.setActiveTool(null); // the plain text selection
+				const target = revive(row.target);
+				scroll.provides?.scrollToPage({ pageNumber: target.pageIndex + 1, behavior: 'smooth' });
+				return new Promise((done) => (retarget = { row, done }));
+			},
+			cancelReselect() {
+				retarget?.done(false);
+				retarget = null;
 			},
 			crop: (pageIndex, rect) => cropOf(pageEngine, d, pageIndex, rect),
 			annotatedCopy: (pdf, list) => annotatedCopy(engine as unknown as CopyEngine, pdf, list),
@@ -159,7 +199,8 @@
 	</div>
 {/snippet}
 
-<Viewport {documentId} class="viewport">
+<!-- While a highlight waits for its new text, the pointer goes to the text, not the annotations. -->
+<Viewport {documentId} class="viewport{retarget ? ' choosing-text' : ''}">
 	<Scroller {documentId} {renderPage} />
 </Viewport>
 
@@ -189,6 +230,11 @@
 		background: var(--bg);
 		border: 1px solid var(--border);
 		border-radius: var(--radius-sm);
+	}
+	/* Its own elements set pointer-events themselves: all of them, while choosing. */
+	:global(.choosing-text #annotation-layer),
+	:global(.choosing-text #annotation-layer *) {
+		pointer-events: none !important;
 	}
 	.page :global(.render) {
 		pointer-events: none;

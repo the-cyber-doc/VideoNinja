@@ -1200,9 +1200,11 @@ capital letters with no spaces). A quote that looks like that is flagged, in the
 and on the technique's page; mark a region instead to keep a picture of the text. **Mark a region** (scanned pages): draw
 a box, a picture of it is kept (made by the browser, published by
 the encoder). Each annotation is saved at once, one row each: the PDF on the server is
-never changed (the browser's copy only). In the list beside the PDF, the selected
-annotation takes a technique (school › … › technique, as for segments: its page will
-show it), a note and a colour, or is deleted; each user changes their own, moderators
+never changed (the browser's copy only). In the list beside the PDF (quotes cut to
+the height of a region's picture until selected), the selected annotation takes a technique (school › … › technique, as for segments: its page will
+show it) and a note, both optional and saved together, a colour, or is deleted; a highlight
+can also be given other text (**Change the highlighted text**, then select it: its start and end move, the
+annotation, its note, technique and comments stay); each user changes their own, moderators
 anyone's. Each annotation has its comments (a thread, oldest first; written with the
 `comment` access, each user changing their own, moderators anyone's). A book without a
 first-page picture gets one when opened.
@@ -1222,7 +1224,7 @@ page, who made it and when, and its comments. Book managers also get **Open in t
 which opens the book on that annotation; the others never get the book itself. Like the
 comments, the last copy seen is kept for offline reading.
 
-**Upload a book** (the last section of the Upload page, `book_mgmt` access): choose
+**Upload a book** (the last section of the Upload page, `book_mgmt` access; no other page): choose
 a PDF (at most 1 GiB). It is read on the device first: its SHA-256 ("This book is
 already on the server"), its number of pages, the title and author the PDF gives
 itself (offered in the form), and its first page, shown and sent as the thumbnail

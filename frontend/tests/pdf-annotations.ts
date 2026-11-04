@@ -12,6 +12,8 @@ export interface ReadAnnotation {
 	id: string;
 	author?: string;
 	contents?: string;
+	/** The colour drawn (a highlight's markup, a square's outline). */
+	strokeColor?: string;
 	inReplyToId?: string;
 }
 

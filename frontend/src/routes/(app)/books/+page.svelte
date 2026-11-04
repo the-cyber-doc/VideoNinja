@@ -77,7 +77,7 @@
 	</header>
 	<ErrorMessage error={error ?? data.error} />
 	{#if !data.books.length && !data.error}
-		<p class="hint centered">{t('books.none')} <a href={url('/upload/book')}>{t('books.upload.link')}</a></p>
+		<p class="hint centered">{t('books.none')} <a href={url('/upload#book')}>{t('books.upload.link')}</a></p>
 	{:else if data.books.length}
 		<FilterPane bind:open={paneOpen} bind:filter {options} shown={kept.length} total={data.books.length} />
 		<p class="hint centered" role="status">

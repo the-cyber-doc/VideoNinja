@@ -64,7 +64,9 @@ export function revive(target: string): PdfAnnotation {
 
 export const uidOf = (row: BookAnnotation) => revive(row.target).id;
 const kindOf = (a: PdfAnnotation): 'text' | 'region' => (a.type === SQUARE ? 'region' : 'text');
-const colorOf = (a: PdfAnnotation) => (a.type === SQUARE ? a.strokeColor : a.color) ?? null;
+/** The colour drawn: the outline of a region (its `color` is the fill), a highlight's markup
+ * (`color`: EmbedPDF's deprecated name, in targets saved before). */
+const colorOf = (a: PdfAnnotation) => (a.type === SQUARE ? a.strokeColor : (a.strokeColor ?? a.color)) ?? null;
 const COLOR = /^#[0-9A-Fa-f]{3,8}$/;
 const sameRect = (a: Rect, b: Rect) =>
 	a.origin.x === b.origin.x &&
@@ -175,6 +177,7 @@ export class BookAnnotations {
 		const color = colorOf(a);
 		if (color && COLOR.test(color)) change.color = color;
 		const moved = !sameRect(before.rect, a.rect) || before.pageIndex !== a.pageIndex;
+		if (row.kind === 'text' && quoteOf(a) !== row.quote) change.quote = quoteOf(a); // its text chosen again
 		this.#replace(await this.deps.change(row.id, change));
 		if (moved && row.kind === 'region') await this.#crop(row.id, a);
 	}

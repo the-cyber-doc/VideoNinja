@@ -46,13 +46,27 @@
 		place = catalog ? placeOf(catalog, row.technique) : emptyPlace();
 	});
 
-	function chosen(row: BookAnnotation) {
+	// The fields as edited, and what differs from the saved annotation (both optional: an
+	// annotation needs neither a technique nor a note).
+	const changes = (row: BookAnnotation) => {
 		const technique = place.technique || null;
-		if (technique !== row.technique) void annotations.edit(row, { technique });
+		const text = note.trim() || null;
+		return {
+			...(technique !== row.technique && { technique }),
+			...(text !== row.note && { note: text })
+		};
+	};
+	function save(row: BookAnnotation) {
+		const changed = changes(row);
+		if (Object.keys(changed).length) void annotations.edit(row, changed);
 	}
-	function saveNote(row: BookAnnotation) {
-		const value = note.trim() || null;
-		if (value !== row.note) void annotations.edit(row, { note: value });
+	// A highlight whose text is being chosen again (its ends moved): its ID while waiting.
+	let reselecting = $state<number | null>(null);
+	async function reselect(row: BookAnnotation) {
+		if (!controls) return;
+		reselecting = row.id;
+		await controls.reselect(row);
+		if (reselecting === row.id) reselecting = null;
 	}
 	function remove(row: BookAnnotation) {
 		if (confirm(t('books.annotations.delete_confirm'))) controls?.remove(row);
@@ -78,7 +92,7 @@
 							<span class="hint">{t('books.annotations.region')}</span>
 						{/if}
 					{:else}
-						<q>{row.quote ?? t('books.annotations.no_quote')}</q>
+						<q class:clamped={!selected}>{row.quote ?? t('books.annotations.no_quote')}</q>
 						{#if looksGarbled(row.quote)}<span class="garbled">{t('books.annotations.garbled')}</span>{/if}
 					{/if}
 					{#if techniqueName(row.technique)}<span class="technique">{techniqueName(row.technique)}</span>{/if}
@@ -92,10 +106,22 @@
 				</button>
 				{#if selected && editable(row)}
 					<div class="fields">
+						{#if row.kind === 'text'}
+							{#if reselecting === row.id}
+								<p class="hint" role="status">{t('books.annotations.reselect_hint', { n: row.page })}</p>
+								<button type="button" class="secondary" onclick={() => controls?.cancelReselect()}>
+									{t('books.annotations.reselect_cancel')}
+								</button>
+							{:else}
+								<button type="button" class="secondary reselect" onclick={() => reselect(row)}>
+									{t('books.annotations.reselect')}
+								</button>
+							{/if}
+						{/if}
 						{#if catalog}
 							<fieldset class="technique-picker">
 								<legend>{t('books.annotations.technique')}</legend>
-								<TechniquePicker bind:place {catalog} required={false} onchange={() => chosen(row)} />
+								<TechniquePicker bind:place {catalog} required={false} />
 							</fieldset>
 						{/if}
 						<label>
@@ -106,8 +132,8 @@
 							<button
 								type="button"
 								class="secondary"
-								disabled={note.trim() === (row.note ?? '')}
-								onclick={() => saveNote(row)}
+								disabled={!Object.keys(changes(row)).length}
+								onclick={() => save(row)}
 							>
 								{t('books.annotations.save')}
 							</button>
@@ -186,10 +212,23 @@
 		font-size: var(--text-xs);
 		color: var(--muted);
 	}
+	/* A preview's height: a quote's 6 lines, a region's picture the same. */
+	.annotations {
+		--preview-height: calc(6 * 1.5 * var(--text-sm));
+	}
 	q,
 	.note {
 		overflow-wrap: anywhere;
 		font-size: var(--text-sm);
+		line-height: 1.5;
+	}
+	/* Not selected: cut at the preview's height, ending with "…" (the whole quote once selected). */
+	q.clamped {
+		display: -webkit-box;
+		-webkit-box-orient: vertical;
+		-webkit-line-clamp: 6;
+		line-clamp: 6;
+		overflow: hidden;
 	}
 	/* A quote the PDF gave unreadable: said, in the error colour (a note, not an alert). */
 	.garbled {
@@ -202,10 +241,13 @@
 	}
 	img {
 		max-width: 100%;
-		max-height: 8rem;
+		max-height: var(--preview-height);
 		object-fit: contain;
 		justify-self: start;
 		border-radius: var(--radius-xs);
+	}
+	.reselect {
+		justify-self: start;
 	}
 	.fields {
 		display: grid;

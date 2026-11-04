@@ -42,7 +42,7 @@ or ID encoding (Base62/Sqids).
   `/api/admin/tags…` (`api/options.py`: GET definitions, POST, PUT `<id>` = the whole tag, DELETE).
   `book_mgmt` (roles `book_mgmt`, `content_mgmt`, admin) = Books menu entry (between Upload and Videos) + `(app)/books`
   (`+page.ts` checks it, loads `GET /api/books`: one grid, Chicago reference, delete of queued/failed by uploader or
-  `user_mgmt`) + `(app)/upload/book` (also `upload`: tusd's hooks check both; link at the end of the upload page) +
+  `user_mgmt`) + `$lib/books/BookUploadForm.svelte` at the end of the upload page (no route of its own; `#book`) +
   `api/books.py` (`/api/books/exists`, `POST`/`GET /api/books`, `DELETE /api/books/<id>`) + `/media/book/<id>[/thumbnail]`.
   Filter pane as on the Videos page (`$lib/books/FilterPane.svelte`, logic `$lib/books/filter.ts`: sort uploaded_at|title|
   author|year|pages (missing last, `Intl.Collator`), text in titles/names (`fold`: accents ignored), year + upload-day
@@ -58,7 +58,12 @@ or ID encoding (Base62/Sqids).
   tree mounts again); `onInitialized` imports the rows and subscribes once), `ViewerPages.svelte` (EmbedPDF's own tools
   `highlight` / `square`; the page's RenderLayer with `pointer-events: none` and the page `user-select: none` (an image
   drag or a native selection cancels the plugin's drags); `selectAfterCreate: false` and a tool chosen deselects first (a
-  drag would only deselect); zoom, page; `ViewerControls`), `annotations.svelte.ts` `BookAnnotations` (committed plugin events → API, one promise chain per PDF
+  drag would only deselect); square tool `strokeWidth` 3 (config `tools`); recolour = `strokeColor` for both kinds (a highlight's `color` is deprecated, never drawn; tests check the
+  drawn pixels: `tests/viewer.ts` `drawnColor`); a highlight re-targeted (`ViewerControls.reselect`:
+  plain selection, `onEndSelection` on its page → `updateAnnotation` rect/segmentRects/custom.text, annotation kept;
+  `.choosing-text #annotation-layer *` pointer-events none meanwhile: EmbedPDF has no handles on text markup); panel:
+  technique + note saved together by Save (both optional), quotes `-webkit-line-clamp: 6` until selected (the region
+  picture's height); zoom, page; `ViewerControls`), `annotations.svelte.ts` `BookAnnotations` (committed plugin events → API, one promise chain per PDF
   annotation id, imports' own create events ignored; quote = the highlight tool's `custom.text`, crop `cropOf` + `pictures.ts` tus "image" +
   `PUT /api/book-annotations/<id>/image`), `AnnotationList.svelte` (panel: `$lib/TechniquePicker.svelte`, shared with
   SegmentForm; `placeOf` in catalog.svelte.ts; note, colours from `colors.ts`, delete via the plugin). API

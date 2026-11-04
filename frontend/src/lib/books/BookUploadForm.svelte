@@ -1,21 +1,21 @@
 <script lang="ts">
-	// Upload a book (PDF): read on this device first (its page count, its own title and
-	// author, its first page as the thumbnail), then its reference and tags, then sent
-	// (tus) and queued; the server publishes it within seconds. Steps and state:
-	// $lib/books/upload.svelte.ts (BookUpload).
+	// Uploading a book (PDF), at the end of the upload page (the 'book_mgmt' access): read on
+	// this device first (its page count, its own title and author, its first page as the
+	// thumbnail), then its reference and tags, then sent (tus) and queued; the server
+	// publishes it within seconds. Steps and state: ./upload.svelte.ts (BookUpload).
 	import { beforeNavigate } from '$app/navigation';
-	import { url } from '#lib/base.js';
-	import { BookUpload } from '#lib/books/upload.svelte.js';
-	import ReferenceForm from '#lib/books/ReferenceForm.svelte';
-	import ErrorMessage from '#lib/ErrorMessage.svelte';
-	import { t } from '#lib/i18n.svelte.js';
-	import TagInput from '#lib/upload/TagInput.svelte';
-	import type { PageProps } from './$types';
+	import type { Tag } from '../api/types';
+	import { url } from '../base';
+	import ErrorMessage from '../ErrorMessage.svelte';
+	import { t } from '../i18n.svelte';
+	import TagInput from '../upload/TagInput.svelte';
+	import ReferenceForm from './ReferenceForm.svelte';
+	import { BookUpload } from './upload.svelte';
 
-	let { data }: PageProps = $props();
+	let { tags, maxBytes }: { tags: Tag[]; maxBytes: number | null } = $props();
 	// The largest PDF the page opened with (the server checks anyway).
 	// svelte-ignore state_referenced_locally
-	const flow = new BookUpload(data.maxBytes);
+	const flow = new BookUpload(maxBytes);
 	let input: HTMLInputElement | undefined = $state();
 
 	beforeNavigate(({ cancel, willUnload }) => {
@@ -34,11 +34,10 @@
 
 <svelte:window onbeforeunload={(e) => flow.busy && e.preventDefault()} />
 
-<div class="page">
-	<a class="back" href={url('/upload')}>← {t('upload.title')}</a>
-	<h1>{t('books.upload.title')}</h1>
-	<p class="hint intro">{t('books.upload.intro')}</p>
-	<ErrorMessage error={flow.error ?? data.error} />
+<section class="book-upload" id="book" aria-labelledby="book-upload-title">
+	<h2 id="book-upload-title">{t('books.upload.title')}</h2>
+	<p class="hint">{t('books.upload.intro')}</p>
+	<ErrorMessage error={flow.error} />
 	{#if flow.step === 'done'}
 		<p class="ok" role="status">
 			{t('books.upload.done')} <a href={url('/books')}>{t('books.upload.to_books')}</a>
@@ -73,7 +72,7 @@
 			</div>
 			<div class="form">
 				<ReferenceForm bind:draft={flow.draft} disabled={flow.step !== 'edit'} />
-				<TagInput available={data.tags} bind:value={flow.tags} label={t('books.upload.tags')} />
+				<TagInput available={tags} bind:value={flow.tags} label={t('books.upload.tags')} />
 				{#if flow.step !== 'edit'}
 					<label class="bar">
 						{t('books.upload.sending')}
@@ -95,24 +94,15 @@
 			</div>
 		</section>
 	{/if}
-</div>
+</section>
 
 <style>
-	.page {
-		max-width: 60rem;
-		margin: 0 auto;
+	.book-upload {
 		display: grid;
-		gap: var(--space-4);
+		gap: var(--space-3);
 	}
-	.back {
-		justify-self: start;
-	}
-	h1 {
-		text-align: center;
-		margin: 0;
-	}
-	.intro {
-		text-align: center;
+	h2 {
+		font-size: var(--text-lg);
 		margin: 0;
 	}
 	.card {

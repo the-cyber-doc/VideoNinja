@@ -1,9 +1,9 @@
 import { readFileSync } from 'node:fs';
 import { expect, test, type Page } from '@playwright/test';
 import type { BookRow, Tag } from '../../src/lib/api/types';
-import { CATALOG } from '../catalog';
+import { CATALOG, KOKU } from '../catalog';
 import { pdfAnnotations } from '../pdf-annotations';
-import { drag, pageBox } from '../viewer';
+import { bluish, drag, drawnColor, pageBox, yellowish } from '../viewer';
 
 // A 1×1 PNG (the books' thumbnails).
 const PNG = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFBQIAX8jx0gAAAABJRU5ErkJggg==';
@@ -106,25 +106,23 @@ async function uploading(page: Page, user: object = BOOKS) {
 	return fake;
 }
 
-test('the upload page offers books at its end, only with book_mgmt', async ({ page }) => {
+test('the upload page ends with the book upload form, only with book_mgmt', async ({ page }) => {
 	await uploading(page);
 	await page.goto('/upload');
-	const link = page.getByRole('link', { name: 'Upload a book (PDF)' });
-	await expect(link).toHaveAttribute('href', '/upload/book');
-	await link.click();
-	await expect(page.getByRole('heading', { name: 'Upload a book', level: 1 })).toBeVisible();
+	const form = page.getByRole('region', { name: 'Upload a book' });
+	await expect(form.getByLabel('Choose a PDF file')).toBeVisible(); // the form itself, no link to it
+	const headings = await page.getByRole('heading').allTextContents();
+	expect(headings.at(-1)).toBe('Upload a book');
 
 	await uploading(page, { ...BOOKS, role: 'uploader', access: ['upload'] });
 	await page.goto('/upload');
 	await expect(page.getByRole('heading', { name: 'Upload a video', level: 1 })).toBeVisible();
-	await expect(page.getByRole('link', { name: 'Upload a book (PDF)' })).toHaveCount(0);
-	await page.goto('/upload/book');
-	await expect(page).toHaveURL('/');
+	await expect(page.getByRole('region', { name: 'Upload a book' })).toHaveCount(0);
 });
 
 test('a PDF read here: its title, author and first page; the reference; uploaded, then queued', async ({ page }) => {
 	const fake = await uploading(page);
-	await page.goto('/upload/book');
+	await page.goto('/upload');
 	await page.getByLabel('Choose a PDF file').setInputFiles(PDF);
 
 	// What the PDF says about itself, and its first page (rendered by EmbedPDF's PDFium).
@@ -154,7 +152,7 @@ test('a PDF read here: its title, author and first page; the reference; uploaded
 	await page.getByRole('button', { name: 'Add', exact: true }).click();
 
 	await page.getByRole('button', { name: 'Upload', exact: true }).click();
-	await expect(page.getByRole('status')).toContainText('Uploaded: the book is published in a few seconds.');
+	await expect(page.getByText('Uploaded: the book is published in a few seconds.')).toBeVisible();
 	await expect(page.getByRole('link', { name: 'See the books' })).toHaveAttribute('href', '/books');
 	expect(fake.tus.map((r) => `${r.method} ${r.kind ?? ''}`.trim())).toEqual([
 		'POST book',
@@ -184,7 +182,7 @@ test('a PDF read here: its title, author and first page; the reference; uploaded
 test('a book already on the server, a file that is not a PDF: said at once', async ({ page }) => {
 	const fake = await uploading(page);
 	fake.exists = true;
-	await page.goto('/upload/book');
+	await page.goto('/upload');
 	await page.getByLabel('Choose a PDF file').setInputFiles(PDF);
 	await expect(page.getByRole('alert')).toHaveText('This book is already on the server.');
 	await page.getByLabel('Choose a PDF file').setInputFiles({
@@ -248,7 +246,7 @@ test('no book yet: the way to upload one', async ({ page }) => {
 	await uploading(page);
 	await page.goto('/books');
 	await expect(page.getByText('No book yet.')).toBeVisible();
-	await expect(page.getByRole('link', { name: 'Upload a book (PDF)' })).toHaveAttribute('href', '/upload/book');
+	await expect(page.getByRole('link', { name: 'Upload a book (PDF)' })).toHaveAttribute('href', '/upload#book');
 });
 
 // --- filter and sort ---
@@ -430,6 +428,7 @@ test('a book opened: the PDF shown, a highlight and a region saved, the first pa
 	await drag(page, [box.x + 60 * pt, box.y + 115 * pt], [box.x + 300 * pt, box.y + 180 * pt]);
 	await expect.poll(() => saved.created.length, { timeout: 10_000 }).toBe(2);
 	expect(saved.created[1]).toMatchObject({ page: 1, kind: 'region' });
+	expect(JSON.parse((saved.created[1] as { target: string }).target).strokeWidth).toBe(3); // half the default
 	await expect.poll(() => saved.images, { timeout: 10_000 }).toEqual([102]);
 	await expect(page.locator('section.annotations li')).toHaveCount(2);
 
@@ -447,7 +446,8 @@ test('saved annotations shown; the selected one gets a note, a colour, or is del
 		pageIndex: 0,
 		rect: { origin: { x: 60, y: 78 }, size: { width: 141, height: 23 } },
 		segmentRects: [{ origin: { x: 60, y: 78 }, size: { width: 141, height: 23 } }],
-		color: '#FFCD45',
+		strokeColor: '#FFCD45', // what the highlight tool writes: the colour drawn…
+		color: '#FFCD45', // …and EmbedPDF's deprecated name, never drawn
 		opacity: 0.5,
 		author: 'Aiko'
 	};
@@ -455,7 +455,10 @@ test('saved annotations shown; the selected one gets a note, a colour, or is del
 		annotationRow(5, { ...HIGHLIGHT_ROW, target: JSON.stringify(target), quote: 'Togakure-ryu', color: '#FFCD45' })
 	]);
 	await page.goto('/books/7');
-	await pageBox(page);
+	const box = await pageBox(page);
+	const pt = box.width / 420; // the fixture's page: 420 pt wide
+	const marked = { x: box.x + 60 * pt + 3, y: box.y + 78 * pt + 3, width: 141 * pt - 6, height: 23 * pt - 6 };
+	await expect.poll(() => drawnColor(page, marked).then(yellowish)).toBe(true);
 	const item = page.locator('section.annotations li[data-id="5"]');
 	await expect(item).toContainText('Togakure-ryu');
 	await expect(item).toContainText('By Aiko');
@@ -465,6 +468,9 @@ test('saved annotations shown; the selected one gets a note, a colour, or is del
 	await expect.poll(() => saved.changed.at(-1)?.body).toEqual({ note: 'The first school' });
 	await item.getByRole('button', { name: 'Blue' }).click();
 	await expect.poll(() => saved.changed.at(-1)?.body.color).toBe('#60A5FA');
+	expect(JSON.parse(saved.changed.at(-1)!.body.target as string).strokeColor).toBe('#60A5FA'); // as the PDF holds it
+	await expect(item.getByRole('button', { name: 'Blue' })).toHaveAttribute('aria-pressed', 'true');
+	await expect.poll(() => drawnColor(page, marked).then(bluish)).toBe(true); // drawn blue, not only saved
 	page.once('dialog', (d) => d.accept());
 	await item.getByRole('button', { name: 'Delete the annotation' }).click();
 	await expect.poll(() => saved.deleted).toEqual([5]);
@@ -695,4 +701,60 @@ test('a quote the PDF gives garbled (a font without its map): said in the panel 
 	await expect(page.getByRole('article', { name: 'An annotation from a book' })).toContainText(
 		'The book’s text could not be read here'
 	);
+});
+
+test('an annotation saved with a technique and no note (a note is optional)', async ({ page }) => {
+	const saved = await viewing(page, [annotationRow(5, { ...SAVED_ROW, note: null, technique: null })]);
+	await page.route('/api/catalog', (r) => r.fulfill({ json: { ...CATALOG, segments: [] } }));
+	await page.goto('/books/7');
+	await pageBox(page);
+	const item = page.locator('section.annotations li[data-id="5"]');
+	await item.getByRole('button', { name: /Page 1/ }).click();
+	const save = item.getByRole('button', { name: 'Save', exact: true });
+	await expect(save).toBeDisabled(); // nothing changed yet
+	await item.getByLabel('School').selectOption('gyokko');
+	await item.getByLabel('Scroll or form').selectOption('gyokko.taijutsu.jo_ryaku');
+	await item.getByLabel('Technique').selectOption(KOKU);
+	await save.click();
+	await expect.poll(() => saved.changed.at(-1)?.body).toEqual({ technique: KOKU });
+});
+
+test('a highlight given other text without deleting it: its ends moved, its quote changed', async ({ page }) => {
+	const saved = await viewing(page, [annotationRow(5, { ...SAVED_ROW, quote: 'Togakure-ryu' })]);
+	await page.goto('/books/7');
+	const box = await pageBox(page);
+	const pt = box.width / 420;
+	const item = page.locator('section.annotations li[data-id="5"]');
+	await item.getByRole('button', { name: /Page 1/ }).click();
+	await item.getByRole('button', { name: 'Change the highlighted text' }).click();
+	await expect(item.getByRole('status')).toContainText('Select the new text on page 1');
+	await drag(page, [box.x + 62 * pt, box.y + 90 * pt], [box.x + 140 * pt, box.y + 90 * pt]); // part of the title
+	await expect.poll(() => saved.changed.length, { timeout: 10_000 }).toBeGreaterThan(0);
+	const change = saved.changed.at(-1)!;
+	expect(change.id).toBe(5);
+	expect(change.body.quote).toMatch(/^Toga/); // part of the title only
+	expect(change.body.quote).not.toBe('Togakure-ryu');
+	expect(JSON.parse(change.body.target as string).id).toBe('saved-1'); // the same annotation
+	expect(saved.deleted).toEqual([]);
+	await expect(item.getByRole('button', { name: 'Change the highlighted text' })).toBeVisible();
+});
+
+test('a quote cut, not selected, at a region picture’s height, ending with “…”; whole once selected', async ({
+	page
+}) => {
+	const long = 'Togakure-ryu '.repeat(60).trim();
+	await viewing(page, [annotationRow(5, { ...SAVED_ROW, quote: long })]);
+	await page.goto('/books/7');
+	await pageBox(page);
+	const quote = page.locator('section.annotations li[data-id="5"] q');
+	const lines = () => quote.evaluate((q) => getComputedStyle(q).webkitLineClamp);
+	await expect.poll(lines).toBe('6');
+	const height = await quote.evaluate((q) => q.getBoundingClientRect().height);
+	const fontSize = await quote.evaluate((q) => parseFloat(getComputedStyle(q).fontSize));
+	expect(height).toBeLessThanOrEqual(6 * 1.5 * fontSize + 1);
+	await page
+		.locator('section.annotations li[data-id="5"]')
+		.getByRole('button', { name: /Page 1/ })
+		.click();
+	await expect.poll(lines).toBe('none');
 });
