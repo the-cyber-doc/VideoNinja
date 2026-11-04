@@ -551,8 +551,13 @@ the encoder waits for the version; `/health` fails on a mismatch.
 - e2e on the real containers: `tools/test-e2e-stack.sh [--images X.Y.Z]` (throwaway instance: empty DB,
   folders, key in a temp dir; compose project `videoninja-e2e`; token from the api log). Playwright:
   `E2E_BASE_URL` → only projects `e2e` + `options` + `videos` + `stack` (tests/stack: upload → tusd → encoder → nginx
-  clip, thumbnails, /health, a used tag value refused on the Options page; books.spec: a PDF → tusd → encoder → nginx
-  attachment + thumbnail, 403 without `book_mgmt`), no webServer; `E2E_SETUP_TOKEN`.
+  clip, thumbnails, /health, a used tag value refused on the Options page; books.spec, serial, every books feature: two
+  uploads (text PDF; Japanese manuscript without fonts → fallback font from nginx, font/otf), PDF attachment + thumbnail,
+  Books page filter/sort/search, viewer highlight + region (crop through tusd → encoder → nginx), technique/note/colour,
+  comments, reference edit, annotated download read back (`tests/pdf-annotations.ts`), plain user (403s, no Books,
+  technique notes without the link, crop shown), "Open in the book", annotation deleted (crop 404). Viewer helpers
+  `drag`/`pageBox` in `tests/viewer.ts`. Not on the stack: a failed or queued book (published in seconds), a thumbnail
+  made again (needs a book without one): mocked/unit tests), no webServer; `E2E_SETUP_TOKEN`.
   e2e paths are relative to the base URL ('login', './'). Project `e2e` = tests/e2e/account.spec.ts only
   (`E2E_FIRST`), project `options` = the other tests/e2e specs (depends on `e2e`), `videos` =
   tests/stack/videos.spec.ts (`STACK_VIDEOS`; depends on both: two uploaders registered through the API upload

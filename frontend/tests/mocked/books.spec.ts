@@ -3,6 +3,7 @@ import { expect, test, type Page } from '@playwright/test';
 import type { BookRow, Tag } from '../../src/lib/api/types';
 import { CATALOG } from '../catalog';
 import { pdfAnnotations } from '../pdf-annotations';
+import { drag, pageBox } from '../viewer';
 
 // A 1×1 PNG (the books' thumbnails).
 const PNG = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFBQIAX8jx0gAAAABJRU5ErkJggg==';
@@ -403,24 +404,6 @@ const annotationRow = (id: number, body: Record<string, unknown>) => ({
 	mine: true
 });
 const VIEWER_CATALOG = { schools: [], categories: [], weapons: [], sections: [], techniques: [], segments: [] };
-
-/** A drag as a person makes it: pointer moves a frame apart (the viewer follows them per frame). */
-async function drag(page: Page, from: [number, number], to: [number, number], steps = 12) {
-	await page.mouse.move(...from);
-	await page.mouse.down();
-	for (let i = 1; i <= steps; i++) {
-		await page.mouse.move(from[0] + ((to[0] - from[0]) * i) / steps, from[1] + ((to[1] - from[1]) * i) / steps);
-		await page.waitForTimeout(30);
-	}
-	await page.mouse.up();
-}
-
-async function pageBox(page: Page) {
-	const sheet = page.locator('.page[data-page="1"]');
-	await expect(sheet).toBeVisible({ timeout: 20_000 });
-	await expect(sheet.locator('img').first()).toBeVisible({ timeout: 20_000 }); // rendered
-	return (await sheet.boundingBox())!;
-}
 
 test('a book opened: the PDF shown, a highlight and a region saved, the first page made again', async ({ page }) => {
 	const saved = await viewing(page, [], { has_thumbnail: false });
