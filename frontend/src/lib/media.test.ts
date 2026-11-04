@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import * as about from './about';
 import type { Segment } from './catalog.svelte';
 import {
+	annotationImageUrl,
 	bookThumbnailUrl,
 	bookUrl,
 	clipUrl,
@@ -26,6 +27,7 @@ describe('media URLs', () => {
 		]);
 		expect(segmentDuration(segment)).toBe(15);
 		expect([bookUrl(3), bookThumbnailUrl(3)]).toEqual(['/media/book/3', '/media/book/3/thumbnail']);
+		expect(annotationImageUrl(5)).toBe('/media/book-annotation/5/image');
 	});
 });
 

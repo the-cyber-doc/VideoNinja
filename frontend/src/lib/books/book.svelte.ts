@@ -16,7 +16,7 @@ export interface BookPageDeps {
 	editBook: typeof books.editBook;
 	replaceThumbnail: typeof books.replaceThumbnail;
 	uploadPicture: typeof uploadPicture;
-	annotations: Omit<AnnotationDeps, 'quote' | 'crop' | 'upload'>;
+	annotations: Omit<AnnotationDeps, 'crop' | 'upload'>;
 }
 
 export const DEPS: BookPageDeps = {
@@ -86,7 +86,6 @@ export class BookPage {
 		this.book = book;
 		this.annotations = new BookAnnotations(book.id, rows, {
 			...deps.annotations,
-			quote: async (pageIndex, rects) => (await this.controls?.quote(pageIndex, rects)) ?? null,
 			crop: async (pageIndex, rect) => (await this.controls?.crop(pageIndex, rect)) ?? null,
 			upload: (picture) => deps.uploadPicture(picture, `annotation-${book.id}.jpg`)
 		});

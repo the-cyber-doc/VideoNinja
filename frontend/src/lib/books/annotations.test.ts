@@ -6,6 +6,7 @@ import type { BookAnnotation } from '../api/types';
 import {
 	BookAnnotations,
 	HIGHLIGHT,
+	QUOTE_MAX,
 	revive,
 	SQUARE,
 	uidOf,
@@ -21,6 +22,7 @@ const highlight = (id = 'h1', more: Partial<PdfAnnotation> = {}): PdfAnnotation 
 	rect: RECT,
 	segmentRects: [RECT],
 	color: '#FFCD45',
+	custom: { text: ' Togakure-ryū\n' },
 	...more
 });
 const region = (id = 'r1', more: Partial<PdfAnnotation> = {}): PdfAnnotation => ({
@@ -60,7 +62,6 @@ function fakes(over: Partial<AnnotationDeps> = {}) {
 		change: vi.fn(async (id, body) => row(id, JSON.parse(body.target ?? JSON.stringify(highlight())), body as never)),
 		remove: vi.fn(async () => undefined),
 		attachImage: vi.fn(async () => undefined),
-		quote: vi.fn(async () => 'Togakure-ryū'),
 		crop: vi.fn(async () => new Blob(['jpeg'])),
 		upload: vi.fn(async () => 'tus-1'),
 		...over
@@ -95,13 +96,12 @@ describe('saved annotations', () => {
 });
 
 describe('new annotations', () => {
-	it('a highlight: its page, its quote, its colour; selected', async () => {
+	it('a highlight: its page, its quote (the text the tool selected), its colour; selected', async () => {
 		const deps = fakes();
 		const annotations = new BookAnnotations(7, [], deps);
 		annotations.handle(committed('create', highlight()));
 		expect([annotations.pending, annotations.selectedUid]).toEqual([1, 'h1']);
 		await annotations.settled();
-		expect(deps.quote).toHaveBeenCalledWith(2, [RECT]);
 		expect(deps.create).toHaveBeenCalledWith(7, {
 			page: 3,
 			kind: 'text',
@@ -117,16 +117,15 @@ describe('new annotations', () => {
 		const annotations = new BookAnnotations(7, [], deps);
 		annotations.handle(committed('create', region()));
 		await annotations.settled();
-		expect(deps.quote).not.toHaveBeenCalled();
 		expect(deps.create).toHaveBeenCalledWith(7, expect.objectContaining({ kind: 'region', color: '#E11D48' }));
 		expect(deps.upload).toHaveBeenCalled();
 		expect(deps.attachImage).toHaveBeenCalledWith(11, 'tus-1');
 	});
 
 	it('no quote found, no colour of ours, no crop rendered: saved without them', async () => {
-		const deps = fakes({ quote: async () => null, crop: async () => null });
+		const deps = fakes({ crop: async () => null });
 		const annotations = new BookAnnotations(7, [], deps);
-		annotations.handle(committed('create', highlight('h1', { color: 'yellow', segmentRects: undefined })));
+		annotations.handle(committed('create', highlight('h1', { color: 'yellow', custom: { text: '  ' } })));
 		annotations.handle(committed('create', region('r1', { strokeColor: undefined })));
 		await annotations.settled();
 		const bodies = (deps.create as ReturnType<typeof vi.fn>).mock.calls.map((c) => c[1]);
@@ -152,7 +151,7 @@ describe('new annotations', () => {
 });
 
 describe('changes', () => {
-	it('moved text: its new place, page and quote; a colour of ours kept, another not', async () => {
+	it('moved: its new place and page; a colour of ours kept, another not', async () => {
 		const deps = fakes();
 		const annotations = new BookAnnotations(7, [row(5, highlight())], deps);
 		const moved = highlight('h1', { pageIndex: 3, rect: { ...RECT, origin: { x: 5, y: 5 } }, color: '#60A5FA' });
@@ -161,13 +160,12 @@ describe('changes', () => {
 		expect(deps.change).toHaveBeenCalledWith(5, {
 			target: JSON.stringify(moved),
 			page: 4,
-			color: '#60A5FA',
-			quote: 'Togakure-ryū'
+			color: '#60A5FA'
 		});
 		annotations.handle(committed('update', highlight('h1', { pageIndex: 3, rect: moved.rect, color: 'red' })));
 		await annotations.settled();
 		const last = (deps.change as ReturnType<typeof vi.fn>).mock.calls.at(-1)![1];
-		expect([last.color, 'quote' in last]).toEqual([undefined, false]); // not moved: no new quote
+		expect(last.color).toBeUndefined();
 	});
 
 	it('a region moved: a new crop; recoloured only: none', async () => {
@@ -182,13 +180,14 @@ describe('changes', () => {
 		expect((deps.change as ReturnType<typeof vi.fn>).mock.calls[1][1]).not.toHaveProperty('quote');
 	});
 
-	it('a highlight moved without its line rectangles: the box is quoted', async () => {
+	it('a long quote kept to the server’s limit; no text selected: none', async () => {
 		const deps = fakes();
-		const annotations = new BookAnnotations(7, [row(5, highlight())], deps);
-		const moved = highlight('h1', { rect: { ...RECT, origin: { x: 1, y: 1 } }, segmentRects: undefined });
-		annotations.handle(committed('update', moved));
+		const annotations = new BookAnnotations(7, [], deps);
+		annotations.handle(committed('create', highlight('h1', { custom: { text: 'x'.repeat(QUOTE_MAX + 9) } })));
+		annotations.handle(committed('create', highlight('h2', { custom: undefined })));
 		await annotations.settled();
-		expect(deps.quote).toHaveBeenCalledWith(2, [moved.rect]);
+		const bodies = (deps.create as ReturnType<typeof vi.fn>).mock.calls.map((c) => c[1]);
+		expect([bodies[0].quote.length, bodies[1].quote]).toEqual([QUOTE_MAX, undefined]);
 	});
 
 	it('deleted: the row goes, the selection too', async () => {

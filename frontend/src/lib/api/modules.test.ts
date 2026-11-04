@@ -139,7 +139,33 @@ const CALLS: [string, () => Promise<unknown>, string, string, unknown][] = [
 		'/api/books',
 		{ upload: 'u', original_filename: 'd.pdf', reference: { type: 'book', title: 'T' }, tags: [] }
 	],
-	['delete book', () => books.deleteBook(3), 'DELETE', '/api/books/3', undefined]
+	['delete book', () => books.deleteBook(3), 'DELETE', '/api/books/3', undefined],
+	['book', () => books.getBook(3), 'GET', '/api/books/3', undefined],
+	[
+		'edit book',
+		() => books.editBook(3, { reference: { type: 'book', title: 'T' }, tags: [] }),
+		'PUT',
+		'/api/books/3',
+		{ reference: { type: 'book', title: 'T' }, tags: [] }
+	],
+	['replace thumbnail', () => books.replaceThumbnail(3, 'u'), 'PUT', '/api/books/3/thumbnail', { upload: 'u' }],
+	['annotations', () => books.listAnnotations(3), 'GET', '/api/books/3/annotations', undefined],
+	[
+		'create annotation',
+		() => books.createAnnotation(3, { page: 1, kind: 'text', target: '{}' }),
+		'POST',
+		'/api/books/3/annotations',
+		{ page: 1, kind: 'text', target: '{}' }
+	],
+	[
+		'change annotation',
+		() => books.changeAnnotation(4, { note: 'n' }),
+		'PATCH',
+		'/api/book-annotations/4',
+		{ note: 'n' }
+	],
+	['delete annotation', () => books.deleteAnnotation(4), 'DELETE', '/api/book-annotations/4', undefined],
+	['attach image', () => books.attachImage(4, 'u'), 'PUT', '/api/book-annotations/4/image', { upload: 'u' }]
 ];
 
 describe('API modules', () => {

@@ -113,7 +113,6 @@
 										class="swatch"
 										style:--swatch={color.value}
 										aria-label={t(`books.annotations.color.${color.id}` as MessageKey)}
-										title={t(`books.annotations.color.${color.id}` as MessageKey)}
 										aria-pressed={row.color?.toUpperCase() === color.value}
 										onclick={() => controls?.recolor(row, color.value)}
 									></button>

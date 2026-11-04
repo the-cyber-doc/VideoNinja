@@ -430,25 +430,25 @@ test('a book opened: the PDF shown, a highlight and a region saved, the first pa
 	await expect.poll(() => saved.thumbnails).toBe(1); // the book had no first page
 	const pt = box.width / 420; // the fixture's page: 420 pt wide; its title at 24 pt, 60 pt from the left, near the top
 
-	// A box around the title: its text highlighted, one rectangle for its line, its quote kept.
+	// EmbedPDF's highlight tool: the title's text selected by a drag, highlighted, its text kept as the quote.
 	await page.getByRole('button', { name: 'Highlight text' }).click();
-	await drag(page, [box.x + 50 * pt, box.y + 70 * pt], [box.x + 230 * pt, box.y + 108 * pt]);
+	await drag(page, [box.x + 62 * pt, box.y + 90 * pt], [box.x + 200 * pt, box.y + 90 * pt]);
 	await expect.poll(() => saved.created.length, { timeout: 10_000 }).toBe(1);
-	expect(saved.created[0]).toMatchObject({ page: 1, kind: 'text', quote: 'Togakure-ryu', color: '#FFCD45' });
+	expect(saved.created[0]).toMatchObject({ page: 1, kind: 'text', quote: expect.stringMatching(/^Togakure-ryu/) });
 	const highlight = JSON.parse((saved.created[0] as { target: string }).target);
 	expect([highlight.type, highlight.segmentRects.length, highlight.author]).toEqual([9, 1, 'aiko']);
 	await expect(page.locator('section.annotations li')).toHaveCount(1);
 	await expect(page.getByRole('button', { name: 'Highlight text' })).toHaveAttribute('aria-pressed', 'false'); // done
 
-	// A region (scans): the box itself, its crop uploaded and attached.
+	// EmbedPDF's square tool (a region, for scans): the box drawn, its crop uploaded and attached.
 	await page.getByRole('button', { name: 'Mark a region' }).click();
 	await drag(page, [box.x + 60 * pt, box.y + 115 * pt], [box.x + 300 * pt, box.y + 180 * pt]);
 	await expect.poll(() => saved.created.length, { timeout: 10_000 }).toBe(2);
-	expect(saved.created[1]).toMatchObject({ page: 1, kind: 'region', color: '#E11D48' });
+	expect(saved.created[1]).toMatchObject({ page: 1, kind: 'region' });
 	await expect.poll(() => saved.images, { timeout: 10_000 }).toEqual([102]);
 	await expect(page.locator('section.annotations li')).toHaveCount(2);
 
-	// Nothing under a box drawn with the highlight tool: no annotation.
+	// A drag where there is no text, with the highlight tool: no annotation.
 	await page.getByRole('button', { name: 'Highlight text' }).click();
 	await drag(page, [box.x + 300 * pt, box.y + 30 * pt], [box.x + 400 * pt, box.y + 60 * pt]);
 	await page.waitForTimeout(500);

@@ -47,8 +47,23 @@ or ID encoding (Base62/Sqids).
   Filter pane as on the Videos page (`$lib/books/FilterPane.svelte`, logic `$lib/books/filter.ts`: sort uploaded_at|title|
   author|year|pages (missing last, `Intl.Collator`), text in titles/names (`fold`: accents ignored), year + upload-day
   ranges, authors/editors, types, languages (`Intl.DisplayNames`), publishers, uploaders, tags; localStorage `books.filter`;
-  one grid, no sections). Next (plan): EmbedPDF viewer + annotations + annotated download, missing thumbnails made again,
-  technique-page notes.
+  one grid, no sections). `(app)/books/[id]` (`+page.ts`: book, annotations if published, tags): `$lib/books/book.svelte.ts`
+  `BookPage` (PDF fetched once with progress, `downloadPdf`; reference edit `PUT /api/books/<id>`; no thumbnail → page 1
+  rendered and `PUT /api/books/<id>/thumbnail`, once per visit), `Viewer.svelte` (EmbedPDF plugins 2.15.1 exact: document
+  manager from the buffer, `permissions: {enforceDocumentPermissions: false}`, engine `worker: false` (a blob: worker is
+  refused by the CSP, kept as is), active document read from `context.coreState` (EmbedPDF's shortcut misses one opened at
+  start); rendered only once `pluginsReady`, `autoMountDomElements={false}` (else EmbedPDF switches branches and our
+  tree mounts again); `onInitialized` imports the rows and subscribes once), `ViewerPages.svelte` (EmbedPDF's own tools
+  `highlight` / `square`; the page's RenderLayer with `pointer-events: none` and the page `user-select: none` (an image
+  drag or a native selection cancels the plugin's drags); `selectAfterCreate: false` and a tool chosen deselects first (a
+  drag would only deselect); zoom, page; `ViewerControls`), `annotations.svelte.ts` `BookAnnotations` (committed plugin events → API, one promise chain per PDF
+  annotation id, imports' own create events ignored; quote = the highlight tool's `custom.text`, crop `cropOf` + `pictures.ts` tus "image" +
+  `PUT /api/book-annotations/<id>/image`), `AnnotationList.svelte` (panel: `$lib/TechniquePicker.svelte`, shared with
+  SegmentForm; `placeOf` in catalog.svelte.ts; note, colours from `colors.ts`, delete via the plugin). API
+  `api/book_annotations.py` (GET/POST `/api/books/<id>/annotations`, PATCH/DELETE `/api/book-annotations/<id>`: own or
+  `moderator`, `target` = JSON text, codes `book_annotation.*`), crops `/media/book-annotation/<id>/image` (every user);
+  encoder `books.run_pictures` (thumbnails then crops `note-<id>.jpg`) + `sweep_orphans` (every 10 min). Next (plan):
+  comments on annotations + annotated download (4b), technique-page notes (5).
   `video_mgmt` (role `video_mgmt` = every access but `user_mgmt`, `moderator`, `options` and `book_mgmt`; admins and
   `content_mgmt` too) =
   Videos page: `GET /api/videos` (+ `uploaded_by` display name, the video's own `tags`), `GET`/`PUT /api/videos/<id>/annotations`

@@ -57,7 +57,6 @@ const controls = (over: Partial<ViewerControls> = {}): ViewerControls => ({
 	select: vi.fn(),
 	remove: vi.fn(),
 	recolor: vi.fn(),
-	quote: vi.fn(async () => 'quoted'),
 	crop: vi.fn(async () => new Blob(['crop'])),
 	firstPage: vi.fn(async () => new Blob(['jpeg'])),
 	...over
@@ -106,19 +105,17 @@ describe('BookPage', () => {
 		expect((failing.error as ApiError).status).toBe(404);
 	});
 
-	it('its annotations quote, crop and upload through the viewer once ready', async () => {
+	it('its annotations crop and upload through the viewer once ready', async () => {
 		const deps = fakes();
 		const page = new BookPage(BOOK, [], deps);
 		const annotationDeps = (page.annotations as unknown as { deps: Record<string, (...a: unknown[]) => unknown> }).deps;
-		expect(await annotationDeps.quote(0, [])).toBeNull(); // no viewer yet
-		expect(await annotationDeps.crop(0, {})).toBeNull();
+		expect(await annotationDeps.crop(0, {})).toBeNull(); // no viewer yet
 		await page.ready(controls());
-		expect(await annotationDeps.quote(0, [])).toBe('quoted');
 		expect(await annotationDeps.crop(0, {})).toEqual(new Blob(['crop']));
 		await annotationDeps.upload(new Blob(['x']));
 		expect(deps.uploadPicture).toHaveBeenCalledWith(new Blob(['x']), 'annotation-7.jpg');
-		await page.ready(controls({ quote: async () => null })); // ready again: the latest helpers
-		expect(await annotationDeps.quote(0, [])).toBeNull();
+		await page.ready(controls({ crop: async () => null })); // ready again: the latest helpers
+		expect(await annotationDeps.crop(0, {})).toBeNull();
 		expect(deps.replaceThumbnail).not.toHaveBeenCalled(); // it has its first page
 	});
 

@@ -2,7 +2,8 @@
 // annotation plugin. The plugin holds them in the browser's copy of the PDF only (that
 // copy is never sent): every change it commits (create, update, delete) is saved here,
 // one row per PDF annotation (`target`: the annotation object as JSON). A text highlight
-// keeps its quote; a region gets its crop (a JPEG, its own upload, published by the
+// keeps its quote (the text the plugin's highlight tool selected: `custom.text`); a region
+// gets its crop (a JPEG, its own upload, published by the
 // server). The note and technique are the panel's (never the plugin's). Changes to one
 // annotation are sent in order (one chain each). Its dependencies are passed in: tests
 // give fakes.
@@ -18,6 +19,8 @@ export interface PdfAnnotation {
 	segmentRects?: Rect[];
 	color?: string;
 	strokeColor?: string;
+	/** The highlight tool's: the text selected. */
+	custom?: { text?: string };
 	created?: Date | string;
 	modified?: Date | string;
 	[key: string]: unknown;
@@ -41,8 +44,6 @@ export interface AnnotationDeps {
 	change: typeof books.changeAnnotation;
 	remove: typeof books.deleteAnnotation;
 	attachImage: typeof books.attachImage;
-	/** The text under a highlight's rectangles (null: none found, e.g. a scan). */
-	quote: (pageIndex: number, rects: Rect[]) => Promise<string | null>;
 	/** A region of a page as a JPEG (null: not rendered). */
 	crop: (pageIndex: number, rect: Rect) => Promise<Blob | null>;
 	/** A picture uploaded (tus, kind "image"); its tus ID. */
@@ -50,6 +51,9 @@ export interface AnnotationDeps {
 }
 
 const DATES = ['created', 'modified'] as const;
+/** Longest quote kept (the server's annotation_quote rule). */
+export const QUOTE_MAX = 4000;
+const quoteOf = (a: PdfAnnotation) => a.custom?.text?.replace(/\s+/g, ' ').trim().slice(0, QUOTE_MAX) || null;
 
 /** A stored target back as the plugin's object (dates as Date). */
 export function revive(target: string): PdfAnnotation {
@@ -149,10 +153,8 @@ export class BookAnnotations {
 			target: JSON.stringify(a),
 			...(color && COLOR.test(color) && { color })
 		};
-		if (kind === 'text') {
-			const quote = await this.deps.quote(a.pageIndex, a.segmentRects ?? [a.rect]);
-			if (quote) body.quote = quote;
-		}
+		const quote = kind === 'text' ? quoteOf(a) : null;
+		if (quote) body.quote = quote;
 		try {
 			const row = await this.deps.create(this.bookId, body);
 			this.#replace(row);
@@ -173,7 +175,6 @@ export class BookAnnotations {
 		const color = colorOf(a);
 		if (color && COLOR.test(color)) change.color = color;
 		const moved = !sameRect(before.rect, a.rect) || before.pageIndex !== a.pageIndex;
-		if (moved && row.kind === 'text') change.quote = await this.deps.quote(a.pageIndex, a.segmentRects ?? [a.rect]);
 		this.#replace(await this.deps.change(row.id, change));
 		if (moved && row.kind === 'region') await this.#crop(row.id, a);
 	}

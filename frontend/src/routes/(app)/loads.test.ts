@@ -15,7 +15,9 @@ const api = vi.hoisted(() => ({
 	listTagDefinitions: vi.fn(),
 	uploadLimits: vi.fn(),
 	uploadsAvailable: vi.fn(),
-	listBooks: vi.fn()
+	listBooks: vi.fn(),
+	getBook: vi.fn(),
+	listAnnotations: vi.fn()
 }));
 vi.mock('#lib/api/setup.js', () => ({ isInitialized: api.isInitialized }));
 vi.mock('#lib/api/auth.js', () => ({ currentUser: api.currentUser }));
@@ -23,7 +25,11 @@ vi.mock('#lib/api/users.js', () => ({ listUsers: api.listUsers, listRoles: api.l
 vi.mock('#lib/api/performers.js', () => ({ listPerformers: api.listPerformers }));
 vi.mock('#lib/api/tags.js', () => ({ listTags: api.listTags, listTagDefinitions: api.listTagDefinitions }));
 vi.mock('#lib/api/uploads.js', () => ({ uploadLimits: api.uploadLimits, uploadsAvailable: api.uploadsAvailable }));
-vi.mock('#lib/api/books.js', () => ({ listBooks: api.listBooks }));
+vi.mock('#lib/api/books.js', () => ({
+	listBooks: api.listBooks,
+	getBook: api.getBook,
+	listAnnotations: api.listAnnotations
+}));
 
 const { load: layout } = await import('./+layout');
 const { load: usersPage } = await import('./admin/users/+page');
@@ -31,6 +37,7 @@ const { load: uploadPage } = await import('./upload/+page');
 const { load: codecsPage } = await import('./upload/codecs/+page');
 const { load: booksPage } = await import('./books/+page');
 const { load: bookUploadPage } = await import('./upload/book/+page');
+const { load: bookPage } = await import('./books/[id]/+page');
 const { load: optionsPage } = await import('./options/+page');
 const root = await import('../+layout');
 
@@ -158,6 +165,41 @@ describe('books page', () => {
 		expect(await booksPage(event({ user: user('book_mgmt') }).event)).toEqual({ books: [], tags: [], error: failure });
 		expect(await redirectOf(booksPage(event({ user: user('video_mgmt') }).event) as Promise<unknown>)).toBe('/');
 		expect(await redirectOf(booksPage(event({ user: null }).event) as Promise<unknown>)).toBe('/');
+	});
+});
+
+describe('one book', () => {
+	const load = (id: string, u = user('book_mgmt')) => {
+		const { event: e, depends } = event({ user: u });
+		return { promise: Promise.resolve(bookPage({ ...(e as object), params: { id } } as never)), depends };
+	};
+
+	it('needs book_mgmt; a published book with its annotations and the tags', async () => {
+		api.getBook.mockResolvedValue({ id: 7, status: 'published' });
+		api.listAnnotations.mockResolvedValue([{ id: 1 }]);
+		api.listTags.mockResolvedValue([{ id: 'year' }]);
+		const { promise, depends } = load('7');
+		expect(await promise).toEqual({
+			book: { id: 7, status: 'published' },
+			annotations: [{ id: 1 }],
+			tags: [{ id: 'year' }],
+			error: null
+		});
+		expect(depends).toHaveBeenCalledWith('app:lang');
+		expect(api.listAnnotations).toHaveBeenCalledWith(7);
+		expect(await redirectOf(load('7', user('video_mgmt')).promise)).toBe('/');
+	});
+
+	it('not published: no annotations asked; an unknown book or a bad ID', async () => {
+		api.getBook.mockResolvedValue({ id: 7, status: 'queued' });
+		api.listTags.mockResolvedValue([]);
+		expect((await load('7').promise)?.annotations).toEqual([]);
+		expect(api.listAnnotations).not.toHaveBeenCalled();
+		const failure = new ApiError(404, 'book.unknown');
+		api.getBook.mockRejectedValue(failure);
+		expect(await load('7').promise).toEqual({ book: null, annotations: [], tags: [], error: failure });
+		for (const id of ['x', '0', '1.5'])
+			expect((await load(id).promise.catch((e: { status: number }) => e))!.status).toBe(404);
 	});
 });
 

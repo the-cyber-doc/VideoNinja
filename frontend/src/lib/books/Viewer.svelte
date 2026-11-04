@@ -57,7 +57,9 @@
 			annotationAuthor: author,
 			autoCommit: true,
 			deactivateToolAfterCreate: true,
-			selectAfterCreate: true
+			// The panel selects a new annotation itself; the plugin's selection would make the
+			// next drag only deselect it.
+			selectAfterCreate: false
 		})
 	];
 
@@ -79,17 +81,17 @@
 	{:else if pdfEngine.isLoading || !pdfEngine.engine}
 		<p class="hint" role="status">{t('books.viewer.loading')}</p>
 	{:else}
-		<EmbedPDF engine={pdfEngine.engine} {plugins} onInitialized={connect}>
+		<EmbedPDF engine={pdfEngine.engine} {plugins} onInitialized={connect} autoMountDomElements={false}>
 			<!-- The active document from the core state: EmbedPDF sets its activeDocumentId shortcut
 			     only on later changes, and ours became active while it started. -->
 			{#snippet children(context)}
 				{@const active = context.activeDocumentId ?? context.coreState?.activeDocumentId}
-				{#if active}
+				{#if active && context.pluginsReady}
 					{@const documentId = active}
 					<DocumentContent {documentId}>
 						{#snippet children(content)}
 							{#if content.isLoaded}
-								<ViewerPages {documentId} engine={pdfEngine.engine!} {annotations} {author} {onready} />
+								<ViewerPages {documentId} engine={pdfEngine.engine!} {annotations} {onready} />
 							{:else if content.isError}
 								<ErrorMessage error={t('books.viewer.unreadable')} />
 							{:else}

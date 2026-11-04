@@ -1188,7 +1188,20 @@ title, author, year of publication or number of pages (books without that value
 last); a text found in the titles (the original's too) or names, accents ignored;
 the year of publication and the upload day (sliders); authors and editors, types of
 work, languages, publishers, uploaders and the books' tags (checkboxes: any of those
-checked; different criteria: all of them). Kept on the device. Annotations come next.
+checked; different criteria: all of them). Kept on the device.
+
+**A book** (its reference in the Books grid opens it, `/books/<id>`): its reference
+(**Edit the reference**: the same form as the upload, its tags too; any book manager),
+**Download the PDF**, and the PDF in a viewer (EmbedPDF's PDFium, in the page) with its
+annotations beside it. **Highlight text**: select text by dragging over it, it is
+highlighted and kept as the annotation's quote. **Mark a region** (scanned pages): draw
+a box, a picture of it is kept (made by the browser, published by
+the encoder). Each annotation is saved at once, one row each: the PDF on the server is
+never changed (the browser's copy only). In the list beside the PDF, the selected
+annotation takes a technique (school › … › technique, as for segments: its page will
+show it), a note and a colour, or is deleted; each user changes their own, moderators
+anyone's. A book without a first-page picture gets one when opened. Comments on
+annotations and a download with the annotations in the PDF come next.
 
 **Upload a book** (the last section of the Upload page, `book_mgmt` access): choose
 a PDF (at most 1 GiB). It is read on the device first: its SHA-256 ("This book is
