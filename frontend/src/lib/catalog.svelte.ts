@@ -226,6 +226,31 @@ export function pathOf(catalog: Catalog, techniqueOrSection: string): CatalogPat
 	};
 }
 
+/** A technique's place in the catalogue as the annotation forms choose it, step by step
+ * (school, category, weapon under Buki, section and technique IDs); empty strings: not chosen. */
+export interface Place {
+	school: string;
+	category: string;
+	weapon: string;
+	section: string;
+	technique: string;
+}
+
+export const emptyPlace = (): Place => ({ school: '', category: '', weapon: '', section: '', technique: '' });
+
+/** The place of a technique (unknown or none: nothing chosen). */
+export function placeOf(catalog: Catalog, technique: string | null | undefined): Place {
+	const path = technique ? pathOf(catalog, technique) : undefined;
+	if (!path || !technique) return emptyPlace();
+	return {
+		school: path.ryu,
+		category: path.category ?? '',
+		weapon: path.weapon ?? '',
+		section: sectionId(path),
+		technique
+	};
+}
+
 // --- URLs: /schools/<ryu>/<category>/<section>/<technique>, under Buki /schools/<ryu>/buki/<weapon>/<section>/<technique> ---
 
 const part = encodeURIComponent;

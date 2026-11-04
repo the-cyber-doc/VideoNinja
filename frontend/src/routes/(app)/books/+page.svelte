@@ -102,7 +102,13 @@
 						{/if}
 					</span>
 					<div class="about">
-						<p class="reference"><Citation reference={book.reference} /></p>
+						<p class="reference">
+							{#if book.status === 'published'}
+								<a href={url(`/books/${book.id}`)}><Citation reference={book.reference} /></a>
+							{:else}
+								<Citation reference={book.reference} />
+							{/if}
+						</p>
 						<p class="hint">
 							{[
 								t('books.uploaded', { name: uploader(book), date: day(book.uploaded_at) }),

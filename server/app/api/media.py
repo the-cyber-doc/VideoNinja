@@ -21,6 +21,8 @@ client only names the segment. Files: <media>/video/<h2>/<sha256>/<file name>
   attachment: never shown by the browser itself) and its first page (book_mgmt access).
   PDFs: /protected-book/<user id>/…, two transfers per user; thumbnails:
   /protected-book-image/… (book/<h2>/<sha256>/, no PDF there).
+- /media/book-annotation/<id>/image: a region's crop, for every logged-in user (the
+  technique pages show it, the book stays for book managers).
 
 Without nginx (development), the app serves the files itself from the media
 folder (paths.py), without download limits; it cuts each clip once with ffmpeg
@@ -41,7 +43,7 @@ from .. import queries
 from ..core import db, limits, paths, procs, settings
 from ..core.errors import ApiError
 from ..queries.users import User
-from .deps import require_access
+from .deps import current_user, require_access
 
 log = logging.getLogger(__name__)
 router = APIRouter(prefix="/media", tags=["media"])
@@ -229,3 +231,24 @@ def book_thumbnail(
 ) -> Response:
     row = queries.books.published_book(con, book_id)
     return _book_file(con, book_id, row["thumbnail"] if row else None, BOOK_IMAGE_PREFIX)
+
+
+@router.get("/book-annotation/{annotation_id}/image")
+def annotation_image(
+    annotation_id: int, _: User = Depends(current_user), con: sqlite3.Connection = Depends(db.get_db)
+) -> Response:
+    row = queries.book_annotations.image_of(con, annotation_id)
+    if (
+        row is None
+        or not row["image"]
+        or not SHA256.fullmatch(row["sha256sum"])
+        or not FILE_NAME.fullmatch(row["image"])
+    ):
+        raise _not_found()
+    relative = f"{row['sha256sum'][:2]}/{row['sha256sum']}/{row['image']}"
+    if settings.current().x_accel:
+        return Response(headers={"X-Accel-Redirect": f"{BOOK_IMAGE_PREFIX}/{relative}"})
+    path = paths.book_dir() / relative
+    if not path.is_file():
+        raise _not_found()
+    return FileResponse(path, headers=NO_STORE)

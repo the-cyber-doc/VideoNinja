@@ -38,6 +38,7 @@ EVENTS: dict[str, int] = {
     "access.denied": WARNING,
     "request.cross_site": WARNING,
     "comment.denied": WARNING,  # not its author, not a moderator
+    "book_annotation.denied": WARNING,  # not its author, not a moderator
     "upload.denied": WARNING,
     # Content
     "upload.accepted": INFO,
@@ -46,6 +47,10 @@ EVENTS: dict[str, int] = {
     "video.deleted": INFO,
     "book.submitted": INFO,
     "book.deleted": INFO,
+    "book.edited": INFO,
+    "book_annotation.created": INFO,
+    "book_annotation.edited": INFO,  # author_id: someone else's (a moderator)
+    "book_annotation.deleted": INFO,
     "annotations.saved": INFO,
     "comment.created": INFO,
     "comment.edited": INFO,

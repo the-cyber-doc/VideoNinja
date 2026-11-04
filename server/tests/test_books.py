@@ -515,10 +515,15 @@ def test_books_before_videos(media, monkeypatch):
         enc.stopping.set()
         return False
 
+    def picture_step(stopping):
+        calls.append("picture")
+        return False
+
     monkeypatch.setattr(books, "run_once", book_step)
+    monkeypatch.setattr(books, "run_pictures", picture_step)
     monkeypatch.setattr(enc, "run_once", video_step)
     enc.run()
-    assert calls == ["book", "book", "video"]
+    assert calls == ["book", "book", "picture", "video"]
 
 
 def test_ffmpeg_writing_no_picture(tmp_path, monkeypatch):

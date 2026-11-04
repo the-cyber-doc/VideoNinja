@@ -17,3 +17,4 @@ export const videoThumbnailUrl = (id: number) => url(`/media/video/${id}/thumbna
 // Books (the "book_mgmt" access): the PDF (a download) and its first page.
 export const bookUrl = (id: number) => url(`/media/book/${id}`);
 export const bookThumbnailUrl = (id: number) => url(`/media/book/${id}/thumbnail`);
+export const annotationImageUrl = (id: number) => url(`/media/book-annotation/${id}/image`);

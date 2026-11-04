@@ -19,6 +19,7 @@ UNTYPED = {
     ("get", "/media/video/{video_id}/thumbnail"),
     ("get", "/media/book/{book_id}"),
     ("get", "/media/book/{book_id}/thumbnail"),
+    ("get", "/media/book-annotation/{annotation_id}/image"),
 }
 
 

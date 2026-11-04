@@ -243,6 +243,44 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/book-annotations/{annotation_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete Annotation */
+        delete: operations["delete_annotation_api_book_annotations__annotation_id__delete"];
+        options?: never;
+        head?: never;
+        /** Change Annotation */
+        patch: operations["change_annotation_api_book_annotations__annotation_id__patch"];
+        trace?: never;
+    };
+    "/api/book-annotations/{annotation_id}/image": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Attach Image
+         * @description A region's crop (a JPEG the browser made, its own upload): published by the encoder.
+         */
+        put: operations["attach_image_api_book_annotations__annotation_id__image_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/books": {
         parameters: {
             query?: never;
@@ -294,8 +332,16 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
-        put?: never;
+        /**
+         * Get Book
+         * @description One book (any status), as the list has it.
+         */
+        get: operations["get_book_api_books__book_id__get"];
+        /**
+         * Edit Book
+         * @description A book's reference and tags, by any book manager (the library is shared).
+         */
+        put: operations["edit_book_api_books__book_id__put"];
         post?: never;
         /**
          * Delete Book
@@ -303,6 +349,48 @@ export interface paths {
          *     (user_mgmt). The encoder deletes its uploads.
          */
         delete: operations["delete_book_api_books__book_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/books/{book_id}/annotations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Annotations
+         * @description A published book's annotations, by page.
+         */
+        get: operations["list_annotations_api_books__book_id__annotations_get"];
+        put?: never;
+        /** Create Annotation */
+        post: operations["create_annotation_api_books__book_id__annotations_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/books/{book_id}/thumbnail": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Replace Thumbnail
+         * @description A new first-page picture for a published book (the viewer makes one when it has none);
+         *     the encoder publishes it.
+         */
+        put: operations["replace_thumbnail_api_books__book_id__thumbnail_put"];
+        post?: never;
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -874,6 +962,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/media/book-annotation/{annotation_id}/image": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Annotation Image */
+        get: operations["annotation_image_media_book_annotation__annotation_id__image_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/media/book/{book_id}": {
         parameters: {
             query?: never;
@@ -1006,6 +1111,76 @@ export interface components {
             /** Technique */
             technique: string;
         };
+        /**
+         * AnnotationChange
+         * @description Only the fields sent change (null clears a note, a colour, a technique).
+         */
+        AnnotationChange: {
+            /** Color */
+            color?: string | null;
+            /** Note */
+            note?: string | null;
+            /** Page */
+            page?: number | null;
+            /** Quote */
+            quote?: string | null;
+            /** Target */
+            target?: string | null;
+            /** Technique */
+            technique?: string | null;
+        };
+        /** AnnotationIn */
+        AnnotationIn: {
+            /** Color */
+            color?: string | null;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "text" | "region";
+            /** Note */
+            note?: string | null;
+            /** Page */
+            page: number;
+            /** Quote */
+            quote?: string | null;
+            /** Target */
+            target: string;
+            /** Technique */
+            technique?: string | null;
+        };
+        /** AnnotationOut */
+        AnnotationOut: {
+            /** Color */
+            color: string | null;
+            /** Created At */
+            created_at: string;
+            /** Created By */
+            created_by: string | null;
+            /** Has Image */
+            has_image: boolean;
+            /** Id */
+            id: number;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "text" | "region";
+            /** Mine */
+            mine: boolean;
+            /** Modified At */
+            modified_at: string;
+            /** Note */
+            note: string | null;
+            /** Page */
+            page: number;
+            /** Quote */
+            quote: string | null;
+            /** Target */
+            target: string;
+            /** Technique */
+            technique: string | null;
+        };
         /** Annotations */
         Annotations: {
             /** All Segments Done */
@@ -1055,6 +1230,15 @@ export interface components {
         AvailabilityOut: {
             /** Available */
             available: boolean;
+        };
+        /** BookEditIn */
+        BookEditIn: {
+            reference: components["schemas"]["Reference"];
+            /**
+             * Tags
+             * @default []
+             */
+            tags: components["schemas"]["TagIn"][];
         };
         /** BookExistsOut */
         BookExistsOut: {
@@ -1563,6 +1747,11 @@ export interface components {
             token: string;
             /** Username */
             username: string;
+        };
+        /** UploadIn */
+        UploadIn: {
+            /** Upload */
+            upload: string;
         };
         /** UploadLimits */
         UploadLimits: {
@@ -2139,6 +2328,109 @@ export interface operations {
             };
         };
     };
+    delete_annotation_api_book_annotations__annotation_id__delete: {
+        parameters: {
+            query?: never;
+            header?: {
+                "time-zone"?: string | null;
+            };
+            path: {
+                annotation_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description An error (core/errors.py: ERRORS) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    change_annotation_api_book_annotations__annotation_id__patch: {
+        parameters: {
+            query?: never;
+            header?: {
+                "time-zone"?: string | null;
+            };
+            path: {
+                annotation_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AnnotationChange"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnnotationOut"];
+                };
+            };
+            /** @description An error (core/errors.py: ERRORS) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    attach_image_api_book_annotations__annotation_id__image_put: {
+        parameters: {
+            query?: never;
+            header?: {
+                "time-zone"?: string | null;
+            };
+            path: {
+                annotation_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UploadIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description An error (core/errors.py: ERRORS) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
     list_books_api_books_get: {
         parameters: {
             query?: never;
@@ -2238,6 +2530,76 @@ export interface operations {
             };
         };
     };
+    get_book_api_books__book_id__get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "time-zone"?: string | null;
+            };
+            path: {
+                book_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BookOut"];
+                };
+            };
+            /** @description An error (core/errors.py: ERRORS) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    edit_book_api_books__book_id__put: {
+        parameters: {
+            query?: never;
+            header?: {
+                "time-zone"?: string | null;
+            };
+            path: {
+                book_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BookEditIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BookOut"];
+                };
+            };
+            /** @description An error (core/errors.py: ERRORS) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
     delete_book_api_books__book_id__delete: {
         parameters: {
             query?: never;
@@ -2250,6 +2612,111 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description An error (core/errors.py: ERRORS) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    list_annotations_api_books__book_id__annotations_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "time-zone"?: string | null;
+            };
+            path: {
+                book_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnnotationOut"][];
+                };
+            };
+            /** @description An error (core/errors.py: ERRORS) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    create_annotation_api_books__book_id__annotations_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "time-zone"?: string | null;
+            };
+            path: {
+                book_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AnnotationIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnnotationOut"];
+                };
+            };
+            /** @description An error (core/errors.py: ERRORS) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    replace_thumbnail_api_books__book_id__thumbnail_put: {
+        parameters: {
+            query?: never;
+            header?: {
+                "time-zone"?: string | null;
+            };
+            path: {
+                book_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UploadIn"];
+            };
+        };
         responses: {
             /** @description Successful Response */
             204: {
@@ -3340,6 +3807,39 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description An error (core/errors.py: ERRORS) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    annotation_image_media_book_annotation__annotation_id__image_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "time-zone"?: string | null;
+            };
+            path: {
+                annotation_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
             };
             /** @description An error (core/errors.py: ERRORS) */
             default: {

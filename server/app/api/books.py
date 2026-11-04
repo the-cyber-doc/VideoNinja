@@ -61,7 +61,20 @@ class BookOut(BaseModel):
     tags: list[TagIn]
 
 
-def _wait_finished(con: sqlite3.Connection, tus_ids: list[str]) -> None:
+class BookEditIn(BaseModel):
+    reference: Reference
+    tags: list[TagIn] = Field(default=[], max_length=50)
+
+
+class UploadIn(BaseModel):
+    upload: str = field("tus_id")  # a finished tus upload of the caller's (kind "image")
+
+
+def _book_out(row: sqlite3.Row, tags: list[TagIn]) -> BookOut:
+    return BookOut(**{**dict(row), "reference": Reference.model_validate(json.loads(row["reference"]))}, tags=tags)
+
+
+def wait_finished(con: sqlite3.Connection, tus_ids: list[str]) -> None:
     """Until tusd's post-finish hook has marked each upload (outside a transaction:
     each read sees the hook's commit), or FINISH_WAIT_S."""
     end = time.monotonic() + FINISH_WAIT_S
@@ -70,7 +83,7 @@ def _wait_finished(con: sqlite3.Connection, tus_ids: list[str]) -> None:
             time.sleep(0.1)
 
 
-def _own_finished(con: sqlite3.Connection, me: User, tus_id: str, kind: str) -> sqlite3.Row:
+def own_finished(con: sqlite3.Connection, me: User, tus_id: str, kind: str) -> sqlite3.Row:
     upload = queries.uploads.upload(con, tus_id)
     if upload is None or upload["user"] != me.id or upload["state"] == "deleted" or upload["kind"] != kind:
         raise ApiError("upload.unknown")
@@ -98,12 +111,12 @@ def submit_book(
 ) -> BookSubmittedOut:
     """Queue a finished PDF upload (and its thumbnail's) for the encoder, with its reference and tags."""
     segments.check(con, body.tags, [])  # at once (and again inside the write: tags can change meanwhile)
-    _wait_finished(con, [body.upload, *([body.thumbnail_upload] if body.thumbnail_upload else [])])
+    wait_finished(con, [body.upload, *([body.thumbnail_upload] if body.thumbnail_upload else [])])
     with db.write(con):
         segments.check(con, body.tags, [])
-        upload = _own_finished(con, me, body.upload, "book")
+        upload = own_finished(con, me, body.upload, "book")
         if body.thumbnail_upload:
-            _own_finished(con, me, body.thumbnail_upload, "image")
+            own_finished(con, me, body.thumbnail_upload, "image")
         if queries.books.book_known(con, upload["original_sha256"]):
             raise ApiError("book.exists")
         book_id = queries.books.insert_book(
@@ -130,13 +143,53 @@ def list_books(_: User = Depends(manager), con: sqlite3.Connection = Depends(db.
         tags: dict[int, list[TagIn]] = {}
         for r in queries.books.book_tags(con):
             tags.setdefault(r["book"], []).append(TagIn(id=r["tag"], value=r["value"]))
-        return [
-            BookOut(
-                **{**dict(r), "reference": Reference.model_validate(json.loads(r["reference"]))},
-                tags=tags.get(r["id"], []),
-            )
-            for r in queries.books.books(con)
-        ]
+        return [_book_out(r, tags.get(r["id"], [])) for r in queries.books.books(con)]
+
+
+@router.get("/books/{book_id}")
+def get_book(book_id: int, _: User = Depends(manager), con: sqlite3.Connection = Depends(db.get_db)) -> BookOut:
+    """One book (any status), as the list has it."""
+    with db.read(con):
+        row = queries.books.listed_book(con, book_id)
+        if row is None:
+            raise ApiError("book.unknown")
+        tags = [TagIn(id=t["tag"], value=t["value"]) for t in queries.books.tags_of(con, book_id)]
+        return _book_out(row, tags)
+
+
+@router.put("/books/{book_id}")
+def edit_book(
+    book_id: int, body: BookEditIn, _: User = Depends(manager), con: sqlite3.Connection = Depends(db.get_db)
+) -> BookOut:
+    """A book's reference and tags, by any book manager (the library is shared)."""
+    segments.check(con, body.tags, [])
+    with db.write(con):
+        segments.check(con, body.tags, [])
+        if queries.books.book(con, book_id) is None:
+            raise ApiError("book.unknown")
+        queries.books.set_reference(con, book_id, body.reference.to_json())
+        queries.books.clear_book_tags(con, book_id)
+        for tag in body.tags:
+            queries.books.insert_book_tag(con, book_id, tag.id, tag.value)
+    audit.event("book.edited", book_id=book_id)
+    return get_book(book_id, _, con)
+
+
+@router.put("/books/{book_id}/thumbnail", status_code=status.HTTP_204_NO_CONTENT)
+def replace_thumbnail(
+    book_id: int, body: UploadIn, me: User = Depends(manager), con: sqlite3.Connection = Depends(db.get_db)
+) -> None:
+    """A new first-page picture for a published book (the viewer makes one when it has none);
+    the encoder publishes it."""
+    wait_finished(con, [body.upload])
+    with db.write(con):
+        book = queries.books.book(con, book_id)
+        if book is None or book["status"] != "published":
+            raise ApiError("book.unknown")
+        own_finished(con, me, body.upload, "image")
+        replaced = queries.books.set_thumbnail_upload(con, book_id, body.upload)
+        if replaced:
+            queries.uploads.set_upload_state(con, replaced, "deleted")
 
 
 @router.delete("/books/{book_id}", status_code=status.HTTP_204_NO_CONTENT)

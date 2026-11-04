@@ -75,6 +75,9 @@ ERRORS: dict[str, tuple[int, str]] = {
     "book.unknown": (404, "Unknown book"),
     "book.exists": (409, "This book already exists"),
     "book.not_deletable": (409, "Published books cannot be deleted here"),
+    "book_annotation.unknown": (404, "Unknown annotation"),
+    "book_annotation.not_author": (403, "Only its author or a moderator can change this annotation"),
+    "book_annotation.not_region": (409, "Only a region has a picture"),
     "performer.empty_name": (422, "Empty name"),
     "performer.exists": (409, "This performer already exists"),
     # Annotations (app/segments.py)
@@ -111,6 +114,7 @@ ERRORS: dict[str, tuple[int, str]] = {
     "validation.translations": (422, "A text is needed in every language"),
     "validation.reference_name": (422, "A name is a family name (and a given name) or a literal name"),
     "validation.reference_date": (422, "A date is a year, a month (1-12) and a day (1-31)"),
+    "validation.annotation_target": (422, "The annotation must be a JSON object"),
     "validation.invalid": (422, "A value is not valid"),
 }
 
@@ -130,6 +134,7 @@ VALIDATION: dict[str, tuple[str, dict[str, str]]] = {
     "translations": ("validation.translations", {}),
     "reference_name": ("validation.reference_name", {}),
     "reference_date": ("validation.reference_date", {}),
+    "annotation_target": ("validation.annotation_target", {}),
 }
 
 Params = Mapping[str, str | int | float]

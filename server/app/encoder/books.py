@@ -10,13 +10,20 @@ uploaded, never rewritten (its annotations are rows, written into a downloaded c
 
 A bad file fails the book for good (deleting it lets the user upload another); an
 unexpected error leaves it queued, MAX_ATTEMPTS times at most.
+
+Pictures of published books, made by the browser and uploaded later (each its own tus
+upload, kind "image"): a new first page (the viewer makes one for a book without) and
+the crops of regions annotated (note-<annotation id>.jpg), re-encoded the same way.
+Crops no annotation uses any more are deleted every SWEEP_EVERY_S (sweep_orphans).
 """
 
 import logging
 import os
+import re
 import shutil
 import sqlite3
 import threading
+import time
 from pathlib import Path
 
 from .. import queries
@@ -27,6 +34,9 @@ from .checks import JobError
 log = logging.getLogger(__name__)
 
 MAX_ATTEMPTS = 3
+SWEEP_EVERY_S = 600
+NOTE = re.compile(r"note-([0-9]+)\.jpg")
+_swept_at = 0.0  # module state on purpose: the encoder thread's last sweep
 THUMB_WIDTH = 480  # the browser renders the first page this wide
 HEAD_BYTES = 1024  # where "%PDF-" must start (the PDF specification's tolerance)
 TAIL_BYTES = 2048  # where the last "%%EOF" must be (trailing junk is common)
@@ -157,3 +167,68 @@ def fail(row: sqlite3.Row, error: str) -> None:
         queries.books.fail_book(con, row["id"], error[:2000])
         _drop_uploads(con, row)
     log.warning("Book %s failed: %s", row["id"], error)
+
+
+# --- pictures of published books ---
+
+
+def _picture(tus_id: str, folder: Path, name: str) -> str | None:
+    """The upload re-encoded into the book's folder as `name`; None if it is not a picture."""
+    work = paths.book_dir() / ".work" / f"picture-{tus_id}"
+    try:
+        image, info = checks.upload_files(paths.upload_dir(), tus_id)[:2]
+        checks.check_complete(image, info)
+        work.mkdir(parents=True, exist_ok=True)
+        reencode_jpeg(image, work / name)
+        os.replace(work / name, folder / name)
+        return name
+    except JobError as e:
+        log.warning("Picture %s not published (%s)", tus_id, e)
+        return None
+    finally:
+        shutil.rmtree(work, ignore_errors=True)
+
+
+def run_pictures(stopping: threading.Event) -> bool:
+    """Publish one waiting picture (a first page, then a crop); False if none waits."""
+    if stopping.is_set():
+        return False
+    with db.transaction() as con:
+        thumbnails = queries.books.waiting_thumbnails(con)
+        crops = queries.book_annotations.waiting_images(con)
+    if thumbnails:
+        row = thumbnails[0]
+        name = _picture(row["thumbnail_upload"], paths.book_dir() / row["directory"], "thumb.jpg")
+        with db.transaction() as con:
+            queries.books.publish_thumbnail(con, row["id"], row["thumbnail_upload"], name)
+            queries.uploads.set_upload_state(con, row["thumbnail_upload"], "deleted")
+        log.info("Book %s: first page %s", row["id"], "published" if name else "refused")
+        return True
+    if crops:
+        row = crops[0]
+        name = _picture(row["image_upload"], paths.book_dir() / row["directory"], f"note-{row['id']}.jpg")
+        with db.transaction() as con:
+            queries.book_annotations.publish_image(con, row["id"], row["image_upload"], name)
+            queries.uploads.set_upload_state(con, row["image_upload"], "deleted")
+        log.info("Annotation %s: crop %s", row["id"], "published" if name else "refused")
+        return True
+    return False
+
+
+def sweep_orphans(now: float | None = None) -> None:
+    """Every SWEEP_EVERY_S: the crops of annotations deleted (or re-cropped under another name)."""
+    global _swept_at
+    now = time.monotonic() if now is None else now
+    if now - _swept_at < SWEEP_EVERY_S:
+        return
+    _swept_at = now
+    with db.transaction() as con:
+        rows = queries.book_annotations.images_in_use(con)
+    used: dict[str, set[str]] = {}
+    for r in rows:
+        used.setdefault(r["directory"], set()).update([r["image"]] if r["image"] else [])
+    for directory, names in used.items():
+        for path in (paths.book_dir() / directory).glob("note-*.jpg"):
+            if NOTE.fullmatch(path.name) and path.name not in names:
+                path.unlink(missing_ok=True)
+                log.info("Crop %s/%s deleted (no annotation uses it)", directory, path.name)

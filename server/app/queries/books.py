@@ -41,7 +41,8 @@ def insert_book_tag(con: sqlite3.Connection, book_id: int, tag: str, value: str 
 def book(con: sqlite3.Connection, book_id: int) -> sqlite3.Row | None:
     return one(
         con.execute(
-            'SELECT "id", "status", "uploaded_by", "upload", "thumbnail_upload" FROM "book" WHERE "id" = ?',
+            'SELECT "id", "status", "uploaded_by", "upload", "thumbnail_upload", "reference", "original_filename",'
+            ' "pages", "thumbnail" IS NOT NULL AS "has_thumbnail" FROM "book" WHERE "id" = ?',
             (book_id,),
         )
     )
@@ -114,4 +115,58 @@ def fail_book(con: sqlite3.Connection, book_id: int, error: str) -> None:
     con.execute(
         'UPDATE "book" SET "status" = \'failed\', "error" = ? WHERE "id" = ? AND "status" = \'queued\'',
         (error, book_id),
+    )
+
+
+def set_reference(con: sqlite3.Connection, book_id: int, reference: str) -> None:
+    con.execute('UPDATE "book" SET "reference" = ? WHERE "id" = ?', (reference, book_id))
+
+
+def clear_book_tags(con: sqlite3.Connection, book_id: int) -> None:
+    con.execute('DELETE FROM "book_has_tags" WHERE "book" = ?', (book_id,))
+
+
+def set_thumbnail_upload(con: sqlite3.Connection, book_id: int, tus_id: str) -> str | None:
+    """A published book's new first-page picture to publish; the upload it replaces, if any."""
+    old = con.execute('SELECT "thumbnail_upload" FROM "book" WHERE "id" = ?', (book_id,)).fetchone()
+    con.execute('UPDATE "book" SET "thumbnail_upload" = ? WHERE "id" = ?', (tus_id, book_id))
+    return old[0] if old else None
+
+
+def waiting_thumbnails(con: sqlite3.Connection) -> list[sqlite3.Row]:
+    """Published books with a first-page picture uploaded and not published yet."""
+    return con.execute(
+        'SELECT "id", "directory", "thumbnail_upload" FROM "book"'
+        ' WHERE "status" = \'published\' AND "thumbnail_upload" IS NOT NULL ORDER BY "id"'
+    ).fetchall()
+
+
+def publish_thumbnail(con: sqlite3.Connection, book_id: int, tus_id: str, name: str | None) -> bool:
+    """The picture published (name) or given up (None); False if another one was uploaded meanwhile."""
+    return (
+        con.execute(
+            'UPDATE "book" SET "thumbnail" = COALESCE(?, "thumbnail"), "thumbnail_upload" = NULL'
+            ' WHERE "id" = ? AND "thumbnail_upload" = ?',
+            (name, book_id, tus_id),
+        ).rowcount
+        == 1
+    )
+
+
+def tags_of(con: sqlite3.Connection, book_id: int) -> list[sqlite3.Row]:
+    return con.execute(
+        'SELECT "tag", "value" FROM "book_has_tags" WHERE "book" = ? ORDER BY "tag"', (book_id,)
+    ).fetchall()
+
+
+def listed_book(con: sqlite3.Connection, book_id: int) -> sqlite3.Row | None:
+    """One book as the list has it (books())."""
+    return one(
+        con.execute(
+            'SELECT b."id", b."original_filename", b."status", b."error", b."pages", b."reference",'
+            ' b."uploaded_at", b."thumbnail" IS NOT NULL AS "has_thumbnail",'
+            ' COALESCE(u."name", u."username") AS "uploaded_by"'
+            ' FROM "book" b LEFT JOIN "user" u ON u."id" = b."uploaded_by" AND u."id" <> ? WHERE b."id" = ?',
+            (DELETED_USER_ID, book_id),
+        )
     )

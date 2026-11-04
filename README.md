@@ -1643,9 +1643,10 @@ journalctl -t docker-videoninja-encoder -o cat | jq -c 'select(.video_id == 42)'
 (with the client's address, never the username typed), `logout`,
 `credentials.throttled`; `password.wrong`, `password.changed`, `totp.replaced`,
 `totp.undecryptable`; `user.invited`, `user.reset`, `user.deactivated`, `user.deleted`, `user.registered`,
-`invite.shown`; `access.denied`, `request.cross_site`, `comment.denied`,
+`invite.shown`; `access.denied`, `request.cross_site`, `comment.denied`, `book_annotation.denied`,
 `upload.denied`; `upload.accepted`, `video.submitted`, `video.retried`,
-`video.deleted`, `book.submitted`, `book.deleted`, `annotations.saved`, `comment.created`, `comment.edited`,
+`video.deleted`, `book.submitted`, `book.deleted`, `book.edited`, `book_annotation.created`,
+`book_annotation.edited`, `book_annotation.deleted`, `annotations.saved`, `comment.created`, `comment.edited`,
 `comment.deleted`, `tag.created`, `tag.saved` (`previous_id`: renamed when it
 differs), `tag.deleted`. Refusals and failures are warnings, the rest info. They carry
 who (`user_id`) and what (`target_user_id`, `video_id`, `comment_id`…), never a

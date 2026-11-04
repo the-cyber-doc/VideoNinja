@@ -4,6 +4,7 @@ import {
 	catalogHref,
 	categoriesOf,
 	pathOf,
+	placeOf,
 	resolvePath,
 	schoolHref,
 	segmentsOf,
@@ -94,6 +95,18 @@ describe('catalogue paths', () => {
 	it('the path of a technique (the annotation form)', () => {
 		expect(pathOf(catalog, 'kukishinden.buki.rokushakubo.shoden.chudan_kangi')).toEqual(staff);
 		expect(pathOf(catalog, 'gyokko.koku')).toBeUndefined(); // an ID of the old catalogue
+	});
+
+	it('the place of a technique, step by step (the annotation forms); unknown or none: nothing chosen', () => {
+		expect(placeOf(catalog, 'kukishinden.buki.rokushakubo.shoden.chudan_kangi')).toEqual({
+			school: 'kukishinden',
+			category: 'buki',
+			weapon: 'rokushakubo',
+			section: 'kukishinden.buki.rokushakubo.shoden',
+			technique: 'kukishinden.buki.rokushakubo.shoden.chudan_kangi'
+		});
+		const nothing = { school: '', category: '', weapon: '', section: '', technique: '' };
+		expect([placeOf(catalog, 'gyokko.koku'), placeOf(catalog, null)]).toEqual([nothing, nothing]);
 	});
 
 	it('breadcrumbs as far as the path exists', () => {

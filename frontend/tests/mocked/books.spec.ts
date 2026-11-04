@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { expect, test, type Page } from '@playwright/test';
 import type { BookRow, Tag } from '../../src/lib/api/types';
 
@@ -342,4 +343,145 @@ test('filter and sort: a pane with what the books offer, applied at once, kept o
 	await pane.getByRole('button', { name: 'Close' }).click();
 	await expect(pane).toBeHidden();
 	await expect.poll(() => order(page)).toEqual(['3', '2', '1']);
+});
+
+// --- one book: the viewer (EmbedPDF really runs here), its annotations saved through the API ---
+
+interface Saved {
+	created: object[];
+	changed: { id: number; body: Record<string, unknown> }[];
+	deleted: number[];
+	images: number[];
+	thumbnails: number;
+}
+
+async function viewing(page: Page, annotations: object[] = [], book: Partial<BookRow> = {}) {
+	const fake = await uploading(page);
+	const saved: Saved = { created: [], changed: [], deleted: [], images: [], thumbnails: 0 };
+	const row = { ...BOOK, id: 7, original_filename: 'book.pdf', pages: 1, ...book };
+	fake.books = [row];
+	await page.route('/api/books/7', (r) => r.fulfill({ json: row }));
+	await page.route('/media/book/7', (r) => r.fulfill({ contentType: 'application/pdf', body: readFileSync(PDF) }));
+	await page.route('/api/books/7/thumbnail', (r) => ((saved.thumbnails += 1), r.fulfill({ status: 204 })));
+	let next = 100;
+	const rows = new Map<number, Record<string, unknown>>(annotations.map((a) => [(a as { id: number }).id, a as never]));
+	await page.route('/api/books/7/annotations', (r) => {
+		if (r.request().method() === 'GET') return r.fulfill({ json: annotations });
+		const body = r.request().postDataJSON();
+		saved.created.push(body);
+		next += 1;
+		rows.set(next, annotationRow(next, body));
+		return r.fulfill({ status: 201, json: rows.get(next) });
+	});
+	await page.route('/api/book-annotations/*', (r) => {
+		const id = Number(new URL(r.request().url()).pathname.split('/').at(-1));
+		if (r.request().method() === 'DELETE') return (saved.deleted.push(id), r.fulfill({ status: 204 }));
+		const body = r.request().postDataJSON();
+		saved.changed.push({ id, body });
+		rows.set(id, { ...rows.get(id), ...body });
+		return r.fulfill({ json: rows.get(id) });
+	});
+	await page.route('/api/book-annotations/*/image', (r) => {
+		saved.images.push(Number(new URL(r.request().url()).pathname.split('/').at(-2)));
+		return r.fulfill({ status: 204 });
+	});
+	await page.route('/api/catalog', (r) => r.fulfill({ json: VIEWER_CATALOG }));
+	return saved;
+}
+
+const HIGHLIGHT_ROW = { page: 1, kind: 'text', target: '{}', quote: null, color: null, note: null, technique: null };
+const annotationRow = (id: number, body: Record<string, unknown>) => ({
+	...HIGHLIGHT_ROW,
+	...body,
+	id,
+	has_image: false,
+	created_by: 'Aiko',
+	created_at: '2026-11-01T10:00:00+01:00',
+	modified_at: '2026-11-01T10:00:00+01:00',
+	mine: true
+});
+const VIEWER_CATALOG = { schools: [], categories: [], weapons: [], sections: [], techniques: [], segments: [] };
+
+/** A drag as a person makes it: pointer moves a frame apart (the viewer follows them per frame). */
+async function drag(page: Page, from: [number, number], to: [number, number], steps = 12) {
+	await page.mouse.move(...from);
+	await page.mouse.down();
+	for (let i = 1; i <= steps; i++) {
+		await page.mouse.move(from[0] + ((to[0] - from[0]) * i) / steps, from[1] + ((to[1] - from[1]) * i) / steps);
+		await page.waitForTimeout(30);
+	}
+	await page.mouse.up();
+}
+
+async function pageBox(page: Page) {
+	const sheet = page.locator('.page[data-page="1"]');
+	await expect(sheet).toBeVisible({ timeout: 20_000 });
+	await expect(sheet.locator('img').first()).toBeVisible({ timeout: 20_000 }); // rendered
+	return (await sheet.boundingBox())!;
+}
+
+test('a book opened: the PDF shown, a highlight and a region saved, the first page made again', async ({ page }) => {
+	const saved = await viewing(page, [], { has_thumbnail: false });
+	await page.goto('/books');
+	await page.getByRole('link', { name: /Ninjutsu/ }).click();
+	await expect(page).toHaveURL('/books/7');
+	const box = await pageBox(page);
+	await expect(page.getByRole('status').filter({ hasText: 'Page 1 of 1' })).toBeVisible();
+	await expect.poll(() => saved.thumbnails).toBe(1); // the book had no first page
+	const pt = box.width / 420; // the fixture's page: 420 pt wide; its title at 24 pt, 60 pt from the left, near the top
+
+	// A box around the title: its text highlighted, one rectangle for its line, its quote kept.
+	await page.getByRole('button', { name: 'Highlight text' }).click();
+	await drag(page, [box.x + 50 * pt, box.y + 70 * pt], [box.x + 230 * pt, box.y + 108 * pt]);
+	await expect.poll(() => saved.created.length, { timeout: 10_000 }).toBe(1);
+	expect(saved.created[0]).toMatchObject({ page: 1, kind: 'text', quote: 'Togakure-ryu', color: '#FFCD45' });
+	const highlight = JSON.parse((saved.created[0] as { target: string }).target);
+	expect([highlight.type, highlight.segmentRects.length, highlight.author]).toEqual([9, 1, 'aiko']);
+	await expect(page.locator('section.annotations li')).toHaveCount(1);
+	await expect(page.getByRole('button', { name: 'Highlight text' })).toHaveAttribute('aria-pressed', 'false'); // done
+
+	// A region (scans): the box itself, its crop uploaded and attached.
+	await page.getByRole('button', { name: 'Mark a region' }).click();
+	await drag(page, [box.x + 60 * pt, box.y + 115 * pt], [box.x + 300 * pt, box.y + 180 * pt]);
+	await expect.poll(() => saved.created.length, { timeout: 10_000 }).toBe(2);
+	expect(saved.created[1]).toMatchObject({ page: 1, kind: 'region', color: '#E11D48' });
+	await expect.poll(() => saved.images, { timeout: 10_000 }).toEqual([102]);
+	await expect(page.locator('section.annotations li')).toHaveCount(2);
+
+	// Nothing under a box drawn with the highlight tool: no annotation.
+	await page.getByRole('button', { name: 'Highlight text' }).click();
+	await drag(page, [box.x + 300 * pt, box.y + 30 * pt], [box.x + 400 * pt, box.y + 60 * pt]);
+	await page.waitForTimeout(500);
+	expect(saved.created).toHaveLength(2);
+});
+
+test('saved annotations shown; the selected one gets a note, a colour, or is deleted', async ({ page }) => {
+	const target = {
+		type: 9,
+		id: 'saved-1',
+		pageIndex: 0,
+		rect: { origin: { x: 60, y: 78 }, size: { width: 141, height: 23 } },
+		segmentRects: [{ origin: { x: 60, y: 78 }, size: { width: 141, height: 23 } }],
+		color: '#FFCD45',
+		opacity: 0.5,
+		author: 'Aiko'
+	};
+	const saved = await viewing(page, [
+		annotationRow(5, { ...HIGHLIGHT_ROW, target: JSON.stringify(target), quote: 'Togakure-ryu', color: '#FFCD45' })
+	]);
+	await page.goto('/books/7');
+	await pageBox(page);
+	const item = page.locator('section.annotations li[data-id="5"]');
+	await expect(item).toContainText('Togakure-ryu');
+	await expect(item).toContainText('By Aiko');
+	await item.getByRole('button', { name: /Page 1/ }).click();
+	await item.getByLabel('Note').fill('The first school');
+	await item.getByRole('button', { name: 'Save' }).click();
+	await expect.poll(() => saved.changed.at(-1)?.body).toEqual({ note: 'The first school' });
+	await item.getByRole('button', { name: 'Blue' }).click();
+	await expect.poll(() => saved.changed.at(-1)?.body.color).toBe('#60A5FA');
+	page.once('dialog', (d) => d.accept());
+	await item.getByRole('button', { name: 'Delete the annotation' }).click();
+	await expect.poll(() => saved.deleted).toEqual([5]);
+	await expect(page.locator('section.annotations li')).toHaveCount(0);
 });

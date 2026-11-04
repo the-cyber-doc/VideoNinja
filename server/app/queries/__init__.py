@@ -7,6 +7,7 @@ db.read for several reads), so one transaction can span several of them.
 """
 
 from . import (
+    book_annotations,
     books,
     catalog,
     comments,
@@ -24,6 +25,7 @@ from . import (
 )
 
 __all__ = [
+    "book_annotations",
     "books",
     "catalog",
     "comments",

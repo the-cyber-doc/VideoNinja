@@ -699,6 +699,7 @@ def test_worker_survives_its_errors(enc, monkeypatch, caplog):
 
     enc.housekeeping, enc.run_once = housekeeping, run_once
     monkeypatch.setattr(books, "run_once", lambda stopping: False)  # no book waits
+    monkeypatch.setattr(books, "run_pictures", lambda stopping: False)  # nor a picture
     enc.run()
     assert len(rounds) == 3 and "Encoder error" in caplog.text
 

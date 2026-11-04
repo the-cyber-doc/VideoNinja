@@ -4,6 +4,7 @@ rules and the storage they call live outside (app/…): nothing here is imported
 from . import (
     about,
     auth,
+    book_annotations,
     books,
     catalog,
     comments,
@@ -37,6 +38,7 @@ ROUTERS = (
     videos.router,
     video_mgmt.router,
     books.router,
+    book_annotations.router,
     upload_hooks.router,
     catalog.internal_router,
     health.router,

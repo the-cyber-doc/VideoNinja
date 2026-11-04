@@ -49,7 +49,8 @@ def expire_uploads(con: sqlite3.Connection, created_before: str) -> None:
         " WHERE \"state\" IN ('uploading', 'finished') AND datetime(\"created_at\") < datetime(?)"
         ' AND "tus_id" NOT IN (SELECT "upload" FROM "video" WHERE "upload" IS NOT NULL'
         ' UNION SELECT "upload" FROM "book" WHERE "upload" IS NOT NULL'
-        ' UNION SELECT "thumbnail_upload" FROM "book" WHERE "thumbnail_upload" IS NOT NULL)',
+        ' UNION SELECT "thumbnail_upload" FROM "book" WHERE "thumbnail_upload" IS NOT NULL'
+        ' UNION SELECT "image_upload" FROM "book_annotation" WHERE "image_upload" IS NOT NULL)',
         (created_before,),
     )
 

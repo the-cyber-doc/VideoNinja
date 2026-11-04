@@ -116,8 +116,9 @@ class Encoder:
         while not self.stopping.is_set():
             try:
                 self.housekeeping()
-                # Books first: seconds each, they never wait for an hours-long video.
-                if not books.run_once(self.stopping) and not self.run_once():
+                # Books first: seconds each, they never wait for an hours-long video; then
+                # the books' pictures (a first page, a crop).
+                if not books.run_once(self.stopping) and not books.run_pictures(self.stopping) and not self.run_once():
                     self.stopping.wait(POLL_S)
             except Exception:
                 log.exception("Encoder error")
@@ -148,6 +149,7 @@ class Encoder:
             with db.transaction() as con:
                 queries.uploads.delete_upload(con, tus_id)
             log.info("Original %s deleted", tus_id)
+        books.sweep_orphans()
 
     def run_once(self) -> bool:
         """Encode one queued video; False if the queue is empty."""
