@@ -99,8 +99,8 @@ def test_seeded_definitions(admin):
         "regexp": "[12][0-9]{3}",
         "hint": {"en": "A year, e.g. 2024", "fr": "Une année, par ex. 2024"},
         "input_mode": "numeric",
-        "min": None,
-        "max": None,
+        "min": 1950,  # db v5
+        "max": 2080,
         "values": [],
         "used": 2,
     }

@@ -11,7 +11,7 @@ import { bluish, drag, drawnColor, pageBox, yellowish } from '../viewer';
 // from nginx) with a highlight and a region (its crop through tusd, the encoder and
 // nginx), a technique, a note, a colour, comments; the reference edited; the copy with
 // every annotation written in it; the technique's page for a plain user and for a book
-// manager; who may see what.
+// manager; who may see what; the search's full text (the PDF's own text, notes, comments).
 test.describe.configure({ mode: 'serial' });
 test.setTimeout(120_000);
 
@@ -25,6 +25,7 @@ interface Book {
 	original_filename: string;
 	status: string;
 	has_thumbnail: boolean;
+	has_text: boolean;
 }
 interface Annotation {
 	id: number;
@@ -229,6 +230,28 @@ test('an annotation’s technique, note and colour; its comments', async ({ page
 	await expect(comments).toContainText('Seen in the dojo');
 	const thread = await (await page.request.get(`api/book-annotations/${ids.highlight}/comments`)).json();
 	expect(thread.map((c: { text: string }) => c.text)).toEqual(['Seen in the dojo']);
+});
+
+test('the search: the PDF’s own text (sent at the upload), its notes and comments; in the box', async ({ page }) => {
+	await expect.poll(async () => (await books(page)).find((b) => b.id === ids.text)?.has_text).toBe(true);
+	const search = async (q: string) => (await page.request.get(`api/search?q=${encodeURIComponent(q)}`)).json();
+	const found = await search('TOGAKURE ryu'); // case ignored, every term
+	expect(found.pages).toContainEqual({
+		book: ids.text,
+		page: 1,
+		snippet: expect.stringContaining('\u0002Togakure\u0003')
+	});
+	expect((await search('first school')).annotations.map((a: { id: number }) => a.id)).toContain(ids.highlight);
+	expect((await search('dojo')).book_comments.map((c: { annotation: number }) => c.annotation)).toContain(
+		ids.highlight
+	);
+
+	await page.goto('books');
+	await page.getByRole('combobox', { name: 'Search' }).fill('togakure');
+	const inBooks = page.getByRole('group', { name: 'In the books' }).getByRole('option');
+	await expect(inBooks.filter({ hasText: 'Page 1' }).first()).toBeVisible();
+	await inBooks.filter({ hasText: 'Page 1' }).first().click();
+	await expect(page).toHaveURL(new RegExp(`books/${ids.text}\\?page=1$`));
 });
 
 test('the reference edited on the book’s page', async ({ page }) => {

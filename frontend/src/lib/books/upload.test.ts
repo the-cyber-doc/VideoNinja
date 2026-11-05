@@ -11,7 +11,13 @@ import type { BookUploadDeps } from './upload.svelte';
 
 const PDF = new File(['%PDF-1.4'], 'Densho.PDF', { type: 'application/pdf' });
 const THUMB = new Blob(['jpeg'], { type: 'image/jpeg' });
-const FACTS: PdfFacts = { pages: 120, title: 'Ninjutsu', author: 'Masaaki Hatsumi', thumbnail: THUMB };
+const FACTS: PdfFacts = {
+	pages: 120,
+	title: 'Ninjutsu',
+	author: 'Masaaki Hatsumi',
+	thumbnail: THUMB,
+	text: ['Page one', '']
+};
 
 function fakes(over: Partial<BookUploadDeps> = {}) {
 	const uploads: { blob: Blob; meta: object; callbacks: UploadCallbacks; abort: ReturnType<typeof vi.fn> }[] = [];
@@ -23,6 +29,7 @@ function fakes(over: Partial<BookUploadDeps> = {}) {
 		bookExists: async () => false,
 		readPdf: async () => FACTS,
 		submitBook: vi.fn(async () => ({ id: 7 })),
+		sendText: vi.fn(async () => {}),
 		startUpload: (blob, meta, callbacks) => {
 			const abort = vi.fn(async () => {});
 			uploads.push({ blob, meta, callbacks, abort });
@@ -142,6 +149,7 @@ describe('uploading', () => {
 			tags: [{ id: 'note', value: 'scan' }]
 		});
 		expect([flow.step, flow.submittedId, flow.file]).toEqual(['done', 7, null]);
+		expect(deps.sendText).toHaveBeenCalledWith(7, ['Page one', '']); // the search's, in the background
 		expect(deps.revokeUrl).toHaveBeenCalledWith('blob:thumb');
 	});
 
@@ -220,5 +228,13 @@ describe('the real dependencies', () => {
 		expect(url).toMatch(/^blob:/);
 		DEPS.revokeUrl(url);
 		expect(new BookUpload(null).maxBytes).toBeNull();
+	});
+
+	it('the text sent through the API', async () => {
+		const fetch = vi.fn(async () => new Response(null, { status: 204 }));
+		vi.stubGlobal('fetch', fetch);
+		await DEPS.sendText(7, ['a']);
+		expect(fetch).toHaveBeenCalledWith('/api/books/7/text', expect.objectContaining({ method: 'PUT' }));
+		vi.unstubAllGlobals();
 	});
 });

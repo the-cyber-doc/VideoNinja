@@ -28,6 +28,7 @@ const BOOK: BookRow = {
 	uploaded_at: '2026-10-23T12:13:38+02:00',
 	uploaded_by: 'Aiko',
 	has_thumbnail: true,
+	has_text: true,
 	tags: [
 		{ id: 'year', value: '1981' },
 		{ id: 'scan', value: null }
@@ -56,6 +57,7 @@ function fakes(over: Partial<BookPageDeps> = {}): BookPageDeps {
 		save: vi.fn(),
 		editBook: vi.fn(async (_id, body) => ({ ...BOOK, reference: body.reference, tags: body.tags })) as never,
 		replaceThumbnail: vi.fn(async () => undefined),
+		sendText: vi.fn(async () => undefined),
 		uploadPicture: vi.fn(async () => 'tus-9'),
 		annotations: {
 			create: vi.fn(),
@@ -73,6 +75,8 @@ const controls = (over: Partial<ViewerControls> = {}): ViewerControls => ({
 	recolor: vi.fn(),
 	crop: vi.fn(async () => new Blob(['crop'])),
 	firstPage: vi.fn(async () => new Blob(['jpeg'])),
+	pageTexts: vi.fn(async () => ['Page one', '']),
+	showPage: vi.fn(),
 	annotatedCopy: vi.fn(async () => new TextEncoder().encode('%PDF copy').buffer),
 	reselect: vi.fn(async () => true),
 	cancelReselect: vi.fn(),
@@ -157,6 +161,31 @@ describe('BookPage', () => {
 		expect(page.book.has_thumbnail).toBe(true);
 	});
 
+	it('no text yet: read from the viewer and sent, once per visit; a failure silently', async () => {
+		const deps = fakes();
+		const page = new BookPage({ ...BOOK, has_text: false }, [], deps);
+		await page.ready(controls());
+		await page.ready(controls());
+		expect(deps.sendText).toHaveBeenCalledTimes(1);
+		expect(deps.sendText).toHaveBeenCalledWith(7, ['Page one', '']);
+		expect(page.book.has_text).toBe(true);
+		const refused = fakes({ sendText: async () => Promise.reject(new Error('down')) });
+		const again = new BookPage({ ...BOOK, has_text: false }, [], refused);
+		await again.ready(controls());
+		expect([again.book.has_text, again.error]).toEqual([false, null]);
+		await new BookPage(BOOK, [], deps).ready(controls()); // has text: not sent
+		expect(deps.sendText).toHaveBeenCalledTimes(1);
+	});
+
+	it('?page=: that page shown, once; an annotation asked for comes first', async () => {
+		const viewer = controls();
+		const page = new BookPage(BOOK, [], fakes(), null, 4);
+		await page.ready(viewer);
+		await page.ready(viewer);
+		expect(viewer.showPage).toHaveBeenCalledTimes(1);
+		expect(viewer.showPage).toHaveBeenCalledWith(4);
+	});
+
 	it('the first page not rendered, or refused: tried again next visit, silently', async () => {
 		const none = fakes();
 		await new BookPage({ ...BOOK, has_thumbnail: false }, [], none).ready(controls({ firstPage: async () => null }));
@@ -234,6 +263,9 @@ describe('BookPage', () => {
 		vi.stubGlobal('fetch', real);
 		await DEPS.fetch('/media/book/7');
 		expect(real).toHaveBeenCalledWith('/media/book/7');
+		real.mockResolvedValueOnce(new Response(null, { status: 204 }));
+		await DEPS.sendText(7, []);
+		expect(real).toHaveBeenLastCalledWith('/api/books/7/text', expect.objectContaining({ method: 'PUT' }));
 		vi.unstubAllGlobals();
 		expect(new BookPage(BOOK, []).annotations.bookId).toBe(7);
 	});

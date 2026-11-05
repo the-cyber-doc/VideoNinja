@@ -627,7 +627,7 @@ export, re-add `"id" INTEGER PRIMARY KEY AUTOINCREMENT` on `video`, `segment`,
 `user` and `comment`.
 
 Versions: the app runs on one database version, `EXPECTED_VERSION` in
-`server/app/core/db.py` (now 3), kept in the database itself (`config.db_version`).
+`server/app/core/db.py` (now 5), kept in the database itself (`config.db_version`).
 
 | File | What |
 |---|---|
@@ -648,6 +648,8 @@ database as failing otherwise.
 | 1 | v0.0.6 (efae32a) | — |
 | 2 | the four containers | `heartbeat` (the encoder's liveness, for `/health`), `video.thumbs_dirty` (segment thumbnails made by the encoder) |
 | 3 | indexes, moderation | Indexes on the columns looked up in the growing tables (video, segment, comment, session, upload), foreign keys included; the `moderator` access (edit and delete anyone's comments), given to the `admin` role; tags' explicit `value_format` (`list`, `regexp`, `free`, `NULL` = no value) with `regexp`, `hint`, `input_mode`, `min_value`, `max_value`, and the `options` access (the Options page), given to the `admin` role |
+| 4 | v0.0.9, books | Books (`book`, `book_has_tags`, `book_annotation`, `book_comment`), `upload.kind` (`video`, `book`, `image`), the `book_mgmt` access (admins) and the `book_mgmt` and `content_mgmt` roles; down: the books are deleted, those users get `uploader` / `video_mgmt` |
+| 5 | full-text search | `book_page` (each page's text, sent by the browser; `book.text_pages`) and FTS5 indexes (trigram tokenizer) over it, the book annotations' quotes and notes and the comments, kept in step by triggers; the `year` tag bounded to 1950–2080 when it had no bounds and every stored year fits; down: the page text and the indexes go (the browser sends the text again), the bounds stay |
 
 Transactions: the API and the encoder write to the same file from two
 processes. Connections (`db.connect`) are in autocommit mode; every change of

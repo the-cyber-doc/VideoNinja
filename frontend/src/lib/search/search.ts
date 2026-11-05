@@ -2,22 +2,37 @@
 // segment, video and book, holding the text of EVERY language (the catalogue's of each),
 // so that a French word finds what is shown in English. Hits are shown in the page's
 // language (`describe`). Accents and case are ignored (`fold`); words match by prefix,
-// longer ones also with a typo; Japanese text matches by character too.
+// longer ones also with a typo; Japanese text matches by character too. The full text
+// (book pages, annotations, comments) is the server's (`remoteShown`), merged in `results`.
 import MiniSearch from 'minisearch';
-import type { BookRow, TagIn, VideoRow } from '../api/types';
+import type { BookRow, SearchHits, TagIn, VideoRow } from '../api/types';
 import { nameOf, year } from '../books/citation';
 import { fold } from '../books/filter';
 import { catalogHref, pathOf, schoolHref, type Catalog, type Segment } from '../catalog.svelte';
-import { LANGUAGES, type Lang } from '../i18n.svelte';
+import { LANGUAGES, t, type Lang } from '../i18n.svelte';
 import { formatTime } from '../time';
 import { url } from '../base';
 
+/** What the browser's index holds. */
 export type Kind = 'school' | 'section' | 'technique' | 'segment' | 'video' | 'book';
+/** What the server's full text finds. */
+export type RemoteKind = 'page' | 'annotation' | 'comment' | 'book_comment';
 /** How the results are grouped, in this order. */
-export type Group = 'catalog' | 'segments' | 'videos' | 'books';
-export const GROUPS: readonly Group[] = ['catalog', 'segments', 'videos', 'books'];
-export const groupOf = (kind: Kind): Group =>
-	kind === 'segment' ? 'segments' : kind === 'video' ? 'videos' : kind === 'book' ? 'books' : 'catalog';
+export type Group = 'catalog' | 'segments' | 'videos' | 'books' | 'texts' | 'comments';
+export const GROUPS: readonly Group[] = ['catalog', 'segments', 'videos', 'books', 'texts', 'comments'];
+const GROUP_OF: Record<Kind | RemoteKind, Group> = {
+	school: 'catalog',
+	section: 'catalog',
+	technique: 'catalog',
+	segment: 'segments',
+	video: 'videos',
+	book: 'books',
+	page: 'texts',
+	annotation: 'texts',
+	comment: 'comments',
+	book_comment: 'comments'
+};
+export const groupOf = (kind: Kind | RemoteKind): Group => GROUP_OF[kind];
 
 const LANGS = Object.keys(LANGUAGES) as Lang[];
 
@@ -180,7 +195,7 @@ export function tokenize(text: string): string[] {
 }
 
 /** A word typed: by prefix; with one typo from 6 letters (shorter: romaji names one letter
- * apart are other techniques, Keto and Koto), two from 10 (MiniSearch's fraction). */
+ * apart are other techniques, Keto and Koto), two from 8 (MiniSearch rounds length × 0.2). */
 const fuzzy = (term: string) => (term.length >= 6 ? 0.2 : false);
 
 export function buildIndex(docs: Doc[]) {
@@ -212,6 +227,8 @@ export interface Shown {
 	title: string;
 	detail: string;
 	href: string;
+	/** The text around the match, the matches between \u0002 and \u0003 (the server's hits). */
+	snippet?: string;
 }
 
 const times = (s: Segment) => `${formatTime(s.begin_s)}–${formatTime(s.end_s)}`;
@@ -274,19 +291,122 @@ export function describe(hit: Hit, catalog: Catalog, src: Sources): Shown | null
 
 export interface ShownHit extends Shown {
 	key: string; // "<kind>:<id>"
-	kind: Kind;
+	kind: Kind | RemoteKind;
 }
 
-/** The hits as shown, by group (at most `limit` per group; `total` counts them all). Hits the
- * page's catalogue cannot show (e.g. not yet in its language's snapshot) are left out. */
-export function results(hits: Hit[], catalog: Catalog | undefined, src: Sources, limit = Infinity) {
+/** The server's hits as shown; those whose book or technique the page cannot show left out. */
+export function remoteShown(remote: SearchHits, catalog: Catalog, src: Sources): ShownHit[] {
+	const bookTitle = (id: number) => {
+		const b = src.books?.find((x) => x.id === id);
+		return b && (b.reference.title || b.original_filename);
+	};
+	const technique = (id: string | null) => {
+		const tq = catalog.techniques.find((x) => x.id === id);
+		const path = tq && pathOf(catalog, tq.id);
+		return tq && path ? { title: tq.romaji, href: catalogHref(path) } : null;
+	};
+	const who = (name: string | null) => name ?? t('common.deleted_user');
+	const out: ShownHit[] = [];
+	const add = (kind: RemoteKind, id: number | string, shown: Shown | null) => {
+		if (shown) out.push({ ...shown, key: `${kind}:${id}`, kind });
+	};
+	for (const p of remote.pages) {
+		const title = bookTitle(p.book);
+		add(
+			'page',
+			`${p.book}-${p.page}`,
+			title
+				? {
+						title,
+						detail: t('search.page', { n: p.page }),
+						href: url(`/books/${p.book}?page=${p.page}`),
+						snippet: p.snippet
+					}
+				: null
+		);
+	}
+	for (const a of remote.annotations) {
+		const title = a.book === null ? null : bookTitle(a.book);
+		const about = technique(a.technique);
+		const detail = join(t('search.page', { n: a.page }), about && `· ${about.title}`);
+		if (a.book !== null)
+			add(
+				'annotation',
+				a.id,
+				title ? { title, detail, href: url(`/books/${a.book}?annotation=${a.id}`), snippet: a.snippet } : null
+			);
+		else
+			add(
+				'annotation',
+				a.id,
+				about ? { title: about.title, detail: t('search.in_a_book'), href: about.href, snippet: a.snippet } : null
+			);
+	}
+	for (const c of remote.comments) {
+		const about = technique(c.technique);
+		add(
+			'comment',
+			c.id,
+			about ? { title: about.title, detail: who(c.user), href: about.href, snippet: c.snippet } : null
+		);
+	}
+	for (const c of remote.book_comments) {
+		const title = bookTitle(c.book);
+		add(
+			'book_comment',
+			c.id,
+			title
+				? {
+						title,
+						detail: who(c.user),
+						href: url(`/books/${c.book}?annotation=${c.annotation}`),
+						snippet: c.snippet
+					}
+				: null
+		);
+	}
+	return out;
+}
+
+/** The hits as shown, by group (at most `limit` per group; `total` counts them all), the
+ * server's (`remote`) after the browser's. Hits the page's catalogue cannot show (e.g. not
+ * yet in its language's snapshot) are left out. */
+export function results(
+	hits: Hit[],
+	catalog: Catalog | undefined,
+	src: Sources,
+	limit = Infinity,
+	remote?: SearchHits
+) {
 	if (!catalog) return [];
-	const shown = hits.flatMap((h) => {
+	const shown: ShownHit[] = hits.flatMap((h) => {
 		const s = describe(h, catalog, src);
 		return s ? [{ ...s, key: `${h.kind}:${h.ref}`, kind: h.kind }] : [];
 	});
+	if (remote) shown.push(...remoteShown(remote, catalog, src));
 	return GROUPS.map((group) => {
 		const all = shown.filter((h) => groupOf(h.kind) === group);
 		return { group, hits: all.slice(0, limit), total: all.length };
 	}).filter((g) => g.total);
+}
+
+const START = '\u0002';
+const END = '\u0003';
+
+/** A snippet in parts: the matches (`mark`) and the text between them. */
+export function snippetParts(snippet: string): { text: string; mark: boolean }[] {
+	const parts: { text: string; mark: boolean }[] = [];
+	let rest = snippet;
+	while (rest) {
+		const start = rest.indexOf(START);
+		const end = start < 0 ? -1 : rest.indexOf(END, start);
+		if (end < 0) {
+			parts.push({ text: rest.replaceAll(START, ''), mark: false });
+			break;
+		}
+		if (start > 0) parts.push({ text: rest.slice(0, start), mark: false });
+		if (end > start + 1) parts.push({ text: rest.slice(start + 1, end), mark: true });
+		rest = rest.slice(end + 1);
+	}
+	return parts;
 }

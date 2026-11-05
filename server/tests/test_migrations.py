@@ -21,7 +21,7 @@ def build(path, version):
 
 
 def schema(path):
-    """Tables, their columns, indexes and foreign keys: what a migration must reproduce."""
+    """Tables, their columns, indexes, foreign keys, triggers and virtual tables: what a migration must reproduce."""
     con = sqlite3.connect(path)
     tables = [t for (t,) in con.execute("SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name")]
     out = {
@@ -35,6 +35,10 @@ def schema(path):
         )
         for t in tables
     }
+    # Triggers and virtual tables (the search's FTS5 indexes): their definitions.
+    out["sqlite_master"] = con.execute(
+        "SELECT type, name, sql FROM sqlite_master WHERE type = 'trigger' OR sql LIKE 'CREATE VIRTUAL%' ORDER BY name"
+    ).fetchall()
     con.close()
     return out
 
@@ -320,3 +324,85 @@ def test_v4_brings_books_and_their_roles(database, monkeypatch):
         (0,)
     ]
     assert sql(database, "PRAGMA foreign_key_check") == []
+
+
+def test_v5_brings_the_full_text_search(database, monkeypatch):
+    """v4 → v5: existing annotations and comments indexed at once, the year tag bounded;
+    the triggers keep the indexes in step. v5 → v4: the page text goes, the bounds stay."""
+    build(database, 4)
+    sql(database, "INSERT INTO user (id, username, role) VALUES (5, 'kenji', 'user')")
+    sql(
+        database,
+        "INSERT INTO book (sha256sum, original_filename, reference, uploaded_by, uploaded_at)"
+        " VALUES ('c', 'densho.pdf', '{}', 5, 'x')",
+    )
+    sql(
+        database,
+        "INSERT INTO book_annotation (book, page, kind, target, quote, note, created_by, created_at, modified_at)"
+        " VALUES (1, 3, 'text', '{}', 'Le dōjō', 'Kamae first', 5, 'x', 'x')",
+    )
+    sql(
+        database,
+        "INSERT INTO comment (technique, user, lang, text, created_at, modified_at)"
+        " VALUES ('gyokko.taijutsu.jo_ryaku.koku', 5, 'en', 'Seen at the Daikomyosai', 'x', 'x')",
+    )
+    sql(
+        database,
+        "INSERT INTO book_comment (annotation, user, lang, text, created_at, modified_at)"
+        " VALUES (1, 5, 'en', 'Also in the scroll', 'x', 'x')",
+    )
+    monkeypatch.setattr(db, "EXPECTED_VERSION", 5)
+    db.migrate()
+    assert sql(database, "SELECT rowid FROM book_annotation_fts WHERE book_annotation_fts MATCH '\"dojo\"'") == [(1,)]
+    assert sql(database, "SELECT rowid FROM comment_fts WHERE comment_fts MATCH '\"komyo\"'") == [(1,)]
+    assert sql(database, "SELECT rowid FROM book_comment_fts WHERE book_comment_fts MATCH '\"scroll\"'") == [(1,)]
+    assert sql(database, "SELECT min_value, max_value FROM tag WHERE id = 'year'") == [(1950, 2080)]
+    assert sql(database, "SELECT text_pages FROM book") == [(None,)]
+
+    # The triggers: new rows, changes and cascades.
+    sql(database, "INSERT INTO book_page (book, page, text) VALUES (1, 2, '虚空の構え')")
+    assert sql(database, "SELECT rowid FROM book_page_fts WHERE book_page_fts MATCH '\"虚空の\"'") == [(1,)]
+    sql(database, "UPDATE book_page SET text = 'Ichimonji'")
+    assert sql(database, "SELECT rowid FROM book_page_fts WHERE book_page_fts MATCH '\"虚空の\"'") == []
+    assert sql(database, "SELECT rowid FROM book_page_fts WHERE book_page_fts MATCH '\"monji\"'") == [(1,)]
+    sql(database, "UPDATE comment SET text = 'Changed'")
+    assert sql(database, "SELECT rowid FROM comment_fts WHERE comment_fts MATCH '\"komyo\"'") == []
+    sql(database, "UPDATE book_annotation SET note = 'Hicho'")
+    assert sql(database, "SELECT rowid FROM book_annotation_fts WHERE book_annotation_fts MATCH '\"kamae\"'") == []
+    sql(database, "UPDATE book_comment SET text = 'Another'")
+    assert sql(database, "SELECT rowid FROM book_comment_fts WHERE book_comment_fts MATCH '\"scroll\"'") == []
+    sql(database, "DELETE FROM comment")
+    con = sqlite3.connect(database)
+    con.execute("PRAGMA foreign_keys = ON")
+    with con:
+        con.execute("DELETE FROM book")  # cascades: pages, annotations, their comments
+    con.close()
+    for table in ("book_page_fts", "book_annotation_fts", "comment_fts", "book_comment_fts"):
+        assert sql(database, f"INSERT INTO {table} ({table}) VALUES ('integrity-check')") == []
+        assert sql(database, f"SELECT count(*) FROM {table}") == [(0,)]
+
+    sql(database, "UPDATE tag SET min_value = 1900 WHERE id = 'year'")
+    monkeypatch.setattr(db, "EXPECTED_VERSION", 4)
+    db.migrate()
+    assert sql(database, "SELECT min_value, max_value FROM tag WHERE id = 'year'") == [(1900, 2080)]
+
+
+@pytest.mark.parametrize(
+    ("bounds", "stored", "expected"),
+    [
+        ((None, None), "1066", (None, None)),  # a stored year would fail the bounds: none given
+        ((1000, None), "2024", (1000, None)),  # the admin's own: kept
+        ((None, None), "2024", (1950, 2080)),
+    ],
+)
+def test_v5_bounds_the_year_only_when_it_can(database, monkeypatch, bounds, stored, expected):
+    build(database, 4)
+    sql(database, "UPDATE tag SET min_value = ?, max_value = ? WHERE id = 'year'", *bounds)
+    sql(
+        database,
+        "INSERT INTO video (original_sha256, original_filename, uploaded_at) VALUES ('b', 'k.mp4', 'x')",
+    )
+    sql(database, "INSERT INTO video_has_tags (video, tag, value) VALUES (1, 'year', ?)", stored)
+    monkeypatch.setattr(db, "EXPECTED_VERSION", 5)
+    db.migrate()
+    assert sql(database, "SELECT min_value, max_value FROM tag WHERE id = 'year'") == [expected]

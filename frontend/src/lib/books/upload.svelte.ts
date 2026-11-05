@@ -12,6 +12,7 @@ import { i18n, t } from '../i18n.svelte';
 import { sha256File } from '../upload/hash';
 import { startUpload, type UploadCallbacks } from '../upload/upload';
 import { readPdf, type PdfFacts } from './pdf';
+import { sendText } from './text';
 import { draftFromPdf, emptyDraft, problems, toReference, type ReferenceDraft } from './reference';
 
 export type Step = 'pick' | 'hashing' | 'reading' | 'edit' | 'uploading' | 'submitting' | 'done';
@@ -23,6 +24,8 @@ export interface BookUploadDeps {
 	bookExists: (sha256: string) => Promise<boolean>;
 	readPdf: (file: Blob) => Promise<PdfFacts>;
 	submitBook: typeof books.submitBook;
+	/** The pages' text, sent after the submit (the search's; ./text.ts). */
+	sendText: (bookId: number, pages: string[]) => Promise<void>;
 	startUpload: (
 		file: Blob,
 		meta: { sha256: string; originalFilename: string; kind: Kind },
@@ -37,6 +40,7 @@ export const DEPS: BookUploadDeps = {
 	bookExists: books.bookExists,
 	readPdf,
 	submitBook: books.submitBook,
+	sendText: (bookId, pages) => sendText(bookId, pages, books.putBookText),
 	startUpload: (file, meta, callbacks) => startUpload(file as File, meta, callbacks),
 	objectUrl: (blob) => URL.createObjectURL(blob),
 	revokeUrl: (url) => URL.revokeObjectURL(url)
@@ -66,6 +70,7 @@ export class BookUpload {
 
 	#sha256 = '';
 	#thumbnail: Blob | null = null;
+	#text: string[] = [];
 	#hashing: AbortController | null = null;
 	#upload: Pick<Upload, 'abort'> | null = null;
 
@@ -104,6 +109,7 @@ export class BookUpload {
 			}
 			this.pages = facts.pages || null;
 			this.#thumbnail = facts.thumbnail;
+			this.#text = facts.text;
 			if (facts.thumbnail) this.thumbnailSrc = this.deps.objectUrl(facts.thumbnail);
 			this.draft = draftFromPdf(facts.title, facts.author);
 			this.step = 'edit';
@@ -153,6 +159,8 @@ export class BookUpload {
 				reference: toReference(this.draft),
 				tags: this.tags
 			});
+			// In the background, not waited for: a failure leaves it to the viewer (has_text false).
+			this.deps.sendText(id, this.#text).catch(() => {});
 			this.reset();
 			this.submittedId = id;
 			this.step = 'done';
@@ -185,6 +193,7 @@ export class BookUpload {
 		this.submittedId = null;
 		this.#sha256 = '';
 		this.#thumbnail = null;
+		this.#text = [];
 		this.#hashing = null;
 		this.#upload = null;
 	}

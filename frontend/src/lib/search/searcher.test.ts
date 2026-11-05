@@ -3,7 +3,8 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { BookRow, VideoRow } from '../api/types';
 import type { Catalog } from '../catalog.svelte';
-import { REFRESH_MS, Searcher, type SearchDeps } from './searcher.svelte';
+import type { SearchHits } from '../api/types';
+import { DEBOUNCE_MS, REFRESH_MS, Searcher, type SearchDeps } from './searcher.svelte';
 
 const catalog = (description: string) =>
 	({
@@ -21,6 +22,13 @@ const BOOKS = [
 	{ id: 2, status: 'published', original_filename: 'b.pdf', tags: [], reference: { title: 'Ninjutsu' } }
 ] as unknown as BookRow[];
 
+const hitsFor = (q: string): SearchHits => ({
+	pages: [{ book: 2, page: 1, snippet: q }],
+	annotations: [],
+	comments: [],
+	book_comments: []
+});
+
 function setup(accesses: string[] = ['video_mgmt', 'book_mgmt']) {
 	let now = 0;
 	let user: string | undefined = 'aiko';
@@ -28,6 +36,7 @@ function setup(accesses: string[] = ['video_mgmt', 'book_mgmt']) {
 		catalog: vi.fn(async (lang: string) => (lang === 'fr' ? FR : EN)),
 		videos: vi.fn(async () => VIDEOS),
 		books: vi.fn(async () => BOOKS),
+		remote: vi.fn(async (q: string) => hitsFor(q)),
 		can: (access: string) => accesses.includes(access),
 		user: () => user,
 		now: () => now
@@ -104,5 +113,73 @@ describe('Searcher', () => {
 		await searcher.refresh();
 		expect(deps.videos).toHaveBeenCalledTimes(2);
 		expect(searcher.version).toBe(2);
+	});
+});
+
+describe("lookup (the server's full text)", () => {
+	it('asked a moment after the last key, kept for its query; nothing for blanks or the same query', async () => {
+		vi.useFakeTimers();
+		try {
+			const { deps, searcher } = setup();
+			searcher.lookup('ka');
+			searcher.lookup('kamae ');
+			await vi.advanceTimersByTimeAsync(DEBOUNCE_MS);
+			expect(deps.remote.mock.calls).toEqual([['kamae']]);
+			expect(searcher.remoteHits(' kamae')).toEqual(hitsFor('kamae'));
+			expect(searcher.remoteHits('ka')).toBeUndefined();
+			searcher.lookup('kamae');
+			searcher.lookup('  ');
+			await vi.advanceTimersByTimeAsync(DEBOUNCE_MS);
+			expect(deps.remote).toHaveBeenCalledOnce();
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
+	it('an older answer arriving late is dropped; a failure said, until an answer comes', async () => {
+		vi.useFakeTimers();
+		try {
+			const { deps, searcher } = setup();
+			let answer!: (hits: SearchHits) => void;
+			deps.remote.mockImplementationOnce(() => new Promise((resolve) => (answer = resolve)));
+			searcher.lookup('first');
+			await vi.advanceTimersByTimeAsync(DEBOUNCE_MS);
+			searcher.lookup('second');
+			await vi.advanceTimersByTimeAsync(DEBOUNCE_MS);
+			answer(hitsFor('first'));
+			await vi.advanceTimersByTimeAsync(0);
+			expect(searcher.remote?.query).toBe('second');
+
+			deps.remote.mockRejectedValueOnce(new Error('offline'));
+			searcher.lookup('third');
+			await vi.advanceTimersByTimeAsync(DEBOUNCE_MS);
+			expect(searcher.remoteFailed).toBe(true);
+			let fail!: (e: Error) => void;
+			deps.remote.mockImplementationOnce(() => new Promise((_, reject) => (fail = reject)));
+			searcher.lookup('fourth');
+			await vi.advanceTimersByTimeAsync(DEBOUNCE_MS);
+			searcher.lookup('fifth');
+			await vi.advanceTimersByTimeAsync(DEBOUNCE_MS);
+			expect(searcher.remoteFailed).toBe(false);
+			fail(new Error('late'));
+			await vi.advanceTimersByTimeAsync(0);
+			expect(searcher.remoteFailed).toBe(false); // an older failure: not said
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
+	it('another user: the answer forgotten', async () => {
+		vi.useFakeTimers();
+		try {
+			const { searcher, become } = setup();
+			searcher.lookup('kamae');
+			await vi.advanceTimersByTimeAsync(DEBOUNCE_MS);
+			become('kenji');
+			await searcher.refresh();
+			expect(searcher.remoteHits('kamae')).toBeUndefined();
+		} finally {
+			vi.useRealTimers();
+		}
 	});
 });

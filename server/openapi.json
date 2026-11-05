@@ -158,6 +158,53 @@
         "title": "AnnotationChange",
         "type": "object"
       },
+      "AnnotationHit": {
+        "properties": {
+          "book": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Book"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "page": {
+            "title": "Page",
+            "type": "integer"
+          },
+          "snippet": {
+            "title": "Snippet",
+            "type": "string"
+          },
+          "technique": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Technique"
+          }
+        },
+        "required": [
+          "id",
+          "book",
+          "page",
+          "technique",
+          "snippet"
+        ],
+        "title": "AnnotationHit",
+        "type": "object"
+      },
       "AnnotationIn": {
         "properties": {
           "color": {
@@ -482,6 +529,46 @@
         "title": "AvailabilityOut",
         "type": "object"
       },
+      "BookCommentHit": {
+        "properties": {
+          "annotation": {
+            "title": "Annotation",
+            "type": "integer"
+          },
+          "book": {
+            "title": "Book",
+            "type": "integer"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "snippet": {
+            "title": "Snippet",
+            "type": "string"
+          },
+          "user": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User"
+          }
+        },
+        "required": [
+          "id",
+          "annotation",
+          "book",
+          "user",
+          "snippet"
+        ],
+        "title": "BookCommentHit",
+        "type": "object"
+      },
       "BookCommentOut": {
         "properties": {
           "annotation": {
@@ -648,6 +735,10 @@
             ],
             "title": "Error"
           },
+          "has_text": {
+            "title": "Has Text",
+            "type": "boolean"
+          },
           "has_thumbnail": {
             "title": "Has Thumbnail",
             "type": "boolean"
@@ -716,6 +807,7 @@
           "uploaded_at",
           "uploaded_by",
           "has_thumbnail",
+          "has_text",
           "tags"
         ],
         "title": "BookOut",
@@ -732,6 +824,72 @@
           "id"
         ],
         "title": "BookSubmittedOut",
+        "type": "object"
+      },
+      "BookTextIn": {
+        "description": "A batch of pages' text, in order (nginx takes 1 MB per request): the first batch\n(first = 1) replaces what was sent before, the last one (last) completes it.",
+        "properties": {
+          "first": {
+            "maximum": 100000.0,
+            "minimum": 1.0,
+            "title": "First",
+            "type": "integer"
+          },
+          "last": {
+            "title": "Last",
+            "type": "boolean"
+          },
+          "pages": {
+            "items": {
+              "maxLength": 100000,
+              "type": "string"
+            },
+            "maxItems": 2000,
+            "title": "Pages",
+            "type": "array"
+          }
+        },
+        "required": [
+          "first",
+          "pages",
+          "last"
+        ],
+        "title": "BookTextIn",
+        "type": "object"
+      },
+      "CommentHit": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "snippet": {
+            "title": "Snippet",
+            "type": "string"
+          },
+          "technique": {
+            "title": "Technique",
+            "type": "string"
+          },
+          "user": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User"
+          }
+        },
+        "required": [
+          "id",
+          "technique",
+          "user",
+          "snippet"
+        ],
+        "title": "CommentHit",
         "type": "object"
       },
       "CommentIn": {
@@ -1031,6 +1189,29 @@
           "name"
         ],
         "title": "NameIn",
+        "type": "object"
+      },
+      "PageHit": {
+        "properties": {
+          "book": {
+            "title": "Book",
+            "type": "integer"
+          },
+          "page": {
+            "title": "Page",
+            "type": "integer"
+          },
+          "snippet": {
+            "title": "Snippet",
+            "type": "string"
+          }
+        },
+        "required": [
+          "book",
+          "page",
+          "snippet"
+        ],
+        "title": "PageHit",
         "type": "object"
       },
       "PasswordIn": {
@@ -1526,6 +1707,46 @@
           "name"
         ],
         "title": "RoleOut",
+        "type": "object"
+      },
+      "SearchOut": {
+        "properties": {
+          "annotations": {
+            "items": {
+              "$ref": "#/components/schemas/AnnotationHit"
+            },
+            "title": "Annotations",
+            "type": "array"
+          },
+          "book_comments": {
+            "items": {
+              "$ref": "#/components/schemas/BookCommentHit"
+            },
+            "title": "Book Comments",
+            "type": "array"
+          },
+          "comments": {
+            "items": {
+              "$ref": "#/components/schemas/CommentHit"
+            },
+            "title": "Comments",
+            "type": "array"
+          },
+          "pages": {
+            "items": {
+              "$ref": "#/components/schemas/PageHit"
+            },
+            "title": "Pages",
+            "type": "array"
+          }
+        },
+        "required": [
+          "pages",
+          "annotations",
+          "comments",
+          "book_comments"
+        ],
+        "title": "SearchOut",
         "type": "object"
       },
       "SegmentIn": {
@@ -4566,6 +4787,68 @@
         ]
       }
     },
+    "/api/books/{book_id}/text": {
+      "put": {
+        "description": "The text of the book's pages, extracted by the browser (the server has no PDF parser):\nat the upload, else by the viewer once (has_text false). Any book manager.",
+        "operationId": "put_text_api_books__book_id__text_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "book_id",
+            "required": true,
+            "schema": {
+              "title": "Book Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "header",
+            "name": "time-zone",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Time-Zone"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BookTextIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "An error (core/errors.py: ERRORS)"
+          }
+        },
+        "summary": "Put Text",
+        "tags": [
+          "books"
+        ]
+      }
+    },
     "/api/books/{book_id}/thumbnail": {
       "put": {
         "description": "A new first-page picture for a published book (the viewer makes one when it has none);\nthe encoder publishes it.",
@@ -5265,6 +5548,67 @@
         "summary": "Verify",
         "tags": [
           "register"
+        ]
+      }
+    },
+    "/api/search": {
+      "get": {
+        "description": "Every term must match (any part of a word, accents and case ignored); best first.",
+        "operationId": "search_text_api_search_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "q",
+            "required": true,
+            "schema": {
+              "maxLength": 200,
+              "minLength": 1,
+              "title": "Q",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "time-zone",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Time-Zone"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SearchOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "An error (core/errors.py: ERRORS)"
+          }
+        },
+        "summary": "Search Text",
+        "tags": [
+          "search"
         ]
       }
     },

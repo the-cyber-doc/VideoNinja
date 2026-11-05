@@ -456,6 +456,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/books/{book_id}/text": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Put Text
+         * @description The text of the book's pages, extracted by the browser (the server has no PDF parser):
+         *     at the upload, else by the viewer once (has_text false). Any book manager.
+         */
+        put: operations["put_text_api_books__book_id__text_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/books/{book_id}/thumbnail": {
         parameters: {
             query?: never;
@@ -663,6 +684,26 @@ export interface paths {
          * @description The username the invitation is for.
          */
         post: operations["verify_api_register_verify_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Search Text
+         * @description Every term must match (any part of a word, accents and case ignored); best first.
+         */
+        get: operations["search_text_api_search_get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1230,6 +1271,19 @@ export interface components {
             /** Technique */
             technique?: string | null;
         };
+        /** AnnotationHit */
+        AnnotationHit: {
+            /** Book */
+            book: number | null;
+            /** Id */
+            id: number;
+            /** Page */
+            page: number;
+            /** Snippet */
+            snippet: string;
+            /** Technique */
+            technique: string | null;
+        };
         /** AnnotationIn */
         AnnotationIn: {
             /** Color */
@@ -1332,6 +1386,19 @@ export interface components {
             /** Available */
             available: boolean;
         };
+        /** BookCommentHit */
+        BookCommentHit: {
+            /** Annotation */
+            annotation: number;
+            /** Book */
+            book: number;
+            /** Id */
+            id: number;
+            /** Snippet */
+            snippet: string;
+            /** User */
+            user: string | null;
+        };
         /** BookCommentOut */
         BookCommentOut: {
             /** Annotation */
@@ -1386,6 +1453,8 @@ export interface components {
         BookOut: {
             /** Error */
             error: string | null;
+            /** Has Text */
+            has_text: boolean;
             /** Has Thumbnail */
             has_thumbnail: boolean;
             /** Id */
@@ -1411,6 +1480,30 @@ export interface components {
         BookSubmittedOut: {
             /** Id */
             id: number;
+        };
+        /**
+         * BookTextIn
+         * @description A batch of pages' text, in order (nginx takes 1 MB per request): the first batch
+         *     (first = 1) replaces what was sent before, the last one (last) completes it.
+         */
+        BookTextIn: {
+            /** First */
+            first: number;
+            /** Last */
+            last: boolean;
+            /** Pages */
+            pages: string[];
+        };
+        /** CommentHit */
+        CommentHit: {
+            /** Id */
+            id: number;
+            /** Snippet */
+            snippet: string;
+            /** Technique */
+            technique: string;
+            /** User */
+            user: string | null;
         };
         /** CommentIn */
         CommentIn: {
@@ -1525,6 +1618,15 @@ export interface components {
             /** Name */
             name: string;
         };
+        /** PageHit */
+        PageHit: {
+            /** Book */
+            book: number;
+            /** Page */
+            page: number;
+            /** Snippet */
+            snippet: string;
+        };
         /** PasswordIn */
         PasswordIn: {
             /** Current Password */
@@ -1634,6 +1736,17 @@ export interface components {
             id: string;
             /** Name */
             name: string;
+        };
+        /** SearchOut */
+        SearchOut: {
+            /** Annotations */
+            annotations: components["schemas"]["AnnotationHit"][];
+            /** Book Comments */
+            book_comments: components["schemas"]["BookCommentHit"][];
+            /** Comments */
+            comments: components["schemas"]["CommentHit"][];
+            /** Pages */
+            pages: components["schemas"]["PageHit"][];
         };
         /** SegmentIn */
         SegmentIn: {
@@ -3061,6 +3174,41 @@ export interface operations {
             };
         };
     };
+    put_text_api_books__book_id__text_put: {
+        parameters: {
+            query?: never;
+            header?: {
+                "time-zone"?: string | null;
+            };
+            path: {
+                book_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BookTextIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description An error (core/errors.py: ERRORS) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
     replace_thumbnail_api_books__book_id__thumbnail_put: {
         parameters: {
             query?: never;
@@ -3479,6 +3627,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["InviteeOut"];
+                };
+            };
+            /** @description An error (core/errors.py: ERRORS) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    search_text_api_search_get: {
+        parameters: {
+            query: {
+                q: string;
+            };
+            header?: {
+                "time-zone"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SearchOut"];
                 };
             };
             /** @description An error (core/errors.py: ERRORS) */

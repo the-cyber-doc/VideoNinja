@@ -53,7 +53,7 @@ def books(con: sqlite3.Connection) -> list[sqlite3.Row]:
     uploader's display name (name, else username); None if unknown or deleted."""
     return con.execute(
         'SELECT b."id", b."original_filename", b."status", b."error", b."pages", b."reference",'
-        ' b."uploaded_at", b."thumbnail" IS NOT NULL AS "has_thumbnail",'
+        ' b."uploaded_at", b."thumbnail" IS NOT NULL AS "has_thumbnail", b."text_pages" IS NOT NULL AS "has_text",'
         ' COALESCE(u."name", u."username") AS "uploaded_by"'
         ' FROM "book" b LEFT JOIN "user" u ON u."id" = b."uploaded_by" AND u."id" <> ?'
         ' ORDER BY datetime(b."uploaded_at") DESC, b."id" DESC',
@@ -164,7 +164,7 @@ def listed_book(con: sqlite3.Connection, book_id: int) -> sqlite3.Row | None:
     return one(
         con.execute(
             'SELECT b."id", b."original_filename", b."status", b."error", b."pages", b."reference",'
-            ' b."uploaded_at", b."thumbnail" IS NOT NULL AS "has_thumbnail",'
+            ' b."uploaded_at", b."thumbnail" IS NOT NULL AS "has_thumbnail", b."text_pages" IS NOT NULL AS "has_text",'
             ' COALESCE(u."name", u."username") AS "uploaded_by"'
             ' FROM "book" b LEFT JOIN "user" u ON u."id" = b."uploaded_by" AND u."id" <> ? WHERE b."id" = ?',
             (DELETED_USER_ID, book_id),

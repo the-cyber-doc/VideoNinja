@@ -1,6 +1,7 @@
 // One book's page (/books/<id>): its PDF downloaded (progress shown), its reference edited,
 // its annotations (BookAnnotations) saved through the viewer's helpers once the viewer is
-// ready, and a first-page picture made again when the book has none. Its dependencies
+// ready, a first-page picture made again when the book has none, and its pages' text sent
+// (the search's) when it was not at the upload. Its dependencies
 // (API, download, picture upload) are passed in: tests give fakes.
 import { errorFromBody } from '../api/client';
 import * as books from '../api/books';
@@ -9,6 +10,7 @@ import { bookUrl } from '../media';
 import { annotatedName, annotatedObjects, type Words } from './annotated';
 import { BookAnnotations, type AnnotationDeps } from './annotations.svelte';
 import { uploadPicture } from './pictures';
+import { sendText } from './text';
 import { problems, toDraft, toReference, type ReferenceDraft } from './reference';
 import type { ViewerControls } from './ViewerPages.svelte';
 
@@ -19,6 +21,7 @@ export interface BookPageDeps {
 	save: (file: Blob, name: string) => void;
 	editBook: typeof books.editBook;
 	replaceThumbnail: typeof books.replaceThumbnail;
+	sendText: (bookId: number, pages: string[]) => Promise<void>;
 	uploadPicture: typeof uploadPicture;
 	annotations: Omit<AnnotationDeps, 'crop' | 'upload'>;
 }
@@ -38,6 +41,7 @@ export const DEPS: BookPageDeps = {
 	save: saveFile,
 	editBook: books.editBook,
 	replaceThumbnail: books.replaceThumbnail,
+	sendText: (bookId, pages) => sendText(bookId, pages, books.putBookText),
 	uploadPicture,
 	annotations: {
 		create: books.createAnnotation,
@@ -82,6 +86,7 @@ export class BookPage {
 	error = $state<unknown>(null);
 	readonly annotations: BookAnnotations;
 	#thumbnailTried = false; // once per visit
+	#textTried = false; // once per visit
 	/** The viewer's helpers, once it is ready. */
 	controls = $state<ViewerControls | null>(null);
 
@@ -99,7 +104,9 @@ export class BookPage {
 		rows: BookAnnotation[],
 		private readonly deps: BookPageDeps = DEPS,
 		/** The annotation to show first (?annotation=<id>, from a technique's page). */
-		private focus: number | null = null
+		private focus: number | null = null,
+		/** The page to show first (?page=<n>, from the search). */
+		private page: number | null = null
 	) {
 		this.book = book;
 		this.annotations = new BookAnnotations(book.id, rows, {
@@ -123,6 +130,13 @@ export class BookPage {
 		const focused = this.annotations.rows.find((r) => r.id === this.focus);
 		this.focus = null; // once
 		if (focused) controls.select(focused);
+		else if (this.page) controls.showPage(this.page);
+		this.page = null; // once
+		await this.#thumbnail(controls);
+		await this.#text(controls);
+	}
+
+	async #thumbnail(controls: ViewerControls) {
 		if (this.book.has_thumbnail || this.#thumbnailTried) return;
 		this.#thumbnailTried = true;
 		try {
@@ -133,6 +147,17 @@ export class BookPage {
 			this.book.has_thumbnail = true; // published by the server within seconds
 		} catch {
 			// not essential: tried again the next time the book is opened
+		}
+	}
+
+	async #text(controls: ViewerControls) {
+		if (this.book.has_text || this.#textTried) return;
+		this.#textTried = true;
+		try {
+			await this.deps.sendText(this.book.id, await controls.pageTexts());
+			this.book.has_text = true;
+		} catch {
+			// not essential: sent again the next time the book is opened
 		}
 	}
 

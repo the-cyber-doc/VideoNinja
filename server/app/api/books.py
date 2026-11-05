@@ -6,10 +6,11 @@ Not in the catalogue snapshot: the Books page loads the list itself.
 """
 
 import json
+import logging
 import sqlite3
 import time
 from datetime import tzinfo
-from typing import Literal
+from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, Query, status
 from pydantic import BaseModel, Field
@@ -18,12 +19,13 @@ from .. import queries
 from ..core import clock, db
 from ..core.errors import ApiError
 from ..core.validation import RULES, field
-from ..domain import audit, segments
+from ..domain import audit, search, segments
 from ..domain.references import Reference
 from ..domain.segments import TagIn
 from ..queries.users import User
 from .deps import require_access, user_zone
 
+log = logging.getLogger(__name__)
 router = APIRouter(prefix="/api", tags=["books"])
 manager = require_access("book_mgmt")
 # tusd answers the last chunk before its post-finish hook has marked the upload
@@ -58,12 +60,22 @@ class BookOut(BaseModel):
     uploaded_at: str  # e.g. "2026-10-23T12:13:38+02:00" (app/clock.py)
     uploaded_by: str | None  # the uploader's display name (never an ID); None: unknown
     has_thumbnail: bool
+    has_text: bool  # its pages' text was sent (the search finds it); False: the viewer sends it
     tags: list[TagIn]
 
 
 class BookEditIn(BaseModel):
     reference: Reference
     tags: list[TagIn] = Field(default=[], max_length=50)
+
+
+class BookTextIn(BaseModel):
+    """A batch of pages' text, in order (nginx takes 1 MB per request): the first batch
+    (first = 1) replaces what was sent before, the last one (last) completes it."""
+
+    first: int = Field(ge=1, le=100_000)  # the number of pages[0]
+    pages: list[Annotated[str, field("page_text", max_only=True)]] = Field(max_length=2000)  # "": no text
+    last: bool
 
 
 class UploadIn(BaseModel):
@@ -190,6 +202,27 @@ def replace_thumbnail(
         replaced = queries.books.set_thumbnail_upload(con, book_id, body.upload)
         if replaced:
             queries.uploads.set_upload_state(con, replaced, "deleted")
+
+
+@router.put("/books/{book_id}/text", status_code=status.HTTP_204_NO_CONTENT)
+def put_text(
+    book_id: int, body: BookTextIn, _: User = Depends(manager), con: sqlite3.Connection = Depends(db.get_db)
+) -> None:
+    """The text of the book's pages, extracted by the browser (the server has no PDF parser):
+    at the upload, else by the viewer once (has_text false). Any book manager."""
+    pages = [(body.first + i, search.clean(text)) for i, text in enumerate(body.pages)]
+    with db.write(con):
+        book = queries.books.book(con, book_id)
+        if book is None or book["status"] == "failed":
+            raise ApiError("book.unknown")
+        if book["pages"] and body.first + len(body.pages) - 1 > book["pages"]:
+            raise ApiError("book.text_pages", pages=book["pages"])
+        if body.first == 1:
+            queries.search.clear_pages(con, book_id)
+        queries.search.insert_pages(con, book_id, [(page, text) for page, text in pages if text])
+        if body.last:
+            count = queries.search.finish_pages(con, book_id)
+            log.info("Book %d: text of %d page(s) kept", book_id, count)
 
 
 @router.delete("/books/{book_id}", status_code=status.HTTP_204_NO_CONTENT)

@@ -60,13 +60,15 @@ const TAGS: Tag[] = [{ id: 'year', name: 'Year', format: 'regexp', input_mode: '
 interface Fake {
 	exists: boolean;
 	submitted: unknown[];
+	/** The pages' text sent (PUT /api/books/<id>/text), by book. */
+	texts: { book: number; body: { first: number; pages: string[]; last: boolean } }[];
 	tus: { method: string; path: string; kind?: string }[];
 	books: BookRow[];
 }
 
 async function uploading(page: Page, user: object = BOOKS) {
 	await setup(page, user);
-	const fake: Fake = { exists: false, submitted: [], tus: [], books: [] };
+	const fake: Fake = { exists: false, submitted: [], texts: [], tus: [], books: [] };
 	await page.route('/api/tags', (r) => r.fulfill({ json: TAGS }));
 	await page.route('/api/uploads/limits', (r) =>
 		r.fulfill({ json: { max_bytes: 20 * 1024 ** 3, extensions: ['mp4'], book_max_bytes: 1024 ** 3 } })
@@ -80,6 +82,11 @@ async function uploading(page: Page, user: object = BOOKS) {
 		if (r.request().method() === 'GET') return r.fulfill({ json: fake.books });
 		fake.submitted.push(r.request().postDataJSON());
 		return r.fulfill({ status: 201, json: { id: 9 } });
+	});
+	await page.route('/api/books/*/text', (r) => {
+		const book = Number(new URL(r.request().url()).pathname.split('/').at(-2));
+		fake.texts.push({ book, body: r.request().postDataJSON() });
+		return r.fulfill({ status: 204 });
 	});
 	let created = 0;
 	const lengths: Record<string, string> = {}; // WebKit gives routes no PATCH body: the announced size
@@ -177,6 +184,12 @@ test('a PDF read here: its title, author and first page; the reference; uploaded
 			tags: [{ id: 'year', value: '1981' }]
 		}
 	]);
+	// Its pages' text, read by EmbedPDF before the upload, sent for the search once submitted.
+	await expect.poll(() => fake.texts.length).toBe(1);
+	expect(fake.texts[0]).toEqual({
+		book: 9,
+		body: { first: 1, pages: [expect.stringMatching(/Togakure-ryu/)], last: true }
+	});
 });
 
 test('a book already on the server, a file that is not a PDF: said at once', async ({ page }) => {
@@ -206,6 +219,7 @@ const BOOK: BookRow = {
 	uploaded_at: '2026-10-23T12:13:38+02:00',
 	uploaded_by: 'Aiko',
 	has_thumbnail: true,
+	has_text: true,
 	tags: []
 };
 
@@ -349,6 +363,7 @@ test('filter and sort: a pane with what the books offer, applied at once, kept o
 // --- one book: the viewer (EmbedPDF really runs here), its annotations saved through the API ---
 
 interface Saved {
+	texts: Fake['texts'];
 	created: object[];
 	changed: { id: number; body: Record<string, unknown> }[];
 	deleted: number[];
@@ -358,7 +373,7 @@ interface Saved {
 
 async function viewing(page: Page, annotations: object[] = [], book: Partial<BookRow> = {}) {
 	const fake = await uploading(page);
-	const saved: Saved = { created: [], changed: [], deleted: [], images: [], thumbnails: 0 };
+	const saved: Saved = { created: [], changed: [], deleted: [], images: [], thumbnails: 0, texts: fake.texts };
 	const row = { ...BOOK, id: 7, original_filename: 'book.pdf', pages: 1, ...book };
 	fake.books = [row];
 	await page.route('/api/books/7', (r) => r.fulfill({ json: row }));
@@ -404,13 +419,15 @@ const annotationRow = (id: number, body: Record<string, unknown>) => ({
 const VIEWER_CATALOG = { schools: [], categories: [], weapons: [], sections: [], techniques: [], segments: [] };
 
 test('a book opened: the PDF shown, a highlight and a region saved, the first page made again', async ({ page }) => {
-	const saved = await viewing(page, [], { has_thumbnail: false });
+	const saved = await viewing(page, [], { has_thumbnail: false, has_text: false });
 	await page.goto('/books');
 	await page.getByRole('link', { name: /Ninjutsu/ }).click();
 	await expect(page).toHaveURL('/books/7');
 	const box = await pageBox(page);
 	await expect(page.getByRole('status').filter({ hasText: 'Page 1 of 1' })).toBeVisible();
 	await expect.poll(() => saved.thumbnails).toBe(1); // the book had no first page
+	await expect.poll(() => saved.texts.length).toBe(1); // nor its text: read by the viewer's engine, sent
+	expect(saved.texts[0]!.body).toEqual({ first: 1, pages: [expect.stringMatching(/Togakure-ryu/)], last: true });
 	const pt = box.width / 420; // the fixture's page: 420 pt wide; its title at 24 pt, 60 pt from the left, near the top
 
 	// EmbedPDF's highlight tool: the title's text selected by a drag, highlighted, its text kept as the quote.

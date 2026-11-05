@@ -2,7 +2,19 @@
 import { describe, expect, it } from 'vitest';
 import type { BookRow, VideoRow } from '../api/types';
 import type { Catalog } from '../catalog.svelte';
-import { buildIndex, describe as show, documents, find, groupOf, results, tokenize, type Sources } from './search';
+import type { SearchHits } from '../api/types';
+import {
+	buildIndex,
+	describe as show,
+	documents,
+	find,
+	groupOf,
+	remoteShown,
+	results,
+	snippetParts,
+	tokenize,
+	type Sources
+} from './search';
 
 const catalog = (lang: 'en' | 'fr'): Catalog => ({
 	schools: [
@@ -252,5 +264,77 @@ describe('describe and results', () => {
 		]);
 		expect(results([...hits], undefined, src)).toEqual([]);
 		expect(groupOf('video')).toBe('videos');
+	});
+});
+
+describe("the server's full text", () => {
+	const en = catalog('en');
+	const KOKU = 'gyokko.taijutsu.jo_ryaku.koku';
+	const REMOTE: SearchHits = {
+		pages: [
+			{ book: 3, page: 2, snippet: 'Le \u0002dōjō\u0003' },
+			{ book: 99, page: 1, snippet: 'unknown book' }
+		],
+		annotations: [
+			{ id: 5, book: 3, page: 4, technique: KOKU, snippet: 'quote' },
+			{ id: 6, book: 3, page: 5, technique: null, snippet: 'plain' },
+			{ id: 7, book: null, page: 1, technique: KOKU, snippet: 'for everyone' },
+			{ id: 8, book: null, page: 1, technique: 'unknown', snippet: 'lost' },
+			{ id: 9, book: 99, page: 1, technique: null, snippet: 'lost' }
+		],
+		comments: [
+			{ id: 10, technique: KOKU, user: 'Hana', snippet: 'nice' },
+			{ id: 11, technique: KOKU, user: null, snippet: 'old' },
+			{ id: 12, technique: 'unknown', user: 'Hana', snippet: 'lost' }
+		],
+		book_comments: [
+			{ id: 13, annotation: 5, book: 3, user: 'Aiko', snippet: 'reply' },
+			{ id: 14, annotation: 9, book: 99, user: 'Aiko', snippet: 'lost' }
+		]
+	};
+
+	it('each hit with its page to open; those the page cannot show left out', () => {
+		const shown = remoteShown(REMOTE, en, sources());
+		expect(shown.map((h) => [h.key, h.title, h.detail, h.href, h.snippet])).toEqual([
+			['page:3-2', 'Ninjutsu', 'Page 2', '/books/3?page=2', 'Le \u0002dōjō\u0003'],
+			['annotation:5', 'Ninjutsu', 'Page 4 · Koku', '/books/3?annotation=5', 'quote'],
+			['annotation:6', 'Ninjutsu', 'Page 5', '/books/3?annotation=6', 'plain'],
+			['annotation:7', 'Koku', 'A book’s note', '/schools/gyokko/taijutsu/jo_ryaku/koku', 'for everyone'],
+			['comment:10', 'Koku', 'Hana', '/schools/gyokko/taijutsu/jo_ryaku/koku', 'nice'],
+			['comment:11', 'Koku', 'a deleted user', '/schools/gyokko/taijutsu/jo_ryaku/koku', 'old'],
+			['book_comment:13', 'Ninjutsu', 'Aiko', '/books/3?annotation=5', 'reply']
+		]);
+		const untitled = sources({ books: [book(3, { reference: { type: 'book', title: '' } })] });
+		expect(remoteShown({ ...REMOTE, annotations: [], comments: [], book_comments: [] }, en, untitled)[0]?.title).toBe(
+			'book-3.pdf'
+		);
+		expect(remoteShown(REMOTE, en, sources({ books: null })).map((h) => h.kind)).toEqual([
+			'annotation',
+			'comment',
+			'comment'
+		]);
+	});
+
+	it('after the browser’s hits, in their groups', () => {
+		const groups = results([{ kind: 'book', ref: 3 }], en, sources(), 2, REMOTE);
+		expect(groups.map((g) => [g.group, g.total])).toEqual([
+			['books', 1],
+			['texts', 4],
+			['comments', 3]
+		]);
+		expect(groupOf('page')).toBe('texts');
+	});
+});
+
+describe('snippetParts', () => {
+	it('the matches marked, the rest plain; markers left open or empty: dropped', () => {
+		expect(snippetParts('Le \u0002dōjō\u0003 de \u0002Kamae\u0003')).toEqual([
+			{ text: 'Le ', mark: false },
+			{ text: 'dōjō', mark: true },
+			{ text: ' de ', mark: false },
+			{ text: 'Kamae', mark: true }
+		]);
+		expect(snippetParts('\u0002\u0003a \u0002open')).toEqual([{ text: 'a open', mark: false }]);
+		expect(snippetParts('')).toEqual([]);
 	});
 });

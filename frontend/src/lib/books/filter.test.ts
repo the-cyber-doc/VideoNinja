@@ -26,6 +26,7 @@ const book = (id: number, reference: Partial<Reference>, more: Partial<BookRow> 
 	uploaded_at: `2026-10-0${id}T12:00:00+02:00`,
 	uploaded_by: 'Aiko',
 	has_thumbnail: true,
+	has_text: true,
 	tags: [],
 	...more
 });

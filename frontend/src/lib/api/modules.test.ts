@@ -10,6 +10,7 @@ import * as comments from './comments';
 import * as performers from './performers';
 import * as profile from './profile';
 import * as register from './register';
+import * as search from './search';
 import * as setup from './setup';
 import * as tags from './tags';
 import * as uploads from './uploads';
@@ -150,6 +151,14 @@ const CALLS: [string, () => Promise<unknown>, string, string, unknown][] = [
 		{ reference: { type: 'book', title: 'T' }, tags: [] }
 	],
 	['replace thumbnail', () => books.replaceThumbnail(3, 'u'), 'PUT', '/api/books/3/thumbnail', { upload: 'u' }],
+	[
+		'book text',
+		() => books.putBookText(3, { first: 1, pages: ['a'], last: true }),
+		'PUT',
+		'/api/books/3/text',
+		{ first: 1, pages: ['a'], last: true }
+	],
+	['search', () => search.searchText('dō jō&'), 'GET', '/api/search?q=d%C5%8D%20j%C5%8D%26', undefined],
 	['annotations', () => books.listAnnotations(3), 'GET', '/api/books/3/annotations', undefined],
 	[
 		'create annotation',

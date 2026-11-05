@@ -64,6 +64,7 @@ export type ReferenceDate = Schemas['Date'];
 export type BookIn = Schemas['BookIn'];
 export type BookRow = Schemas['BookOut'];
 export type BookEdit = Schemas['BookEditIn'];
+export type BookText = Schemas['BookTextIn'];
 /** An annotation of a book's page, as the server keeps it (`target`: the PDF annotation, JSON text). */
 export type BookAnnotation = Schemas['AnnotationOut'];
 export type BookAnnotationIn = Schemas['AnnotationIn'];
@@ -79,3 +80,4 @@ export type TagDefinition = Schemas['TagDefinition'];
 export type TagDefinitionIn = Schemas['TagDefinitionIn'];
 export type TagValueDefinition = Schemas['TagValueDefinition'];
 export type TagValueIn = Schemas['TagValueIn'];
+export type SearchHits = Schemas['SearchOut'];

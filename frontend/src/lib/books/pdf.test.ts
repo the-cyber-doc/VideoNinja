@@ -9,6 +9,7 @@ const engine = {
 	openDocumentBuffer: vi.fn(),
 	getMetadata: vi.fn(),
 	renderPage: vi.fn(),
+	extractText: vi.fn(() => task('Togakure-ryū')),
 	closeDocument: vi.fn(() => task(true)),
 	destroy: vi.fn(() => task(true))
 };
@@ -33,7 +34,13 @@ beforeEach(() => {
 describe('readPdf', () => {
 	it('pages, metadata, the first page as a JPEG; no font from elsewhere; the engine closed', async () => {
 		const facts = await readPdf(file);
-		expect(facts).toEqual({ pages: 3, title: 'Ninjutsu', author: null, thumbnail: expect.any(Blob) });
+		expect(facts).toEqual({
+			pages: 3,
+			title: 'Ninjutsu',
+			author: null,
+			thumbnail: expect.any(Blob),
+			text: ['Togakure-ryū'] // each page's (the search's)
+		});
 		expect(createPdfiumEngine).toHaveBeenCalledWith('http://localhost/pdfium.wasm', { fontFallback: fontFallback() });
 		expect(engine.renderPage).toHaveBeenCalledWith(expect.anything(), PAGE, {
 			scaleFactor: THUMBNAIL_WIDTH / 595,
@@ -47,13 +54,19 @@ describe('readPdf', () => {
 	it('no metadata, no picture: the book goes anyway', async () => {
 		engine.getMetadata.mockReturnValue(failing());
 		engine.renderPage.mockReturnValue(failing());
-		expect(await readPdf(file)).toEqual({ pages: 3, title: null, author: null, thumbnail: null });
+		expect(await readPdf(file)).toEqual({
+			pages: 3,
+			title: null,
+			author: null,
+			thumbnail: null,
+			text: ['Togakure-ryū']
+		});
 	});
 
 	it('no page at all', async () => {
 		engine.openDocumentBuffer.mockReturnValue(task({ id: 'upload', pageCount: 0, pages: [] }));
 		engine.getMetadata.mockReturnValue(task({ title: null, author: 'Hatsumi' }));
-		expect(await readPdf(file)).toEqual({ pages: 0, title: null, author: 'Hatsumi', thumbnail: null });
+		expect(await readPdf(file)).toEqual({ pages: 0, title: null, author: 'Hatsumi', thumbnail: null, text: [] });
 		expect(engine.renderPage).not.toHaveBeenCalled();
 	});
 

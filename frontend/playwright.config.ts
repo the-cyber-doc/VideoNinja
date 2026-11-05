@@ -22,6 +22,9 @@ const STACK = process.env.E2E_BASE_URL;
 const E2E_FIRST = 'account.spec.ts';
 // tests/stack: the Videos page's filter and sort first (project "videos"), then the rest.
 const STACK_VIDEOS = 'videos.spec.ts';
+// tests/stack: the search last (project "search"): it adds a video and a book, which the others'
+// exact lists must not see; it finds theirs too.
+const STACK_SEARCH = 'search.spec.ts';
 const STACK_PROJECTS = [
 	{
 		name: 'e2e',
@@ -51,11 +54,19 @@ const STACK_PROJECTS = [
 	{
 		name: 'stack',
 		testDir: 'tests/stack',
-		testIgnore: STACK_VIDEOS,
+		testIgnore: [STACK_VIDEOS, STACK_SEARCH],
 		use: { ...devices['Desktop Chrome'], baseURL: STACK },
 		// The admin account the e2e tests created (.e2e/admin.json); after the Options tests,
 		// whose logins its last tests would otherwise rate-limit.
 		dependencies: ['e2e', 'options', 'videos'],
+		retries: 0
+	},
+	{
+		name: 'search',
+		testDir: 'tests/stack',
+		testMatch: STACK_SEARCH,
+		use: { ...devices['Desktop Chrome'], baseURL: STACK },
+		dependencies: ['e2e', 'options', 'videos', 'stack'],
 		retries: 0
 	}
 ];

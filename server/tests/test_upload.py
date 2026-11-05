@@ -241,6 +241,8 @@ def test_seeded_tags(admin):
             "regexp": "[12][0-9]{3}",
             "hint": {"en": "A year, e.g. 2024", "fr": "Une année, par ex. 2024"}[lang],
             "input_mode": "numeric",
+            "min": 1950,  # db v5
+            "max": 2080,
         }
         assert {tags[t]["format"] for t in seeded if t != "year"} == {"list"}
     fr = {t["id"]: t for t in admin.get("/api/tags", headers={"Accept-Language": "fr"}).json()}
@@ -265,8 +267,10 @@ def test_seeded_tags(admin):
 @pytest.mark.parametrize(
     "value, code",
     [
-        ("1066", None),
-        ("2999", None),
+        ("1950", None),
+        ("2080", None),
+        ("1066", "tag.range"),  # the bounds (db v5): 1950 to 2080
+        ("2999", "tag.range"),
         ("0999", "tag.pattern"),
         ("3000", "tag.pattern"),
         ("99", "tag.pattern"),
@@ -277,7 +281,7 @@ def test_seeded_tags(admin):
     ],
 )
 def test_year_tag(admin, value, code):
-    """The seeded year: its regular expression, the whole value."""
+    """The seeded year: its regular expression, the whole value, its bounds."""
     tag = {"id": "year"} if value is None else {"id": "year", "value": value}
     r = submit(admin, uploaded(admin), tags=[tag])
     assert r.status_code == (201 if code is None else 422), r.text

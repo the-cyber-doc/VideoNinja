@@ -2,19 +2,24 @@
 // sources refreshed when one is used again (the catalogues revalidate themselves; videos
 // and books at most every REFRESH_MS), the index rebuilt only when a source changed.
 // Videos and books only for the users who may open them; offline, the catalogue alone.
+// The full text (book pages, annotations, comments) is asked of the server as the user
+// types (`lookup`, DEBOUNCE_MS after the last key), the answer kept for its query.
 import type MiniSearch from 'minisearch';
-import type { BookRow, VideoRow } from '../api/types';
+import type { BookRow, SearchHits, VideoRow } from '../api/types';
 import type { Catalog } from '../catalog.svelte';
 import { LANGUAGES, type Lang } from '../i18n.svelte';
 import { buildIndex, documents, find, type Doc, type Hit, type Sources } from './search';
 
 export const REFRESH_MS = 60_000;
+export const DEBOUNCE_MS = 250;
 
 /** What the searcher loads (the app's functions; tests give fakes). */
 export interface SearchDeps {
 	catalog: (lang: Lang) => Promise<Catalog>;
 	videos: () => Promise<VideoRow[]>;
 	books: () => Promise<BookRow[]>;
+	/** The server's full text for a query. */
+	remote: (query: string) => Promise<SearchHits>;
 	can: (access: string) => boolean;
 	/** The logged-in user: another one (after a logout) starts afresh. */
 	user: () => string | undefined;
@@ -27,6 +32,12 @@ export class Searcher {
 	/** The catalogue could not be loaded (nothing to search). */
 	failed = $state(false);
 	sources: Sources = { catalogs: {}, videos: null, books: null };
+	/** The server's answer and its query (null: none yet). */
+	remote = $state<{ query: string; hits: SearchHits } | null>(null);
+	/** The server's full text could not be asked (offline) for the last query. */
+	remoteFailed = $state(false);
+	#timer: ReturnType<typeof setTimeout> | undefined;
+	#asked = 0; // the last request's number: older answers are dropped
 	private index: MiniSearch<Doc> | null = null;
 	private fetchedAt = -Infinity;
 	private loading: Promise<void> | null = null;
@@ -46,6 +57,7 @@ export class Searcher {
 			this.sources = { catalogs: {}, videos: null, books: null };
 			this.index = null;
 			this.fetchedAt = -Infinity;
+			this.remote = null;
 		}
 		const langs = Object.keys(LANGUAGES) as Lang[];
 		const due = this.deps.now() - this.fetchedAt >= REFRESH_MS;
@@ -74,5 +86,28 @@ export class Searcher {
 	hits(query: string): Hit[] {
 		void this.version;
 		return this.index ? find(this.index, query) : [];
+	}
+
+	/** Ask the server for this query's full text, DEBOUNCE_MS after the last call. */
+	lookup(query: string) {
+		clearTimeout(this.#timer);
+		const q = query.trim();
+		const asked = ++this.#asked;
+		if (!q || this.remote?.query === q) return;
+		this.#timer = setTimeout(async () => {
+			try {
+				const hits = await this.deps.remote(q);
+				if (asked !== this.#asked) return;
+				this.remote = { query: q, hits };
+				this.remoteFailed = false;
+			} catch {
+				if (asked === this.#asked) this.remoteFailed = true;
+			}
+		}, DEBOUNCE_MS);
+	}
+
+	/** The server's hits for this query, once it answered. */
+	remoteHits(query: string): SearchHits | undefined {
+		return this.remote?.query === query.trim() ? this.remote.hits : undefined;
 	}
 }

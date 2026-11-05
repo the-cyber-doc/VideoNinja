@@ -147,6 +147,7 @@ def test_submit_then_list(admin, caplog):  # noqa: F811
         "uploaded_at": listed["uploaded_at"],
         "uploaded_by": "Admin",
         "has_thumbnail": False,
+        "has_text": False,
         "tags": [{"id": "note", "value": "scan"}],
     }
     assert submit(admin, finished(admin, sha="3" * 64)).status_code == 201  # newest first

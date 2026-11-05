@@ -161,6 +161,10 @@
 		"en": "A published book cannot be deleted here.",
 		"fr": "Un livre publié ne peut pas être supprimé ici."
 	},
+	"error.book.text_pages": {
+		"en": "The text sent has more pages than the book ({pages}).",
+		"fr": "Le texte envoyé a plus de pages que le livre ({pages})."
+	},
 	"error.book_annotation.unknown": {
 		"en": "This annotation does not exist (any more).",
 		"fr": "Cette annotation n’existe pas (ou plus)."
@@ -346,8 +350,8 @@
 	"search.title": { "en": "Search", "fr": "Recherche" },
 	"search.placeholder": { "en": "Search…", "fr": "Rechercher…" },
 	"search.hint": {
-		"en": "Techniques, segments, videos and books: by name, description, performer, tag… in any language.",
-		"fr": "Techniques, segments, vidéos et livres : par nom, description, exécutant, étiquette… dans toutes les langues."
+		"en": "Techniques, segments, videos, books, their contents and comments: by name, description, performer, tag… in any language.",
+		"fr": "Techniques, segments, vidéos, livres, leur contenu et les commentaires : par nom, description, exécutant, étiquette… dans toutes les langues."
 	},
 	"search.none": { "en": "Nothing found", "fr": "Aucun résultat" },
 	"search.count": { "en": "{n} result(s)", "fr": "{n} résultat(s)" },
@@ -360,6 +364,18 @@
 	"search.group.segments": { "en": "Segments", "fr": "Segments" },
 	"search.group.videos": { "en": "Videos", "fr": "Vidéos" },
 	"search.group.books": { "en": "Books", "fr": "Livres" },
+	"search.group.texts": { "en": "In the books", "fr": "Dans les livres" },
+	"search.group.comments": { "en": "Comments", "fr": "Commentaires" },
+	"search.page": { "en": "Page {n}", "fr": "Page {n}" },
+	"search.in_a_book": { "en": "A book’s note", "fr": "Note d’un livre" },
+	"search.searching_text": {
+		"en": "Searching the books’ contents and the comments…",
+		"fr": "Recherche dans le contenu des livres et les commentaires…"
+	},
+	"search.text_unavailable": {
+		"en": "Book contents and comments could not be searched (offline?).",
+		"fr": "Le contenu des livres et les commentaires n’ont pas pu être cherchés (hors ligne ?)."
+	},
 	"search.kind.school": { "en": "School", "fr": "École" },
 	"search.kind.section": { "en": "Scroll or form", "fr": "Rouleau ou forme" },
 	"search.kind.technique": { "en": "Technique", "fr": "Technique" },

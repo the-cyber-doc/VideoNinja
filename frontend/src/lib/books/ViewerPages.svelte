@@ -16,6 +16,10 @@
 		crop(pageIndex: number, rect: Box): Promise<Blob | null>;
 		/** Page 1 as the book's thumbnail (null: not rendered). */
 		firstPage(): Promise<Blob | null>;
+		/** Every page's text, for the search ("" for none). */
+		pageTexts(): Promise<string[]>;
+		/** Show this page (1 = the first). */
+		showPage(page: number): void;
 		/** A copy of the PDF (as uploaded) with these annotations written in it. */
 		annotatedCopy(pdf: ArrayBuffer, annotations: { pageIndex: number }[]): Promise<ArrayBuffer>;
 	}
@@ -39,6 +43,7 @@
 	import { revive, uidOf, type BookAnnotations } from './annotations.svelte';
 	import { token } from './colors';
 	import { annotatedCopy, cropOf, THUMBNAIL_WIDTH, type Box, type CopyEngine, type PageEngine } from './pdf';
+	import { pageTexts, type TextEngine } from './text';
 
 	let {
 		documentId,
@@ -134,6 +139,10 @@
 				retarget = null;
 			},
 			crop: (pageIndex, rect) => cropOf(pageEngine, d, pageIndex, rect),
+			pageTexts: () => pageTexts(engine as unknown as TextEngine, d),
+			showPage(page) {
+				scroll.provides?.scrollToPage({ pageNumber: page, behavior: 'instant' });
+			},
 			annotatedCopy: (pdf, list) => annotatedCopy(engine as unknown as CopyEngine, pdf, list),
 			async firstPage() {
 				const page = d.pages[0];

@@ -6,15 +6,18 @@
 	import { i18n, t, type MessageKey } from '#lib/i18n.svelte.js';
 	import { searcher } from '#lib/search/app.js';
 	import { results } from '#lib/search/search.js';
+	import Snippet from '#lib/search/Snippet.svelte';
 
 	const query = $derived(page.url.searchParams.get('q') ?? '');
 	let loaded = $state(false);
 	$effect(() => {
 		void searcher.refresh().then(() => (loaded = true));
 	});
+	$effect(() => searcher.lookup(query));
+	const remote = $derived(searcher.remoteHits(query));
 	const groups = $derived.by(() => {
 		void searcher.version;
-		return results(searcher.hits(query), searcher.sources.catalogs[i18n.lang], searcher.sources);
+		return results(searcher.hits(query), searcher.sources.catalogs[i18n.lang], searcher.sources, Infinity, remote);
 	});
 
 	function typed(e: Event) {
@@ -37,11 +40,16 @@
 		autocomplete="off"
 		spellcheck="false"
 	/>
+	{#if query.trim() && searcher.remoteFailed}
+		<p class="hint centered">{t('search.text_unavailable')}</p>
+	{:else if query.trim() && !remote && groups.length}
+		<p class="hint centered">{t('search.searching_text')}</p>
+	{/if}
 	{#if !query.trim()}
 		<p class="hint centered">{t('search.hint')}</p>
 	{:else if searcher.failed}
 		<p class="hint centered">{t('search.unavailable')}</p>
-	{:else if !loaded}
+	{:else if !loaded || (!remote && !searcher.remoteFailed && !groups.length)}
 		<p class="hint centered">{t('common.loading')}</p>
 	{:else if !groups.length}
 		<p class="hint centered" role="status">{t('search.none')}</p>
@@ -60,6 +68,7 @@
 								{#if g.group === 'catalog'}{t(`search.kind.${hit.kind}` as MessageKey)} ·{/if}
 								{hit.detail}
 							</span>
+							{#if hit.snippet}<Snippet text={hit.snippet} />{/if}
 						</li>
 					{/each}
 				</ul>

@@ -21,9 +21,10 @@
 
 	let { data }: PageProps = $props();
 	const focus = Number(pageState.url.searchParams.get('annotation')) || null; // from a technique's page
+	const shownPage = Number(pageState.url.searchParams.get('page')) || null; // from the search
 	// The book the page opened with (a reload brings a newer one).
 	// svelte-ignore state_referenced_locally
-	const page = data.book ? new BookPage(data.book, data.annotations, undefined, focus) : null;
+	const page = data.book ? new BookPage(data.book, data.annotations, undefined, focus, shownPage) : null;
 	let catalog = $state<Catalog | null>(null);
 
 	// How the downloaded copy names a technique: kanji, romaji and its page's full address.

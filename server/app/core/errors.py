@@ -76,6 +76,7 @@ ERRORS: dict[str, tuple[int, str]] = {
     "book.unknown": (404, "Unknown book"),
     "book.exists": (409, "This book already exists"),
     "book.not_deletable": (409, "Published books cannot be deleted here"),
+    "book.text_pages": (422, "More pages of text than the book has ({pages})"),
     "book_annotation.unknown": (404, "Unknown annotation"),
     "book_annotation.not_author": (403, "Only its author or a moderator can change this annotation"),
     "book_annotation.not_region": (409, "Only a region has a picture"),

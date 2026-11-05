@@ -27,6 +27,8 @@
 	"annotation_target": { "min_length": 2, "max_length": 20000 },
 	"annotation_quote": { "min_length": 1, "max_length": 4000 },
 	"annotation_note": { "min_length": 1, "max_length": 4000 },
+	"search_query": { "min_length": 1, "max_length": 200 },
+	"page_text": { "max_length": 100000 },
 	"annotation_color": { "min_length": 4, "max_length": 9, "pattern": "^#[0-9A-Fa-f]{3,8}$" },
 	"reference_url": { "min_length": 1, "max_length": 2000, "pattern": "^https?://\\S+$" },
 	"reference_language": { "min_length": 2, "max_length": 35, "pattern": "^[a-z]{2,3}(-[A-Za-z0-9]{1,8})*$" }

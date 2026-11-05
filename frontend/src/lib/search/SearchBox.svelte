@@ -8,6 +8,7 @@
 	import Icon from '../Icon.svelte';
 	import { searcher } from './app';
 	import { results } from './search';
+	import Snippet from './Snippet.svelte';
 
 	const LIMIT = 5; // hits per group in the drop-down
 
@@ -21,10 +22,13 @@
 	const groups = $derived.by(() => {
 		void searcher.version;
 		let n = 0;
-		return results(searcher.hits(query), searcher.sources.catalogs[i18n.lang], searcher.sources, LIMIT).map((g) => ({
-			...g,
-			hits: g.hits.map((h) => ({ ...h, n: n++ }))
-		}));
+		const remote = searcher.remoteHits(query);
+		return results(searcher.hits(query), searcher.sources.catalogs[i18n.lang], searcher.sources, LIMIT, remote).map(
+			(g) => ({
+				...g,
+				hits: g.hits.map((h) => ({ ...h, n: n++ }))
+			})
+		);
 	});
 	const allHref = $derived(url(`/search?q=${encodeURIComponent(query.trim())}`));
 	const options = $derived([...groups.flatMap((g) => g.hits.map((h) => h.href)), allHref]);
@@ -32,7 +36,7 @@
 	const shown = $derived(open && !!query.trim());
 
 	$effect(() => {
-		void query;
+		searcher.lookup(query); // the server's full text, a moment after the last key
 		active = -1; // a new query: nothing chosen
 	});
 	afterNavigate(() => {
@@ -89,8 +93,13 @@
 		<div class="popup">
 			{#if searcher.failed}
 				<p class="hint">{t('search.unavailable')}</p>
-			{:else if !groups.length}
+			{:else if !groups.length && searcher.remoteHits(query)}
 				<p class="hint" role="status">{t('search.none')}</p>
+			{/if}
+			{#if searcher.remoteFailed}
+				<p class="hint">{t('search.text_unavailable')}</p>
+			{:else if !searcher.remoteHits(query) && groups.length}
+				<p class="hint">{t('search.searching_text')}</p>
 			{/if}
 			<div id="{id}-list" role="listbox" aria-label={t('search.label')}>
 				{#each groups as g (g.group)}
@@ -111,6 +120,7 @@
 									{#if g.group === 'catalog'}{t(`search.kind.${hit.kind}` as MessageKey)} ·{/if}
 									{hit.detail}
 								</span>
+								{#if hit.snippet}<Snippet text={hit.snippet} />{/if}
 							</a>
 						{/each}
 					</div>

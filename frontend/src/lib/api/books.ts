@@ -12,6 +12,7 @@ import type {
 	BookEdit,
 	BookIn,
 	BookRow,
+	BookText,
 	TechniqueNote
 } from './types';
 
@@ -24,6 +25,7 @@ export const deleteBook = (id: number) => api<void>(`/api/books/${id}`, undefine
 export const getBook = (id: number) => api<BookRow>(`/api/books/${id}`);
 export const editBook = (id: number, body: BookEdit) => api<BookRow>(`/api/books/${id}`, body, 'PUT');
 /** A new first-page picture (a finished tus upload, kind "image"); the server publishes it. */
+export const putBookText = (id: number, body: BookText) => api<void>(`/api/books/${id}/text`, body, 'PUT');
 export const replaceThumbnail = (id: number, upload: string) =>
 	api<void>(`/api/books/${id}/thumbnail`, { upload }, 'PUT');
 
