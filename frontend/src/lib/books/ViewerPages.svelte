@@ -39,6 +39,7 @@
 	import { Viewport } from '@embedpdf/plugin-viewport/svelte';
 	import { SelectionLayer, useSelectionCapability } from '@embedpdf/plugin-selection/svelte';
 	import { useZoom } from '@embedpdf/plugin-zoom/svelte';
+	import ErrorMessage from '../ErrorMessage.svelte';
 	import { t } from '../i18n.svelte';
 	import { revive, uidOf, type BookAnnotations } from './annotations.svelte';
 	import { token } from './colors';
@@ -99,6 +100,72 @@
 		});
 	});
 
+	// The selected text, copied by Ctrl+C or the menu of a right click on the page. EmbedPDF draws
+	// the selection itself (the page is user-select: none), so the browser has none to copy: its own
+	// "Copy" would copy nothing. "" = no selection, or its text not read yet.
+	let selectedText = $state('');
+	let reading = 0;
+	$effect(() => {
+		const scope = selection.provides?.forDocument(documentId);
+		if (!scope) return;
+		const stopChange = scope.onSelectionChange(() => {
+			reading++;
+			selectedText = '';
+		});
+		const stopEnd = scope.onEndSelection(async () => {
+			const mine = ++reading;
+			const text = await scope
+				.getSelectedText()
+				.toPromise()
+				.then((lines) => lines.join('\n'))
+				.catch(() => '');
+			if (mine === reading) selectedText = text; // else changed meanwhile
+		});
+		return () => {
+			stopChange();
+			stopEnd();
+		};
+	});
+
+	let menu = $state<{ x: number; y: number } | null>(null);
+	let menuElement = $state<HTMLElement>();
+	let copyError = $state<string | null>(null);
+	async function copy() {
+		const text = selectedText;
+		menu = null;
+		copyError = null;
+		await navigator.clipboard.writeText(text).catch(() => (copyError = t('books.viewer.copy_failed')));
+	}
+	const onPage = (e: Event) => e.target instanceof Element && e.target.closest('.page[data-page]') !== null;
+	/** Before EmbedPDF's own listeners (window, capture phase): it clears its selection on any button's
+	 * press, so the other buttons' never reach it over a page (a right click keeps the selection). */
+	function primaryOnly(e: MouseEvent) {
+		if (e.type.endsWith('down') && menu && !menuElement?.contains(e.target as Node)) menu = null;
+		if (e.button !== 0 && onPage(e)) e.stopPropagation();
+	}
+	function onContextMenu(e: MouseEvent) {
+		if (!selectedText || !onPage(e)) return; // the browser's menu
+		e.preventDefault();
+		menu = { x: e.clientX, y: e.clientY };
+	}
+	function onKeydown(e: KeyboardEvent) {
+		if (e.key === 'Escape') menu = null;
+		if (!selectedText || !(e.ctrlKey || e.metaKey) || e.altKey || e.shiftKey || e.key.toLowerCase() !== 'c') return;
+		const field =
+			e.target instanceof HTMLElement && (e.target.isContentEditable || e.target.closest('input, textarea'));
+		if (field || window.getSelection()?.toString()) return; // the browser copies its own selection
+		e.preventDefault();
+		copy();
+	}
+	// The menu inside the window, its item focused (Enter copies).
+	$effect(() => {
+		if (!menu || !menuElement) return;
+		const { width, height } = menuElement.getBoundingClientRect();
+		menuElement.style.left = `${Math.max(0, Math.min(menu.x, innerWidth - width))}px`;
+		menuElement.style.top = `${Math.max(0, Math.min(menu.y, innerHeight - height))}px`;
+		menuElement.querySelector('button')?.focus();
+	});
+
 	// The plugin's selection → the panel's (the panel's goes back through select()).
 	$effect(() => {
 		const uid = annotation.state.selectedUid;
@@ -157,6 +224,24 @@
 	});
 </script>
 
+<svelte:window
+	onpointerdowncapture={primaryOnly}
+	onmousedowncapture={primaryOnly}
+	onpointerupcapture={primaryOnly}
+	onmouseupcapture={primaryOnly}
+	oncontextmenu={onContextMenu}
+	onkeydown={onKeydown}
+	onwheel={() => (menu = null)}
+	onresize={() => (menu = null)}
+	onblur={() => (menu = null)}
+/>
+
+{#if menu}
+	<div class="menu" role="menu" bind:this={menuElement}>
+		<button type="button" role="menuitem" onclick={copy}>{t('books.viewer.copy')}</button>
+	</div>
+{/if}
+
 <div class="toolbar" role="toolbar" aria-label={t('books.viewer.tools')}>
 	<div class="group">
 		{#each TOOLS as choice (choice.label)}
@@ -189,6 +274,7 @@
 		</span>
 	</div>
 </div>
+<ErrorMessage error={copyError} />
 
 {#snippet renderPage(page: { pageIndex: number; width: number; height: number })}
 	<div class="page" style:width="{page.width}px" style:height="{page.height}px" data-page={page.pageIndex + 1}>
@@ -227,6 +313,33 @@
 		flex-wrap: wrap;
 		align-items: center;
 		gap: var(--space-1);
+	}
+	.menu {
+		position: fixed;
+		z-index: 10;
+		min-width: 8rem;
+		display: grid;
+		padding: var(--space-1);
+		background: var(--surface);
+		border: 1px solid var(--border);
+		border-radius: var(--radius);
+		box-shadow: var(--shadow-menu);
+	}
+	.menu button {
+		width: 100%;
+		padding: var(--space-2) var(--space-3);
+		font: inherit;
+		font-weight: normal;
+		text-align: left;
+		color: var(--text);
+		background: none;
+		border: 0;
+		border-radius: var(--radius-sm);
+		cursor: pointer;
+	}
+	.menu button:hover,
+	.menu button:focus-visible {
+		background: var(--bg);
 	}
 	button[aria-pressed='true'] {
 		color: var(--accent-text);

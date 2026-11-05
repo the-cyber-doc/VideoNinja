@@ -447,6 +447,11 @@
 	"books.viewer.tool.select": { "en": "Select", "fr": "Sélectionner" },
 	"books.viewer.tool.highlight": { "en": "Highlight text", "fr": "Surligner du texte" },
 	"books.viewer.tool.region": { "en": "Mark a region", "fr": "Marquer une zone" },
+	"books.viewer.copy": { "en": "Copy", "fr": "Copier" },
+	"books.viewer.copy_failed": {
+		"en": "The text could not be copied.",
+		"fr": "Le texte n’a pas pu être copié."
+	},
 	"books.viewer.zoom_in": { "en": "Zoom in", "fr": "Agrandir" },
 	"books.viewer.zoom_out": { "en": "Zoom out", "fr": "Réduire" },
 	"books.viewer.page": { "en": "Page {n} of {total}", "fr": "Page {n} sur {total}" },

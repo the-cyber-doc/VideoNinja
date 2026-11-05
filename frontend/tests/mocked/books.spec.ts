@@ -759,6 +759,50 @@ test('a highlight given other text without deleting it: its ends moved, its quot
 	await expect(item.getByRole('button', { name: 'Change the highlighted text' })).toBeVisible();
 });
 
+test('selected text copied by Ctrl+C or a right click’s menu; the right click keeps the selection', async ({
+	page
+}) => {
+	// What the page writes to the clipboard (every browser; no permission to grant).
+	await page.addInitScript(() => {
+		const copied: string[] = ((window as unknown as { copied: string[] }).copied = []);
+		Object.defineProperty(navigator, 'clipboard', {
+			value: { writeText: async (text: string) => void copied.push(text) }
+		});
+	});
+	const copied = () => page.evaluate(() => (window as unknown as { copied: string[] }).copied);
+	await viewing(page, []);
+	await page.goto('/books/7');
+	const box = await pageBox(page);
+	const pt = box.width / 420;
+	await expect(page.getByRole('button', { name: 'Select', exact: true })).toHaveAttribute('aria-pressed', 'true');
+	await drag(page, [box.x + 62 * pt, box.y + 90 * pt], [box.x + 140 * pt, box.y + 90 * pt]); // part of the title
+
+	await expect(async () => {
+		await page.keyboard.press('ControlOrMeta+c');
+		expect(await copied()).toEqual([expect.stringMatching(/^Toga/)]);
+	}).toPass({ timeout: 5_000 });
+	const text = (await copied())[0]!;
+	expect(text).not.toBe('Togakure-ryu'); // the selection only
+
+	// A right click on the selection: the selection kept, a menu with Copy.
+	await page.mouse.click(box.x + 100 * pt, box.y + 90 * pt, { button: 'right' });
+	const menu = page.getByRole('menu');
+	await expect(menu.getByRole('menuitem', { name: 'Copy' })).toBeFocused();
+	await menu.getByRole('menuitem', { name: 'Copy' }).click();
+	await expect(menu).toBeHidden();
+	expect(await copied()).toEqual([text, text]);
+
+	// Escape closes it; a left click clears the selection: nothing to copy, the browser's menu again.
+	await page.mouse.click(box.x + 100 * pt, box.y + 90 * pt, { button: 'right' });
+	await page.keyboard.press('Escape');
+	await expect(menu).toBeHidden();
+	await page.mouse.click(box.x + 300 * pt, box.y + 30 * pt);
+	await page.mouse.click(box.x + 100 * pt, box.y + 90 * pt, { button: 'right' });
+	await page.keyboard.press('ControlOrMeta+c');
+	await expect(menu).toBeHidden();
+	expect(await copied()).toHaveLength(2);
+});
+
 test('a quote cut, not selected, at a region picture’s height, ending with “…”; whole once selected', async ({
 	page
 }) => {
