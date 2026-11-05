@@ -21,7 +21,7 @@
 	import IconButton from '#lib/IconButton.svelte';
 	import ErrorMessage from '#lib/ErrorMessage.svelte';
 	import { i18n, t } from '#lib/i18n.svelte.js';
-	import { bookThumbnailUrl, bookUrl } from '#lib/media.js';
+	import { bookThumbnailUrl } from '#lib/media.js';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
@@ -117,9 +117,7 @@
 								.filter(Boolean)
 								.join(' · ')}
 						</p>
-						{#if book.status === 'published'}
-							<a href={bookUrl(book.id)} download={book.original_filename}>{t('books.download')}</a>
-						{:else}
+						{#if book.status !== 'published'}
 							{#if book.status === 'queued'}
 								<p class="hint" role="status">{t('books.queued')}</p>
 							{:else}

@@ -225,7 +225,9 @@
 		background: var(--qr-bg);
 		border-radius: var(--radius-sm);
 	}
+	/* On a line of its own: the key wraps only when it is wider than the form. */
 	.secret {
+		display: block;
 		word-break: break-all;
 	}
 	.row {

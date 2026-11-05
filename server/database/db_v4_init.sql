@@ -1838,12 +1838,12 @@ INSERT INTO "translation" ("id", "en", "fr") VALUES
 	('tag_value.country.ZMB.name', 'Zambia', 'Zambie'),
 	('tag_value.country.ZWE.name', 'Zimbabwe', 'Zimbabwe');
 
-INSERT INTO "tag" ("id", "name", "value_format", "regexp", "hint", "input_mode") VALUES
-	('location', 'tag.location.name', 'list', NULL, NULL, 'text'),
-	('event', 'tag.event.name', 'list', NULL, NULL, 'text'),
-	('year', 'tag.year.name', 'regexp', '[12][0-9]{3}', 'tag.year.hint', 'numeric'),
-	('country', 'tag.country.name', 'list', NULL, NULL, 'text'),
-	('source', 'tag.source.name', 'list', NULL, NULL, 'text');
+INSERT INTO "tag" ("id", "name", "value_format", "regexp", "hint", "input_mode", "min_value", "max_value") VALUES
+  ('location', 'tag.location.name', 'list', NULL, NULL, 'text', NULL, NULL),
+  ('event', 'tag.event.name', 'list', NULL, NULL, 'text', NULL, NULL),
+  ('year', 'tag.year.name', 'regexp', '[12][0-9]{3}', 'tag.year.hint', 'numeric', '1950', '2080'),
+	('country', 'tag.country.name', 'list', NULL, NULL, 'text', NULL, NULL),
+	('source', 'tag.source.name', 'list', NULL, NULL, 'text', NULL, NULL);
 
 INSERT INTO "tag_value" ("tag", "id", "name") VALUES
 	('location', 'outdoor', 'tag_value.location.outdoor.name'),

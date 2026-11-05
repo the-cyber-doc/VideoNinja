@@ -11,6 +11,7 @@
 	import type { Performer, Tag } from '../api/types';
 	import type { DraftSegment } from './draft.svelte';
 	import type { SegmentField } from './rules';
+	import TechniqueLink from '../techniques/TechniqueLink.svelte';
 	import TagInput from './TagInput.svelte';
 
 	let {
@@ -76,10 +77,13 @@
 
 <article bind:this={article} class="segment" class:selected aria-label={t('upload.segment_n', { n: number })}>
 	<header>
-		<button type="button" class="link" onclick={onselect}>
-			<strong>{t('upload.segment_n', { n: number })}</strong>
-			<span class:invalid={missing('times')}>{time(segment.begin)} – {time(segment.end)}</span>
-		</button>
+		<span class="when">
+			<button type="button" class="link" onclick={onselect}>
+				<strong>{t('upload.segment_n', { n: number })}</strong>
+				<span class:invalid={missing('times')}>{time(segment.begin)} – {time(segment.end)}</span>
+			</button>
+			<TechniqueLink {catalog} technique={segment.technique} />
+		</span>
 		<span class="author">{t('upload.segment.created_by', { name: author ?? t('common.deleted_user') })}</span>
 		<IconButton label={t('upload.segment.delete')} icon="cross" iconSize={16} variant="quiet" onclick={ondelete} />
 	</header>
@@ -136,7 +140,11 @@
 		align-items: center;
 		gap: var(--space-2);
 	}
-	header .link {
+	/* The times, then the technique's link icon; the author pushed to the right. */
+	.when {
+		display: flex;
+		align-items: center;
+		gap: var(--space-2);
 		margin-right: auto;
 	}
 	.author {

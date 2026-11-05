@@ -397,6 +397,15 @@ test("who did what: the file name, its uploader, each segment's author (mine for
 		page.getByRole('article', { name: 'Segment 1' }).getByRole('button', { name: 'Delete this segment' }).boundingBox()
 	]);
 	expect(label!.x + label!.width).toBeLessThanOrEqual(cross!.x);
+	// After the times: a link to the technique's page.
+	const header = page.getByRole('article', { name: 'Segment 1' }).locator('header');
+	const open = header.getByRole('link', { name: 'Open its page in the catalogue' });
+	await expect(open).toHaveAttribute('href', '/schools/gyokko/taijutsu/jo_ryaku/koku');
+	const [times, icon] = await Promise.all([
+		header.getByRole('button', { name: /Segment 1/ }).boundingBox(),
+		open.boundingBox()
+	]);
+	expect(icon!.x).toBeGreaterThanOrEqual(times!.x + times!.width);
 
 	// A new segment (drag on the timeline): mine (no display name: the username).
 	const slider = page.getByRole('slider', { name: 'Timeline' });

@@ -231,7 +231,7 @@ test('the books: first page, reference, uploader; waiting or failed ones deletab
 	await expect(first).toContainText('Hatsumi, Masaaki. Ninjutsu.');
 	await expect(first).toContainText('Uploaded by Aiko on Oct 23, 2026 · 12 page(s)');
 	await expect(first.getByRole('img', { name: 'First page of the book' })).toBeVisible();
-	await expect(first.getByRole('link', { name: 'Download the PDF' })).toHaveAttribute('href', '/media/book/1');
+	await expect(first.getByRole('link', { name: 'Download the PDF' })).toHaveCount(0); // in the viewer only
 	await expect(page.locator('li[data-id="2"]')).toContainText('Being published…');
 	await expect(page.locator('li[data-id="2"]')).toContainText('Uploaded by a deleted user');
 	const failed = page.locator('li[data-id="3"]');
@@ -712,11 +712,14 @@ test('an annotation saved with a technique and no note (a note is optional)', as
 	await item.getByRole('button', { name: /Page 1/ }).click();
 	const save = item.getByRole('button', { name: 'Save', exact: true });
 	await expect(save).toBeDisabled(); // nothing changed yet
+	const open = item.getByRole('link', { name: 'Open its page in the catalogue' });
+	await expect(open).toHaveCount(0); // no technique yet
 	await item.getByLabel('School').selectOption('gyokko');
 	await item.getByLabel('Scroll or form').selectOption('gyokko.taijutsu.jo_ryaku');
 	await item.getByLabel('Technique').selectOption(KOKU);
 	await save.click();
 	await expect.poll(() => saved.changed.at(-1)?.body).toEqual({ technique: KOKU });
+	await expect(open).toHaveAttribute('href', '/schools/gyokko/taijutsu/jo_ryaku/koku'); // after its name
 });
 
 test('a highlight given other text without deleting it: its ends moved, its quote changed', async ({ page }) => {

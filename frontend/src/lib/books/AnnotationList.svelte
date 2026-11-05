@@ -13,6 +13,7 @@
 	import TechniquePicker from '../TechniquePicker.svelte';
 	import { annotationComments } from '../api/books';
 	import Comments from '../techniques/Comments.svelte';
+	import TechniqueLink from '../techniques/TechniqueLink.svelte';
 	import { rules } from '../validation';
 	import { uidOf, type BookAnnotations } from './annotations.svelte';
 	import { ANNOTATION_COLORS } from './colors';
@@ -83,19 +84,28 @@
 		{#each rows as row (row.id)}
 			{@const selected = annotations.selectedUid === uidOf(row)}
 			<li class:selected data-id={row.id}>
-				<button type="button" class="link" aria-pressed={selected} onclick={() => controls?.select(row)}>
-					<span class="page">{t('books.annotations.page', { n: row.page })}</span>
-					{#if row.kind === 'region'}
-						{#if row.has_image}
-							<img src={annotationImageUrl(row.id)} alt={t('books.annotations.crop')} loading="lazy" />
+				<!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions: a click anywhere
+				on the summary selects, as its button does (the keyboard's way); the technique's link sits beside it -->
+				<div class="summary" onclick={() => controls?.select(row)}>
+					<button type="button" class="link" aria-pressed={selected}>
+						<span class="page">{t('books.annotations.page', { n: row.page })}</span>
+						{#if row.kind === 'region'}
+							{#if row.has_image}
+								<img src={annotationImageUrl(row.id)} alt={t('books.annotations.crop')} loading="lazy" />
+							{:else}
+								<span class="hint">{t('books.annotations.region')}</span>
+							{/if}
 						{:else}
-							<span class="hint">{t('books.annotations.region')}</span>
+							<q class:clamped={!selected}>{row.quote ?? t('books.annotations.no_quote')}</q>
+							{#if looksGarbled(row.quote)}<span class="garbled">{t('books.annotations.garbled')}</span>{/if}
 						{/if}
-					{:else}
-						<q class:clamped={!selected}>{row.quote ?? t('books.annotations.no_quote')}</q>
-						{#if looksGarbled(row.quote)}<span class="garbled">{t('books.annotations.garbled')}</span>{/if}
+					</button>
+					{#if techniqueName(row.technique)}
+						<span class="technique">
+							{techniqueName(row.technique)}
+							<TechniqueLink {catalog} technique={row.technique} />
+						</span>
 					{/if}
-					{#if techniqueName(row.technique)}<span class="technique">{techniqueName(row.technique)}</span>{/if}
 					{#if row.note && !selected}<span class="note">{row.note}</span>{/if}
 					<span class="hint">
 						{t('books.annotations.by', {
@@ -103,7 +113,7 @@
 							date: day(row.modified_at)
 						})}
 					</span>
-				</button>
+				</div>
 				{#if selected && editable(row)}
 					<div class="fields">
 						{#if row.kind === 'text'}
@@ -198,6 +208,10 @@
 	li.selected {
 		border-color: var(--accent);
 	}
+	.summary {
+		cursor: pointer;
+	}
+	.summary,
 	.link {
 		display: grid;
 		gap: var(--space-1);
