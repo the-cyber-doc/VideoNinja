@@ -11,9 +11,10 @@ from ..core import db, i18n
 from ..domain import audit, tags
 from ..domain.tags import Format, InputMode, TagDefinitionIn
 from ..queries.users import User
-from .deps import require_access
+from .deps import rebuild_after_write, require_access
 
-router = APIRouter(prefix="/api/admin", tags=["options"])
+# Tag names and values are in the catalogue snapshot (the search finds tags by name).
+router = APIRouter(prefix="/api/admin", tags=["options"], dependencies=[Depends(rebuild_after_write)])
 options = require_access("options")
 
 

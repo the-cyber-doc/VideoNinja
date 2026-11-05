@@ -19,6 +19,7 @@
 		sortBooks
 	} from '#lib/books/filter.js';
 	import IconButton from '#lib/IconButton.svelte';
+	import SearchBox from '#lib/search/SearchBox.svelte';
 	import ErrorMessage from '#lib/ErrorMessage.svelte';
 	import { i18n, t } from '#lib/i18n.svelte.js';
 	import { bookThumbnailUrl } from '#lib/media.js';
@@ -62,6 +63,7 @@
 	<header>
 		<h1>{t('books.title')}</h1>
 		<div class="actions">
+			<SearchBox />
 			<IconButton
 				label={active ? t('filter.active', { n: active }) : t('filter.open')}
 				icon="filter"
@@ -154,7 +156,27 @@
 		grid-column: 3;
 		justify-self: end;
 		display: flex;
+		align-items: center;
 		gap: var(--space-2);
+	}
+	/* Phones: the title, then the search box and the buttons on a line of their own. */
+	@media (max-width: 40rem) {
+		header {
+			grid-template-columns: 1fr;
+			gap: var(--space-2);
+		}
+		h1,
+		.actions {
+			grid-column: 1;
+		}
+		.actions {
+			justify-self: stretch;
+			justify-content: flex-end;
+		}
+		.actions :global(.search-box) {
+			flex: 1;
+			width: auto;
+		}
 	}
 	.actions :global(.filter) {
 		background: var(--bg);

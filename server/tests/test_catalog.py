@@ -99,6 +99,35 @@ def test_segments_in_catalog(client, admin_secret):
         {"id": 1, "video": 1, "technique": KOKU, "begin_s": 12, "end_s": 27, "performer": "hatsumi"},
         {"id": 2, "video": 1, "technique": KOKU, "begin_s": 40, "end_s": 55, "performer": "hatsumi"},
     ]
+    assert cat["performers"] == [{"id": "hatsumi", "name": "Hatsumi"}]
+
+
+def test_segment_tags_and_tag_names(client, admin_secret):
+    """Segments carry their tags (no value: none given); every tag and value is named, per language."""
+    login(client, admin_secret)
+    add_segments()
+    con = connect()
+    with con:
+        con.execute("INSERT INTO performer (id, name) VALUES ('unused', 'Nobody')")
+        con.execute("INSERT INTO segment_has_tags (segment, tag, value) VALUES (1, 'location', 'outdoor')")
+        con.execute("INSERT INTO segment_has_tags (segment, tag, value) VALUES (1, 'year', '2024')")
+        con.execute("INSERT INTO segment_has_tags (segment, tag, value) VALUES (2, 'event', NULL)")
+    snapshot.rebuild()
+    cat = client.get("/api/catalog").json()
+    first, second = cat["segments"]
+    assert first["tags"] == [{"id": "location", "value": "outdoor"}, {"id": "year", "value": "2024"}]
+    assert second["tags"] == [{"id": "event"}]
+    assert cat["performers"] == [{"id": "hatsumi", "name": "Hatsumi"}]  # only the segments' performers
+    location = next(t for t in cat["tags"] if t["id"] == "location")
+    assert location["name"] == "Location"
+    assert {"id": "outdoor", "name": "Outdoor"} in location["values"]
+    year = next(t for t in cat["tags"] if t["id"] == "year")
+    assert year == {"id": "year", "name": "Year"}  # no fixed values
+    assert [t["id"] for t in cat["tags"]] == sorted(t["id"] for t in cat["tags"])
+    fr = client.get("/api/catalog", headers={"Accept-Language": "fr"}).json()
+    location = next(t for t in fr["tags"] if t["id"] == "location")
+    assert location["name"] == "Lieu"
+    assert {"id": "outdoor", "name": "Extérieur"} in location["values"]
 
 
 SHA = "ab" + "0" * 62

@@ -99,6 +99,15 @@ describe('transport', () => {
 		});
 	});
 
+	it('another language when asked (the search reads every catalogue)', async () => {
+		setLang('en');
+		const fetch = vi.fn(async () => Response.json({}));
+		vi.stubGlobal('fetch', fetch);
+		await api('/api/catalog', undefined, undefined, 'fr');
+		const [, init] = fetch.mock.calls[0] as unknown as [string, RequestInit];
+		expect((init.headers as Record<string, string>)['Accept-Language']).toBe('fr');
+	});
+
 	it('NDJSON: lines split across chunks, blank lines skipped, the last one without its newline', async () => {
 		const chunks = ['{"step":"sch', 'ema"}\n\n{"step":', '"data"}\n{"step":"done"}'];
 		const body = new ReadableStream({

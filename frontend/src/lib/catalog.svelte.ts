@@ -58,6 +58,21 @@ export interface Segment {
 	begin_s: number;
 	end_s: number;
 	performer: string;
+	/** Its tags: a tag ID and, if it has one, the value (a list tag's value ID, else the text). */
+	tags?: { id: string; value?: string }[];
+}
+
+/** Who performs segments (names are not translated). */
+export interface Performer {
+	id: string;
+	name: string;
+}
+
+/** A tag, named in the catalogue's language; a list tag with its values. */
+export interface CatalogTag {
+	id: string;
+	name: string;
+	values?: { id: string; name: string }[];
 }
 
 export interface Catalog {
@@ -67,6 +82,10 @@ export interface Catalog {
 	sections: Section[];
 	techniques: Technique[];
 	segments: Segment[];
+	/** The segments' performers. */
+	performers?: Performer[];
+	/** Every tag (also those of videos and books, which are not in the catalogue). */
+	tags?: CatalogTag[];
 }
 
 const loaded = new Map<Lang, Promise<Catalog>>();
@@ -85,12 +104,16 @@ if (typeof window !== 'undefined') {
 /** The catalogue in the current language (descriptions are translated by the server).
  * Reactive: called in a $derived, it runs again when the language or the catalogue changes. */
 export function loadCatalog(): Promise<Catalog> {
+	return loadCatalogIn(i18n.lang);
+}
+
+/** The catalogue in this language (the search reads every language's). Reactive as loadCatalog. */
+export function loadCatalogIn(lang: Lang): Promise<Catalog> {
 	void changes.count;
-	const lang = i18n.lang;
 	let catalog = loaded.get(lang);
 	if (!catalog) {
 		checkedAt.set(lang, Date.now());
-		catalog = getCatalog();
+		catalog = getCatalog(lang);
 		catalog.catch(() => loaded.delete(lang)); // retry on the next call
 		loaded.set(lang, catalog);
 	} else if (Date.now() - (checkedAt.get(lang) ?? 0) > REVALIDATE_MS) {
@@ -108,7 +131,7 @@ export function refreshCatalog() {
 async function revalidate(lang: Lang) {
 	checkedAt.set(lang, Date.now());
 	try {
-		const [fresh, current] = await Promise.all([getCatalog(), loaded.get(lang)]);
+		const [fresh, current] = await Promise.all([getCatalog(lang), loaded.get(lang)]);
 		if (JSON.stringify(fresh) !== JSON.stringify(current)) {
 			loaded.set(lang, Promise.resolve(fresh));
 			changes.count++;

@@ -1,4 +1,4 @@
-import { i18n, isMessageKey, t } from '../i18n.svelte';
+import { i18n, isMessageKey, t, type Lang } from '../i18n.svelte';
 import { url } from '../base';
 
 type Params = Record<string, string | number>;
@@ -58,10 +58,10 @@ async function responseError(res: Response): Promise<ApiError> {
 }
 
 /** Sent on every API call. */
-export function apiHeaders(): Record<string, string> {
+export function apiHeaders(lang: Lang = i18n.lang): Record<string, string> {
 	return {
 		// Translated content (role names, descriptions…) comes back in this language.
-		'Accept-Language': i18n.lang,
+		'Accept-Language': lang,
 		// Dates are written in this timezone (IANA name, e.g. 'Europe/Zurich'), and the
 		// server saves it for the user.
 		'Time-Zone': Intl.DateTimeFormat().resolvedOptions().timeZone
@@ -70,13 +70,13 @@ export function apiHeaders(): Record<string, string> {
 
 type Method = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
 
-async function request(path: string, body?: unknown, method?: Method): Promise<Response> {
+async function request(path: string, body?: unknown, method?: Method, lang?: Lang): Promise<Response> {
 	let res: Response;
 	try {
 		res = await fetch(url(path), {
 			method: method ?? (body === undefined ? 'GET' : 'POST'),
 			headers: {
-				...apiHeaders(),
+				...apiHeaders(lang),
 				...(body === undefined ? {} : { 'Content-Type': 'application/json' })
 			},
 			body: body === undefined ? undefined : JSON.stringify(body),
@@ -91,8 +91,9 @@ async function request(path: string, body?: unknown, method?: Method): Promise<R
 
 /** GET when body is undefined, POST JSON otherwise; or the method given (PATCH, DELETE). */
 /** Use the typed functions of the modules beside this one (auth.ts, users.ts…): this is their transport. */
-export async function api<T>(path: string, body?: unknown, method?: Method): Promise<T> {
-	const res = await request(path, body, method);
+/** `lang`: the answer's language when not the page's (the search reads every language's catalogue). */
+export async function api<T>(path: string, body?: unknown, method?: Method, lang?: Lang): Promise<T> {
+	const res = await request(path, body, method, lang);
 	return res.status === 204 ? (undefined as T) : res.json();
 }
 

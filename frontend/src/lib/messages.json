@@ -342,6 +342,27 @@
 	"nav.upload": { "en": "Upload", "fr": "Téléverser" },
 
 	"schools.title": { "en": "Schools", "fr": "Écoles" },
+	"search.label": { "en": "Search", "fr": "Rechercher" },
+	"search.title": { "en": "Search", "fr": "Recherche" },
+	"search.placeholder": { "en": "Search…", "fr": "Rechercher…" },
+	"search.hint": {
+		"en": "Techniques, segments, videos and books: by name, description, performer, tag… in any language.",
+		"fr": "Techniques, segments, vidéos et livres : par nom, description, exécutant, étiquette… dans toutes les langues."
+	},
+	"search.none": { "en": "Nothing found", "fr": "Aucun résultat" },
+	"search.count": { "en": "{n} result(s)", "fr": "{n} résultat(s)" },
+	"search.all": { "en": "See all results", "fr": "Voir tous les résultats" },
+	"search.unavailable": {
+		"en": "The search is not available: the catalogue could not be loaded.",
+		"fr": "La recherche n’est pas disponible : le catalogue n’a pas pu être chargé."
+	},
+	"search.group.catalog": { "en": "Catalogue", "fr": "Catalogue" },
+	"search.group.segments": { "en": "Segments", "fr": "Segments" },
+	"search.group.videos": { "en": "Videos", "fr": "Vidéos" },
+	"search.group.books": { "en": "Books", "fr": "Livres" },
+	"search.kind.school": { "en": "School", "fr": "École" },
+	"search.kind.section": { "en": "Scroll or form", "fr": "Rouleau ou forme" },
+	"search.kind.technique": { "en": "Technique", "fr": "Technique" },
 	"categories.title": { "en": "Categories", "fr": "Catégories" },
 	"categories.none": {
 		"en": "No techniques known yet for this school.",

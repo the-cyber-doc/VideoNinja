@@ -71,6 +71,13 @@ describe('loadCatalog', () => {
 		expect(server.getCatalog).toHaveBeenCalledTimes(2);
 	});
 
+	it('in another language: its own copy, asked in that language', async () => {
+		server.getCatalog.mockImplementation(async (lang: string) => version(lang === 'fr' ? 2 : 1));
+		expect(await module.loadCatalogIn('fr')).toEqual(version(2));
+		expect(await module.loadCatalog()).toEqual(version(1)); // the page's (English)
+		expect(server.getCatalog.mock.calls).toEqual([['fr'], ['en']]);
+	});
+
 	it('a newer catalogue from the service worker: loaded again', async () => {
 		server.getCatalog.mockResolvedValue(version(1));
 		await module.loadCatalog();

@@ -5,7 +5,7 @@ import logging
 import pyotp
 import pytest
 
-from app.domain import tags
+from app.domain import snapshot, tags
 
 from .conftest import connect
 from .test_auth import login
@@ -118,6 +118,18 @@ def test_missing_french_shown_empty(admin):
 
 
 # --- creating ---
+
+
+def test_writes_rebuild_the_catalogue(admin, monkeypatch):
+    """Tag names are in the catalogue snapshot (searched there): every write rebuilds it, reads don't."""
+    scheduled = []
+    monkeypatch.setattr(snapshot, "schedule", lambda: scheduled.append(1))
+    admin.get("/api/admin/tags")
+    assert scheduled == []
+    created(admin)
+    assert scheduled == [1]
+    assert admin.delete("/api/admin/tags/place").status_code == 204
+    assert scheduled == [1, 1]
 
 
 def test_create_a_list_tag(admin, caplog):

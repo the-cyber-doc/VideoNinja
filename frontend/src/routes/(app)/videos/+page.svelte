@@ -10,6 +10,7 @@
 	import { t, type MessageKey } from '#lib/i18n.svelte.js';
 	import { hasAccess } from '#lib/session.svelte.js';
 	import IconButton from '#lib/IconButton.svelte';
+	import SearchBox from '#lib/search/SearchBox.svelte';
 	import Section from '#lib/Section.svelte';
 	import { formatTime } from '#lib/time.js';
 	import { offline, removeVideos, savedVideos } from '#lib/offline.svelte.js';
@@ -88,6 +89,7 @@
 		<header>
 			<h1>{t('videos.title')}</h1>
 			<div class="actions">
+				<SearchBox />
 				<IconButton
 					label={active ? t('filter.active', { n: active }) : t('filter.open')}
 					icon="filter"
@@ -180,7 +182,7 @@
 		display: grid;
 		gap: var(--space-3);
 	}
-	/* The title centred, the remove button at the right of the same line. */
+	/* The title centred, the search box and the buttons at the right of the same line. */
 	header {
 		display: grid;
 		grid-template-columns: 1fr auto 1fr;
@@ -197,7 +199,27 @@
 		grid-column: 3;
 		justify-self: end;
 		display: flex;
+		align-items: center;
 		gap: var(--space-2);
+	}
+	/* Phones: the title, then the search box and the buttons on a line of their own. */
+	@media (max-width: 40rem) {
+		header {
+			grid-template-columns: 1fr;
+			gap: var(--space-2);
+		}
+		h1,
+		.actions {
+			grid-column: 1;
+		}
+		.actions {
+			justify-self: stretch;
+			justify-content: flex-end;
+		}
+		.actions :global(.search-box) {
+			flex: 1;
+			width: auto;
+		}
 	}
 	.actions :global(.filter),
 	.actions :global(.remove) {

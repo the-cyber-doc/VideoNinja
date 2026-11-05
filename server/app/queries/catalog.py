@@ -59,6 +59,23 @@ def segments(con: sqlite3.Connection) -> list[sqlite3.Row]:
     ).fetchall()
 
 
+def segment_tags(con: sqlite3.Connection) -> list[sqlite3.Row]:
+    """The tags of the segments of published videos: "segment", "tag", "value" (NULL: none)."""
+    return con.execute(
+        'SELECT t."segment", t."tag", t."value" FROM "segment_has_tags" t'
+        ' JOIN "segment" s ON s."id" = t."segment" JOIN "video" v ON v."id" = s."video"'
+        ' WHERE v."status" = \'published\' ORDER BY t."segment", t."tag"'
+    ).fetchall()
+
+
+def segment_performers(con: sqlite3.Connection) -> list[sqlite3.Row]:
+    """The performers of the segments of published videos: "id", "name"."""
+    return con.execute(
+        'SELECT DISTINCT p."id", p."name" FROM "performer" p JOIN "segment" s ON s."performer" = p."id"'
+        ' JOIN "video" v ON v."id" = s."video" WHERE v."status" = \'published\' ORDER BY p."id"'
+    ).fetchall()
+
+
 def segment_media(con: sqlite3.Connection, segment_id: int) -> sqlite3.Row | None:
     """The encoded video's SHA-256 (NULL until published), the segment's times and
     its thumbnail file name: the segment's own, else its video's."""
