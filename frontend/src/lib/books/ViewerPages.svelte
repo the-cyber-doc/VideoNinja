@@ -35,7 +35,7 @@
 	import { AnnotationLayer, useAnnotation } from '@embedpdf/plugin-annotation/svelte';
 	import { PagePointerProvider } from '@embedpdf/plugin-interaction-manager/svelte';
 	import { RenderLayer } from '@embedpdf/plugin-render/svelte';
-	import { Scroller, useScroll } from '@embedpdf/plugin-scroll/svelte';
+	import { Scroller, useScroll, useScrollCapability } from '@embedpdf/plugin-scroll/svelte';
 	import { Viewport } from '@embedpdf/plugin-viewport/svelte';
 	import { SelectionLayer, useSelectionCapability } from '@embedpdf/plugin-selection/svelte';
 	import { useZoom } from '@embedpdf/plugin-zoom/svelte';
@@ -62,6 +62,7 @@
 	const selection = useSelectionCapability();
 	const zoom = useZoom(() => documentId);
 	const scroll = useScroll(() => documentId);
+	const scrolling = useScrollCapability();
 	const documentState = useDocumentState(() => documentId);
 	const doc = $derived(documentState.current?.document ?? null);
 	const accent = token('--accent');
@@ -127,6 +128,23 @@
 		};
 	});
 
+	/** Scroll once the pages are laid out: their first layout scrolls back to the top (EmbedPDF's
+	 * setLayoutReady), and the page's first request (?page=, ?annotation=) comes as soon as the
+	 * document is open, before it. onLayoutReady says it again to a new listener when it happened. */
+	function scrollTo(pageNumber: number, behavior: 'smooth' | 'instant') {
+		let done = false;
+		const stop = scrolling.provides?.onLayoutReady((event) => {
+			if (done || event.documentId !== documentId) return;
+			done = true;
+			queueMicrotask(() => stop?.()); // (said again at once: `stop` not set yet)
+			scroll.provides?.scrollToPage({ pageNumber, behavior });
+		});
+		if (stop) layoutWaits.push(stop);
+	}
+	// Listeners still waiting for the layout, stopped with the viewer.
+	const layoutWaits: (() => void)[] = [];
+	$effect(() => () => layoutWaits.forEach((stop) => stop()));
+
 	let menu = $state<{ x: number; y: number } | null>(null);
 	let menuElement = $state<HTMLElement>();
 	let copyError = $state<string | null>(null);
@@ -180,7 +198,7 @@
 		onready({
 			select(row) {
 				const target = revive(row.target);
-				scroll.provides?.scrollToPage({ pageNumber: row.page, behavior: 'smooth' });
+				scrollTo(row.page, 'smooth');
 				annotation.provides?.selectAnnotation(target.pageIndex, target.id);
 				annotations.selectedUid = target.id;
 			},
@@ -198,7 +216,7 @@
 				annotation.provides?.deselectAnnotation();
 				annotation.provides?.setActiveTool(null); // the plain text selection
 				const target = revive(row.target);
-				scroll.provides?.scrollToPage({ pageNumber: target.pageIndex + 1, behavior: 'smooth' });
+				scrollTo(target.pageIndex + 1, 'smooth');
 				return new Promise((done) => (retarget = { row, done }));
 			},
 			cancelReselect() {
@@ -208,7 +226,7 @@
 			crop: (pageIndex, rect) => cropOf(pageEngine, d, pageIndex, rect),
 			pageTexts: () => pageTexts(engine as unknown as TextEngine, d),
 			showPage(page) {
-				scroll.provides?.scrollToPage({ pageNumber: page, behavior: 'instant' });
+				scrollTo(page, 'instant');
 			},
 			annotatedCopy: (pdf, list) => annotatedCopy(engine as unknown as CopyEngine, pdf, list),
 			async firstPage() {
