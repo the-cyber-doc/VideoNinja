@@ -31,6 +31,7 @@ Self-hosted on a Raspberry Pi 5 with Docker behind nginx.
 | `nginx/nginx.conf` | The nginx container's configuration (see [6. Reverse proxy and nginx](#6-reverse-proxy-and-nginx)) |
 | `server/Dockerfile` | The four images (`--target nginx`, `api`, `encoder`, `tusd`) |
 | `tools/encode-videos/` | `encode-videos.sh` (ffmpeg H.265 encoding) + NNEDI3 weights, used by the server's encoding queue |
+| `deploy/` | `docker-compose.yaml` and `reverse-proxy.conf`: the examples of [Production](#production), attached to each GitHub release (a test keeps them identical to this README) |
 | `docker-compose.dev.yaml`, `tools/docker-dev.sh` | The production images built from the checkout and run locally on the development data (see [9. Docker images](#9-docker-images)) |
 | `tools/make-dev-db.py` | A development database with a fixed test admin (see [Test admin without the wizard](#test-admin-without-the-wizard)) |
 | `tools/test-browser.sh` | Every browser test, once, with the browsers in Playwright's Docker image (also where WebKit can't start locally; see [6. Frontend tests](#6-frontend-tests)) |
@@ -769,6 +770,23 @@ The tag runs the same CI, then publishes the multi-arch image to Docker Hub as
 `vMAJOR.MINOR.PATCH`. The Docker Hub credentials are the repository secrets
 `DOCKERHUB_USERNAME` and `DOCKERHUB_TOKEN`.
 
+Once the four images are published, the job `release` creates the GitHub
+release of the tag (`Video Ninja 0.1.0`; a pre-release for a tag like
+`v0.1.0-rc.1`). Its notes link each image on Docker Hub with its tags and
+digest, then list the changes since the previous tag (GitHub's generated
+notes). Its files:
+
+| File | Content |
+|---|---|
+| `docker-compose.yaml` | `deploy/docker-compose.yaml`, the images pinned to the release (`:0.1.0` instead of `:latest`) |
+| `reverse-proxy.conf` | `deploy/reverse-proxy.conf`, the `location` blocks for your TLS proxy |
+| `encode-videos.tar.gz` | `tools/encode-videos/` (the script + NNEDI3 weights), to encode by hand before uploading |
+| `SHA256SUMS` | The SHA-256 of the files above |
+
+`deploy/` holds the compose file and the proxy configuration shown under
+[Production](#production): change both together (`tests/test_deploy.py` fails
+otherwise). Running the job again replaces the files and keeps the notes.
+
 The About page (user menu) shows what runs:
 - **Version:** the tag without its "v" (`0.1.0`), or `dev` for any other build.
 - **Build:** the commit and the build date.
@@ -817,6 +835,10 @@ fits. The API and the encoder can't use one: the hardened Python images stop at
 pulls from `dhi.io`, which needs a (free) Docker account: `docker login dhi.io`
 once on the build machine; CI logs in with the Docker Hub secrets. In the API and encoder, `tini` is PID 1: it reaps any
 process left behind and passes `docker stop` on.
+
+Each [GitHub release](https://github.com/the-cyber-doc/VideoNinja/releases)
+attaches the files below (`docker-compose.yaml` with the images pinned to its
+version, `reverse-proxy.conf`) and links its images on Docker Hub.
 
 Target: Raspberry Pi 5 (arm64) or any amd64 host, with Docker Engine and the
 Compose plugin, Docker data on a local SSD. The API and the encoder share the

@@ -3,7 +3,7 @@ name: CI/CD Pipeline
 # Every push (any branch) and every PR: tests, frontend build, the four Docker
 # images (nginx, api, encoder, tusd) built for both architectures (not published).
 # Only a version tag (v1.2.3) publishes them to Docker Hub for users, as
-# <user>/videoninja-<image>.
+# <user>/videoninja-<image>, then creates its GitHub release (job release).
 # Actions pinned by commit (a tag can be moved), the version in a comment; Dependabot
 # updates them (.github/dependabot.yml).
 on:
@@ -308,3 +308,112 @@ jobs:
     - name: Inspect image
       run: |
         docker buildx imagetools inspect ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.version }}
+
+    # The manifest list's digest and its tags, for the GitHub release's notes.
+    - name: Record digest and tags
+      env:
+        IMAGE: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.version }}
+      run: |
+        mkdir -p /tmp/release
+        docker buildx imagetools inspect "$IMAGE" --format '{{ json .Manifest }}' | jq -er .digest \
+          > "/tmp/release/${{ matrix.image }}.digest"
+        jq -r '.tags[] | sub(".*:"; "")' <<< "$DOCKER_METADATA_OUTPUT_JSON" > "/tmp/release/${{ matrix.image }}.tags"
+
+    - name: Upload digest and tags
+      uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9   # v7
+      with:
+        name: release-digest-${{ matrix.image }}
+        path: /tmp/release/${{ matrix.image }}.*
+        if-no-files-found: error
+        retention-days: 1
+
+  # Once the four images are on Docker Hub: the GitHub release of the tag, with what
+  # deploying needs (deploy/, the compose file pinned to this version; the encoding
+  # script for use by hand) and the images' links, tags and digests. Run again, it
+  # replaces its files (the notes stay as written, edited by hand maybe).
+  release:
+    needs: merge-and-push
+    if: startsWith(github.ref, 'refs/tags/v')
+    name: GitHub release
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      TAG: ${{ github.ref_name }}
+      NAMESPACE: ${{ secrets.DOCKERHUB_USERNAME }}
+
+    steps:
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1   # v7.0.1
+
+    - name: Download digests
+      uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333   # v8
+      with:
+        path: /tmp/digests
+        pattern: release-digest-*
+        merge-multiple: true
+
+    - name: Assemble the files
+      run: |
+        version="${TAG#v}"
+        mkdir -p dist
+        # The README's compose file, its images pinned to this release (and to the
+        # namespace they were published under).
+        sed -e "s|thecyberdoc/videoninja-\([a-z]*\):latest|$NAMESPACE/videoninja-\1:$version|" \
+          deploy/docker-compose.yaml > dist/docker-compose.yaml
+        test "$(grep -c "videoninja-[a-z]*:$version" dist/docker-compose.yaml)" = 4
+        cp deploy/reverse-proxy.conf dist/
+        tar -czf dist/encode-videos.tar.gz --owner=0 --group=0 -C tools \
+          encode-videos/encode-videos.sh encode-videos/nnedi3_weights.bin
+        (cd dist && sha256sum -- * > SHA256SUMS)
+
+    - name: Write the notes
+      run: |
+        version="${TAG#v}"
+        readme="https://github.com/$GH_REPO/blob/$TAG/README.md"
+        {
+          echo "## Docker images"
+          echo
+          echo "Multi-arch (\`linux/amd64\`, \`linux/arm64\`), released together: run all four at the same version."
+          echo "Tags: $(sed 's/.*/`&`/' /tmp/digests/nginx.tags | paste -sd ' ' | sed 's/ /, /g')."
+          echo
+          echo "| Image | Pull | Digest |"
+          echo "|---|---|---|"
+          for image in nginx api encoder tusd; do
+            echo "| [videoninja-$image](https://hub.docker.com/r/$NAMESPACE/videoninja-$image/tags?name=$version)" \
+              "| \`docker pull $NAMESPACE/videoninja-$image:$version\`" \
+              "| \`$(cat "/tmp/digests/$image.digest")\` |"
+          done
+          echo
+          echo "Each image carries its SPDX SBOM and SLSA provenance:"
+          echo "\`docker buildx imagetools inspect $NAMESPACE/videoninja-api:$version --format '{{ json .SBOM }}'\`."
+          echo
+          echo "## Deploying"
+          echo
+          echo "| File | What |"
+          echo "|---|---|"
+          echo "| \`docker-compose.yaml\` | The four containers, images pinned to \`$version\` ([2. docker-compose.yaml]($readme#2-docker-composeyaml)) |"
+          echo "| \`reverse-proxy.conf\` | The \`location\` blocks for your TLS proxy ([Your reverse proxy]($readme#your-reverse-proxy)) |"
+          echo "| \`encode-videos.tar.gz\` | \`encode-videos.sh\` + NNEDI3 weights, to encode videos by hand before uploading (needs ffmpeg with libx265 and nnedi) |"
+          echo "| \`SHA256SUMS\` | \`sha256sum -c SHA256SUMS --ignore-missing\` |"
+          echo
+          echo "New installation: follow [Production]($readme#production)."
+          echo "Update: compare the new \`docker-compose.yaml\` with yours, then \`docker compose pull && docker compose up -d\`"
+          echo "(the database is migrated at start, after a backup next to it)."
+          echo
+        } > notes.md
+        cat notes.md
+
+    - name: Create or update the release
+      run: |
+        version="${TAG#v}"
+        if gh release view "$TAG" > /dev/null 2>&1; then
+          gh release upload "$TAG" dist/* --clobber
+        else
+          prerelease=()
+          [[ $version == *-* ]] && prerelease=(--prerelease)
+          # Our notes first, then GitHub's list of changes since the previous tag.
+          gh release create "$TAG" dist/* --verify-tag --title "Video Ninja $version" \
+            --notes-file notes.md --generate-notes "${prerelease[@]}"
+        fi

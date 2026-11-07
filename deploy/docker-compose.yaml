@@ -1,0 +1,127 @@
+# Settings of every container.
+x-hardened: &hardened
+  restart: unless-stopped
+  user: "10001:10001"
+  read_only: true
+  cap_drop: [ALL]
+  security_opt: [no-new-privileges:true]
+  tmpfs: [/tmp]
+  logging:
+    driver: journald   # rotated by journald; journalctl -t docker-videoninja-api
+    options:
+      tag: "docker-{{.Name}}"
+
+# Limits shared by the API and the encoder (tusd's -max-size below: the same size).
+x-limits: &limits
+  VIDEONINJA_MAX_UPLOAD_BYTES: "21474836480"   # 20 GiB
+  VIDEONINJA_FFMPEG_TIMEOUT_H: "24"             # each ffmpeg run, and a whole encoding
+  VIDEONINJA_FFPROBE_TIMEOUT_MIN: "10"          # each ffprobe run (it only reads headers)
+  # ffmpeg demuxers accepted for uploads (by content); also the accepted file extensions.
+  VIDEONINJA_INPUT_FORMATS: mov,matroska,avi,mpegts,mpeg,dv,asf
+
+services:
+  nginx:
+    <<: *hardened
+    image: thecyberdoc/videoninja-nginx:latest   # or pin a version: 1.2 / 1.2.3, the same for all four
+    container_name: videoninja-nginx
+    mem_limit: 256m
+    volumes:
+      - /srv/catalog:/srv/catalog:ro
+      - /srv/media:/srv/media:ro
+    networks: [edge, backend]
+    ports:
+      # Plain HTTP: only your TLS proxy, on this host, may reach it.
+      # (Proxy in another container: put it on the edge network instead.)
+      - "127.0.0.1:8080:8080"
+    depends_on: [api, tusd]
+
+  api:
+    <<: *hardened
+    image: thecyberdoc/videoninja-api:latest
+    container_name: videoninja-api
+    mem_limit: 512m
+    cpus: 1
+    environment:
+      <<: *limits
+      # The encryption key, from .env (step 1): not written in this file.
+      VIDEONINJA_DB_KEY: ${VIDEONINJA_DB_KEY:?missing in .env}
+      # Or, safer, a Docker secret (not shown by docker inspect): remove the
+      # line above and uncomment `secrets:` here and at the end of the file. The
+      # app reads VIDEONINJA_DB_KEY_FILE, by default /run/secrets/videoninja_key.
+      # VIDEONINJA_DB_KEY_FILE: /run/secrets/videoninja_key
+      # The client's address from X-Forwarded-For, from whoever reaches the API: only
+      # nginx may (network segmentation, below). Login throttling and logs rely on it.
+      FORWARDED_ALLOW_IPS: "*"
+      TZ: Europe/Zurich                   # invitation expiry dates; users get their browser's
+    volumes:
+      - data:/data
+      - /srv/catalog:/srv/catalog
+    # secrets:
+    #   - videoninja_key
+    networks: [backend]
+    # Through nginx: nginx, the API, the database, the encoder and tusd must all
+    # answer (503 and the failing part otherwise). The URL includes the base path.
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://nginx:8080/videoninja/health', timeout=5)"]
+      interval: 30s
+      timeout: 10s
+      start_period: 20s
+      retries: 3
+
+  encoder:
+    <<: *hardened
+    image: thecyberdoc/videoninja-encoder:latest
+    container_name: videoninja-encoder
+    # libx265 on the CPU (a Pi 5 has no hardware H.265 encoder), one video at a
+    # time, at low priority: three cores at most, one stays free.
+    cpus: 3
+    mem_limit: 2g
+    environment:
+      <<: *limits
+      VIDEONINJA_X265_PRESET: medium   # "fast": about 2x faster, slightly bigger files
+      TZ: Europe/Zurich
+    volumes:
+      - data:/data
+      - /srv/media:/srv/media
+      - /srv/uploads:/srv/uploads
+    networks: [backend]
+    healthcheck:   # its heartbeat in the database is recent
+      test: ["CMD", "python", "-m", "app.encoder", "--health"]
+      interval: 30s
+      timeout: 10s
+      start_period: 20s
+      retries: 3
+
+  tusd:
+    <<: *hardened
+    image: thecyberdoc/videoninja-tusd:latest
+    container_name: videoninja-tusd
+    mem_limit: 256m
+    command:
+      - -host=0.0.0.0
+      - -port=1080
+      - -upload-dir=/srv/uploads
+      - -base-path=/videoninja/files/   # the base path + /files/
+      - -behind-proxy
+      - -disable-download
+      - -expose-metrics=false
+      - -max-size=21474836480            # VIDEONINJA_MAX_UPLOAD_BYTES above
+      - -hooks-http=http://api:8000/internal/tusd-hook
+      - -hooks-enabled-events=pre-create,post-finish
+      - -hooks-http-forward-headers=Cookie
+    volumes:
+      - /srv/uploads:/srv/uploads
+    networks: [backend]
+
+networks:
+  edge: {}
+  # No way out (internal): the API, the encoder and tusd reach nothing else.
+  backend:
+    internal: true
+
+# secrets:
+#   videoninja_key:
+#     file: ./secrets/videoninja_key   # mounted at /run/secrets/videoninja_key
+
+volumes:
+  data:   # holds /data/videoninja.db, shared by the API and the encoder
