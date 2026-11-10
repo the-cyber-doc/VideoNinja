@@ -49,6 +49,7 @@
 	import { token } from './colors';
 	import { annotatedCopy, cropOf, THUMBNAIL_WIDTH, type Box, type CopyEngine, type PageEngine } from './pdf';
 	import { pageTexts, type TextEngine } from './text';
+	import { intentOf, type Intent } from './touch';
 	import {
 		between,
 		centerOf,
@@ -289,7 +290,39 @@
 		else if (e.type === 'pointerdown' && selecting && mode === 'select' && onPage(e))
 			selection.provides?.forDocument(documentId).clear();
 	}
+	// A finger over a page (Select): EmbedPDF's page takes every touch for itself (touch-action:
+	// none, overridden by .panning), so it would never scroll. Here a swipe scrolls (EmbedPDF never
+	// sees its moves: no selection begun), a tap still reaches it (annotations), a finger held still
+	// a moment then moved selects text (its moves pass, the browser's scroll is cancelled).
+	let finger: { id: number; x: number; y: number; at: number; intent: Intent } | null = null;
+	function onTouchPointer(e: PointerEvent) {
+		if (e.pointerType !== 'touch') return;
+		if (e.type === 'pointerdown') {
+			finger =
+				mode === 'select' && onPage(e)
+					? { id: e.pointerId, x: e.clientX, y: e.clientY, at: e.timeStamp, intent: 'undecided' }
+					: null;
+		} else if (finger?.id !== e.pointerId) {
+			return;
+		} else if (e.type === 'pointermove') {
+			if (finger.intent === 'undecided')
+				finger.intent = intentOf(e.timeStamp - finger.at, e.clientX - finger.x, e.clientY - finger.y);
+			if (finger.intent !== 'select') e.stopPropagation();
+		} else {
+			finger = null; // up, cancel (the browser scrolling)
+		}
+	}
+	// Not passive: preventDefault keeps the browser from scrolling a selection's drag.
+	$effect(() => {
+		const hold = (e: TouchEvent) => {
+			if (finger?.intent === 'select' && e.cancelable) e.preventDefault();
+		};
+		window.addEventListener('touchmove', hold, { passive: false });
+		return () => window.removeEventListener('touchmove', hold);
+	});
+
 	function onContextMenu(e: MouseEvent) {
+		if (finger && onPage(e)) return e.preventDefault(); // a long press: a selection, not the browser's menu
 		if (!selectedText || !onPage(e)) return; // the browser's menu
 		e.preventDefault();
 		menu = { x: e.clientX, y: e.clientY };
@@ -368,9 +401,11 @@
 </script>
 
 <svelte:window
-	onpointerdowncapture={primaryOnly}
+	onpointerdowncapture={(e) => (onTouchPointer(e), primaryOnly(e))}
+	onpointermovecapture={onTouchPointer}
+	onpointercancelcapture={onTouchPointer}
 	onmousedowncapture={primaryOnly}
-	onpointerupcapture={primaryOnly}
+	onpointerupcapture={(e) => (primaryOnly(e), onTouchPointer(e))}
 	onmouseupcapture={primaryOnly}
 	oncontextmenu={onContextMenu}
 	onkeydown={onKeydown}
@@ -417,7 +452,13 @@
 <ErrorMessage error={copyError} />
 
 {#snippet renderPage(page: { pageIndex: number; width: number; height: number })}
-	<div class="page" style:width="{page.width}px" style:height="{page.height}px" data-page={page.pageIndex + 1}>
+	<div
+		class="page"
+		class:panning={mode === 'select'}
+		style:width="{page.width}px"
+		style:height="{page.height}px"
+		data-page={page.pageIndex + 1}
+	>
 		<PagePointerProvider {documentId} pageIndex={page.pageIndex}>
 			<!-- No pointer on the page's picture: dragging an image starts the browser's own drag,
 			     which cancels the pointer (as EmbedPDF's examples do). -->
@@ -537,6 +578,12 @@
 	}
 	.page :global(.render) {
 		pointer-events: none;
+	}
+	/* Select: a finger scrolls the pages (EmbedPDF sets none inline on its pointer layer); a held
+	   finger selects (onTouchPointer). Create region keeps the finger for drawing. */
+	.panning,
+	.panning :global(*) {
+		touch-action: pan-x pan-y !important;
 	}
 	.region-layer {
 		position: absolute;

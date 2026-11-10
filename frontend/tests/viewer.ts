@@ -47,3 +47,20 @@ export async function drawnColor(page: Page, clip: { x: number; y: number; width
 		return mode.split(',').map(Number) as RGB;
 	}, png);
 }
+
+/** A finger's drag (Chromium: touch events through the DevTools protocol, which scroll as a real
+ * finger does), held still `holdMs` first (a long press). */
+export async function touchDrag(page: Page, from: [number, number], to: [number, number], holdMs = 0, steps = 10) {
+	const cdp = await page.context().newCDPSession(page);
+	const at = (x: number, y: number) => [{ x: Math.round(x), y: Math.round(y) }];
+	await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: at(...from) });
+	if (holdMs) await page.waitForTimeout(holdMs);
+	for (let i = 1; i <= steps; i++) {
+		const x = from[0] + ((to[0] - from[0]) * i) / steps;
+		const y = from[1] + ((to[1] - from[1]) * i) / steps;
+		await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: at(x, y) });
+		await page.waitForTimeout(16);
+	}
+	await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+	await cdp.detach();
+}

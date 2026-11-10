@@ -1,9 +1,9 @@
 import { readFileSync } from 'node:fs';
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Locator, type Page } from '@playwright/test';
 import type { BookRow, Tag } from '../../src/lib/api/types';
 import { CATALOG, KOKU } from '../catalog';
 import { pdfAnnotations } from '../pdf-annotations';
-import { bluish, drag, drawnColor, pageBox, yellowish } from '../viewer';
+import { bluish, drag, drawnColor, pageBox, touchDrag, yellowish } from '../viewer';
 
 // A 1×1 PNG (the books' thumbnails).
 const PNG = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFBQIAX8jx0gAAAABJRU5ErkJggg==';
@@ -895,4 +895,58 @@ test('a quote cut, not selected, at a region picture’s height, ending with “
 		.getByRole('button', { name: /Page 1/ })
 		.click();
 	await expect.poll(lines).toBe('none');
+});
+
+// --- a phone: a finger scrolls the pages; held still first, it selects ---
+
+test.describe('on a phone', () => {
+	test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
+	test.skip(({ browserName }) => browserName !== 'chromium', 'touch drags need the DevTools protocol');
+
+	async function phoneBook(page: Page) {
+		await viewing(page, [], { pages: 2 });
+		await page.route('/media/book/7', (r) =>
+			r.fulfill({ contentType: 'application/pdf', body: readFileSync('tests/fixtures/book-search.pdf') })
+		);
+		await page.goto('/books/7');
+		const box = await pageBox(page);
+		const scroller = page.locator('.viewport');
+		await scroller.scrollIntoViewIfNeeded();
+		return { box: (await page.locator('.page[data-page="1"]').boundingBox())!, scroller, pt: box.width / 420 };
+	}
+	const scrollTop = (scroller: Locator) => scroller.evaluate((e) => e.scrollTop);
+
+	test('a swipe over a page scrolls the pages; nothing selected', async ({ page }) => {
+		const { box, scroller, pt } = await phoneBook(page);
+		const start = await scrollTop(scroller);
+		// Up from the title's line (text under the finger: no selection begun), then the middle of the page.
+		await touchDrag(page, [box.x + 100 * pt, box.y + 90 * pt + 200], [box.x + 100 * pt, box.y + 90 * pt]);
+		await expect.poll(() => scrollTop(scroller)).toBeGreaterThan(start + 100);
+		const after = await scrollTop(scroller);
+		const mid = (await page.locator('.page[data-page="1"]').boundingBox())!;
+		await touchDrag(
+			page,
+			[mid.x + mid.width / 2, mid.y + mid.height - 20],
+			[mid.x + mid.width / 2, mid.y + mid.height - 220]
+		);
+		await expect.poll(() => scrollTop(scroller)).toBeGreaterThan(after + 100);
+		await expect(page.getByRole('button', { name: 'Annotate', exact: true })).toBeDisabled();
+	});
+
+	test('a finger held on the text, then moved: the text selected, the pages not scrolled', async ({ page }) => {
+		const { box, scroller, pt } = await phoneBook(page);
+		const start = await scrollTop(scroller);
+		await touchDrag(page, [box.x + 62 * pt, box.y + 90 * pt], [box.x + 300 * pt, box.y + 92 * pt], 700);
+		await expect(page.getByRole('button', { name: 'Annotate', exact: true })).toBeEnabled();
+		expect(await scrollTop(scroller)).toBe(start);
+	});
+
+	test('Create region: the finger draws (no scroll)', async ({ page }) => {
+		const { box, scroller, pt } = await phoneBook(page);
+		const start = await scrollTop(scroller);
+		await page.getByRole('button', { name: 'Create region' }).click();
+		await touchDrag(page, [box.x + 60 * pt, box.y + 100 * pt], [box.x + 300 * pt, box.y + 250 * pt]);
+		await expect(page.locator('[data-region-draft]')).toHaveCount(1);
+		expect(await scrollTop(scroller)).toBe(start);
+	});
 });

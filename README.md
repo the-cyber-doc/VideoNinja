@@ -1222,7 +1222,8 @@ checked; different criteria: all of them). Kept on the device.
 (**Edit the reference**: the same form as the upload, its tags too; any book manager),
 **Download the PDF**, and the PDF in a viewer (EmbedPDF's PDFium, in the page) with its
 annotations beside it. Two modes and **Annotate**. **Select**: select text by dragging over it
-(as many times as needed), or click an existing annotation (text or region) to select it;
+(as many times as needed; on a touch screen a swipe scrolls the pages, so touch and hold a moment
+before dragging), or click an existing annotation (text or region) to select it;
 **Annotate** then highlights the selected text, kept as the annotation's quote. Some PDFs embed
 fonts without a map from their character codes to letters: every reader then extracts garbled
 text there (often capital letters with no spaces). A quote that looks like that is flagged, in
