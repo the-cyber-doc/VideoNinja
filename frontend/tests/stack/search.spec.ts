@@ -6,8 +6,8 @@ import { everyMatch, inLanguage } from '../search-page';
 // spec (their videos and books are there too, and none changes under books.spec's checks).
 // One made-up word, "quokka", put in every kind of thing the search covers: a video's file
 // name and tag, a segment's performer and tag, a book's title and pages (its own text, read
-// by the browser at the upload), a book annotation's quote and note, a comment on the
-// annotation, a comment on a technique. Every one found, nothing else; in other languages
+// by the browser at the upload), a book annotation's quote and note, a comment on a
+// technique. Every one found, nothing else; in other languages
 // (tag names, accents, Japanese); and each user gets only what they may open.
 test.describe.configure({ mode: 'serial' });
 test.setTimeout(300_000); // an encoding, on a slow machine
@@ -38,7 +38,7 @@ async function as(browser: Browser, username: string, role: string, page: Page) 
 	return { context, page: await context.newPage() };
 }
 
-test('one word in everything: a video, its segment, a book, its pages, a note, comments', async ({ page }) => {
+test('one word in everything: a video, its segment, a book, its pages, a note, a comment', async ({ page }) => {
 	const tag = { id: 'search_remark', names: { en: 'Remark', fr: 'Remarque' }, format: 'free' };
 	expect((await page.request.post('api/admin/tags', { data: tag })).status()).toBe(201);
 	const performer = await (await page.request.post('api/performers', { data: { name: 'Quokka Sensei' } })).json();
@@ -98,7 +98,7 @@ test('one word in everything: a video, its segment, a book, its pages, a note, c
 	await expect.poll(async () => (await book())?.has_text).toBe(true);
 	ids.book = (await book())!.id;
 
-	// A highlight's note about Koku, a comment on it, a comment on Keto.
+	// A highlight's note about Koku, a comment on Keto.
 	const target = {
 		type: 9,
 		id: 'search-e2e',
@@ -117,12 +117,8 @@ test('one word in everything: a video, its segment, a book, its pages, a note, c
 	});
 	expect(annotation.status()).toBe(201);
 	ids.annotation = (await annotation.json()).id;
-	const reply = await page.request.post(`api/book-annotations/${ids.annotation}/comments`, {
-		data: { text: 'Très bien, ce quokka', lang: 'fr' }
-	});
-	expect(reply.status()).toBe(201);
 	const comment = await page.request.post(`api/techniques/${KETO}/comments`, {
-		data: { text: 'A quokka at the Daikomyosai', lang: 'en' }
+		data: { text: 'Très bien, a quokka at the Daikomyosai', lang: 'en' }
 	});
 	expect(comment.status()).toBe(201);
 
@@ -143,9 +139,9 @@ test('every match, in each group, and nothing else', async ({ page }) => {
 		videos: [`/videos/${ids.video}`], // file name and tag
 		books: [`/books/${ids.book}`], // title
 		texts: [annotated, `/books/${ids.book}?page=1`, `/books/${ids.book}?page=2`].sort(), // the note, both pages
-		comments: [KETO_PAGE, annotated].sort()
+		comments: [KETO_PAGE]
 	});
-	await expect(page.getByRole('status')).toHaveText('8 result(s)');
+	await expect(page.getByRole('status')).toHaveText('7 result(s)');
 	await expect(page.locator(`a[href$="?page=2"]`).locator('..').locator('mark')).toHaveText(['quokka']);
 
 	// The drop-down: the same groups.
@@ -156,7 +152,7 @@ test('every match, in each group, and nothing else', async ({ page }) => {
 		['Videos', 1],
 		['Books', 1],
 		['In the books', 3],
-		['Comments', 2]
+		['Comments', 1]
 	] as const)
 		await expect(page.getByRole('group', { name: group }).getByRole('option')).toHaveCount(n);
 });
@@ -171,7 +167,7 @@ test('in other languages: tag names, accents, Japanese', async ({ page }) => {
 	expect(outdoor.catalog.length).toBeGreaterThan(0); // "Clé extérieure"…
 	const accents = await everyMatch(page, 'DEPLACEMENT'); // the PDF's own "déplacement", the quote
 	expect(accents.texts).toEqual([`/books/${ids.book}?annotation=${ids.annotation}`, `/books/${ids.book}?page=2`]);
-	expect((await everyMatch(page, 'tres bien')).comments).toEqual([`/books/${ids.book}?annotation=${ids.annotation}`]);
+	expect((await everyMatch(page, 'tres bien')).comments).toEqual([KETO_PAGE]);
 	const kanji = await everyMatch(page, '虚空'); // the catalogue's Koku (two schools), the segment, the note
 	expect(kanji.catalog.length).toBeGreaterThanOrEqual(2);
 	expect(kanji.segments).toContain(KOKU_PAGE);

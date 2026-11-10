@@ -1,5 +1,5 @@
 """The search's full text: the books' page text (written), and the hits in the FTS5 indexes
-over pages, book annotations and comments (domain/search.py makes the query). Published
+over pages, book annotations and techniques' comments (domain/search.py makes the query). Published
 books only. Best first (FTS5's rank) when a term has 3+ characters, else newest first.
 `match`: the FTS5 expression (None: no term long enough), `likes`: LIKE patterns (ESCAPE '\\')."""
 
@@ -95,23 +95,6 @@ def comments(con: sqlite3.Connection, match: str | None, likes: Sequence[str], l
         select='x."id", x."technique", COALESCE(u."name", u."username") AS "user", x."text"',
         joins=_AUTHOR,
         join_params=(DELETED_USER_ID,),
-        limit=limit,
-    )
-
-
-def book_comments(con: sqlite3.Connection, match: str | None, likes: Sequence[str], limit: int) -> list[sqlite3.Row]:
-    """Comments on annotations of published books: "id", "annotation", "book", "user", "text"."""
-    return _hits(
-        con,
-        match,
-        likes,
-        fts="book_comment_fts",
-        table="book_comment",
-        text='x."text"',
-        select='x."id", x."annotation", a."book", COALESCE(u."name", u."username") AS "user", x."text"',
-        joins=f'{_AUTHOR} JOIN "book_annotation" a ON a."id" = x."annotation" JOIN "book" b ON b."id" = a."book"',
-        join_params=(DELETED_USER_ID,),
-        where=["b.\"status\" = 'published'"],
         limit=limit,
     )
 

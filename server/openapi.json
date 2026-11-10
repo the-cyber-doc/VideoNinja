@@ -529,101 +529,6 @@
         "title": "AvailabilityOut",
         "type": "object"
       },
-      "BookCommentHit": {
-        "properties": {
-          "annotation": {
-            "title": "Annotation",
-            "type": "integer"
-          },
-          "book": {
-            "title": "Book",
-            "type": "integer"
-          },
-          "id": {
-            "title": "Id",
-            "type": "integer"
-          },
-          "snippet": {
-            "title": "Snippet",
-            "type": "string"
-          },
-          "user": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "User"
-          }
-        },
-        "required": [
-          "id",
-          "annotation",
-          "book",
-          "user",
-          "snippet"
-        ],
-        "title": "BookCommentHit",
-        "type": "object"
-      },
-      "BookCommentOut": {
-        "properties": {
-          "annotation": {
-            "title": "Annotation",
-            "type": "integer"
-          },
-          "created_at": {
-            "title": "Created At",
-            "type": "string"
-          },
-          "id": {
-            "title": "Id",
-            "type": "integer"
-          },
-          "lang": {
-            "title": "Lang",
-            "type": "string"
-          },
-          "mine": {
-            "title": "Mine",
-            "type": "boolean"
-          },
-          "modified_at": {
-            "title": "Modified At",
-            "type": "string"
-          },
-          "text": {
-            "title": "Text",
-            "type": "string"
-          },
-          "user": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "User"
-          }
-        },
-        "required": [
-          "id",
-          "user",
-          "created_at",
-          "modified_at",
-          "lang",
-          "text",
-          "mine",
-          "annotation"
-        ],
-        "title": "BookCommentOut",
-        "type": "object"
-      },
       "BookEditIn": {
         "properties": {
           "reference": {
@@ -1718,13 +1623,6 @@
             "title": "Annotations",
             "type": "array"
           },
-          "book_comments": {
-            "items": {
-              "$ref": "#/components/schemas/BookCommentHit"
-            },
-            "title": "Book Comments",
-            "type": "array"
-          },
           "comments": {
             "items": {
               "$ref": "#/components/schemas/CommentHit"
@@ -1743,8 +1641,7 @@
         "required": [
           "pages",
           "annotations",
-          "comments",
-          "book_comments"
+          "comments"
         ],
         "title": "SearchOut",
         "type": "object"
@@ -2418,13 +2315,6 @@
             ],
             "title": "Book Id"
           },
-          "comments": {
-            "items": {
-              "$ref": "#/components/schemas/CommentOut"
-            },
-            "title": "Comments",
-            "type": "array"
-          },
           "created_at": {
             "title": "Created At",
             "type": "string"
@@ -2501,8 +2391,7 @@
           "created_by",
           "created_at",
           "modified_at",
-          "reference",
-          "comments"
+          "reference"
         ],
         "title": "TechniqueNoteOut",
         "type": "object"
@@ -3937,135 +3826,6 @@
         ]
       }
     },
-    "/api/book-annotations/{annotation_id}/comments": {
-      "get": {
-        "description": "Oldest first: a thread.",
-        "operationId": "annotation_comments_api_book_annotations__annotation_id__comments_get",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "annotation_id",
-            "required": true,
-            "schema": {
-              "title": "Annotation Id",
-              "type": "integer"
-            }
-          },
-          {
-            "in": "header",
-            "name": "time-zone",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Time-Zone"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "items": {
-                    "$ref": "#/components/schemas/BookCommentOut"
-                  },
-                  "title": "Response Annotation Comments Api Book Annotations  Annotation Id  Comments Get",
-                  "type": "array"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "default": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            },
-            "description": "An error (core/errors.py: ERRORS)"
-          }
-        },
-        "summary": "Annotation Comments",
-        "tags": [
-          "book comments"
-        ]
-      },
-      "post": {
-        "operationId": "add_comment_api_book_annotations__annotation_id__comments_post",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "annotation_id",
-            "required": true,
-            "schema": {
-              "title": "Annotation Id",
-              "type": "integer"
-            }
-          },
-          {
-            "in": "header",
-            "name": "time-zone",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Time-Zone"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CommentIn"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "201": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BookCommentOut"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "default": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            },
-            "description": "An error (core/errors.py: ERRORS)"
-          }
-        },
-        "summary": "Add Comment",
-        "tags": [
-          "book comments"
-        ]
-      }
-    },
     "/api/book-annotations/{annotation_id}/image": {
       "put": {
         "description": "A region's crop (a JPEG the browser made, its own upload): published by the encoder.",
@@ -4125,123 +3885,6 @@
         "summary": "Attach Image",
         "tags": [
           "book annotations"
-        ]
-      }
-    },
-    "/api/book-comments/{comment_id}": {
-      "delete": {
-        "operationId": "delete_comment_api_book_comments__comment_id__delete",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "comment_id",
-            "required": true,
-            "schema": {
-              "title": "Comment Id",
-              "type": "integer"
-            }
-          },
-          {
-            "in": "header",
-            "name": "time-zone",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Time-Zone"
-            }
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": "Successful Response"
-          },
-          "default": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            },
-            "description": "An error (core/errors.py: ERRORS)"
-          }
-        },
-        "summary": "Delete Comment",
-        "tags": [
-          "book comments"
-        ]
-      },
-      "patch": {
-        "operationId": "edit_comment_api_book_comments__comment_id__patch",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "comment_id",
-            "required": true,
-            "schema": {
-              "title": "Comment Id",
-              "type": "integer"
-            }
-          },
-          {
-            "in": "header",
-            "name": "time-zone",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Time-Zone"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CommentIn"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BookCommentOut"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "default": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            },
-            "description": "An error (core/errors.py: ERRORS)"
-          }
-        },
-        "summary": "Edit Comment",
-        "tags": [
-          "book comments"
         ]
       }
     },
@@ -4721,69 +4364,6 @@
         "summary": "Create Annotation",
         "tags": [
           "book annotations"
-        ]
-      }
-    },
-    "/api/books/{book_id}/comments": {
-      "get": {
-        "description": "Every thread of the book's annotations (the panel's counts, the annotated download).",
-        "operationId": "book_comments_api_books__book_id__comments_get",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "book_id",
-            "required": true,
-            "schema": {
-              "title": "Book Id",
-              "type": "integer"
-            }
-          },
-          {
-            "in": "header",
-            "name": "time-zone",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Time-Zone"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "items": {
-                    "$ref": "#/components/schemas/BookCommentOut"
-                  },
-                  "title": "Response Book Comments Api Books  Book Id  Comments Get",
-                  "type": "array"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "default": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            },
-            "description": "An error (core/errors.py: ERRORS)"
-          }
-        },
-        "summary": "Book Comments",
-        "tags": [
-          "book comments"
         ]
       }
     },

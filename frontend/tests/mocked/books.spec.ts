@@ -418,7 +418,9 @@ const annotationRow = (id: number, body: Record<string, unknown>) => ({
 });
 const VIEWER_CATALOG = { schools: [], categories: [], weapons: [], sections: [], techniques: [], segments: [] };
 
-test('a book opened: the PDF shown, a highlight and a region saved, the first page made again', async ({ page }) => {
+test('a book opened: the PDF shown, a highlight and a region annotated, the first page made again', async ({
+	page
+}) => {
 	const saved = await viewing(page, [], { has_thumbnail: false, has_text: false });
 	await page.goto('/books');
 	await page.getByRole('link', { name: /Ninjutsu/ }).click();
@@ -430,29 +432,58 @@ test('a book opened: the PDF shown, a highlight and a region saved, the first pa
 	expect(saved.texts[0]!.body).toEqual({ first: 1, pages: [expect.stringMatching(/Togakure-ryu/)], last: true });
 	const pt = box.width / 420; // the fixture's page: 420 pt wide; its title at 24 pt, 60 pt from the left, near the top
 
-	// EmbedPDF's highlight tool: the title's text selected by a drag, highlighted, its text kept as the quote.
-	await page.getByRole('button', { name: 'Highlight text' }).click();
+	const annotate = page.getByRole('button', { name: 'Annotate', exact: true });
+	await expect(page.getByRole('button', { name: 'Select', exact: true })).toHaveAttribute('aria-pressed', 'true');
+	await expect(annotate).toBeDisabled(); // nothing selected
+
+	// Select: the title's text selected by a drag (nothing saved yet), then Annotate: highlighted,
+	// its text kept as the quote.
 	await drag(page, [box.x + 62 * pt, box.y + 90 * pt], [box.x + 200 * pt, box.y + 90 * pt]);
+	await expect(annotate).toBeEnabled();
+	expect(saved.created).toHaveLength(0);
+	await annotate.click();
 	await expect.poll(() => saved.created.length, { timeout: 10_000 }).toBe(1);
 	expect(saved.created[0]).toMatchObject({ page: 1, kind: 'text', quote: expect.stringMatching(/^Togakure-ryu/) });
 	const highlight = JSON.parse((saved.created[0] as { target: string }).target);
 	expect([highlight.type, highlight.segmentRects.length, highlight.author]).toEqual([9, 1, 'aiko']);
 	await expect(page.locator('section.annotations li')).toHaveCount(1);
-	await expect(page.getByRole('button', { name: 'Highlight text' })).toHaveAttribute('aria-pressed', 'false'); // done
+	await expect(annotate).toBeDisabled(); // the selection used
 
-	// EmbedPDF's square tool (a region, for scans): the box drawn, its crop uploaded and attached.
-	await page.getByRole('button', { name: 'Mark a region' }).click();
-	await drag(page, [box.x + 60 * pt, box.y + 115 * pt], [box.x + 300 * pt, box.y + 180 * pt]);
+	// Create region: a box drawn, a second one replacing it, resized by a handle; Annotate makes it
+	// an annotation (for scans), its crop uploaded and attached.
+	await page.getByRole('button', { name: 'Create region' }).click();
+	await expect(page.getByRole('button', { name: 'Create region' })).toHaveAttribute('aria-pressed', 'true');
+	await expect(annotate).toBeDisabled(); // nothing drawn
+	await drag(page, [box.x + 300 * pt, box.y + 20 * pt], [box.x + 400 * pt, box.y + 60 * pt]);
+	await drag(page, [box.x + 60 * pt, box.y + 115 * pt], [box.x + 250 * pt, box.y + 160 * pt]);
+	const draft = page.locator('[data-region-draft]');
+	await expect(draft).toHaveCount(1); // the first one replaced
+	const corner = (await draft.locator('[data-handle="se"]').boundingBox())!;
+	await drag(page, [corner.x + corner.width / 2, corner.y + corner.height / 2], [box.x + 300 * pt, box.y + 180 * pt]);
+	expect(saved.created).toHaveLength(1);
+	await annotate.click();
 	await expect.poll(() => saved.created.length, { timeout: 10_000 }).toBe(2);
 	expect(saved.created[1]).toMatchObject({ page: 1, kind: 'region' });
-	expect(JSON.parse((saved.created[1] as { target: string }).target).strokeWidth).toBe(3); // half the default
+	const region = JSON.parse((saved.created[1] as { target: string }).target);
+	expect([region.type, region.strokeWidth, region.author]).toEqual([5, 3, 'aiko']); // half the default width
+	const { origin, size } = region.rect; // the second box, its corner moved (points, the mouse's rounding)
+	const off = [origin.x - 60, origin.y - 115, size.width - 240, size.height - 65].map(Math.abs);
+	expect(Math.max(...off)).toBeLessThan(3);
 	await expect.poll(() => saved.images, { timeout: 10_000 }).toEqual([102]);
 	await expect(page.locator('section.annotations li')).toHaveCount(2);
+	// Its picture in the list at once (the crop made here; the server's copy comes seconds later).
+	const crop = page.locator('section.annotations li[data-id="102"]').getByRole('img', { name: /region/i });
+	await expect(crop).toBeVisible();
+	expect(await crop.evaluate((img: HTMLImageElement) => [img.src.startsWith('blob:'), img.naturalWidth > 0])).toEqual([
+		true,
+		true
+	]);
+	await expect(draft).toHaveCount(0);
+	await expect(page.getByRole('button', { name: 'Select', exact: true })).toHaveAttribute('aria-pressed', 'true');
 
-	// A drag where there is no text, with the highlight tool: no annotation.
-	await page.getByRole('button', { name: 'Highlight text' }).click();
+	// A drag where there is no text: nothing to annotate.
 	await drag(page, [box.x + 300 * pt, box.y + 30 * pt], [box.x + 400 * pt, box.y + 60 * pt]);
-	await page.waitForTimeout(500);
+	await expect(annotate).toBeDisabled();
 	expect(saved.created).toHaveLength(2);
 });
 
@@ -494,7 +525,7 @@ test('saved annotations shown; the selected one gets a note, a colour, or is del
 	await expect(page.locator('section.annotations li')).toHaveCount(0);
 });
 
-// --- comments on an annotation; the copy with every annotation and comment in it ---
+// --- the copy with every annotation in it ---
 
 const SAVED_TARGET = {
 	type: 9,
@@ -513,44 +544,9 @@ const SAVED_ROW = {
 	note: 'The first school',
 	technique: 'gyokko.taijutsu.jo_ryaku.koku'
 };
-const THREAD_COMMENT = {
-	id: 30,
-	annotation: 5,
-	user: 'Ren',
-	created_at: '2026-11-02T10:00:00+01:00',
-	modified_at: '2026-11-02T10:00:00+01:00',
-	lang: 'en',
-	text: 'Seen in the dojo',
-	mine: false
-};
 
-test('an annotation’s comments: its thread, a new one added', async ({ page }) => {
+test('downloaded with its annotations: in the PDF, with author, technique and note', async ({ page }) => {
 	await viewing(page, [annotationRow(5, SAVED_ROW)]);
-	const thread = [THREAD_COMMENT];
-	await page.route('/api/book-annotations/5/comments', (r) => {
-		if (r.request().method() === 'POST') {
-			thread.push({ ...THREAD_COMMENT, id: 31, user: 'Aiko', mine: true, ...r.request().postDataJSON() });
-			return r.fulfill({ status: 201, json: thread.at(-1) });
-		}
-		return r.fulfill({ json: thread });
-	});
-	await page.goto('/books/7');
-	await pageBox(page);
-	const item = page.locator('section.annotations li[data-id="5"]');
-	await item.getByRole('button', { name: /Page 1/ }).click();
-	const comments = item.getByRole('region', { name: 'Comments on this annotation' });
-	await expect(comments).toContainText('Seen in the dojo');
-	await comments.getByRole('button', { name: 'Add a comment' }).click();
-	await comments.getByRole('textbox').fill('And in the scroll');
-	await comments.getByRole('button', { name: 'Save' }).click();
-	await expect(comments).toContainText('And in the scroll');
-});
-
-test('downloaded with its annotations: in the PDF, with author, technique, note and the comments as replies', async ({
-	page
-}) => {
-	await viewing(page, [annotationRow(5, SAVED_ROW)]);
-	await page.route('/api/books/7/comments', (r) => r.fulfill({ json: [THREAD_COMMENT] }));
 	await page.route('/api/catalog', (r) => r.fulfill({ json: CATALOG }));
 	await page.goto('/books/7');
 	await pageBox(page);
@@ -567,9 +563,7 @@ test('downloaded with its annotations: in the PDF, with author, technique, note 
 	expect(highlight.contents).toMatch(
 		/^Technique: \S+ Koku — https:\/\/localhost:\d+\/schools\/gyokko\/taijutsu\/jo_ryaku\/koku\n\nThe first school$/
 	);
-	const reply = annotations.find((a) => a.type === 1)!;
-	expect([reply.author, reply.contents, reply.inReplyToId]).toEqual(['Ren', 'Seen in the dojo', highlight.id]);
-	expect(annotations).toHaveLength(2);
+	expect(annotations).toHaveLength(1);
 });
 
 // --- the technique's page: what the books say about it ---
@@ -587,8 +581,7 @@ const NOTES = [
 		created_by: 'Aiko',
 		created_at: '2026-11-01T10:00:00+01:00',
 		modified_at: '2026-11-01T10:00:00+01:00',
-		reference: BOOK.reference,
-		comments: [{ ...THREAD_COMMENT, annotation: undefined }]
+		reference: BOOK.reference
 	},
 	{
 		id: 6,
@@ -601,8 +594,7 @@ const NOTES = [
 		created_by: null,
 		created_at: '2026-11-01T10:00:00+01:00',
 		modified_at: '2026-11-03T10:00:00+01:00',
-		reference: BOOK.reference,
-		comments: []
+		reference: BOOK.reference
 	}
 ];
 
@@ -636,7 +628,6 @@ test('a technique’s page: the books’ annotations about it, after the descrip
 	await expect(first).toContainText('Hatsumi, Masaaki. Ninjutsu. (PDF page 3)');
 	await expect(first.locator('.source i')).toHaveText('Ninjutsu');
 	await expect(first).toContainText('By Aiko, Nov 1, 2026');
-	await expect(first.getByRole('list', { name: 'Comments on this annotation' })).toContainText('Seen in the dojo');
 	await expect(second.getByRole('img', { name: 'The region annotated' })).toBeVisible();
 	await expect(second).toContainText('By a deleted user');
 	await expect(page.getByRole('link', { name: 'Open in the book' })).toHaveCount(0); // not a book manager
@@ -758,7 +749,9 @@ test('an annotation saved with a technique and no note (a note is optional)', as
 	await expect(open).toHaveAttribute('href', '/schools/gyokko/taijutsu/jo_ryaku/koku'); // after its name
 });
 
-test('a highlight given other text without deleting it: its ends moved, its quote changed', async ({ page }) => {
+test('a highlight given other text without deleting it: selected freely, then Annotate; its quote changed', async ({
+	page
+}) => {
 	const saved = await viewing(page, [annotationRow(5, { ...SAVED_ROW, quote: 'Togakure-ryu' })]);
 	await page.goto('/books/7');
 	const box = await pageBox(page);
@@ -767,7 +760,15 @@ test('a highlight given other text without deleting it: its ends moved, its quot
 	await item.getByRole('button', { name: /Page 1/ }).click();
 	await item.getByRole('button', { name: 'Change the highlighted text' }).click();
 	await expect(item.getByRole('status')).toContainText('Select the new text on page 1');
-	await drag(page, [box.x + 62 * pt, box.y + 90 * pt], [box.x + 140 * pt, box.y + 90 * pt]); // part of the title
+	const annotate = page.getByRole('button', { name: 'Annotate', exact: true });
+	await expect(annotate).toBeDisabled();
+	await drag(page, [box.x + 62 * pt, box.y + 90 * pt], [box.x + 200 * pt, box.y + 90 * pt]); // the whole title
+	await expect(annotate).toBeEnabled();
+	await drag(page, [box.x + 62 * pt, box.y + 90 * pt], [box.x + 140 * pt, box.y + 90 * pt]); // again: part of it
+	await expect(annotate).toBeEnabled();
+	await page.waitForTimeout(300);
+	expect(saved.changed).toEqual([]); // nothing until Annotate
+	await annotate.click();
 	await expect.poll(() => saved.changed.length, { timeout: 10_000 }).toBeGreaterThan(0);
 	const change = saved.changed.at(-1)!;
 	expect(change.id).toBe(5);

@@ -120,6 +120,10 @@ describe('new annotations', () => {
 		expect(deps.create).toHaveBeenCalledWith(7, expect.objectContaining({ kind: 'region', color: '#E11D48' }));
 		expect(deps.upload).toHaveBeenCalled();
 		expect(deps.attachImage).toHaveBeenCalledWith(11, 'tus-1');
+		expect(annotations.previews[11]).toMatch(/^blob:/); // shown at once, before the server publishes it
+		annotations.handle(committed('delete', region()));
+		await annotations.settled();
+		expect(annotations.previews).toEqual({});
 	});
 
 	it('no quote found, no colour of ours, no crop rendered: saved without them', async () => {
@@ -201,6 +205,10 @@ describe('changes', () => {
 		annotations.handle(committed('update', region('r1', { rect: { ...RECT, size: { width: 50, height: 30 } } })));
 		await annotations.settled();
 		expect(deps.attachImage).toHaveBeenCalledWith(6, 'tus-1');
+		const first = annotations.previews[6];
+		annotations.handle(committed('update', region('r1', { rect: { ...RECT, size: { width: 60, height: 30 } } })));
+		await annotations.settled();
+		expect(annotations.previews[6]).not.toBe(first); // the new crop, the old one released
 		expect((deps.change as ReturnType<typeof vi.fn>).mock.calls[1][1]).not.toHaveProperty('quote');
 	});
 

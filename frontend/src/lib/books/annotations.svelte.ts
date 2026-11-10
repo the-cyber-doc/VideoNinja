@@ -81,6 +81,9 @@ export class BookAnnotations {
 	error = $state<unknown>(null);
 	/** Changes not saved yet. */
 	pending = $state(0);
+	/** Row ID → the crop this page just made (an object URL): shown at once, as the server's copy is
+	 * published by the encoder only seconds later (its row's has_image is false until a reload). */
+	previews = $state<Record<number, string>>({});
 	readonly selected = $derived(this.rows.find((r) => uidOf(r) === this.selectedUid) ?? null);
 
 	/** PDF annotation ID → its row's ID (known: saved or being saved). */
@@ -142,6 +145,9 @@ export class BookAnnotations {
 				if (id === null) return;
 				await this.deps.remove(id);
 				this.rows = this.rows.filter((r) => r.id !== id);
+				const preview = this.previews[id];
+				if (preview) URL.revokeObjectURL(preview);
+				delete this.previews[id];
 			});
 		}
 	}
@@ -185,6 +191,9 @@ export class BookAnnotations {
 	async #crop(id: number, a: PdfAnnotation) {
 		const picture = await this.deps.crop(a.pageIndex, a.rect);
 		if (!picture) return;
+		const before = this.previews[id];
+		this.previews[id] = URL.createObjectURL(picture);
+		if (before) URL.revokeObjectURL(before);
 		await this.deps.attachImage(id, await this.deps.upload(picture));
 	}
 

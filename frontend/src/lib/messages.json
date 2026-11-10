@@ -445,8 +445,8 @@
 	"books.viewer.unreadable": { "en": "This PDF cannot be read.", "fr": "Ce PDF ne peut pas être lu." },
 	"books.viewer.tools": { "en": "Tools", "fr": "Outils" },
 	"books.viewer.tool.select": { "en": "Select", "fr": "Sélectionner" },
-	"books.viewer.tool.highlight": { "en": "Highlight text", "fr": "Surligner du texte" },
-	"books.viewer.tool.region": { "en": "Mark a region", "fr": "Marquer une zone" },
+	"books.viewer.tool.region": { "en": "Create region", "fr": "Créer une zone" },
+	"books.viewer.annotate": { "en": "Annotate", "fr": "Annoter" },
 	"books.viewer.copy": { "en": "Copy", "fr": "Copier" },
 	"books.viewer.copy_failed": {
 		"en": "The text could not be copied.",
@@ -456,8 +456,8 @@
 	"books.viewer.zoom_out": { "en": "Zoom out", "fr": "Réduire" },
 	"books.viewer.page": { "en": "Page {n} of {total}", "fr": "Page {n} sur {total}" },
 	"books.viewer.hint": {
-		"en": "Highlight text on text pages; mark a region on scanned ones. Each annotation is saved at once.",
-		"fr": "Surlignez du texte sur les pages de texte ; marquez une zone sur les pages numérisées. Chaque annotation est enregistrée aussitôt."
+		"en": "Select text, or create a region (scanned pages: draw it, then resize it), then click Annotate. Select also picks an existing annotation. Each annotation is saved at once.",
+		"fr": "Sélectionnez du texte ou créez une zone (pages numérisées : dessinez-la, puis ajustez-la), puis cliquez sur Annoter. Sélectionner choisit aussi une annotation existante. Chaque annotation est enregistrée aussitôt."
 	},
 	"books.viewer.saving": { "en": "Saving…", "fr": "Enregistrement…" },
 	"books.viewer.back": { "en": "Books", "fr": "Livres" },
@@ -478,8 +478,8 @@
 	},
 	"books.annotations.reselect": { "en": "Change the highlighted text", "fr": "Changer le texte surligné" },
 	"books.annotations.reselect_hint": {
-		"en": "Select the new text on page {n}: the highlight moves to it, its note, technique and comments stay.",
-		"fr": "Sélectionnez le nouveau texte à la page {n} : le surlignage s’y déplace, sa note, sa technique et ses commentaires restent."
+		"en": "Select the new text on page {n} (as many times as needed), then click Annotate: the highlight moves to it, its note and technique stay.",
+		"fr": "Sélectionnez le nouveau texte à la page {n} (autant de fois que nécessaire), puis cliquez sur Annoter : le surlignage s’y déplace, sa note et sa technique restent."
 	},
 	"books.annotations.reselect_cancel": { "en": "Keep the text as it is", "fr": "Garder le texte tel quel" },
 	"books.annotations.note": { "en": "Note", "fr": "Note" },
@@ -496,8 +496,6 @@
 	"books.annotations.delete_confirm": { "en": "Delete this annotation?", "fr": "Supprimer cette annotation ?" },
 	"books.annotations.by": { "en": "By {name}, {date}", "fr": "Par {name}, {date}" },
 	"books.annotations.crop": { "en": "The region annotated", "fr": "La zone annotée" },
-	"books.annotations.comments": { "en": "Comments on this annotation", "fr": "Commentaires sur cette annotation" },
-	"books.annotations.no_comments": { "en": "No comment yet.", "fr": "Pas encore de commentaire." },
 	"books.upload.title": { "en": "Upload a book", "fr": "Téléverser un livre" },
 	"books.upload.intro": {
 		"en": "A PDF: read on this device first (its first page becomes the thumbnail), then sent with its reference.",

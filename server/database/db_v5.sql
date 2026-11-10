@@ -361,23 +361,8 @@ CREATE TABLE IF NOT EXISTS "book_annotation" (
 	ON UPDATE NO ACTION ON DELETE SET NULL
 );
 
--- Comments on an annotation: the same rules as the techniques' (comment).
-CREATE TABLE IF NOT EXISTS "book_comment" (
-	"id" INTEGER PRIMARY KEY AUTOINCREMENT,
-	"annotation" INTEGER NOT NULL,
-	"user" INTEGER NOT NULL,
-	"lang" TEXT NOT NULL,
-	"text" TEXT NOT NULL,
-	"created_at" DATETIME NOT NULL,
-	"modified_at" DATETIME NOT NULL,
-	FOREIGN KEY ("annotation") REFERENCES "book_annotation"("id")
-	ON UPDATE NO ACTION ON DELETE CASCADE,
-	FOREIGN KEY ("user") REFERENCES "user"("id")
-	ON UPDATE NO ACTION ON DELETE NO ACTION
-);
-
 -- Indexes: the columns the app looks rows up by, on the tables that grow (videos,
--- segments, comments, users, sessions, uploads, books, their annotations and comments), foreign keys included (SQLite does not
+-- segments, comments, users, sessions, uploads, books and their annotations), foreign keys included (SQLite does not
 -- index them: without, deleting a video or a user scans every segment, comment and
 -- session). The catalogue and translation tables are small, fixed, written only by
 -- the setup and migrations: no index beyond their keys.
@@ -402,8 +387,6 @@ CREATE INDEX IF NOT EXISTS "book_has_tags_tag" ON "book_has_tags" ("tag");
 CREATE INDEX IF NOT EXISTS "book_annotation_book" ON "book_annotation" ("book");
 CREATE INDEX IF NOT EXISTS "book_annotation_technique" ON "book_annotation" ("technique");
 CREATE INDEX IF NOT EXISTS "book_annotation_created_by" ON "book_annotation" ("created_by");
-CREATE INDEX IF NOT EXISTS "book_comment_annotation" ON "book_comment" ("annotation");
-CREATE INDEX IF NOT EXISTS "book_comment_user" ON "book_comment" ("user");
 
 -- The text of each page of a book (pages without text: no row), extracted by the browser
 -- (the server has no PDF parser), for the search.
@@ -419,7 +402,7 @@ CREATE TABLE IF NOT EXISTS "book_page" (
 -- UNIQUE ("book", "page") is the index of its foreign key (book first).
 
 -- Full-text search (FTS5), over the books' pages, the book annotations' quotes and notes,
--- and the comments (techniques' and annotations'). Trigram tokenizer: any part of a word
+-- and the techniques' comments. Trigram tokenizer: any part of a word
 -- matches, in any script (Japanese has no spaces), accents and case ignored; terms of
 -- fewer than 3 characters are looked up with LIKE instead (app/domain/search.py).
 -- External content: the rows stay in their tables, the triggers below keep each index
@@ -432,9 +415,6 @@ CREATE VIRTUAL TABLE IF NOT EXISTS "book_annotation_fts" USING fts5(
 );
 CREATE VIRTUAL TABLE IF NOT EXISTS "comment_fts" USING fts5(
 	"text", content = 'comment', content_rowid = 'id', tokenize = 'trigram remove_diacritics 1'
-);
-CREATE VIRTUAL TABLE IF NOT EXISTS "book_comment_fts" USING fts5(
-	"text", content = 'book_comment', content_rowid = 'id', tokenize = 'trigram remove_diacritics 1'
 );
 
 CREATE TRIGGER IF NOT EXISTS "book_page_fts_insert" AFTER INSERT ON "book_page" BEGIN
@@ -472,13 +452,3 @@ CREATE TRIGGER IF NOT EXISTS "comment_fts_update" AFTER UPDATE OF "text" ON "com
 	INSERT INTO "comment_fts" ("rowid", "text") VALUES (new."id", new."text");
 END;
 
-CREATE TRIGGER IF NOT EXISTS "book_comment_fts_insert" AFTER INSERT ON "book_comment" BEGIN
-	INSERT INTO "book_comment_fts" ("rowid", "text") VALUES (new."id", new."text");
-END;
-CREATE TRIGGER IF NOT EXISTS "book_comment_fts_delete" AFTER DELETE ON "book_comment" BEGIN
-	INSERT INTO "book_comment_fts" ("book_comment_fts", "rowid", "text") VALUES ('delete', old."id", old."text");
-END;
-CREATE TRIGGER IF NOT EXISTS "book_comment_fts_update" AFTER UPDATE OF "text" ON "book_comment" BEGIN
-	INSERT INTO "book_comment_fts" ("book_comment_fts", "rowid", "text") VALUES ('delete', old."id", old."text");
-	INSERT INTO "book_comment_fts" ("rowid", "text") VALUES (new."id", new."text");
-END;

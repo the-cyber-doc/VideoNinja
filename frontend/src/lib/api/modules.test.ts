@@ -176,30 +176,7 @@ const CALLS: [string, () => Promise<unknown>, string, string, unknown][] = [
 	],
 	['delete annotation', () => books.deleteAnnotation(4), 'DELETE', '/api/book-annotations/4', undefined],
 	['attach image', () => books.attachImage(4, 'u'), 'PUT', '/api/book-annotations/4/image', { upload: 'u' }],
-	[
-		'annotation comments',
-		() => books.annotationComments(4).list(),
-		'GET',
-		'/api/book-annotations/4/comments',
-		undefined
-	],
-	['book comments', () => books.listBookComments(3), 'GET', '/api/books/3/comments', undefined],
 	['technique notes', () => books.techniqueNotes('a.b c'), 'GET', '/api/techniques/a.b%20c/book-notes', undefined],
-	[
-		'comment an annotation',
-		() => books.annotationComments(4).add({ text: 't', lang: 'en' }),
-		'POST',
-		'/api/book-annotations/4/comments',
-		{ text: 't', lang: 'en' }
-	],
-	[
-		'edit a book comment',
-		() => books.annotationComments(4).edit(6, { text: 't', lang: 'en' }),
-		'PATCH',
-		'/api/book-comments/6',
-		{ text: 't', lang: 'en' }
-	],
-	['delete a book comment', () => books.annotationComments(4).remove(6), 'DELETE', '/api/book-comments/6', undefined],
 	[
 		'technique comments',
 		() => comments.techniqueComments('a.b').list(),

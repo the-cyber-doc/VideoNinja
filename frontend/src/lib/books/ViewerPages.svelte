@@ -9,8 +9,9 @@
 		remove(row: BookAnnotation): void;
 		/** Another colour (highlight fill, region outline). */
 		recolor(row: BookAnnotation, color: string): void;
-		/** A text highlight given the text the user selects next on its page (its ends moved,
-		 * the annotation kept): true once done, false if cancelled (cancelReselect). */
+		/** A text highlight given new text: the user selects freely (as often as needed), then
+		 * Annotate takes the selection on its page (its ends moved, the annotation kept):
+		 * true once done, false if cancelled (cancelReselect, another mode, another reselect). */
 		reselect(row: BookAnnotation): Promise<boolean>;
 		cancelReselect(): void;
 		crop(pageIndex: number, rect: Box): Promise<Blob | null>;
@@ -26,13 +27,16 @@
 </script>
 
 <script lang="ts">
-	// The viewer's inside (EmbedPDF's context): the plugin's tools (select, highlight text,
-	// mark a region), zoom, the pages with their text selection and annotation layers. The
-	// plugin's committed changes are saved by Viewer (BookAnnotations); its selection and
-	// the panel's follow each other.
+	// The viewer's inside (EmbedPDF's context): two modes and Annotate, zoom, the pages with
+	// their text selection and annotation layers. Select: the text (EmbedPDF's own selection)
+	// or an existing annotation; Annotate highlights the selected text. Create region: a
+	// region drawn on a page (./region.ts: resized by its handles, moved; a new one replaces
+	// it); Annotate makes it an annotation. The annotations are created through the plugin
+	// (its tools' defaults), whose committed changes Viewer saves (BookAnnotations); its
+	// selection and the panel's follow each other.
 	import type { PdfEngine } from '@embedpdf/models';
 	import { useDocumentState } from '@embedpdf/core/svelte';
-	import { AnnotationLayer, useAnnotation } from '@embedpdf/plugin-annotation/svelte';
+	import { AnnotationLayer, useAnnotation, useAnnotationCapability } from '@embedpdf/plugin-annotation/svelte';
 	import { PagePointerProvider } from '@embedpdf/plugin-interaction-manager/svelte';
 	import { RenderLayer } from '@embedpdf/plugin-render/svelte';
 	import { Scroller, useScroll, useScrollCapability } from '@embedpdf/plugin-scroll/svelte';
@@ -41,10 +45,23 @@
 	import { useZoom } from '@embedpdf/plugin-zoom/svelte';
 	import ErrorMessage from '../ErrorMessage.svelte';
 	import { t } from '../i18n.svelte';
-	import { revive, uidOf, type BookAnnotations } from './annotations.svelte';
+	import { revive, uidOf, type BookAnnotations, type Rect } from './annotations.svelte';
 	import { token } from './colors';
 	import { annotatedCopy, cropOf, THUMBNAIL_WIDTH, type Box, type CopyEngine, type PageEngine } from './pdf';
 	import { pageTexts, type TextEngine } from './text';
+	import {
+		between,
+		HANDLES,
+		isRegion,
+		moved,
+		pagePoint,
+		placement,
+		resized,
+		type Draft,
+		type Handle,
+		type Point,
+		type Size
+	} from './region';
 
 	let {
 		documentId,
@@ -59,6 +76,7 @@
 	} = $props();
 
 	const annotation = useAnnotation(() => documentId);
+	const tools = useAnnotationCapability();
 	const selection = useSelectionCapability();
 	const zoom = useZoom(() => documentId);
 	const scroll = useScroll(() => documentId);
@@ -67,53 +85,46 @@
 	const doc = $derived(documentState.current?.document ?? null);
 	const accent = token('--accent');
 
-	const TOOLS = [
-		{ id: null, label: 'books.viewer.tool.select' },
-		{ id: 'highlight', label: 'books.viewer.tool.highlight' },
-		{ id: 'square', label: 'books.viewer.tool.region' }
-	] as const;
-	/** A tool chosen: nothing stays selected (a drag over a page would only deselect it). */
-	function choose(id: (typeof TOOLS)[number]['id']) {
+	// The plugin's tools stay off: EmbedPDF's plain mode selects text and annotations; regions
+	// are drawn by this component.
+	type Mode = 'select' | 'region';
+	let mode = $state<Mode>('select');
+	/** The region drawn, waiting for Annotate (Create region only). Raw, as the selection below:
+	 * the engine's worker receives its rect by postMessage (a reactive proxy cannot be cloned). */
+	let draft = $state.raw<Draft | null>(null);
+	function choose(next: Mode) {
 		annotation.provides?.deselectAnnotation();
-		annotation.provides?.setActiveTool(id);
+		selection.provides?.forDocument(documentId).clear();
+		if (next === 'region') stopRetarget();
+		draft = null;
+		mode = next;
 	}
 
-	// A highlight waiting for its new text: the next selection the user ends on its page.
+	// A highlight waiting for its new text: the selection on its page when Annotate is clicked.
 	let retarget = $state<{ row: BookAnnotation; done: (changed: boolean) => void } | null>(null);
-	$effect(() => {
-		const scope = selection.provides?.forDocument(documentId);
-		if (!scope) return;
-		return scope.onEndSelection(async () => {
-			const waiting = retarget;
-			if (!waiting) return;
-			const target = revive(waiting.row.target);
-			const chosen = scope.getFormattedSelection().find((s) => s.pageIndex === target.pageIndex);
-			if (!chosen) return; // another page: still waiting
-			const text = (await scope.getSelectedText().toPromise()).join('\n');
-			retarget = null;
-			annotation.provides?.updateAnnotation(target.pageIndex, target.id, {
-				rect: chosen.rect,
-				segmentRects: chosen.segmentRects,
-				custom: { text }
-			} as never);
-			scope.clear();
-			waiting.done(true);
-		});
-	});
+	function stopRetarget() {
+		retarget?.done(false);
+		retarget = null;
+	}
 
-	// The selected text, copied by Ctrl+C or the menu of a right click on the page. EmbedPDF draws
-	// the selection itself (the page is user-select: none), so the browser has none to copy: its own
-	// "Copy" would copy nothing. "" = no selection, or its text not read yet.
+	// The text selection, as it ends (each page's part; [] while none or being made). EmbedPDF
+	// draws it itself (the page is user-select: none), so the browser has none: Ctrl+C or the
+	// menu of a right click copy `selectedText` ("" = none, or its text not read yet).
+	let selectedParts = $state.raw<{ pageIndex: number; rect: Rect; segmentRects: Rect[] }[]>([]);
 	let selectedText = $state('');
 	let reading = 0;
+	let selecting = false; // a selection shown (or being made)
 	$effect(() => {
 		const scope = selection.provides?.forDocument(documentId);
 		if (!scope) return;
-		const stopChange = scope.onSelectionChange(() => {
+		const stopChange = scope.onSelectionChange((range) => {
+			selecting = range !== null;
 			reading++;
+			selectedParts = [];
 			selectedText = '';
 		});
 		const stopEnd = scope.onEndSelection(async () => {
+			selectedParts = scope.getFormattedSelection();
 			const mine = ++reading;
 			const text = await scope
 				.getSelectedText()
@@ -127,6 +138,115 @@
 			stopEnd();
 		};
 	});
+
+	/** What Annotate would do now (null: nothing, the button disabled). */
+	const action = $derived.by(() => {
+		if (mode === 'region') return draft ? 'region' : null;
+		if (retarget) {
+			const pageIndex = revive(retarget.row.target).pageIndex;
+			return selectedParts.some((p) => p.pageIndex === pageIndex) ? 'retarget' : null;
+		}
+		return selectedParts.length ? 'highlight' : null;
+	});
+
+	/** The plugin's defaults for its tool (colours, widths: Viewer's config). */
+	const defaults = (id: 'highlight' | 'square') => tools.provides?.getTool(id)?.defaults ?? {};
+	const newAnnotation = (pageIndex: number, fields: object) => ({
+		...fields,
+		pageIndex,
+		id: crypto.randomUUID(),
+		created: new Date()
+	});
+
+	async function annotate() {
+		const scope = selection.provides?.forDocument(documentId);
+		const plugin = annotation.provides;
+		const kind = action; // as it was clicked (the selection may change while its text is read)
+		if (!scope || !plugin || !kind) return;
+		if (kind === 'region' && draft) {
+			const { pageIndex, rect } = draft;
+			plugin.createAnnotation(pageIndex, newAnnotation(pageIndex, { ...defaults('square'), rect }) as never);
+			draft = null;
+			mode = 'select';
+			return;
+		}
+		const parts = selectedParts;
+		const waiting = retarget;
+		const text = await scope
+			.getSelectedText()
+			.toPromise()
+			.then((lines) => lines.join('\n'))
+			.catch(() => undefined);
+		const custom = text === undefined ? {} : { custom: { text } };
+		if (kind === 'retarget' && waiting) {
+			const target = revive(waiting.row.target);
+			const chosen = parts.find((p) => p.pageIndex === target.pageIndex);
+			if (!chosen) return;
+			retarget = null;
+			plugin.updateAnnotation(target.pageIndex, target.id, {
+				rect: chosen.rect,
+				segmentRects: chosen.segmentRects,
+				...custom
+			} as never);
+			waiting.done(true);
+		} else if (kind === 'highlight') {
+			// One highlight per page (as the plugin's own tool), each with the whole text.
+			for (const p of parts)
+				plugin.createAnnotation(
+					p.pageIndex,
+					newAnnotation(p.pageIndex, {
+						...defaults('highlight'),
+						rect: p.rect,
+						segmentRects: p.segmentRects,
+						...custom
+					}) as never
+				);
+		}
+		scope.clear();
+	}
+
+	// Drawing the region: a drag on a page draws a new one (replacing the previous), its handles
+	// resize it, its inside moves it. The pointer is captured by the page's layer meanwhile.
+	let drag: {
+		layer: HTMLElement;
+		pageIndex: number;
+		size: Size;
+		from: Point;
+		rect: Rect | null;
+		handle: Handle | 'move' | 'draw';
+	} | null = null;
+	const sizeOf = (pageIndex: number): Size | null => doc?.pages[pageIndex]?.size ?? null;
+	const pointOf = (e: PointerEvent, layer: HTMLElement, size: Size) =>
+		pagePoint({ x: e.clientX, y: e.clientY }, layer.getBoundingClientRect(), size);
+	function startDrag(e: PointerEvent, pageIndex: number, handle: Handle | 'move' | 'draw') {
+		const layer = (e.target as HTMLElement).closest<HTMLElement>('.region-layer');
+		const size = sizeOf(pageIndex);
+		if (e.button !== 0 || !layer || !size) return;
+		e.preventDefault();
+		e.stopPropagation();
+		layer.setPointerCapture(e.pointerId);
+		const rect = handle === 'draw' ? null : (draft?.rect ?? null);
+		drag = { layer, pageIndex, size, from: pointOf(e, layer, size), rect, handle };
+	}
+	function onDrag(e: PointerEvent) {
+		if (!drag) return;
+		const { layer, pageIndex, size, from, rect, handle } = drag;
+		const p = pointOf(e, layer, size);
+		if (handle === 'draw') {
+			const drawn = between(from, p, size);
+			if (isRegion(drawn)) draft = { pageIndex, rect: drawn }; // a click keeps the previous one
+		} else if (rect && handle === 'move') {
+			draft = { pageIndex, rect: moved(rect, p.x - from.x, p.y - from.y, size) };
+		} else if (rect) {
+			draft = { pageIndex, rect: resized(rect, handle as Handle, p, size) };
+		}
+	}
+	function endDrag(e: PointerEvent) {
+		if (!drag) return;
+		if (drag.layer.hasPointerCapture(e.pointerId)) drag.layer.releasePointerCapture(e.pointerId);
+		drag = null;
+		if (draft && !isRegion(draft.rect)) draft = null; // squeezed to nothing by a handle
+	}
 
 	/** Scroll once the pages are laid out: their first layout scrolls back to the top (EmbedPDF's
 	 * setLayoutReady), and the page's first request (?page=, ?annotation=) comes as soon as the
@@ -156,10 +276,15 @@
 	}
 	const onPage = (e: Event) => e.target instanceof Element && e.target.closest('.page[data-page]') !== null;
 	/** Before EmbedPDF's own listeners (window, capture phase): it clears its selection on any button's
-	 * press, so the other buttons' never reach it over a page (a right click keeps the selection). */
+	 * press, so the other buttons' never reach it over a page (a right click keeps the selection). A
+	 * primary press over a page with a selection shown: cleared here first, as EmbedPDF's own clearing,
+	 * during the press, makes the page take its pointer anew and lose that drag (each new selection
+	 * would need a click first). */
 	function primaryOnly(e: MouseEvent) {
 		if (e.type.endsWith('down') && menu && !menuElement?.contains(e.target as Node)) menu = null;
 		if (e.button !== 0 && onPage(e)) e.stopPropagation();
+		else if (e.type === 'pointerdown' && selecting && mode === 'select' && onPage(e))
+			selection.provides?.forDocument(documentId).clear();
 	}
 	function onContextMenu(e: MouseEvent) {
 		if (!selectedText || !onPage(e)) return; // the browser's menu
@@ -168,6 +293,7 @@
 	}
 	function onKeydown(e: KeyboardEvent) {
 		if (e.key === 'Escape') menu = null;
+		if (e.key === 'Escape' && mode === 'region' && !menu) draft = null;
 		if (!selectedText || !(e.ctrlKey || e.metaKey) || e.altKey || e.shiftKey || e.key.toLowerCase() !== 'c') return;
 		const field =
 			e.target instanceof HTMLElement && (e.target.isContentEditable || e.target.closest('input, textarea'));
@@ -212,17 +338,13 @@
 				annotation.provides?.updateAnnotation(target.pageIndex, target.id, { strokeColor: color });
 			},
 			reselect(row) {
-				retarget?.done(false);
-				annotation.provides?.deselectAnnotation();
-				annotation.provides?.setActiveTool(null); // the plain text selection
+				stopRetarget();
+				choose('select');
 				const target = revive(row.target);
 				scrollTo(target.pageIndex + 1, 'smooth');
 				return new Promise((done) => (retarget = { row, done }));
 			},
-			cancelReselect() {
-				retarget?.done(false);
-				retarget = null;
-			},
+			cancelReselect: stopRetarget,
 			crop: (pageIndex, rect) => cropOf(pageEngine, d, pageIndex, rect),
 			pageTexts: () => pageTexts(engine as unknown as TextEngine, d),
 			showPage(page) {
@@ -262,16 +384,13 @@
 
 <div class="toolbar" role="toolbar" aria-label={t('books.viewer.tools')}>
 	<div class="group">
-		{#each TOOLS as choice (choice.label)}
-			<button
-				type="button"
-				class="secondary"
-				aria-pressed={annotation.state.activeToolId === choice.id}
-				onclick={() => choose(choice.id)}
-			>
-				{t(choice.label)}
-			</button>
-		{/each}
+		<button type="button" class="secondary" aria-pressed={mode === 'select'} onclick={() => choose('select')}>
+			{t('books.viewer.tool.select')}
+		</button>
+		<button type="button" class="secondary" aria-pressed={mode === 'region'} onclick={() => choose('region')}>
+			{t('books.viewer.tool.region')}
+		</button>
+		<button type="button" disabled={!action} onclick={annotate}>{t('books.viewer.annotate')}</button>
 	</div>
 	<div class="group">
 		<button
@@ -309,6 +428,43 @@
 				selectionOutline={{ color: accent, style: 'solid', width: 2, offset: 2 }}
 			/>
 		</PagePointerProvider>
+		{#if mode === 'region'}
+			<!-- Over the page's own layers: a drag here draws, never selects. -->
+			<div
+				class="region-layer"
+				role="presentation"
+				onpointerdown={(e) => startDrag(e, page.pageIndex, 'draw')}
+				onpointermove={onDrag}
+				onpointerup={endDrag}
+				onpointercancel={endDrag}
+			>
+				{#if draft?.pageIndex === page.pageIndex}
+					{@const size = sizeOf(page.pageIndex)}
+					{#if size}
+						{@const at = placement(draft.rect, size)}
+						<div
+							class="draft"
+							role="presentation"
+							data-region-draft
+							style:left={at.left}
+							style:top={at.top}
+							style:width={at.width}
+							style:height={at.height}
+							onpointerdown={(e) => startDrag(e, page.pageIndex, 'move')}
+						>
+							{#each HANDLES as handle (handle)}
+								<span
+									class="handle {handle}"
+									data-handle={handle}
+									role="presentation"
+									onpointerdown={(e) => startDrag(e, page.pageIndex, handle)}
+								></span>
+							{/each}
+						</div>
+					{/if}
+				{/if}
+			</div>
+		{/if}
 	</div>
 {/snippet}
 
@@ -378,6 +534,68 @@
 	}
 	.page :global(.render) {
 		pointer-events: none;
+	}
+	.region-layer {
+		position: absolute;
+		inset: 0;
+		z-index: 1;
+		cursor: crosshair;
+		touch-action: none;
+	}
+	/* The region drawn: its outline, its handles centred on its corners and edges. */
+	.draft {
+		--handle: var(--space-3);
+		--half: calc(var(--handle) / -2);
+		position: absolute;
+		box-sizing: border-box;
+		border: 2px dashed var(--accent);
+		cursor: move;
+	}
+	.handle {
+		position: absolute;
+		width: var(--handle);
+		height: var(--handle);
+		background: var(--surface);
+		border: 2px solid var(--accent);
+		border-radius: var(--radius-xs);
+	}
+	.nw,
+	.n,
+	.ne {
+		top: var(--half);
+	}
+	.sw,
+	.s,
+	.se {
+		bottom: var(--half);
+	}
+	.nw,
+	.w,
+	.sw {
+		left: var(--half);
+	}
+	.ne,
+	.e,
+	.se {
+		right: var(--half);
+	}
+	.n,
+	.s {
+		left: calc(50% + var(--half));
+		cursor: ns-resize;
+	}
+	.e,
+	.w {
+		top: calc(50% + var(--half));
+		cursor: ew-resize;
+	}
+	.nw,
+	.se {
+		cursor: nwse-resize;
+	}
+	.ne,
+	.sw {
+		cursor: nesw-resize;
 	}
 	/* The browser selects nothing itself: EmbedPDF draws its own text selection, and a
 	   native selection of the page would interrupt its drags. */

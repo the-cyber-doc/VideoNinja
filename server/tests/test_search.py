@@ -1,12 +1,11 @@
 """The search's full text: the books' page text sent by the browser, and /api/search over
-pages, book annotations and comments (FTS5, trigram), each user getting what they may open."""
+pages, book annotations and techniques' comments (FTS5, trigram), each user getting what they may open."""
 
 import pytest
 
 from app.domain import search
 
 from .test_book_annotations import HIGHLIGHT, REGION, annotate
-from .test_book_comments import comment
 from .test_books import finished as finished_upload
 from .test_books import logged_in, published, sql, submit
 from .test_catalog import KOKU
@@ -104,7 +103,6 @@ def library(admin):  # noqa: F811
     send(admin, book_id, ["Intro", "Le dōjō de Takamatsu", "Kamae: Ichimonji no kamae"])
     text = annotate(admin, book_id, {**HIGHLIGHT, "quote": "Ichimonji", "note": "Takamatsu sensei"}).json()
     region = annotate(admin, book_id, {**REGION, "note": "Seal of Takamatsu"}).json()  # about KOKU
-    comment(admin, text["id"], "Takamatsu wrote it")
     admin.post(f"/api/techniques/{KOKU}/comments", json={"text": "Takamatsu's way", "lang": "en"})
     return book_id, text["id"], region["id"]
 
@@ -117,8 +115,7 @@ def test_everything_for_a_book_manager(admin, library):  # noqa: F811
     assert all(a["book"] == book_id for a in out["annotations"])
     [c] = out["comments"]
     assert (c["technique"], c["user"], c["snippet"]) == (KOKU, "Admin", f"{M}Takamatsu{E}'s way")
-    [bc] = out["book_comments"]
-    assert (bc["annotation"], bc["book"], bc["user"]) == (text_id, book_id, "Admin")
+    assert "book_comments" not in out
 
 
 def test_parts_of_words_accents_every_term(admin, library):  # noqa: F811
@@ -136,7 +133,7 @@ def test_what_a_plain_user_gets(admin, library):  # noqa: F811
     _, _, region_id = library
     plain = logged_in(admin, "kenji", "user")
     out = find(plain, "takamatsu")
-    assert out["pages"] == [] and out["book_comments"] == []
+    assert out["pages"] == []
     assert [(a["id"], a["book"], a["technique"]) for a in out["annotations"]] == [(region_id, None, KOKU)]
     assert len(out["comments"]) == 1
 
@@ -144,7 +141,7 @@ def test_what_a_plain_user_gets(admin, library):  # noqa: F811
 def test_published_books_only(admin, library):  # noqa: F811
     sql("UPDATE book SET status = 'queued'")
     out = find(admin, "takamatsu")
-    assert out["pages"] == [] and out["annotations"] == [] and out["book_comments"] == []
+    assert out["pages"] == [] and out["annotations"] == []
     assert len(out["comments"]) == 1
 
 

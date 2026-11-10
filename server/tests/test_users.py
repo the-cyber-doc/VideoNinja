@@ -275,7 +275,7 @@ def test_delete_gives_the_content_to_the_deleted_user(admin, caplog):
             " VALUES ('t1', ?, 'abc', 1, '2026-01-01T00:00:00Z')",
             (user_id,),
         )
-        # A book, an annotation on it and a comment on that (no API yet: rows).
+        # A book and an annotation on it (rows).
         con.execute(
             "INSERT INTO book (sha256sum, original_filename, reference, uploaded_by, uploaded_at)"
             " VALUES ('f00d', 'densho.pdf', '{}', ?, '2026-01-01T00:00:00Z')",
@@ -284,11 +284,6 @@ def test_delete_gives_the_content_to_the_deleted_user(admin, caplog):
         con.execute(
             "INSERT INTO book_annotation (book, page, kind, target, created_by, created_at, modified_at)"
             " VALUES (1, 1, 'region', '{}', ?, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z')",
-            (user_id,),
-        )
-        con.execute(
-            "INSERT INTO book_comment (annotation, user, lang, text, created_at, modified_at)"
-            " VALUES (1, ?, 'en', 'Seen', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z')",
             (user_id,),
         )
 
@@ -304,7 +299,6 @@ def test_delete_gives_the_content_to_the_deleted_user(admin, caplog):
     assert con.execute("SELECT user FROM upload").fetchall() == [(0,)]
     assert con.execute("SELECT uploaded_by FROM book").fetchall() == [(0,)]
     assert con.execute("SELECT created_by FROM book_annotation").fetchall() == [(0,)]
-    assert con.execute("SELECT user FROM book_comment").fetchall() == [(0,)]
 
     # Shown without a name (the frontend names the deleted user); a moderator still edits it.
     [shown] = admin.get(f"/api/techniques/{KOKU}/comments").json()

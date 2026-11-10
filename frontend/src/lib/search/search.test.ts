@@ -286,10 +286,6 @@ describe("the server's full text", () => {
 			{ id: 10, technique: KOKU, user: 'Hana', snippet: 'nice' },
 			{ id: 11, technique: KOKU, user: null, snippet: 'old' },
 			{ id: 12, technique: 'unknown', user: 'Hana', snippet: 'lost' }
-		],
-		book_comments: [
-			{ id: 13, annotation: 5, book: 3, user: 'Aiko', snippet: 'reply' },
-			{ id: 14, annotation: 9, book: 99, user: 'Aiko', snippet: 'lost' }
 		]
 	};
 
@@ -301,13 +297,10 @@ describe("the server's full text", () => {
 			['annotation:6', 'Ninjutsu', 'Page 5', '/books/3?annotation=6', 'plain'],
 			['annotation:7', 'Koku', 'A book’s note', '/schools/gyokko/taijutsu/jo_ryaku/koku', 'for everyone'],
 			['comment:10', 'Koku', 'Hana', '/schools/gyokko/taijutsu/jo_ryaku/koku', 'nice'],
-			['comment:11', 'Koku', 'a deleted user', '/schools/gyokko/taijutsu/jo_ryaku/koku', 'old'],
-			['book_comment:13', 'Ninjutsu', 'Aiko', '/books/3?annotation=5', 'reply']
+			['comment:11', 'Koku', 'a deleted user', '/schools/gyokko/taijutsu/jo_ryaku/koku', 'old']
 		]);
 		const untitled = sources({ books: [book(3, { reference: { type: 'book', title: '' } })] });
-		expect(remoteShown({ ...REMOTE, annotations: [], comments: [], book_comments: [] }, en, untitled)[0]?.title).toBe(
-			'book-3.pdf'
-		);
+		expect(remoteShown({ ...REMOTE, annotations: [], comments: [] }, en, untitled)[0]?.title).toBe('book-3.pdf');
 		expect(remoteShown(REMOTE, en, sources({ books: null })).map((h) => h.kind)).toEqual([
 			'annotation',
 			'comment',
@@ -320,7 +313,7 @@ describe("the server's full text", () => {
 		expect(groups.map((g) => [g.group, g.total])).toEqual([
 			['books', 1],
 			['texts', 4],
-			['comments', 3]
+			['comments', 2]
 		]);
 		expect(groupOf('page')).toBe('texts');
 	});

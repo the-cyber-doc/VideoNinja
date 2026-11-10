@@ -7,13 +7,12 @@ except moderators (the author stays), as for comments.
 
 A technique's page shows the annotations about it to every logged-in user
 (/api/techniques/<id>/book-notes): the quote or the region's picture, the note, the
-book's reference, who and when, and the comments; only book managers get the book's ID
+book's reference, who and when; only book managers get the book's ID
 (the link to open it): the books stay theirs.
 """
 
 import json
 import sqlite3
-from collections import defaultdict
 from datetime import tzinfo
 from typing import Literal
 
@@ -29,7 +28,6 @@ from ..domain import audit
 from ..domain.references import Reference
 from ..queries.users import User
 from .books import UploadIn, own_finished, wait_finished
-from .comments import CommentOut
 from .deps import current_user, require_access, user_zone
 
 router = APIRouter(prefix="/api", tags=["book annotations"])
@@ -104,7 +102,6 @@ class TechniqueNoteOut(BaseModel):
     created_at: str
     modified_at: str
     reference: Reference
-    comments: list[CommentOut]  # oldest first
 
 
 def _published(con: sqlite3.Connection, book_id: int) -> None:
@@ -235,16 +232,12 @@ def technique_notes(
         if not queries.catalog.technique_exists(con, technique_id):
             raise ApiError("technique.unknown")
         rows = queries.book_annotations.technique_notes(con, technique_id, me.id)
-        comments: defaultdict[int, list[CommentOut]] = defaultdict(list)
-        for c in queries.book_comments.comments_of(con, [r["id"] for r in rows], me.id):
-            comments[c["annotation"]].append(CommentOut(**{k: c[k] for k in CommentOut.model_fields}))
     managed = "book_mgmt" in me.access
     return [
         TechniqueNoteOut(
-            **{k: r[k] for k in TechniqueNoteOut.model_fields if k not in ("book_id", "reference", "comments")},
+            **{k: r[k] for k in TechniqueNoteOut.model_fields if k not in ("book_id", "reference")},
             book_id=r["book"] if managed else None,
             reference=Reference.model_validate(json.loads(r["reference"])),
-            comments=comments[r["id"]],
         )
         for r in rows
     ]

@@ -48,12 +48,7 @@ export async function serverHits(page: Page, query: string, catalog: Catalog) {
 				a.book === null ? technique(a.technique) : `/books/${a.book}?annotation=${a.id}`
 			)
 		].sort(),
-		comments: [
-			...hits.comments.map((c: { technique: string }) => technique(c.technique)),
-			...hits.book_comments.map(
-				(c: { book: number; annotation: number }) => `/books/${c.book}?annotation=${c.annotation}`
-			)
-		].sort()
+		comments: hits.comments.map((c: { technique: string }) => technique(c.technique)).sort()
 	};
 }
 
@@ -62,8 +57,13 @@ export async function everyMatch(page: Page, query: string) {
 	const get = async (path: string, lang = 'en') =>
 		(await page.request.get(path, { headers: { 'Accept-Language': lang } })).json();
 	const catalogs: Catalog[] = [await get('api/catalog', 'en'), await get('api/catalog', 'fr')];
-	const videos: Video[] = await get('api/videos');
-	const books: Book[] = await get('api/books');
+	// null: the user may not open them (403), as the page's search leaves them out.
+	const list = async (path: string) => {
+		const res = await page.request.get(path);
+		return res.ok() ? res.json() : null;
+	};
+	const videos: Video[] | null = await list('api/videos');
+	const books: Book[] | null = await list('api/books');
 	const want = { ...expected(catalogs, videos, books, query), ...(await serverHits(page, query, catalogs[0]!)) };
 	const got = await shown(page, query);
 	for (const group of ALL) expect(got[group] ?? [], `${query}: ${group}`).toEqual(want[group]);

@@ -1,5 +1,5 @@
 """The search's full text (the rest of the search runs in the browser, over the catalogue
-snapshot and the Videos/Books lists): pages of books, book annotations, comments. Each user
+snapshot and the Videos/Books lists): pages of books, book annotations, techniques' comments. Each user
 gets what they may open: the techniques' comments and the annotations of a technique for
 everyone (as on the technique's page), the rest with "book_mgmt"."""
 
@@ -40,19 +40,10 @@ class CommentHit(BaseModel):
     snippet: str
 
 
-class BookCommentHit(BaseModel):
-    id: int
-    annotation: int
-    book: int
-    user: str | None
-    snippet: str
-
-
 class SearchOut(BaseModel):
     pages: list[PageHit]
     annotations: list[AnnotationHit]
     comments: list[CommentHit]
-    book_comments: list[BookCommentHit]
 
 
 @router.get("/search")
@@ -62,7 +53,7 @@ def search_text(
     con: sqlite3.Connection = Depends(db.get_db),
 ) -> SearchOut:
     """Every term must match (any part of a word, accents and case ignored); best first."""
-    out = SearchOut(pages=[], annotations=[], comments=[], book_comments=[])
+    out = SearchOut(pages=[], annotations=[], comments=[])
     query = search.parse(q)
     if query is None:
         return out
@@ -73,16 +64,6 @@ def search_text(
             out.pages = [
                 PageHit(book=r["book"], page=r["page"], snippet=search.snippet(r["text"], query.terms))
                 for r in queries.search.pages(con, m, likes, LIMIT)
-            ]
-            out.book_comments = [
-                BookCommentHit(
-                    id=r["id"],
-                    annotation=r["annotation"],
-                    book=r["book"],
-                    user=r["user"],
-                    snippet=search.snippet(r["text"], query.terms),
-                )
-                for r in queries.search.book_comments(con, m, likes, LIMIT)
             ]
         out.annotations = [
             AnnotationHit(

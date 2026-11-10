@@ -58,12 +58,9 @@
 		createPluginRegistration(AnnotationPluginPackage, {
 			annotationAuthor: author,
 			autoCommit: true,
-			deactivateToolAfterCreate: true,
-			// A region's outline half the default width (6).
-			tools: [{ id: 'square', defaults: { strokeWidth: 3 } }],
-			// The panel selects a new annotation itself; the plugin's selection would make the
-			// next drag only deselect it.
-			selectAfterCreate: false
+			// The tools stay off (ViewerPages creates the annotations with their defaults): a
+			// region's outline half the default width (6).
+			tools: [{ id: 'square', defaults: { strokeWidth: 3 } }]
 		})
 	];
 

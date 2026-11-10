@@ -650,7 +650,7 @@ database as failing otherwise.
 | 2 | the four containers | `heartbeat` (the encoder's liveness, for `/health`), `video.thumbs_dirty` (segment thumbnails made by the encoder) |
 | 3 | indexes, moderation | Indexes on the columns looked up in the growing tables (video, segment, comment, session, upload), foreign keys included; the `moderator` access (edit and delete anyone's comments), given to the `admin` role; tags' explicit `value_format` (`list`, `regexp`, `free`, `NULL` = no value) with `regexp`, `hint`, `input_mode`, `min_value`, `max_value`, and the `options` access (the Options page), given to the `admin` role |
 | 4 | v0.0.9, books | Books (`book`, `book_has_tags`, `book_annotation`, `book_comment`), `upload.kind` (`video`, `book`, `image`), the `book_mgmt` access (admins) and the `book_mgmt` and `content_mgmt` roles; down: the books are deleted, those users get `uploader` / `video_mgmt` |
-| 5 | full-text search | `book_page` (each page's text, sent by the browser; `book.text_pages`) and FTS5 indexes (trigram tokenizer) over it, the book annotations' quotes and notes and the comments, kept in step by triggers; the `year` tag bounded to 1950–2080 when it had no bounds and every stored year fits; down: the page text and the indexes go (the browser sends the text again), the bounds stay |
+| 5 | full-text search | `book_page` (each page's text, sent by the browser; `book.text_pages`) and FTS5 indexes (trigram tokenizer) over it, the book annotations' quotes and notes and the techniques' comments, kept in step by triggers; the comments on book annotations removed (`book_comment` dropped, its rows with it); the `year` tag bounded to 1950–2080 when it had no bounds and every stored year fits; down: the page text and the indexes go (the browser sends the text again), `book_comment` comes back empty, the bounds stay |
 
 Transactions: the API and the encoder write to the same file from two
 processes. Connections (`db.connect`) are in autocommit mode; every change of
@@ -1221,34 +1221,33 @@ checked; different criteria: all of them). Kept on the device.
 **A book** (its reference in the Books grid opens it, `/books/<id>`): its reference
 (**Edit the reference**: the same form as the upload, its tags too; any book manager),
 **Download the PDF**, and the PDF in a viewer (EmbedPDF's PDFium, in the page) with its
-annotations beside it. **Highlight text**: select text by dragging over it, it is
-highlighted and kept as the annotation's quote. Some PDFs embed fonts without a map from their
-character codes to letters: every reader then extracts garbled text there (often
-capital letters with no spaces). A quote that looks like that is flagged, in the list
-and on the technique's page; mark a region instead to keep a picture of the text. **Mark a region** (scanned pages): draw
-a box, a picture of it is kept (made by the browser, published by
-the encoder). Each annotation is saved at once, one row each: the PDF on the server is
+annotations beside it. Two modes and **Annotate**. **Select**: select text by dragging over it
+(as many times as needed), or click an existing annotation (text or region) to select it;
+**Annotate** then highlights the selected text, kept as the annotation's quote. Some PDFs embed
+fonts without a map from their character codes to letters: every reader then extracts garbled
+text there (often capital letters with no spaces). A quote that looks like that is flagged, in
+the list and on the technique's page; create a region instead to keep a picture of the text.
+**Create region** (scanned pages): draw a box, resize it by its handles or move it (drawing
+another replaces it); **Annotate** makes it an annotation, a picture of it is kept (made by the
+browser, published by the encoder). Each annotation is saved at once, one row each: the PDF on the server is
 never changed (the browser's copy only). In the list beside the PDF (quotes cut to
 the height of a region's picture until selected), the selected annotation takes a technique (school › … › technique, as for segments: its page will
 show it) and a note, both optional and saved together, a colour, or is deleted; a highlight
-can also be given other text (**Change the highlighted text**, then select it: its start and end move, the
-annotation, its note, technique and comments stay); each user changes their own, moderators
-anyone's. Each annotation has its comments (a thread, oldest first; written with the
-`comment` access, each user changing their own, moderators anyone's). A book without a
+can also be given other text (**Change the highlighted text**, select the new text freely, as
+often as needed, then **Annotate**: its start and end move, the annotation, its note and
+technique stay); each user changes their own, moderators anyone's. A book without a
 first-page picture gets one when opened.
 
 **Download with annotations** gives a copy of the PDF with every annotation written in it
 as a standard PDF annotation (highlight, square), with its author, its dates and, as its
-text, its technique (kanji, romaji and the address of its page) and its note; each comment
-is a reply to its annotation (its own author and date): Acrobat, Firefox, Okular and
-Preview show them as threads. The copy is made in the browser from the PDF as uploaded;
+text, its technique (kanji, romaji and the address of its page) and its note. The copy is made in the browser from the PDF as uploaded;
 nothing is sent back, the server's file never changes. **Download the PDF** stays the
 book as uploaded.
 
 **On a technique's page**, after its description and before its videos, **In the books**
 shows every annotation about it (from published books), to every logged-in user: the text
 highlighted or the region's picture, the note, the book's reference (Chicago) and the PDF
-page, who made it and when, and its comments. Book managers also get **Open in the book**,
+page, who made it and when. Book managers also get **Open in the book**,
 which opens the book on that annotation; the others never get the book itself. Like the
 comments, the last copy seen is kept for offline reading.
 
@@ -1713,8 +1712,7 @@ journalctl -t docker-videoninja-encoder -o cat | jq -c 'select(.video_id == 42)'
 `invite.shown`; `access.denied`, `request.cross_site`, `comment.denied`, `book_annotation.denied`,
 `upload.denied`; `upload.accepted`, `video.submitted`, `video.retried`,
 `video.deleted`, `book.submitted`, `book.deleted`, `book.edited`, `book_annotation.created`,
-`book_annotation.edited`, `book_annotation.deleted`, `book_comment.created`, `book_comment.edited`,
-`book_comment.deleted`, `annotations.saved`, `comment.created`, `comment.edited`,
+`book_annotation.edited`, `book_annotation.deleted`, `annotations.saved`, `comment.created`, `comment.edited`,
 `comment.deleted`, `tag.created`, `tag.saved` (`previous_id`: renamed when it
 differs), `tag.deleted`. Refusals and failures are warnings, the rest info. They carry
 who (`user_id`) and what (`target_user_id`, `video_id`, `comment_id`…), never a

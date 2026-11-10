@@ -1,14 +1,11 @@
 // Books (the "book_mgmt" access). The PDF and its first page go to tusd
 // (../upload/upload.ts, kinds "book" and "image"); the app queues them.
 import { api } from './client';
-import type { CommentSource } from './comments';
 import type {
 	Answer,
 	BookAnnotation,
 	BookAnnotationChange,
 	BookAnnotationIn,
-	BookComment,
-	CommentIn,
 	BookEdit,
 	BookIn,
 	BookRow,
@@ -28,23 +25,6 @@ export const editBook = (id: number, body: BookEdit) => api<BookRow>(`/api/books
 export const putBookText = (id: number, body: BookText) => api<void>(`/api/books/${id}/text`, body, 'PUT');
 export const replaceThumbnail = (id: number, upload: string) =>
 	api<void>(`/api/books/${id}/thumbnail`, { upload }, 'PUT');
-
-// Comments on annotations: a thread each (oldest first); every thread of a book (the download).
-export const listAnnotationComments = (id: number) => api<BookComment[]>(`/api/book-annotations/${id}/comments`);
-export const listBookComments = (bookId: number) => api<BookComment[]>(`/api/books/${bookId}/comments`);
-export const addAnnotationComment = (id: number, body: CommentIn) =>
-	api<BookComment>(`/api/book-annotations/${id}/comments`, body);
-export const editBookComment = (id: number, body: CommentIn) =>
-	api<BookComment>(`/api/book-comments/${id}`, body, 'PATCH');
-export const deleteBookComment = (id: number) => api<void>(`/api/book-comments/${id}`, undefined, 'DELETE');
-
-/** An annotation's thread, for $lib/techniques/Comments. */
-export const annotationComments = (id: number): CommentSource => ({
-	list: () => listAnnotationComments(id),
-	add: (body) => addAnnotationComment(id, body),
-	edit: editBookComment,
-	remove: deleteBookComment
-});
 
 /** What the books say about a technique (every logged-in user; its page). */
 export const techniqueNotes = (technique: string) =>

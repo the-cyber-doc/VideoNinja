@@ -1,8 +1,8 @@
 <script lang="ts">
 	// What the books say about a technique, on its page, for every logged-in user: each
 	// annotation framed like a comment (the text highlighted, or the region's picture, and
-	// its note), its book's reference (Chicago) and page, who made it and when, and its
-	// comments. Book managers also get a link that opens the book on it. Nothing shown when
+	// its note), its book's reference (Chicago) and page, who made it and when. Book
+	// managers also get a link that opens the book on it. Nothing shown when
 	// no book mentions the technique. Offline: the service worker's last copy.
 	import { techniqueNotes } from '../api/books';
 	import type { TechniqueNote } from '../api/types';
@@ -11,7 +11,6 @@
 	import { looksGarbled } from '../books/quality';
 	import { i18n, t } from '../i18n.svelte';
 	import { annotationImageUrl } from '../media';
-	import CommentCard from './CommentCard.svelte';
 
 	let { technique }: { technique: string } = $props();
 	let notes = $state<TechniqueNote[]>([]);
@@ -54,13 +53,6 @@
 								<a href={url(`/books/${note.book_id}?annotation=${note.id}`)}>{t('technique.open_book')}</a>
 							{/if}
 						</footer>
-						{#if note.comments.length}
-							<ol class="comments" aria-label={t('books.annotations.comments')}>
-								{#each note.comments as comment (comment.id)}
-									<li><CommentCard {comment} /></li>
-								{/each}
-							</ol>
-						{/if}
 					</article>
 				</li>
 			{/each}
@@ -127,10 +119,5 @@
 		gap: var(--space-2);
 		font-size: var(--text-sm);
 		color: var(--muted);
-	}
-	.comments {
-		gap: var(--space-2);
-		padding-left: var(--space-4);
-		border-left: 2px solid var(--border);
 	}
 </style>

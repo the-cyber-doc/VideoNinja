@@ -69,8 +69,6 @@ export type BookText = Schemas['BookTextIn'];
 export type BookAnnotation = Schemas['AnnotationOut'];
 export type BookAnnotationIn = Schemas['AnnotationIn'];
 export type BookAnnotationChange = Schemas['AnnotationChange'];
-/** A comment on an annotation (a thread each). */
-export type BookComment = Schemas['BookCommentOut'];
 /** An annotation about a technique, as its page shows it (book_id: book managers only). */
 export type TechniqueNote = Schemas['TechniqueNoteOut'];
 

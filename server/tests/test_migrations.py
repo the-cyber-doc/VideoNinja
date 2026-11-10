@@ -327,8 +327,9 @@ def test_v4_brings_books_and_their_roles(database, monkeypatch):
 
 
 def test_v5_brings_the_full_text_search(database, monkeypatch):
-    """v4 → v5: existing annotations and comments indexed at once, the year tag bounded;
-    the triggers keep the indexes in step. v5 → v4: the page text goes, the bounds stay."""
+    """v4 → v5: existing annotations and comments indexed at once, the year tag bounded, the
+    comments on book annotations gone; the triggers keep the indexes in step. v5 → v4: the page
+    text goes, the comments on annotations come back empty, the bounds stay."""
     build(database, 4)
     sql(database, "INSERT INTO user (id, username, role) VALUES (5, 'kenji', 'user')")
     sql(
@@ -355,7 +356,7 @@ def test_v5_brings_the_full_text_search(database, monkeypatch):
     db.migrate()
     assert sql(database, "SELECT rowid FROM book_annotation_fts WHERE book_annotation_fts MATCH '\"dojo\"'") == [(1,)]
     assert sql(database, "SELECT rowid FROM comment_fts WHERE comment_fts MATCH '\"komyo\"'") == [(1,)]
-    assert sql(database, "SELECT rowid FROM book_comment_fts WHERE book_comment_fts MATCH '\"scroll\"'") == [(1,)]
+    assert sql(database, "SELECT name FROM sqlite_master WHERE name LIKE 'book_comment%'") == []
     assert sql(database, "SELECT min_value, max_value FROM tag WHERE id = 'year'") == [(1950, 2080)]
     assert sql(database, "SELECT text_pages FROM book") == [(None,)]
 
@@ -369,15 +370,13 @@ def test_v5_brings_the_full_text_search(database, monkeypatch):
     assert sql(database, "SELECT rowid FROM comment_fts WHERE comment_fts MATCH '\"komyo\"'") == []
     sql(database, "UPDATE book_annotation SET note = 'Hicho'")
     assert sql(database, "SELECT rowid FROM book_annotation_fts WHERE book_annotation_fts MATCH '\"kamae\"'") == []
-    sql(database, "UPDATE book_comment SET text = 'Another'")
-    assert sql(database, "SELECT rowid FROM book_comment_fts WHERE book_comment_fts MATCH '\"scroll\"'") == []
     sql(database, "DELETE FROM comment")
     con = sqlite3.connect(database)
     con.execute("PRAGMA foreign_keys = ON")
     with con:
-        con.execute("DELETE FROM book")  # cascades: pages, annotations, their comments
+        con.execute("DELETE FROM book")  # cascades: pages, annotations
     con.close()
-    for table in ("book_page_fts", "book_annotation_fts", "comment_fts", "book_comment_fts"):
+    for table in ("book_page_fts", "book_annotation_fts", "comment_fts"):
         assert sql(database, f"INSERT INTO {table} ({table}) VALUES ('integrity-check')") == []
         assert sql(database, f"SELECT count(*) FROM {table}") == [(0,)]
 
@@ -385,6 +384,7 @@ def test_v5_brings_the_full_text_search(database, monkeypatch):
     monkeypatch.setattr(db, "EXPECTED_VERSION", 4)
     db.migrate()
     assert sql(database, "SELECT min_value, max_value FROM tag WHERE id = 'year'") == [(1900, 2080)]
+    assert sql(database, "SELECT count(*) FROM book_comment") == [(0,)]
 
 
 @pytest.mark.parametrize(

@@ -9,9 +9,9 @@ import { bluish, drag, drawnColor, pageBox, yellowish } from '../viewer';
 // (their first pages re-encoded by ffmpeg), served by nginx after the API's check; the
 // Books page's filter and sort; the viewer (EmbedPDF in its worker, its fallback fonts
 // from nginx) with a highlight and a region (its crop through tusd, the encoder and
-// nginx), a technique, a note, a colour, comments; the reference edited; the copy with
+// nginx), a technique, a note, a colour; the reference edited; the copy with
 // every annotation written in it; the technique's page for a plain user and for a book
-// manager; who may see what; the search's full text (the PDF's own text, notes, comments).
+// manager; who may see what; the search's full text (the PDF's own text, notes).
 test.describe.configure({ mode: 'serial' });
 test.setTimeout(120_000);
 
@@ -177,15 +177,17 @@ test('the viewer: a highlight and a region, saved; the region’s crop published
 	const box = await pageBox(page);
 	const pt = box.width / 420; // the fixture's page: 420 pt wide
 
-	await page.getByRole('button', { name: 'Highlight text' }).click();
-	await drag(page, [box.x + 62 * pt, box.y + 90 * pt], [box.x + 200 * pt, box.y + 90 * pt]);
+	const annotate = page.getByRole('button', { name: 'Annotate', exact: true });
+	await drag(page, [box.x + 62 * pt, box.y + 90 * pt], [box.x + 200 * pt, box.y + 90 * pt]); // Select: the title
+	await annotate.click();
 	await expect.poll(async () => (await annotations(page, ids.text)).length, { timeout: 15_000 }).toBe(1);
 	const [highlight] = await annotations(page, ids.text);
 	expect([highlight.kind, highlight.quote?.startsWith('Togakure-ryu')]).toEqual(['text', true]);
 	ids.highlight = highlight.id;
 
-	await page.getByRole('button', { name: 'Mark a region' }).click();
+	await page.getByRole('button', { name: 'Create region' }).click();
 	await drag(page, [box.x + 60 * pt, box.y + 115 * pt], [box.x + 300 * pt, box.y + 180 * pt]);
+	await annotate.click();
 	await expect.poll(async () => (await annotations(page, ids.text)).length, { timeout: 15_000 }).toBe(2);
 	const region = (await annotations(page, ids.text)).find((a) => a.kind === 'region')!;
 	ids.region = region.id;
@@ -200,7 +202,7 @@ test('the viewer: a highlight and a region, saved; the region’s crop published
 	await expect(page.locator('section.annotations li')).toHaveCount(2);
 });
 
-test('an annotation’s technique, note and colour; its comments', async ({ page }) => {
+test('an annotation’s technique, note and colour', async ({ page }) => {
 	await page.goto(`books/${ids.text}`);
 	const where = await marked(page, ids.highlight);
 	await expect.poll(() => drawnColor(page, where).then(yellowish)).toBe(true); // the tool's yellow
@@ -221,18 +223,9 @@ test('an annotation’s technique, note and colour; its comments', async ({ page
 	await expect.poll(() => drawnColor(page, where).then(bluish)).toBe(true); // drawn blue, not only saved
 	await page.reload(); // and drawn blue from what the server keeps
 	await expect.poll(async () => drawnColor(page, await marked(page, ids.highlight)).then(bluish)).toBe(true);
-	await item.getByRole('button', { name: /Page 1/ }).click(); // selected again: its comments shown
-
-	const comments = item.getByRole('region', { name: 'Comments on this annotation' });
-	await comments.getByRole('button', { name: 'Add a comment' }).click();
-	await comments.getByRole('textbox').fill('Seen in the dojo');
-	await comments.getByRole('button', { name: 'Save' }).click();
-	await expect(comments).toContainText('Seen in the dojo');
-	const thread = await (await page.request.get(`api/book-annotations/${ids.highlight}/comments`)).json();
-	expect(thread.map((c: { text: string }) => c.text)).toEqual(['Seen in the dojo']);
 });
 
-test('the search: the PDF’s own text (sent at the upload), its notes and comments; in the box', async ({ page }) => {
+test('the search: the PDF’s own text (sent at the upload), its notes; in the box', async ({ page }) => {
 	await expect.poll(async () => (await books(page)).find((b) => b.id === ids.text)?.has_text).toBe(true);
 	const search = async (q: string) => (await page.request.get(`api/search?q=${encodeURIComponent(q)}`)).json();
 	const found = await search('TOGAKURE ryu'); // case ignored, every term
@@ -242,9 +235,6 @@ test('the search: the PDF’s own text (sent at the upload), its notes and comme
 		snippet: expect.stringContaining('\u0002Togakure\u0003')
 	});
 	expect((await search('first school')).annotations.map((a: { id: number }) => a.id)).toContain(ids.highlight);
-	expect((await search('dojo')).book_comments.map((c: { annotation: number }) => c.annotation)).toContain(
-		ids.highlight
-	);
 
 	await page.goto('books');
 	await page.getByRole('combobox', { name: 'Search' }).fill('togakure');
@@ -266,7 +256,7 @@ test('the reference edited on the book’s page', async ({ page }) => {
 	);
 });
 
-test('the copy with its annotations: in the PDF, the comment as a reply', async ({ page }) => {
+test('the copy with its annotations: in the PDF, with technique and note', async ({ page }) => {
 	await page.goto(`books/${ids.text}`);
 	await pageBox(page);
 	const download = page.waitForEvent('download');
@@ -281,8 +271,7 @@ test('the copy with its annotations: in the PDF, the comment as a reply', async 
 		/^Technique: \S+ Koku — https?:\/\/[^/]+\/videoninja\/schools\/gyokko\/taijutsu\/jo_ryaku\/koku\n\nThe first school$/
 	);
 	expect(found.find((a) => a.type === 5)).toBeDefined(); // the region
-	const reply = found.find((a) => a.type === 1)!;
-	expect([reply.contents, reply.inReplyToId]).toEqual(['Seen in the dojo', highlight.id]);
+	expect(found).toHaveLength(2);
 });
 
 test('a plain user: no Books, no book; the technique’s page shows what the books say, without the book', async ({
@@ -310,7 +299,6 @@ test('a plain user: no Books, no book; the technique’s page shows what the boo
 	await expect(note.locator('blockquote')).toContainText('Togakure-ryu');
 	await expect(note).toContainText('The first school');
 	await expect(note).toContainText('Hatsumi, Masaaki. Togakure-ryu Densho. Tokyo: Kodansha, 1981.');
-	await expect(note.getByRole('list', { name: 'Comments on this annotation' })).toContainText('Seen in the dojo');
 	await expect(note.getByRole('link', { name: 'Open in the book' })).toHaveCount(0);
 	const headings = await user.getByRole('heading', { level: 2 }).allTextContents();
 	expect(headings.indexOf('In the books')).toBeLessThan(headings.indexOf('Videos'));

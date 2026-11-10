@@ -6,16 +6,6 @@ import type { BookRow } from '../api/types';
 import { BookPage, DEPS, downloadPdf, saveFile, type BookPageDeps } from './book.svelte';
 import type { ViewerControls } from './ViewerPages.svelte';
 
-const COMMENT = {
-	id: 3,
-	annotation: 5,
-	user: 'Ren',
-	created_at: '2026-11-02T10:00:00+01:00',
-	modified_at: '2026-11-02T10:00:00+01:00',
-	lang: 'en',
-	text: 'Seen',
-	mine: false
-};
 const WORDS = { technique: () => 'Technique: x', unknownAuthor: 'a deleted user' };
 
 const BOOK: BookRow = {
@@ -53,7 +43,6 @@ function streamed(chunks: number[][], length = true, status = 200) {
 function fakes(over: Partial<BookPageDeps> = {}): BookPageDeps {
 	return {
 		fetch: vi.fn(async () => streamed([[1, 2], [3]])),
-		listBookComments: vi.fn(async () => [COMMENT]),
 		save: vi.fn(),
 		editBook: vi.fn(async (_id, body) => ({ ...BOOK, reference: body.reference, tags: body.tags })) as never,
 		replaceThumbnail: vi.fn(async () => undefined),
@@ -229,16 +218,15 @@ describe('BookPage', () => {
 		expect([page.error, page.editing, page.saving]).toEqual([refused, true, false]);
 	});
 
-	it('downloads a copy with its annotations and their comments', async () => {
+	it('downloads a copy with its annotations', async () => {
 		const deps = fakes();
 		const page = new BookPage(BOOK, [], deps);
 		await page.download(WORDS, '2026-11-04'); // no PDF, no viewer yet: nothing
-		expect(deps.listBookComments).not.toHaveBeenCalled();
+		expect(deps.save).not.toHaveBeenCalled();
 		await page.load();
 		const viewer = controls();
 		await page.ready(viewer);
 		await page.download(WORDS, '2026-11-04');
-		expect(deps.listBookComments).toHaveBeenCalledWith(7);
 		expect(viewer.annotatedCopy).toHaveBeenCalledWith(page.pdf, []);
 		const [file, name] = (deps.save as ReturnType<typeof vi.fn>).mock.calls[0];
 		expect([file.type, await file.text(), name]).toEqual([
@@ -250,10 +238,10 @@ describe('BookPage', () => {
 	});
 
 	it('a failed download: the error said', async () => {
-		const failure = new ApiError(500, 'internal');
-		const page = new BookPage(BOOK, [], fakes({ listBookComments: async () => Promise.reject(failure) }));
+		const failure = new Error('engine');
+		const page = new BookPage(BOOK, [], fakes());
 		await page.load();
-		await page.ready(controls());
+		await page.ready(controls({ annotatedCopy: async () => Promise.reject(failure) }));
 		await page.download(WORDS, '2026-11-04');
 		expect([page.error, page.downloading]).toEqual([failure, false]);
 	});

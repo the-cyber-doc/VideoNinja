@@ -52,9 +52,6 @@ EVENTS: dict[str, int] = {
     "book_annotation.created": INFO,
     "book_annotation.edited": INFO,  # author_id: someone else's (a moderator)
     "book_annotation.deleted": INFO,
-    "book_comment.created": INFO,
-    "book_comment.edited": INFO,  # author_id: someone else's (a moderator)
-    "book_comment.deleted": INFO,
     "annotations.saved": INFO,
     "comment.created": INFO,
     "comment.edited": INFO,

@@ -39,7 +39,7 @@ const BOOK = {
 	tags: []
 };
 
-const NO_HITS: SearchHits = { pages: [], annotations: [], comments: [], book_comments: [] };
+const NO_HITS: SearchHits = { pages: [], annotations: [], comments: [] };
 
 async function loggedIn(page: Page, access: string[] = [], remote: (q: string) => SearchHits = () => NO_HITS) {
 	const requests: string[] = [];
@@ -190,8 +190,7 @@ test('the server’s full text: book pages and comments, their matches marked, e
 			? {
 					pages: [{ book: 3, page: 7, snippet: 'Le \u0002Ichimonji\u0003 no kamae' }],
 					annotations: [{ id: 5, book: 3, page: 2, technique: KOKU, snippet: '\u0002ichimonji\u0003 here' }],
-					comments: [{ id: 9, technique: KOKU, user: null, snippet: 'As \u0002Ichimonji\u0003' }],
-					book_comments: []
+					comments: [{ id: 9, technique: KOKU, user: null, snippet: 'As \u0002Ichimonji\u0003' }]
 				}
 			: NO_HITS
 	);

@@ -16,7 +16,7 @@ import { url } from '../base';
 /** What the browser's index holds. */
 export type Kind = 'school' | 'section' | 'technique' | 'segment' | 'video' | 'book';
 /** What the server's full text finds. */
-export type RemoteKind = 'page' | 'annotation' | 'comment' | 'book_comment';
+export type RemoteKind = 'page' | 'annotation' | 'comment';
 /** How the results are grouped, in this order. */
 export type Group = 'catalog' | 'segments' | 'videos' | 'books' | 'texts' | 'comments';
 export const GROUPS: readonly Group[] = ['catalog', 'segments', 'videos', 'books', 'texts', 'comments'];
@@ -29,8 +29,7 @@ const GROUP_OF: Record<Kind | RemoteKind, Group> = {
 	book: 'books',
 	page: 'texts',
 	annotation: 'texts',
-	comment: 'comments',
-	book_comment: 'comments'
+	comment: 'comments'
 };
 export const groupOf = (kind: Kind | RemoteKind): Group => GROUP_OF[kind];
 
@@ -348,21 +347,6 @@ export function remoteShown(remote: SearchHits, catalog: Catalog, src: Sources):
 			'comment',
 			c.id,
 			about ? { title: about.title, detail: who(c.user), href: about.href, snippet: c.snippet } : null
-		);
-	}
-	for (const c of remote.book_comments) {
-		const title = bookTitle(c.book);
-		add(
-			'book_comment',
-			c.id,
-			title
-				? {
-						title,
-						detail: who(c.user),
-						href: url(`/books/${c.book}?annotation=${c.annotation}`),
-						snippet: c.snippet
-					}
-				: null
 		);
 	}
 	return out;

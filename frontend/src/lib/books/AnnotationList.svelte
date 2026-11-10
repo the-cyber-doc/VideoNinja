@@ -2,8 +2,8 @@
 	// The book's annotations beside the viewer, by page: what each one marks (its quote, or
 	// its crop for a region), its technique, its note, who made it. Clicking one shows it in
 	// the viewer; the selected one opens its fields: the technique (../TechniquePicker),
-	// the note, the colour, delete (each user changes their own, a moderator any), and its
-	// comments (a thread, $lib/techniques/Comments).
+	// the note, the colour, delete (each user changes their own, a moderator any), and a
+	// highlight's text chosen again (selected in the viewer, then its Annotate).
 	import type { BookAnnotation } from '../api/types';
 	import { emptyPlace, placeOf, type Catalog } from '../catalog.svelte';
 	import IconButton from '../IconButton.svelte';
@@ -11,8 +11,6 @@
 	import { annotationImageUrl } from '../media';
 	import { hasAccess } from '../session.svelte';
 	import TechniquePicker from '../TechniquePicker.svelte';
-	import { annotationComments } from '../api/books';
-	import Comments from '../techniques/Comments.svelte';
 	import TechniqueLink from '../techniques/TechniqueLink.svelte';
 	import { rules } from '../validation';
 	import { uidOf, type BookAnnotations } from './annotations.svelte';
@@ -90,8 +88,10 @@
 					<button type="button" class="link" aria-pressed={selected}>
 						<span class="page">{t('books.annotations.page', { n: row.page })}</span>
 						{#if row.kind === 'region'}
-							{#if row.has_image}
-								<img src={annotationImageUrl(row.id)} alt={t('books.annotations.crop')} loading="lazy" />
+							{@const preview = annotations.previews[row.id]}
+							{#if preview || row.has_image}
+								<!-- The crop just made here first (the server publishes its copy seconds later). -->
+								<img src={preview ?? annotationImageUrl(row.id)} alt={t('books.annotations.crop')} loading="lazy" />
 							{:else}
 								<span class="hint">{t('books.annotations.region')}</span>
 							{/if}
@@ -167,11 +167,6 @@
 							/>
 						</div>
 					</div>
-				{/if}
-				{#if selected}
-					<section class="thread" aria-label={t('books.annotations.comments')}>
-						<Comments source={annotationComments(row.id)} empty={t('books.annotations.no_comments')} />
-					</section>
 				{/if}
 			</li>
 		{/each}
@@ -294,11 +289,6 @@
 		flex-wrap: wrap;
 		align-items: center;
 		gap: var(--space-2);
-	}
-	.thread {
-		padding-top: var(--space-2);
-		border-top: 1px solid var(--border);
-		font-size: var(--text-sm);
 	}
 	.colors {
 		display: flex;

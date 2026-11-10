@@ -283,27 +283,6 @@ export interface paths {
         patch: operations["change_annotation_api_book_annotations__annotation_id__patch"];
         trace?: never;
     };
-    "/api/book-annotations/{annotation_id}/comments": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Annotation Comments
-         * @description Oldest first: a thread.
-         */
-        get: operations["annotation_comments_api_book_annotations__annotation_id__comments_get"];
-        put?: never;
-        /** Add Comment */
-        post: operations["add_comment_api_book_annotations__annotation_id__comments_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/book-annotations/{annotation_id}/image": {
         parameters: {
             query?: never;
@@ -322,24 +301,6 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
-        trace?: never;
-    };
-    "/api/book-comments/{comment_id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        /** Delete Comment */
-        delete: operations["delete_comment_api_book_comments__comment_id__delete"];
-        options?: never;
-        head?: never;
-        /** Edit Comment */
-        patch: operations["edit_comment_api_book_comments__comment_id__patch"];
         trace?: never;
     };
     "/api/books": {
@@ -430,26 +391,6 @@ export interface paths {
         put?: never;
         /** Create Annotation */
         post: operations["create_annotation_api_books__book_id__annotations_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/books/{book_id}/comments": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Book Comments
-         * @description Every thread of the book's annotations (the panel's counts, the annotated download).
-         */
-        get: operations["book_comments_api_books__book_id__comments_get"];
-        put?: never;
-        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1386,38 +1327,6 @@ export interface components {
             /** Available */
             available: boolean;
         };
-        /** BookCommentHit */
-        BookCommentHit: {
-            /** Annotation */
-            annotation: number;
-            /** Book */
-            book: number;
-            /** Id */
-            id: number;
-            /** Snippet */
-            snippet: string;
-            /** User */
-            user: string | null;
-        };
-        /** BookCommentOut */
-        BookCommentOut: {
-            /** Annotation */
-            annotation: number;
-            /** Created At */
-            created_at: string;
-            /** Id */
-            id: number;
-            /** Lang */
-            lang: string;
-            /** Mine */
-            mine: boolean;
-            /** Modified At */
-            modified_at: string;
-            /** Text */
-            text: string;
-            /** User */
-            user: string | null;
-        };
         /** BookEditIn */
         BookEditIn: {
             reference: components["schemas"]["Reference"];
@@ -1741,8 +1650,6 @@ export interface components {
         SearchOut: {
             /** Annotations */
             annotations: components["schemas"]["AnnotationHit"][];
-            /** Book Comments */
-            book_comments: components["schemas"]["BookCommentHit"][];
             /** Comments */
             comments: components["schemas"]["CommentHit"][];
             /** Pages */
@@ -1956,8 +1863,6 @@ export interface components {
         TechniqueNoteOut: {
             /** Book Id */
             book_id: number | null;
-            /** Comments */
-            comments: components["schemas"]["CommentOut"][];
             /** Created At */
             created_at: string;
             /** Created By */
@@ -2698,76 +2603,6 @@ export interface operations {
             };
         };
     };
-    annotation_comments_api_book_annotations__annotation_id__comments_get: {
-        parameters: {
-            query?: never;
-            header?: {
-                "time-zone"?: string | null;
-            };
-            path: {
-                annotation_id: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["BookCommentOut"][];
-                };
-            };
-            /** @description An error (core/errors.py: ERRORS) */
-            default: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiError"];
-                };
-            };
-        };
-    };
-    add_comment_api_book_annotations__annotation_id__comments_post: {
-        parameters: {
-            query?: never;
-            header?: {
-                "time-zone"?: string | null;
-            };
-            path: {
-                annotation_id: number;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["CommentIn"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["BookCommentOut"];
-                };
-            };
-            /** @description An error (core/errors.py: ERRORS) */
-            default: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiError"];
-                };
-            };
-        };
-    };
     attach_image_api_book_annotations__annotation_id__image_put: {
         parameters: {
             query?: never;
@@ -2791,74 +2626,6 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
-            };
-            /** @description An error (core/errors.py: ERRORS) */
-            default: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiError"];
-                };
-            };
-        };
-    };
-    delete_comment_api_book_comments__comment_id__delete: {
-        parameters: {
-            query?: never;
-            header?: {
-                "time-zone"?: string | null;
-            };
-            path: {
-                comment_id: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description An error (core/errors.py: ERRORS) */
-            default: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiError"];
-                };
-            };
-        };
-    };
-    edit_comment_api_book_comments__comment_id__patch: {
-        parameters: {
-            query?: never;
-            header?: {
-                "time-zone"?: string | null;
-            };
-            path: {
-                comment_id: number;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["CommentIn"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["BookCommentOut"];
-                };
             };
             /** @description An error (core/errors.py: ERRORS) */
             default: {
@@ -3128,39 +2895,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AnnotationOut"];
-                };
-            };
-            /** @description An error (core/errors.py: ERRORS) */
-            default: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiError"];
-                };
-            };
-        };
-    };
-    book_comments_api_books__book_id__comments_get: {
-        parameters: {
-            query?: never;
-            header?: {
-                "time-zone"?: string | null;
-            };
-            path: {
-                book_id: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["BookCommentOut"][];
                 };
             };
             /** @description An error (core/errors.py: ERRORS) */

@@ -25,8 +25,7 @@ const BOOKS = [
 const hitsFor = (q: string): SearchHits => ({
 	pages: [{ book: 2, page: 1, snippet: q }],
 	annotations: [],
-	comments: [],
-	book_comments: []
+	comments: []
 });
 
 function setup(accesses: string[] = ['video_mgmt', 'book_mgmt']) {

@@ -16,7 +16,6 @@ import type { ViewerControls } from './ViewerPages.svelte';
 
 export interface BookPageDeps {
 	fetch: typeof fetch;
-	listBookComments: typeof books.listBookComments;
 	/** The browser saves a file (a download). */
 	save: (file: Blob, name: string) => void;
 	editBook: typeof books.editBook;
@@ -37,7 +36,6 @@ export function saveFile(file: Blob, name: string) {
 
 export const DEPS: BookPageDeps = {
 	fetch: (...args) => fetch(...args),
-	listBookComments: books.listBookComments,
 	save: saveFile,
 	editBook: books.editBook,
 	replaceThumbnail: books.replaceThumbnail,
@@ -161,7 +159,7 @@ export class BookPage {
 		}
 	}
 
-	/** Download a copy of the PDF with every annotation and comment written in it. */
+	/** Download a copy of the PDF with every annotation written in it. */
 	async download(words: Words, day: string) {
 		const pdf = this.pdf;
 		const controls = this.controls;
@@ -169,8 +167,7 @@ export class BookPage {
 		this.downloading = true;
 		this.error = null;
 		try {
-			const comments = await this.deps.listBookComments(this.book.id);
-			const objects = annotatedObjects(this.annotations.rows, comments, words);
+			const objects = annotatedObjects(this.annotations.rows, words);
 			const copy = await controls.annotatedCopy(pdf, objects);
 			this.deps.save(new Blob([copy], { type: 'application/pdf' }), annotatedName(this.book.original_filename, day));
 		} catch (e) {
