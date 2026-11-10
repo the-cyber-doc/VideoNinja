@@ -72,6 +72,12 @@ export function moved(rect: Rect, dx: number, dy: number, page: Size): Rect {
 	};
 }
 
+/** A rect's centre (an annotation's: where the viewer scrolls to show it). */
+export const centerOf = (rect: Rect): Point => ({
+	x: rect.origin.x + rect.size.width / 2,
+	y: rect.origin.y + rect.size.height / 2
+});
+
 /** Where to draw it over its page: percentages of the page (CSS). */
 export function placement(rect: Rect, page: Size) {
 	const pct = (v: number, of: number) => `${(v / of) * 100}%`;

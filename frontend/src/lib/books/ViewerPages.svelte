@@ -51,6 +51,7 @@
 	import { pageTexts, type TextEngine } from './text';
 	import {
 		between,
+		centerOf,
 		HANDLES,
 		isRegion,
 		moved,
@@ -248,16 +249,18 @@
 		if (draft && !isRegion(draft.rect)) draft = null; // squeezed to nothing by a handle
 	}
 
-	/** Scroll once the pages are laid out: their first layout scrolls back to the top (EmbedPDF's
+	/** Scroll once the pages are laid out (to a point of the page: centred in the viewer): their first layout scrolls back to the top (EmbedPDF's
 	 * setLayoutReady), and the page's first request (?page=, ?annotation=) comes as soon as the
 	 * document is open, before it. onLayoutReady says it again to a new listener when it happened. */
-	function scrollTo(pageNumber: number, behavior: 'smooth' | 'instant') {
+	function scrollTo(pageNumber: number, behavior: 'smooth' | 'instant', point?: Point) {
 		let done = false;
 		const stop = scrolling.provides?.onLayoutReady((event) => {
 			if (done || event.documentId !== documentId) return;
 			done = true;
 			queueMicrotask(() => stop?.()); // (said again at once: `stop` not set yet)
-			scroll.provides?.scrollToPage({ pageNumber, behavior });
+			scroll.provides?.scrollToPage(
+				point ? { pageNumber, behavior, pageCoordinates: point, alignX: 50, alignY: 50 } : { pageNumber, behavior }
+			);
 		});
 		if (stop) layoutWaits.push(stop);
 	}
@@ -324,7 +327,7 @@
 		onready({
 			select(row) {
 				const target = revive(row.target);
-				scrollTo(row.page, 'smooth');
+				scrollTo(target.pageIndex + 1, 'smooth', centerOf(target.rect)); // the annotation itself in view
 				annotation.provides?.selectAnnotation(target.pageIndex, target.id);
 				annotations.selectedUid = target.id;
 			},
@@ -341,7 +344,7 @@
 				stopRetarget();
 				choose('select');
 				const target = revive(row.target);
-				scrollTo(target.pageIndex + 1, 'smooth');
+				scrollTo(target.pageIndex + 1, 'smooth', centerOf(target.rect));
 				return new Promise((done) => (retarget = { row, done }));
 			},
 			cancelReselect: stopRetarget,

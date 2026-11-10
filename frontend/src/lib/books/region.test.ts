@@ -1,6 +1,6 @@
 // The region drawn before "Annotate": drawn, resized, moved, always inside its page.
 import { describe, expect, it } from 'vitest';
-import { between, isRegion, moved, pagePoint, placement, resized } from './region';
+import { between, centerOf, isRegion, moved, pagePoint, placement, resized } from './region';
 
 const PAGE = { width: 600, height: 800 };
 const rect = (x: number, y: number, width: number, height: number) => ({ origin: { x, y }, size: { width, height } });
@@ -51,6 +51,12 @@ describe('moved', () => {
 		expect(moved(r, 10, -20, PAGE)).toEqual(rect(110, 80, 200, 100));
 		expect(moved(r, -500, 900, PAGE)).toEqual(rect(0, 700, 200, 100));
 		expect(moved(rect(0, 0, 700, 900), 10, 10, PAGE)).toEqual(rect(0, 0, 700, 900)); // bigger than the page
+	});
+});
+
+describe('centerOf', () => {
+	it('the middle of the rect', () => {
+		expect(centerOf(rect(60, 200, 300, 80))).toEqual({ x: 210, y: 240 });
 	});
 });
 

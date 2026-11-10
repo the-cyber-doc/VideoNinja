@@ -650,24 +650,78 @@ test('no book about it: nothing shown; a book manager opens the book on the anno
 	await expect(page.locator('section.annotations li[data-id="5"]')).toHaveClass(/selected/);
 });
 
-for (const [why, query] of [
-	['?page= (a search hit in the book’s text)', 'page=2'],
-	['?annotation= (“Open in the book” on a technique’s page)', 'annotation=6']
-]) {
-	test(`${why}: its page shown at the top of the viewer, not the first one`, async ({ page }) => {
-		const second = { ...SAVED_TARGET, id: 'saved-2', pageIndex: 1 };
-		await viewing(page, [annotationRow(6, { ...SAVED_ROW, page: 2, target: JSON.stringify(second) })], { pages: 2 });
-		await page.route('/media/book/7', (r) =>
-			r.fulfill({ contentType: 'application/pdf', body: readFileSync('tests/fixtures/book-search.pdf') })
-		);
-		await page.goto(`/books/7?${query}`);
-		const sheet = page.locator('.page[data-page="2"]');
-		await expect(sheet.locator('img').first()).toBeVisible({ timeout: 20_000 }); // drawn: scrolled to
-		await expect(page.getByRole('status').filter({ hasText: 'Page 2 of 2' })).toBeVisible();
-		const viewport = (await page.locator('.viewport').boundingBox())!;
-		await expect.poll(async () => Math.abs((await sheet.boundingBox())!.y - viewport.y)).toBeLessThan(40); // at the top
-	});
+test('?page= (a search hit in the book’s text): its page shown at the top of the viewer, not the first one', async ({
+	page
+}) => {
+	await viewing(page, [], { pages: 2 });
+	await page.route('/media/book/7', (r) =>
+		r.fulfill({ contentType: 'application/pdf', body: readFileSync('tests/fixtures/book-search.pdf') })
+	);
+	await page.goto('/books/7?page=2');
+	const sheet = page.locator('.page[data-page="2"]');
+	await expect(sheet.locator('img').first()).toBeVisible({ timeout: 20_000 }); // drawn: scrolled to
+	await expect(page.getByRole('status').filter({ hasText: 'Page 2 of 2' })).toBeVisible();
+	const viewport = (await page.locator('.viewport').boundingBox())!;
+	await expect.poll(async () => Math.abs((await sheet.boundingBox())!.y - viewport.y)).toBeLessThan(40); // at the top
+});
+
+// An annotation low on page 2 (the fixture's pages: 420 × 595 pt), far below what the viewer shows of the page's top.
+const LOW = {
+	...SAVED_TARGET,
+	id: 'low-1',
+	pageIndex: 1,
+	rect: { origin: { x: 60, y: 520 }, size: { width: 141, height: 23 } }
+};
+const LOW_ROW = annotationRow(6, { ...SAVED_ROW, page: 2, target: JSON.stringify(LOW) });
+
+/** The annotation's centre on the screen and the viewer's box: it is shown, about the middle. */
+async function centred(page: Page) {
+	const viewport = (await page.locator('.viewport').boundingBox())!;
+	const sheet = page.locator('.page[data-page="2"]');
+	const middle = async () => {
+		const box = (await sheet.boundingBox())!;
+		return box.y + (LOW.rect.origin.y + LOW.rect.size.height / 2) * (box.width / 420);
+	};
+	await expect
+		.poll(async () => Math.abs((await middle()) - (viewport.y + viewport.height / 2)), { timeout: 10_000 })
+		.toBeLessThan(viewport.height / 4);
+	const y = await middle();
+	expect(y).toBeGreaterThan(viewport.y);
+	expect(y).toBeLessThan(viewport.y + viewport.height);
 }
+
+async function lowBook(page: Page) {
+	await viewing(page, [LOW_ROW], { pages: 2 });
+	await page.route('/media/book/7', (r) =>
+		r.fulfill({ contentType: 'application/pdf', body: readFileSync('tests/fixtures/book-search.pdf') })
+	);
+}
+
+test('?annotation= (“Open in the book” on a technique’s page): the annotation itself in view, not only its page', async ({
+	page
+}) => {
+	await lowBook(page);
+	await page.goto('/books/7?annotation=6');
+	await expect(page.locator('.page[data-page="2"] img').first()).toBeVisible({ timeout: 20_000 });
+	await centred(page);
+	await expect(page.locator('section.annotations li[data-id="6"]')).toHaveClass(/selected/);
+});
+
+test('an annotation chosen in the list: scrolled to where it is on its page, in the middle of the viewer', async ({
+	page
+}) => {
+	await lowBook(page);
+	await page.goto('/books/7');
+	await pageBox(page); // page 1 at the top
+	const viewport = (await page.locator('.viewport').boundingBox())!;
+	const sheet = (await page.locator('.page[data-page="2"]').boundingBox())!;
+	expect(sheet.y + 520 * (sheet.width / 420)).toBeGreaterThan(viewport.y + viewport.height); // out of view first
+	await page
+		.locator('section.annotations li[data-id="6"]')
+		.getByRole('button', { name: /Page 2/ })
+		.click();
+	await centred(page);
+});
 
 test('a PDF without its fonts: the missing font fetched from the app (never a CDN), the page drawn', async ({
 	page
