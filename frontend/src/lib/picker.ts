@@ -1,8 +1,10 @@
 // The technique picker's rules (TechniquePicker.svelte): school › category › weapon (under
 // Buki only) › section › technique, each step narrowing the next, and "Other…" at every step
 // for an entry the catalogue lacks. A step set to Other is named (romaji, kanji optional);
-// the steps under a new parent can only be new too (a new section has no techniques yet),
-// while categories and weapons, shared by every school, stay choosable under a new school.
+// the steps under a new parent can only be new too (a new section has no techniques yet).
+// Categories and weapons are shared by every school: all of them are offered for any school
+// (a school's first scroll in a category it has none in yet is then "Other…"), the school's
+// own preselected when it uses only one.
 // "Add to the catalogue" sends the proposal (api/proposals.ts); the entries created are then
 // chosen like any other. Pure: the component wires it to the selects.
 import type { CreatedEntry, ProposalIn, ProposalStep } from './api/types';
@@ -41,15 +43,12 @@ export function forced(others: Others, step: Step): boolean {
 /** The weapon step: only under Buki (an existing category: a new one has no weapons). */
 export const weaponShown = (place: Place, others: Others) => !others.category && place.category === BUKI;
 
-/** Each step's choices. After a new school, every category and weapon (they are shared);
- * under a new parent, none (Other only). */
+/** Each step's choices: every category once a school is chosen and every weapon under Buki
+ * (shared by all schools); a school's sections and a section's techniques; under a new parent,
+ * none (Other only). */
 export function choices(catalog: Catalog, place: Place, others: Others) {
-	const categories = others.school ? catalog.categories : place.school ? categoriesOf(catalog, place.school) : [];
-	const weapons = weaponShown(place, others)
-		? others.school
-			? catalog.weapons
-			: weaponsOf(catalog, place.school)
-		: [];
+	const categories = place.school || others.school ? catalog.categories : [];
+	const weapons = weaponShown(place, others) ? catalog.weapons : [];
 	const parentChosen = place.category && (place.category !== BUKI || place.weapon);
 	const sections =
 		!forced(others, 'section') && parentChosen
@@ -90,10 +89,12 @@ export function choose(
 	for (const later of STEPS.slice(STEPS.indexOf(step) + 1)) {
 		if (marks[later] || !open(next, marks, later)) continue;
 		const lists = choices(catalog, next, marks);
+		// Categories and weapons: the existing school's own, when it uses a single one.
+		const own = !marks.school && next.school;
 		const list = {
 			school: catalog.schools,
-			category: lists.categories,
-			weapon: lists.weapons,
+			category: own ? categoriesOf(catalog, next.school) : lists.categories,
+			weapon: own ? weaponsOf(catalog, next.school) : lists.weapons,
 			section: lists.sections,
 			technique: lists.techniques
 		}[later];

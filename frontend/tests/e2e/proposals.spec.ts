@@ -62,6 +62,48 @@ test('proposed: a new school with its scroll and technique, three techniques in 
 	await expect.poll(async () => (await catalogTechnique(page, created.used))?.proposed).toBe(true);
 });
 
+test('the upload page: a category the school has no scroll in, its scroll and technique added there', async ({
+	page
+}) => {
+	await page.goto('upload');
+	await page.getByLabel('Video file').setInputFiles('tests/fixtures/clip.webm');
+	const slider = page.getByRole('slider', { name: 'Timeline' });
+	await slider.scrollIntoViewIfNeeded();
+	const box = (await slider.boundingBox())!;
+	const y = box.y + box.height / 2;
+	await page.mouse.move(box.x + box.width * 0.1, y);
+	await page.mouse.down();
+	await page.mouse.move(box.x + box.width * 0.6, y, { steps: 5 });
+	await page.mouse.up();
+	const segment = page.getByRole('article', { name: 'Segment 1' });
+	const select = (label: string) => segment.getByLabel(label);
+
+	// Gyokko Ryu has taijutsu scrolls only: Muto Dori and Buki offered all the same.
+	await select('School').selectOption('gyokko');
+	await expect(select('Category')).toHaveValue('taijutsu'); // its own, filled in
+	await select('Category').selectOption('buki');
+	await expect(select('Weapon')).toHaveValue('');
+	const { weapons } = await (await page.request.get('api/catalog')).json();
+	await expect(select('Weapon').locator('option')).toHaveCount(weapons.length + 2); // every one, Choose… and Other…
+	await select('Category').selectOption('muto_dori');
+	expect(await select('Scroll or form').locator('option').allTextContents()).toEqual(['Choose…', 'Other…']);
+	await select('Scroll or form').selectOption({ label: 'Other…' });
+	await segment.locator('[data-new="section"]').getByLabel('Romaji').fill('Wombat Muto');
+	await segment.locator('[data-new="technique"]').getByLabel('Romaji').fill('Wombat Dori');
+	await segment.getByRole('button', { name: 'Add to the catalogue' }).click();
+	const id = 'gyokko.muto_dori.wombat_muto.wombat_dori';
+	await expect(select('Technique')).toHaveValue(id);
+	await expect(select('Category')).toHaveValue('muto_dori');
+	await expect.poll(async () => (await catalogTechnique(page, id))?.proposed, { timeout: 10_000 }).toBe(true);
+
+	// Not submitted: unused, removed again (the tests below resolve every other one).
+	for (const [kind, entry] of [
+		['technique', id],
+		['section', 'gyokko.muto_dori.wombat_muto']
+	])
+		expect((await page.request.delete(`api/admin/proposals/${kind}/${entry}`)).status()).toBe(204);
+});
+
 test('the Options page lists them; one renamed, its meanings given: everything follows', async ({ page }) => {
 	await page.goto('options');
 	await expect(page.getByRole('heading', { name: 'Proposed entries' })).toBeVisible();

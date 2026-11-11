@@ -313,7 +313,8 @@ test('choosing a technique: one select per step, a weapon only under Buki', asyn
 	const options = (label: string) => select(label).locator('option').allTextContents();
 
 	await select('School').selectOption('kukishinden');
-	expect(await options('Category')).toEqual(['Choose…', 'Taijutsu', 'Buki', 'Other…']);
+	// Every category, whatever the school teaches (Muto Dori: none in Kukishin Ryu).
+	expect(await options('Category')).toEqual(['Choose…', 'Taijutsu', 'Muto Dori', 'Buki', 'Other…']);
 	await expect(select('Weapon')).toHaveCount(0);
 	await expect(select('Scroll or form')).toBeDisabled();
 
@@ -339,6 +340,15 @@ test('choosing a technique: one select per step, a weapon only under Buki', asyn
 	await expect(select('Category')).toHaveValue('taijutsu');
 	await expect(select('Scroll or form')).toHaveValue('');
 	await expect(select('Technique')).toBeDisabled();
+
+	// A category or a weapon the school has no scroll in yet: chosen all the same, its scroll new.
+	await select('Category').selectOption('buki');
+	await expect(select('Weapon')).toHaveValue(''); // Gyokko Ryu has none of its own
+	expect(await options('Weapon')).toEqual(['Choose…', 'Rokushakubo', 'Hanbo', 'Other…']);
+	await select('Weapon').selectOption('hanbo');
+	expect(await options('Scroll or form')).toEqual(['Choose…', 'Other…']);
+	await select('Category').selectOption('taijutsu');
+	await expect(select('Weapon')).toHaveCount(0);
 
 	// A scroll the catalogue lacks: named here, its technique new too (segments share the books' picker).
 	await select('Scroll or form').selectOption({ label: 'Other…' });

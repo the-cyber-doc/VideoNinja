@@ -41,7 +41,7 @@ const pick = (steps: [keyof Place, string][], start = { place: EMPTY, others: no
 	steps.reduce((s, [step, value]) => choose(CATALOG, s.place, s.others, step, value), start);
 
 describe('choose', () => {
-	it('a single choice filled in, as far as it goes', () => {
+	it("a single choice filled in, as far as it goes (categories and weapons: the school's own)", () => {
 		const { place, others } = pick([['school', 'gyokko']]);
 		expect(place).toEqual({ ...EMPTY, school: 'gyokko', category: 'taijutsu', section: 'gyokko.taijutsu.jo_ryaku' });
 		expect(anyOther(others)).toBe(false);
@@ -100,9 +100,27 @@ describe('choices and open', () => {
 			[]
 		]);
 		expect(choices(CATALOG, EMPTY, noOthers()).categories).toEqual([]); // no school yet
-		expect(ids(choices(CATALOG, { ...EMPTY, school: 'togakure', category: 'buki' }, noOthers()).weapons)).toEqual([
-			'hanbo'
-		]);
+	});
+
+	it('an existing school: every category, every weapon under Buki, its own sections only', () => {
+		const gyokko = choices(CATALOG, { ...EMPTY, school: 'gyokko' }, noOthers());
+		expect(ids(gyokko.categories)).toEqual(['taijutsu', 'muto_dori', 'buki']); // it has taijutsu only
+		const buki = { ...EMPTY, school: 'togakure', category: 'buki' };
+		expect(ids(choices(CATALOG, buki, noOthers()).weapons)).toEqual(['hanbo', 'jo']); // it teaches the hanbo
+		expect(choices(CATALOG, { ...buki, weapon: 'jo' }, noOthers()).sections).toEqual([]); // no scroll yet: Other
+		// Chosen: nothing preselected where the school has none of its own.
+		expect(
+			pick([
+				['school', 'gyokko'],
+				['category', 'buki']
+			]).place
+		).toEqual({ ...EMPTY, school: 'gyokko', category: 'buki' });
+		expect(
+			pick([
+				['school', 'gyokko'],
+				['category', 'muto_dori']
+			]).place
+		).toEqual({ ...EMPTY, school: 'gyokko', category: 'muto_dori' });
 	});
 
 	it('a step opens once the one above is chosen or new; a new category has no weapon', () => {

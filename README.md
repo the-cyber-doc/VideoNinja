@@ -617,8 +617,9 @@ server/.venv/bin/python tools/make-dev-db.py --force
 **Missing entries.** When the technique of a segment or a book annotation is not in the
 catalogue, **Other…** at any step of the technique's choice (school, category, weapon,
 scroll, technique) names it: romaji required, kanji optional. What sits under a new entry
-is new too (a new scroll has no techniques yet); categories and weapons, shared by every
-school, stay choosable under a new school. **Add to the catalogue** creates them at once
+is new too (a new scroll has no techniques yet). Every category and every weapon can be
+chosen for any school (they are shared): a school's first scroll in a category or with a
+weapon it has none in yet is then a new scroll. **Add to the catalogue** creates them at once
 (anyone who uploads, manages videos or manages books): they appear like any other entry,
 a question mark in place of the emblem, until an administrator resolves them on the
 **Options** page. Their IDs are made from the romaji (`Kotō Gake` → `koto_gake`). They
