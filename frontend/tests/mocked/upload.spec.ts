@@ -313,12 +313,12 @@ test('choosing a technique: one select per step, a weapon only under Buki', asyn
 	const options = (label: string) => select(label).locator('option').allTextContents();
 
 	await select('School').selectOption('kukishinden');
-	expect(await options('Category')).toEqual(['Choose…', 'Taijutsu', 'Buki']);
+	expect(await options('Category')).toEqual(['Choose…', 'Taijutsu', 'Buki', 'Other…']);
 	await expect(select('Weapon')).toHaveCount(0);
 	await expect(select('Scroll or form')).toBeDisabled();
 
 	await select('Category').selectOption('buki');
-	expect(await options('Weapon')).toEqual(['Choose…', 'Rokushakubo', 'Hanbo']);
+	expect(await options('Weapon')).toEqual(['Choose…', 'Rokushakubo', 'Hanbo', 'Other…']);
 	await select('Weapon').selectOption('rokushakubo');
 	// A single section and a single technique: filled in.
 	await expect(select('Scroll or form')).toHaveValue('kukishinden.buki.rokushakubo.shoden');
@@ -339,6 +339,12 @@ test('choosing a technique: one select per step, a weapon only under Buki', asyn
 	await expect(select('Category')).toHaveValue('taijutsu');
 	await expect(select('Scroll or form')).toHaveValue('');
 	await expect(select('Technique')).toBeDisabled();
+
+	// A scroll the catalogue lacks: named here, its technique new too (segments share the books' picker).
+	await select('Scroll or form').selectOption({ label: 'Other…' });
+	await expect(select('Technique')).toBeDisabled();
+	await expect(segment.locator('[data-new]')).toHaveCount(2);
+	await expect(segment.getByRole('button', { name: 'Add to the catalogue' })).toBeDisabled();
 });
 
 test('in French: the steps of the technique', async ({ page }) => {

@@ -79,3 +79,13 @@ export type TagDefinitionIn = Schemas['TagDefinitionIn'];
 export type TagValueDefinition = Schemas['TagValueDefinition'];
 export type TagValueIn = Schemas['TagValueIn'];
 export type SearchHits = Schemas['SearchOut'];
+
+// Catalogue entries proposed with "Other" (the technique picker), resolved on the Options page.
+export type ProposalIn = Schemas['ProposalIn'];
+export type ProposalStep = Schemas['Step'];
+export type ProposalOut = Schemas['ProposalOut'];
+/** An entry created by a proposal, as the catalogue snapshot has it. */
+export type CreatedEntry = Schemas['Created'];
+export type ProposedEntry = Schemas['ProposedEntry'];
+export type ProposedKind = ProposedEntry['kind'];
+export type EntryEdit = Schemas['EntryEdit'];

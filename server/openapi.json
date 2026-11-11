@@ -893,6 +893,86 @@
         "title": "CreateIn",
         "type": "object"
       },
+      "Created": {
+        "description": "An entry as the catalogue snapshot has it (the frontend adds it to its copy).",
+        "properties": {
+          "category": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "kanji": {
+            "title": "Kanji",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "school",
+              "category",
+              "weapon",
+              "section",
+              "technique"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "romaji": {
+            "title": "Romaji",
+            "type": "string"
+          },
+          "ryu": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ryu"
+          },
+          "section": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Section"
+          },
+          "weapon": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Weapon"
+          }
+        },
+        "required": [
+          "kind",
+          "id",
+          "kanji",
+          "romaji"
+        ],
+        "title": "Created",
+        "type": "object"
+      },
       "Date": {
         "additionalProperties": false,
         "description": "CSL's date: {\"date-parts\": [[year, month?, day?]]} (one date, no range).",
@@ -916,6 +996,47 @@
           "date-parts"
         ],
         "title": "Date",
+        "type": "object"
+      },
+      "EntryEdit": {
+        "properties": {
+          "descriptions": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "default": {},
+            "title": "Descriptions",
+            "type": "object"
+          },
+          "kanji": {
+            "default": "",
+            "maxLength": 64,
+            "title": "Kanji",
+            "type": "string"
+          },
+          "name": {
+            "maxLength": 40,
+            "minLength": 1,
+            "pattern": "^[a-z0-9_]+$",
+            "title": "Name",
+            "type": "string"
+          },
+          "parents": {
+            "$ref": "#/components/schemas/Parents",
+            "default": {}
+          },
+          "romaji": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Romaji",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "romaji"
+        ],
+        "title": "EntryEdit",
         "type": "object"
       },
       "ExistsOut": {
@@ -1035,6 +1156,19 @@
         "title": "LoginIn",
         "type": "object"
       },
+      "MergeIn": {
+        "properties": {
+          "into": {
+            "title": "Into",
+            "type": "string"
+          }
+        },
+        "required": [
+          "into"
+        ],
+        "title": "MergeIn",
+        "type": "object"
+      },
       "Name": {
         "additionalProperties": false,
         "description": "A person or an organisation: family + given (inverted in the bibliography), or\na literal name shown as is (an organisation, a single name, a Japanese name written\nfamily name first: \"Hatsumi Masaaki\").",
@@ -1096,6 +1230,27 @@
         "title": "NameIn",
         "type": "object"
       },
+      "NewEntry": {
+        "properties": {
+          "kanji": {
+            "default": "",
+            "maxLength": 64,
+            "title": "Kanji",
+            "type": "string"
+          },
+          "romaji": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Romaji",
+            "type": "string"
+          }
+        },
+        "required": [
+          "romaji"
+        ],
+        "title": "NewEntry",
+        "type": "object"
+      },
       "PageHit": {
         "properties": {
           "book": {
@@ -1117,6 +1272,65 @@
           "snippet"
         ],
         "title": "PageHit",
+        "type": "object"
+      },
+      "Parents": {
+        "description": "A section's school, category and weapon, or a technique's section (the others: none).",
+        "properties": {
+          "category": {
+            "anyOf": [
+              {
+                "maxLength": 96,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category"
+          },
+          "ryu": {
+            "anyOf": [
+              {
+                "maxLength": 96,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ryu"
+          },
+          "section": {
+            "anyOf": [
+              {
+                "maxLength": 96,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Section"
+          },
+          "weapon": {
+            "anyOf": [
+              {
+                "maxLength": 96,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Weapon"
+          }
+        },
+        "title": "Parents",
         "type": "object"
       },
       "PasswordIn": {
@@ -1171,6 +1385,184 @@
           "name"
         ],
         "title": "PerformerIn",
+        "type": "object"
+      },
+      "ProposalIn": {
+        "properties": {
+          "category": {
+            "$ref": "#/components/schemas/Step"
+          },
+          "school": {
+            "$ref": "#/components/schemas/Step"
+          },
+          "section": {
+            "$ref": "#/components/schemas/Step"
+          },
+          "technique": {
+            "$ref": "#/components/schemas/Step"
+          },
+          "weapon": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Step"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "school",
+          "category",
+          "section",
+          "technique"
+        ],
+        "title": "ProposalIn",
+        "type": "object"
+      },
+      "ProposalOut": {
+        "properties": {
+          "created": {
+            "items": {
+              "$ref": "#/components/schemas/Created"
+            },
+            "title": "Created",
+            "type": "array"
+          },
+          "technique": {
+            "title": "Technique",
+            "type": "string"
+          }
+        },
+        "required": [
+          "technique",
+          "created"
+        ],
+        "title": "ProposalOut",
+        "type": "object"
+      },
+      "ProposedEntry": {
+        "properties": {
+          "category": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category"
+          },
+          "children": {
+            "title": "Children",
+            "type": "integer"
+          },
+          "descriptions": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Descriptions",
+            "type": "object"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "kanji": {
+            "title": "Kanji",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "school",
+              "category",
+              "weapon",
+              "section",
+              "technique"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "proposed_at": {
+            "title": "Proposed At",
+            "type": "string"
+          },
+          "proposed_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Proposed By"
+          },
+          "romaji": {
+            "title": "Romaji",
+            "type": "string"
+          },
+          "ryu": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ryu"
+          },
+          "section": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Section"
+          },
+          "used": {
+            "title": "Used",
+            "type": "integer"
+          },
+          "weapon": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Weapon"
+          }
+        },
+        "required": [
+          "kind",
+          "id",
+          "name",
+          "kanji",
+          "romaji",
+          "ryu",
+          "category",
+          "weapon",
+          "section",
+          "descriptions",
+          "used",
+          "children",
+          "proposed_by",
+          "proposed_at"
+        ],
+        "title": "ProposedEntry",
         "type": "object"
       },
       "Reference": {
@@ -1815,6 +2207,36 @@
           "initialized"
         ],
         "title": "SetupStatusOut",
+        "type": "object"
+      },
+      "Step": {
+        "description": "One step of the picker: an existing entry (`id`) or a new one (`new`).",
+        "properties": {
+          "id": {
+            "anyOf": [
+              {
+                "maxLength": 96,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id"
+          },
+          "new": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/NewEntry"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "title": "Step",
         "type": "object"
       },
       "SubmitIn": {
@@ -2799,6 +3221,357 @@
         "summary": "About",
         "tags": [
           "about"
+        ]
+      }
+    },
+    "/api/admin/proposals": {
+      "get": {
+        "description": "Every proposed entry: schools, categories, weapons, sections, then techniques; oldest first in each.",
+        "operationId": "list_proposals_api_admin_proposals_get",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "time-zone",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Time-Zone"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ProposedEntry"
+                  },
+                  "title": "Response List Proposals Api Admin Proposals Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "An error (core/errors.py: ERRORS)"
+          }
+        },
+        "summary": "List Proposals",
+        "tags": [
+          "catalog proposals"
+        ]
+      }
+    },
+    "/api/admin/proposals/{kind}/{entry_id}": {
+      "delete": {
+        "description": "Only while nothing uses it nor sits under it.",
+        "operationId": "delete_proposal_api_admin_proposals__kind___entry_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "kind",
+            "required": true,
+            "schema": {
+              "enum": [
+                "school",
+                "category",
+                "weapon",
+                "section",
+                "technique"
+              ],
+              "title": "Kind",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "entry_id",
+            "required": true,
+            "schema": {
+              "title": "Entry Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "time-zone",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Time-Zone"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "An error (core/errors.py: ERRORS)"
+          }
+        },
+        "summary": "Delete Proposal",
+        "tags": [
+          "catalog proposals"
+        ]
+      },
+      "put": {
+        "description": "Its name (a new one renames it and everything under it, everywhere), names, parent, meanings.",
+        "operationId": "edit_proposal_api_admin_proposals__kind___entry_id__put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "kind",
+            "required": true,
+            "schema": {
+              "enum": [
+                "school",
+                "category",
+                "weapon",
+                "section",
+                "technique"
+              ],
+              "title": "Kind",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "entry_id",
+            "required": true,
+            "schema": {
+              "title": "Entry Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "time-zone",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Time-Zone"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EntryEdit"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProposedEntry"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "An error (core/errors.py: ERRORS)"
+          }
+        },
+        "summary": "Edit Proposal",
+        "tags": [
+          "catalog proposals"
+        ]
+      }
+    },
+    "/api/admin/proposals/{kind}/{entry_id}/merge": {
+      "post": {
+        "description": "Into an existing entry of the same kind: its uses and what is under it move there.",
+        "operationId": "merge_proposal_api_admin_proposals__kind___entry_id__merge_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "kind",
+            "required": true,
+            "schema": {
+              "enum": [
+                "school",
+                "category",
+                "weapon",
+                "section",
+                "technique"
+              ],
+              "title": "Kind",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "entry_id",
+            "required": true,
+            "schema": {
+              "title": "Entry Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "time-zone",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Time-Zone"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MergeIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "An error (core/errors.py: ERRORS)"
+          }
+        },
+        "summary": "Merge Proposal",
+        "tags": [
+          "catalog proposals"
+        ]
+      }
+    },
+    "/api/admin/proposals/{kind}/{entry_id}/validate": {
+      "post": {
+        "description": "An ordinary entry from now on (its parents validated first).",
+        "operationId": "validate_proposal_api_admin_proposals__kind___entry_id__validate_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "kind",
+            "required": true,
+            "schema": {
+              "enum": [
+                "school",
+                "category",
+                "weapon",
+                "section",
+                "technique"
+              ],
+              "title": "Kind",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "entry_id",
+            "required": true,
+            "schema": {
+              "title": "Entry Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "time-zone",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Time-Zone"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "An error (core/errors.py: ERRORS)"
+          }
+        },
+        "summary": "Validate Proposal",
+        "tags": [
+          "catalog proposals"
         ]
       }
     },
@@ -4552,6 +5325,66 @@
         "summary": "Get Catalog",
         "tags": [
           "catalog"
+        ]
+      }
+    },
+    "/api/catalog/proposals": {
+      "post": {
+        "description": "The new steps of a technique's place, created as proposed entries.",
+        "operationId": "propose_api_catalog_proposals_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "time-zone",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Time-Zone"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProposalIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProposalOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "An error (core/errors.py: ERRORS)"
+          }
+        },
+        "summary": "Propose",
+        "tags": [
+          "catalog proposals"
         ]
       }
     },

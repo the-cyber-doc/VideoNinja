@@ -950,3 +950,95 @@ test.describe('on a phone', () => {
 		expect(await scrollTop(scroller)).toBe(start);
 	});
 });
+
+// --- a technique the catalogue lacks: "Other…", named, added, then chosen ---
+
+test('the technique picker’s “Other…”: named, added to the catalogue as a proposal, then saved', async ({ page }) => {
+	const saved = await viewing(page, [annotationRow(5, SAVED_ROW)]);
+	await page.route('/api/catalog', (r) => r.fulfill({ json: CATALOG }));
+	const sent: unknown[] = [];
+	const NEW = 'gyokko.taijutsu.jo_ryaku.kote_gaeshi';
+	await page.route('/api/catalog/proposals', (r) => {
+		sent.push(r.request().postDataJSON());
+		return r.fulfill({
+			status: 201,
+			json: {
+				technique: NEW,
+				created: [
+					{
+						kind: 'technique',
+						id: NEW,
+						kanji: '小手返',
+						romaji: 'Kote Gaeshi',
+						ryu: null,
+						category: null,
+						weapon: null,
+						section: 'gyokko.taijutsu.jo_ryaku'
+					}
+				]
+			}
+		});
+	});
+	await page.goto('/books/7');
+	await pageBox(page);
+	const item = page.locator('section.annotations li[data-id="5"]');
+	await item.getByRole('button', { name: /Page 1/ }).click();
+	const technique = item.getByRole('combobox', { name: 'Technique', exact: true });
+	await expect(technique).toHaveValue(KOKU);
+
+	// A new school: the categories (shared) stay choosable, what is under it can only be new.
+	await item.getByLabel('School').selectOption({ label: 'Other…' });
+	await expect(item.getByLabel('Category')).toBeEnabled();
+	await expect(item.getByLabel('Scroll or form')).toBeDisabled();
+	await expect(technique).toBeDisabled();
+	await expect(item.locator('[data-new="technique"]')).toBeVisible();
+	await expect(item.getByRole('button', { name: 'Save' })).toBeDisabled(); // waits for the proposal
+
+	// Back to Gyokko; only the technique is new.
+	await item.getByLabel('School').selectOption('gyokko');
+	await expect(item.locator('[data-new]')).toHaveCount(0);
+	await item.getByRole('combobox', { name: 'Scroll or form' }).selectOption('gyokko.taijutsu.jo_ryaku');
+	await technique.selectOption({ label: 'Other…' });
+	const fields = item.locator('[data-new="technique"]');
+	const add = item.getByRole('button', { name: 'Add to the catalogue' });
+	await expect(add).toBeDisabled(); // no romaji yet
+	await fields.getByLabel('Kanji (optional)').fill('小手返');
+	await fields.getByLabel('Romaji').fill(' Kote Gaeshi ');
+	await add.click();
+	expect(sent).toEqual([
+		{
+			school: { id: 'gyokko' },
+			category: { id: 'taijutsu' },
+			section: { id: 'gyokko.taijutsu.jo_ryaku' },
+			technique: { new: { kanji: '小手返', romaji: 'Kote Gaeshi' } }
+		}
+	]);
+	// Chosen like any other, the form free again.
+	await expect(technique).toHaveValue(NEW);
+	await expect(technique.locator('option:checked')).toHaveText('Kote Gaeshi');
+	await expect(add).toHaveCount(0);
+	await item.getByRole('button', { name: 'Save' }).click();
+	await expect.poll(() => saved.changed.at(-1)?.body).toEqual({ technique: NEW });
+});
+
+test('“Add to the catalogue” refused: the reason said, the names kept', async ({ page }) => {
+	await viewing(page, [annotationRow(5, SAVED_ROW)]);
+	await page.route('/api/catalog', (r) => r.fulfill({ json: CATALOG }));
+	await page.route('/api/catalog/proposals', (r) =>
+		r.fulfill({
+			status: 409,
+			json: { code: 'catalog.id_taken', detail: 'x', params: { id: 'gyokko.taijutsu.jo_ryaku.kote' } }
+		})
+	);
+	await page.goto('/books/7');
+	await pageBox(page);
+	const item = page.locator('section.annotations li[data-id="5"]');
+	await item.getByRole('button', { name: /Page 1/ }).click();
+	await item.getByRole('combobox', { name: 'Technique', exact: true }).selectOption({ label: 'Other…' });
+	await item.locator('[data-new="technique"]').getByLabel('Romaji').fill('Kote');
+	await item.getByRole('button', { name: 'Add to the catalogue' }).click();
+	await expect(item.getByRole('alert')).toHaveText(
+		'An entry with the ID gyokko.taijutsu.jo_ryaku.kote exists already.'
+	);
+	await expect(item.locator('[data-new="technique"]').getByLabel('Romaji')).toHaveValue('Kote');
+});

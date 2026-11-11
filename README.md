@@ -614,6 +614,16 @@ python3 tools/catalog-sql.py
 server/.venv/bin/python tools/make-dev-db.py --force
 ```
 
+**Missing entries.** When the technique of a segment or a book annotation is not in the
+catalogue, **Other…** at any step of the technique's choice (school, category, weapon,
+scroll, technique) names it: romaji required, kanji optional. What sits under a new entry
+is new too (a new scroll has no techniques yet); categories and weapons, shared by every
+school, stay choosable under a new school. **Add to the catalogue** creates them at once
+(anyone who uploads, manages videos or manages books): they appear like any other entry,
+a question mark in place of the emblem, until an administrator resolves them on the
+**Options** page. Their IDs are made from the romaji (`Kotō Gake` → `koto_gake`). They
+live in the database only, not in `techniques.json`.
+
 Card emblems (background images): `frontend/src/lib/{schools,categories,weapons,sections}/emblems/<id>.svg`.
 A section uses the emblem of its name (`jo_ryaku.svg`), else of its kind
 (`shoden_omote` → `shoden.svg`, table in `$lib/sections/emblems.ts`); a unit
@@ -1283,6 +1293,15 @@ numbers, bounds. Changing an ID renames it everywhere (videos and segments
 included). A tag or value still used by a video or segment cannot be deleted,
 and a new format or rule that values already stored would not follow is
 refused (the count is shown).
+**Proposed entries:** every entry added with **Other…**, with who proposed it, how often it
+is used and what sits under it. An administrator corrects its name in the ID (the whole
+ID is shown as it will be), kanji, romaji, place (a scroll's school, category and weapon;
+a technique's scroll) and meanings in every language, then **Validate**s it (its parents
+first): from then on it is an ordinary entry. A new name or place renames it everywhere:
+what sits under it, the segments, book annotations and comments that use it. **Merge**
+moves everything that uses it or sits under it into an existing entry of the same kind
+(entries of the same name under both are merged in turn), then deletes it; **Delete**
+only takes an entry nothing uses.
 
 **Videos** (top menu, right of Books, or of Upload without it; `video_mgmt` access) lists every
 published video in four collapsible sections: **In progress** (some
@@ -1715,7 +1734,8 @@ journalctl -t docker-videoninja-encoder -o cat | jq -c 'select(.video_id == 42)'
 `video.deleted`, `book.submitted`, `book.deleted`, `book.edited`, `book_annotation.created`,
 `book_annotation.edited`, `book_annotation.deleted`, `annotations.saved`, `comment.created`, `comment.edited`,
 `comment.deleted`, `tag.created`, `tag.saved` (`previous_id`: renamed when it
-differs), `tag.deleted`. Refusals and failures are warnings, the rest info. They carry
+differs), `tag.deleted`, `catalog.proposed` (`ids`), `catalog.edited` (`kind`, `id`, `previous_id`),
+`catalog.validated`, `catalog.merged` (`into`), `catalog.deleted`. Refusals and failures are warnings, the rest info. They carry
 who (`user_id`) and what (`target_user_id`, `video_id`, `comment_id`…), never a
 password, token or TOTP secret.
 

@@ -36,6 +36,16 @@
 	let saving = $state(false);
 	let error = $state<unknown>(null);
 
+	// A newer catalogue (an entry proposed in a segment's picker, the server's next snapshot): shown,
+	// the annotation in progress kept (only the first load builds it, below).
+	$effect(() => {
+		loadCatalog().then(
+			(c) => {
+				if (catalog) catalog = c;
+			},
+			() => {}
+		);
+	});
 	$effect(() => {
 		if (!allowed) {
 			goto(url('/'), { replace: true });

@@ -218,6 +218,41 @@
 	},
 	"error.tag.no_value": { "en": "{tag} takes no value.", "fr": "{tag} ne prend pas de valeur." },
 	"error.tag.missing_value": { "en": "{tag}: a value is needed.", "fr": "{tag} : une valeur est nécessaire." },
+	"error.catalog.unknown": { "en": "Unknown entry: {id}", "fr": "Entrée inconnue : {id}" },
+	"error.catalog.not_found": { "en": "Unknown entry: {id}", "fr": "Entrée inconnue : {id}" },
+	"error.catalog.mismatch": {
+		"en": "{id} is not under the entries chosen before it.",
+		"fr": "{id} n’est pas sous les entrées choisies avant elle."
+	},
+	"error.catalog.weapon": {
+		"en": "A weapon is needed under Buki, and only there.",
+		"fr": "Une arme est nécessaire sous Buki, et seulement là."
+	},
+	"error.catalog.id_taken": {
+		"en": "An entry with the ID {id} exists already.",
+		"fr": "Une entrée avec l’identifiant {id} existe déjà."
+	},
+	"error.catalog.not_proposed": {
+		"en": "{id} is not a proposed entry (validated already?).",
+		"fr": "{id} n’est pas une entrée proposée (déjà validée ?)."
+	},
+	"error.catalog.in_use": {
+		"en": "{id} is used {count} time(s): merge it instead.",
+		"fr": "{id} est utilisée {count} fois : fusionnez-la plutôt."
+	},
+	"error.catalog.has_children": {
+		"en": "{id} still has {count} entr(y/ies) under it.",
+		"fr": "{id} a encore {count} entrée(s) en dessous."
+	},
+	"error.catalog.parent_proposed": { "en": "Validate {parent} first.", "fr": "Validez d’abord {parent}." },
+	"error.catalog.merge_self": {
+		"en": "An entry cannot be merged into itself.",
+		"fr": "Une entrée ne peut pas être fusionnée avec elle-même."
+	},
+	"error.catalog.id_too_long": {
+		"en": "The ID would be too long: {id}",
+		"fr": "L’identifiant serait trop long : {id}"
+	},
 	"error.tag.not_found": {
 		"en": "Unknown tag: {tag}. Reload the page.",
 		"fr": "Étiquette inconnue : {tag}. Rechargez la page."
@@ -1037,6 +1072,19 @@
 	"upload.segment.section": { "en": "Scroll or form", "fr": "Rouleau ou forme" },
 	"upload.segment.technique": { "en": "Technique", "fr": "Technique" },
 	"upload.segment.performer": { "en": "Performer", "fr": "Exécutant" },
+	"picker.other": { "en": "Other…", "fr": "Autre…" },
+	"picker.new": { "en": "{step}: a new entry", "fr": "{step} : une nouvelle entrée" },
+	"picker.romaji": { "en": "Romaji", "fr": "Romaji" },
+	"picker.kanji": { "en": "Kanji (optional)", "fr": "Kanji (facultatif)" },
+	"picker.add": { "en": "Add to the catalogue", "fr": "Ajouter au catalogue" },
+	"picker.add_hint": {
+		"en": "Shown at once with a question mark; an administrator reviews it on the Options page.",
+		"fr": "Affichée aussitôt avec un point d’interrogation ; un administrateur la vérifie dans la page Options."
+	},
+	"catalog.proposed": {
+		"en": "Proposed by a user, not validated yet",
+		"fr": "Proposée par un utilisateur, pas encore validée"
+	},
 	"upload.segment.choose": { "en": "Choose…", "fr": "Choisir…" },
 	"upload.segment.add_performer": { "en": "Add a performer…", "fr": "Ajouter un exécutant…" },
 	"upload.segment.performer_name": { "en": "Performer's name", "fr": "Nom de l'exécutant" },
@@ -1125,6 +1173,68 @@
 		"fr": "L'envoi a échoué. {error} Relancez pour continuer là où il s'est arrêté."
 	},
 	"options.title": { "en": "Options", "fr": "Options" },
+	"options.proposals.title": { "en": "Proposed entries", "fr": "Entrées proposées" },
+	"options.proposals.hint": {
+		"en": "Schools, categories, weapons, scrolls and techniques users added with “Other”: correct them (down to their IDs), then validate them, merge them into an existing entry, or delete them while unused.",
+		"fr": "Écoles, catégories, armes, rouleaux et techniques ajoutés par les utilisateurs avec « Autre » : corrigez-les (jusqu’à leur identifiant), puis validez-les, fusionnez-les avec une entrée existante, ou supprimez-les tant qu’ils ne servent pas."
+	},
+	"options.proposals.none": { "en": "No proposed entry.", "fr": "Aucune entrée proposée." },
+	"options.proposals.kind.school": { "en": "School", "fr": "École" },
+	"options.proposals.kind.category": { "en": "Category", "fr": "Catégorie" },
+	"options.proposals.kind.weapon": { "en": "Weapon", "fr": "Arme" },
+	"options.proposals.kind.section": { "en": "Scroll or form", "fr": "Rouleau ou forme" },
+	"options.proposals.kind.technique": { "en": "Technique", "fr": "Technique" },
+	"options.proposals.name": { "en": "Name in the ID", "fr": "Nom dans l’identifiant" },
+	"options.proposals.name_hint": {
+		"en": "Lowercase letters, digits and _ ({max} at most). Its ID:",
+		"fr": "Lettres minuscules, chiffres et _ ({max} au plus). Son identifiant :"
+	},
+	"options.proposals.romaji": { "en": "Romaji", "fr": "Romaji" },
+	"options.proposals.kanji": { "en": "Kanji", "fr": "Kanji" },
+	"options.proposals.meaning_in": { "en": "Meaning ({lang})", "fr": "Sens ({lang})" },
+	"options.proposals.used": { "en": "Used {n} time(s)", "fr": "Utilisée {n} fois" },
+	"options.proposals.children": { "en": "{n} entr(y/ies) under it", "fr": "{n} entrée(s) en dessous" },
+	"options.proposals.by": { "en": "Proposed by {name}, {date}", "fr": "Proposée par {name}, le {date}" },
+	"options.proposals.unsaved": { "en": "Not saved", "fr": "Non enregistrée" },
+	"options.proposals.save": { "en": "Save", "fr": "Enregistrer" },
+	"options.proposals.validate": { "en": "Validate", "fr": "Valider" },
+	"options.proposals.validate_hint": {
+		"en": "Save the changes first.",
+		"fr": "Enregistrez d’abord les modifications."
+	},
+	"options.proposals.merge_into": { "en": "Merge into", "fr": "Fusionner avec" },
+	"options.proposals.merge": { "en": "Merge", "fr": "Fusionner" },
+	"options.proposals.merge_confirm": {
+		"en": "Merge {name} into {into}? What uses it and what is under it move there; it is then deleted.",
+		"fr": "Fusionner {name} avec {into} ? Ce qui l’utilise et ce qui est en dessous y passe ; elle est ensuite supprimée."
+	},
+	"options.proposals.delete": { "en": "Delete", "fr": "Supprimer" },
+	"options.proposals.delete_confirm": { "en": "Delete {name}?", "fr": "Supprimer {name} ?" },
+	"options.proposals.delete_hint": {
+		"en": "Used, or entries under it: merge it instead.",
+		"fr": "Utilisée, ou des entrées en dessous : fusionnez-la plutôt."
+	},
+	"options.proposals.problem.name": {
+		"en": "The name in the ID: lowercase letters, digits and _ only.",
+		"fr": "Le nom dans l’identifiant : lettres minuscules, chiffres et _ seulement."
+	},
+	"options.proposals.problem.romaji": { "en": "The romaji is needed.", "fr": "Le romaji est nécessaire." },
+	"options.proposals.problem.parent": {
+		"en": "Choose where it belongs.",
+		"fr": "Choisissez où elle se range."
+	},
+	"options.proposals.problem.weapon": {
+		"en": "Under Buki, choose its weapon.",
+		"fr": "Sous Buki, choisissez son arme."
+	},
+	"options.proposals.problem.meaning": {
+		"en": "Give the English meaning too.",
+		"fr": "Donnez aussi le sens en anglais."
+	},
+	"options.proposals.done.saved": { "en": "{id} saved.", "fr": "{id} enregistrée." },
+	"options.proposals.done.validated": { "en": "{id} validated.", "fr": "{id} validée." },
+	"options.proposals.done.merged": { "en": "{id} merged.", "fr": "{id} fusionnée." },
+	"options.proposals.done.deleted": { "en": "{id} deleted.", "fr": "{id} supprimée." },
 	"options.tags.title": { "en": "Tags", "fr": "Étiquettes" },
 	"options.tags.hint": {
 		"en": "What videos and segments can be tagged with, and the value each tag takes.",

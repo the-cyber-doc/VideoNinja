@@ -35,6 +35,7 @@
 
 	// The selected annotation's fields, as edited (saved by their buttons, the picker at once).
 	let note = $state('');
+	let proposing = $state(false); // a technique being named with "Other": Save waits for it
 	let place = $state(emptyPlace());
 	let shownId = 0;
 	$effect(() => {
@@ -131,7 +132,7 @@
 						{#if catalog}
 							<fieldset class="technique-picker">
 								<legend>{t('books.annotations.technique')}</legend>
-								<TechniquePicker bind:place {catalog} required={false} />
+								<TechniquePicker bind:place {catalog} required={false} onproposing={(p) => (proposing = p)} />
 							</fieldset>
 						{/if}
 						<label>
@@ -142,7 +143,7 @@
 							<button
 								type="button"
 								class="secondary"
-								disabled={!Object.keys(changes(row)).length}
+								disabled={proposing || !Object.keys(changes(row)).length}
 								onclick={() => save(row)}
 							>
 								{t('books.annotations.save')}

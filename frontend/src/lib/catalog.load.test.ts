@@ -86,3 +86,70 @@ describe('loadCatalog', () => {
 		expect(await module.loadCatalog()).toEqual(version(2));
 	});
 });
+
+describe('addToCatalog', () => {
+	const created = [
+		{ kind: 'school' as const, id: 'kasumi', kanji: '', romaji: 'Kasumi' },
+		{ kind: 'category' as const, id: 'jutai', kanji: '柔', romaji: 'Jutai' },
+		{ kind: 'weapon' as const, id: 'fundo', kanji: '', romaji: 'Fundo' },
+		{
+			kind: 'section' as const,
+			id: 'kasumi.buki.fundo.k',
+			kanji: '',
+			romaji: 'K',
+			ryu: 'kasumi',
+			category: 'buki',
+			weapon: 'fundo'
+		},
+		{
+			kind: 'section' as const,
+			id: 'kasumi.jutai.k',
+			kanji: '',
+			romaji: 'K',
+			ryu: 'kasumi',
+			category: 'jutai',
+			weapon: null
+		},
+		{ kind: 'technique' as const, id: 'kasumi.jutai.k.t', kanji: '', romaji: 'T', section: 'kasumi.jutai.k' }
+	];
+	const empty = { schools: [], categories: [], weapons: [], sections: [], techniques: [], segments: [] } as Catalog;
+
+	it('each new entry in its list, marked proposed, in every loaded language', async () => {
+		server.getCatalog.mockImplementation(async (lang: string) => (lang === 'fr' ? { ...empty } : { ...empty }));
+		await module.loadCatalog();
+		await module.loadCatalogIn('fr');
+		server.getCatalog.mockRejectedValue(new Error('offline'));
+		await module.addToCatalog(created);
+		for (const c of [await module.loadCatalog(), await module.loadCatalogIn('fr')]) {
+			expect(c.schools).toEqual([{ id: 'kasumi', kanji: '', romaji: 'Kasumi', proposed: true }]);
+			expect(c.categories.map((x) => x.id)).toEqual(['jutai']);
+			expect(c.weapons.map((x) => x.id)).toEqual(['fundo']);
+			expect(c.sections).toEqual([
+				{
+					id: 'kasumi.buki.fundo.k',
+					kanji: '',
+					romaji: 'K',
+					proposed: true,
+					ryu: 'kasumi',
+					category: 'buki',
+					weapon: 'fundo'
+				},
+				{ id: 'kasumi.jutai.k', kanji: '', romaji: 'K', proposed: true, ryu: 'kasumi', category: 'jutai' }
+			]);
+			expect(c.techniques).toEqual([
+				{ id: 'kasumi.jutai.k.t', kanji: '', romaji: 'T', proposed: true, section: 'kasumi.jutai.k' }
+			]);
+		}
+		expect(empty.schools).toEqual([]); // the loaded copy is replaced, never changed
+	});
+
+	it('nothing created, or a catalogue that failed to load: left alone', async () => {
+		server.getCatalog.mockRejectedValueOnce(new Error('offline'));
+		const failing = module.loadCatalog();
+		await module.addToCatalog(created); // still loading, then failed: skipped
+		await expect(failing).rejects.toThrow('offline');
+		await module.addToCatalog([]);
+		server.getCatalog.mockResolvedValue(empty);
+		expect((await module.loadCatalog()).schools).toEqual([]);
+	});
+});

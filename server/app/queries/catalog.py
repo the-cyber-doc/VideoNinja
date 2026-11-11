@@ -7,11 +7,15 @@ from .rows import one
 
 
 # rowid order = insertion order (the seed lists everything in its traditional order).
-# Each row with its description in each language ("description_en", "description_fr").
+# Each row with its description in each language ("description_en", "description_fr") and "proposed"
+# (a user's "Other", not validated yet: domain/proposals.py).
 def _named(con: sqlite3.Connection, table: str, *columns: str) -> list[sqlite3.Row]:
     # Table and columns: this module's own names (the callers below), never input.
     names = "".join(f', x."{c}"' for c in ("id", "kanji", "romaji", *columns))[2:]
-    sql = f'SELECT {names}, t."en" AS "description_en", t."fr" AS "description_fr" FROM "{table}" x'  # nosec B608
+    sql = (
+        f'SELECT {names}, x."proposed_at" IS NOT NULL AS "proposed",'  # nosec B608
+        f' t."en" AS "description_en", t."fr" AS "description_fr" FROM "{table}" x'
+    )
     return con.execute(sql + ' LEFT JOIN "translation" t ON t."id" = x."description" ORDER BY x.rowid').fetchall()
 
 

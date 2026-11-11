@@ -2,7 +2,8 @@
 -- browser; book.text_pages: how many pages gave text, NULL until sent) and FTS5 indexes
 -- over it, over the book annotations' quotes and notes, and over the techniques' comments,
 -- kept in step by triggers (filled here from the existing rows). The comments on book
--- annotations go (the feature was removed), with their rows. The year tag gets its bounds
+-- annotations go (the feature was removed), with their rows. Catalogue entries can be
+-- proposed by users (proposed_by, proposed_at) until an admin validates them. The year tag gets its bounds
 -- (1950–2080) when an admin gave it none and every stored year fits.
 -- Run by the app at startup (app/db.py: migrate), after a backup of the database.
 
@@ -11,6 +12,18 @@ BEGIN;
 DROP TABLE "book_comment"; -- its indexes with it
 
 ALTER TABLE "book" ADD COLUMN "text_pages" INTEGER;
+
+-- Catalogue entries proposed by users ("Other"), until an admin validates them.
+ALTER TABLE "ryu" ADD COLUMN "proposed_by" INTEGER;
+ALTER TABLE "ryu" ADD COLUMN "proposed_at" DATETIME;
+ALTER TABLE "category" ADD COLUMN "proposed_by" INTEGER;
+ALTER TABLE "category" ADD COLUMN "proposed_at" DATETIME;
+ALTER TABLE "weapon" ADD COLUMN "proposed_by" INTEGER;
+ALTER TABLE "weapon" ADD COLUMN "proposed_at" DATETIME;
+ALTER TABLE "section" ADD COLUMN "proposed_by" INTEGER;
+ALTER TABLE "section" ADD COLUMN "proposed_at" DATETIME;
+ALTER TABLE "technique" ADD COLUMN "proposed_by" INTEGER;
+ALTER TABLE "technique" ADD COLUMN "proposed_at" DATETIME;
 
 -- The text of each page of a book (pages without text: no row), extracted by the browser
 -- (the server has no PDF parser), for the search.

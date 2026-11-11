@@ -13,6 +13,7 @@ const api = vi.hoisted(() => ({
 	listPerformers: vi.fn(),
 	listTags: vi.fn(),
 	listTagDefinitions: vi.fn(),
+	listProposals: vi.fn(),
 	uploadLimits: vi.fn(),
 	uploadsAvailable: vi.fn(),
 	listBooks: vi.fn(),
@@ -24,6 +25,7 @@ vi.mock('#lib/api/auth.js', () => ({ currentUser: api.currentUser }));
 vi.mock('#lib/api/users.js', () => ({ listUsers: api.listUsers, listRoles: api.listRoles }));
 vi.mock('#lib/api/performers.js', () => ({ listPerformers: api.listPerformers }));
 vi.mock('#lib/api/tags.js', () => ({ listTags: api.listTags, listTagDefinitions: api.listTagDefinitions }));
+vi.mock('#lib/api/proposals.js', () => ({ listProposals: api.listProposals }));
 vi.mock('#lib/api/uploads.js', () => ({ uploadLimits: api.uploadLimits, uploadsAvailable: api.uploadsAvailable }));
 vi.mock('#lib/api/books.js', () => ({
 	listBooks: api.listBooks,
@@ -99,17 +101,27 @@ describe('user management', () => {
 });
 
 describe('options page', () => {
-	it('the options access first, then every tag definition', async () => {
+	it('the options access first, then every tag definition and proposed entry', async () => {
 		api.listTagDefinitions.mockResolvedValue([{ id: 'year' }]);
-		expect(await optionsPage(event({ user: user('options') }).event)).toEqual({ tags: [{ id: 'year' }], error: null });
+		api.listProposals.mockResolvedValue([{ id: 'kote' }]);
+		expect(await optionsPage(event({ user: user('options') }).event)).toEqual({
+			tags: [{ id: 'year' }],
+			proposals: [{ id: 'kote' }],
+			error: null
+		});
 		expect(await redirectOf(optionsPage(event({ user: user('user_mgmt') }).event) as Promise<unknown>)).toBe('/');
 		expect(await redirectOf(optionsPage(event({ user: null }).event) as Promise<unknown>)).toBe('/');
 	});
 
-	it('a failed load: no tags and the error', async () => {
+	it('a failed load: no tags, no proposed entries, and the error', async () => {
 		const failed = new ApiError(500, 'internal');
 		api.listTagDefinitions.mockRejectedValue(failed);
-		expect(await optionsPage(event({ user: user('options') }).event)).toEqual({ tags: [], error: failed });
+		api.listProposals.mockResolvedValue([]);
+		expect(await optionsPage(event({ user: user('options') }).event)).toEqual({
+			tags: [],
+			proposals: [],
+			error: failed
+		});
 	});
 });
 

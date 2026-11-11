@@ -425,3 +425,51 @@ test('a segment published later shows without reloading the app', async ({ page 
 			.getByRole('button', { name: /Play the segment/ })
 	).toHaveCount(2);
 });
+
+test('entries proposed by users ("Other"): shown like the others, a question mark for their emblem', async ({
+	page
+}) => {
+	await loggedIn(page);
+	const proposed = {
+		...CATALOG,
+		schools: [...CATALOG.schools, { id: 'kasumi', kanji: '', romaji: 'Kasumi Ryu', proposed: true }],
+		sections: [
+			...CATALOG.sections,
+			{ id: 'gyokko.taijutsu.kihon', kanji: '', romaji: 'Kihon', ryu: 'gyokko', category: 'taijutsu', proposed: true }
+		],
+		techniques: [
+			...CATALOG.techniques,
+			{
+				id: 'gyokko.taijutsu.jo_ryaku.kote',
+				kanji: '小手',
+				romaji: 'Kote',
+				section: 'gyokko.taijutsu.jo_ryaku',
+				proposed: true
+			}
+		]
+	};
+	await page.route('/api/catalog', (r) => r.fulfill({ json: proposed }));
+	const question = await (async () => {
+		await page.goto('/schools');
+		const card = page.locator('[data-id="kasumi"]');
+		await expect(card).toHaveText('Kasumi Ryu'); // no kanji given: none shown
+		await expect(card).toHaveAttribute('title', 'Proposed by a user, not validated yet');
+		const image = await background(page, 'kasumi');
+		expect(image).toMatch(/^url\(/);
+		expect(image).not.toBe(await background(page, 'gyokko')); // not the school emblem (nor the generic one)
+		expect(image).not.toBe(await background(page, 'togakure'));
+		return image;
+	})();
+
+	await page.goto('/schools/gyokko/taijutsu');
+	expect(await background(page, 'gyokko.taijutsu.kihon')).toBe(question);
+	await expect(page.locator('[data-id="gyokko.taijutsu.jo_ryaku"]')).not.toHaveAttribute('data-proposed');
+
+	// Techniques have no emblem; a proposed one has the question mark.
+	await page.goto('/schools/gyokko/taijutsu/jo_ryaku');
+	await expect(cards(page)).toHaveText(['虚空 Koku', '闕倒 Keto', '小手 Kote']);
+	expect(await background(page, KOKU)).toBe('none');
+	expect(await background(page, 'gyokko.taijutsu.jo_ryaku.kote')).toBe(question);
+	await cards(page).last().click();
+	await expect(page).toHaveURL('/schools/gyokko/taijutsu/jo_ryaku/kote'); // its own page, like any other
+});

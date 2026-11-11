@@ -21,6 +21,90 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/proposals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Proposals
+         * @description Every proposed entry: schools, categories, weapons, sections, then techniques; oldest first in each.
+         */
+        get: operations["list_proposals_api_admin_proposals_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/proposals/{kind}/{entry_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Edit Proposal
+         * @description Its name (a new one renames it and everything under it, everywhere), names, parent, meanings.
+         */
+        put: operations["edit_proposal_api_admin_proposals__kind___entry_id__put"];
+        post?: never;
+        /**
+         * Delete Proposal
+         * @description Only while nothing uses it nor sits under it.
+         */
+        delete: operations["delete_proposal_api_admin_proposals__kind___entry_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/proposals/{kind}/{entry_id}/merge": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Merge Proposal
+         * @description Into an existing entry of the same kind: its uses and what is under it move there.
+         */
+        post: operations["merge_proposal_api_admin_proposals__kind___entry_id__merge_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/proposals/{kind}/{entry_id}/validate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Validate Proposal
+         * @description An ordinary entry from now on (its parents validated first).
+         */
+        post: operations["validate_proposal_api_admin_proposals__kind___entry_id__validate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/roles": {
         parameters: {
             query?: never;
@@ -455,6 +539,26 @@ export interface paths {
         get: operations["get_catalog_api_catalog_get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/catalog/proposals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Propose
+         * @description The new steps of a technique's place, created as proposed entries.
+         */
+        post: operations["propose_api_catalog_proposals_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1449,12 +1553,58 @@ export interface components {
             username: string;
         };
         /**
+         * Created
+         * @description An entry as the catalogue snapshot has it (the frontend adds it to its copy).
+         */
+        Created: {
+            /** Category */
+            category?: string | null;
+            /** Id */
+            id: string;
+            /** Kanji */
+            kanji: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "school" | "category" | "weapon" | "section" | "technique";
+            /** Romaji */
+            romaji: string;
+            /** Ryu */
+            ryu?: string | null;
+            /** Section */
+            section?: string | null;
+            /** Weapon */
+            weapon?: string | null;
+        };
+        /**
          * Date
          * @description CSL's date: {"date-parts": [[year, month?, day?]]} (one date, no range).
          */
         Date: {
             /** Date-Parts */
             "date-parts": number[][];
+        };
+        /** EntryEdit */
+        EntryEdit: {
+            /**
+             * Descriptions
+             * @default {}
+             */
+            descriptions: {
+                [key: string]: string;
+            };
+            /**
+             * Kanji
+             * @default
+             */
+            kanji: string;
+            /** Name */
+            name: string;
+            /** @default {} */
+            parents: components["schemas"]["Parents"];
+            /** Romaji */
+            romaji: string;
         };
         /** ExistsOut */
         ExistsOut: {
@@ -1508,6 +1658,11 @@ export interface components {
             /** Username */
             username: string;
         };
+        /** MergeIn */
+        MergeIn: {
+            /** Into */
+            into: string;
+        };
         /**
          * Name
          * @description A person or an organisation: family + given (inverted in the bibliography), or
@@ -1527,6 +1682,16 @@ export interface components {
             /** Name */
             name: string;
         };
+        /** NewEntry */
+        NewEntry: {
+            /**
+             * Kanji
+             * @default
+             */
+            kanji: string;
+            /** Romaji */
+            romaji: string;
+        };
         /** PageHit */
         PageHit: {
             /** Book */
@@ -1535,6 +1700,20 @@ export interface components {
             page: number;
             /** Snippet */
             snippet: string;
+        };
+        /**
+         * Parents
+         * @description A section's school, category and weapon, or a technique's section (the others: none).
+         */
+        Parents: {
+            /** Category */
+            category?: string | null;
+            /** Ryu */
+            ryu?: string | null;
+            /** Section */
+            section?: string | null;
+            /** Weapon */
+            weapon?: string | null;
         };
         /** PasswordIn */
         PasswordIn: {
@@ -1554,6 +1733,57 @@ export interface components {
         PerformerIn: {
             /** Name */
             name: string;
+        };
+        /** ProposalIn */
+        ProposalIn: {
+            category: components["schemas"]["Step"];
+            school: components["schemas"]["Step"];
+            section: components["schemas"]["Step"];
+            technique: components["schemas"]["Step"];
+            weapon?: components["schemas"]["Step"] | null;
+        };
+        /** ProposalOut */
+        ProposalOut: {
+            /** Created */
+            created: components["schemas"]["Created"][];
+            /** Technique */
+            technique: string;
+        };
+        /** ProposedEntry */
+        ProposedEntry: {
+            /** Category */
+            category: string | null;
+            /** Children */
+            children: number;
+            /** Descriptions */
+            descriptions: {
+                [key: string]: string;
+            };
+            /** Id */
+            id: string;
+            /** Kanji */
+            kanji: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "school" | "category" | "weapon" | "section" | "technique";
+            /** Name */
+            name: string;
+            /** Proposed At */
+            proposed_at: string;
+            /** Proposed By */
+            proposed_by: string | null;
+            /** Romaji */
+            romaji: string;
+            /** Ryu */
+            ryu: string | null;
+            /** Section */
+            section: string | null;
+            /** Used */
+            used: number;
+            /** Weapon */
+            weapon: string | null;
         };
         /**
          * Reference
@@ -1713,6 +1943,15 @@ export interface components {
         SetupStatusOut: {
             /** Initialized */
             initialized: boolean;
+        };
+        /**
+         * Step
+         * @description One step of the picker: an existing entry (`id`) or a new one (`new`).
+         */
+        Step: {
+            /** Id */
+            id?: string | null;
+            new?: components["schemas"]["NewEntry"] | null;
         };
         /** SubmitIn */
         SubmitIn: {
@@ -2030,6 +2269,175 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["AboutOut"];
                 };
+            };
+            /** @description An error (core/errors.py: ERRORS) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    list_proposals_api_admin_proposals_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "time-zone"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProposedEntry"][];
+                };
+            };
+            /** @description An error (core/errors.py: ERRORS) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    edit_proposal_api_admin_proposals__kind___entry_id__put: {
+        parameters: {
+            query?: never;
+            header?: {
+                "time-zone"?: string | null;
+            };
+            path: {
+                kind: "school" | "category" | "weapon" | "section" | "technique";
+                entry_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EntryEdit"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProposedEntry"];
+                };
+            };
+            /** @description An error (core/errors.py: ERRORS) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    delete_proposal_api_admin_proposals__kind___entry_id__delete: {
+        parameters: {
+            query?: never;
+            header?: {
+                "time-zone"?: string | null;
+            };
+            path: {
+                kind: "school" | "category" | "weapon" | "section" | "technique";
+                entry_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description An error (core/errors.py: ERRORS) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    merge_proposal_api_admin_proposals__kind___entry_id__merge_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "time-zone"?: string | null;
+            };
+            path: {
+                kind: "school" | "category" | "weapon" | "section" | "technique";
+                entry_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MergeIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description An error (core/errors.py: ERRORS) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    validate_proposal_api_admin_proposals__kind___entry_id__validate_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "time-zone"?: string | null;
+            };
+            path: {
+                kind: "school" | "category" | "weapon" | "section" | "technique";
+                entry_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description An error (core/errors.py: ERRORS) */
             default: {
@@ -2997,6 +3405,41 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+            /** @description An error (core/errors.py: ERRORS) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    propose_api_catalog_proposals_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "time-zone"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProposalIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProposalOut"];
                 };
             };
             /** @description An error (core/errors.py: ERRORS) */

@@ -22,6 +22,10 @@ CREATE TABLE IF NOT EXISTS "ryu" (
 	"kanji" VARCHAR NOT NULL,
 	"romaji" VARCHAR NOT NULL,
 	"description" VARCHAR,
+	-- Proposed by a user ("Other" in the technique picker) until an admin validates it
+	-- (the Options page): both NULL once validated (the seed's rows: always).
+	"proposed_by" INTEGER,
+	"proposed_at" DATETIME,
 	PRIMARY KEY("id"),
 	FOREIGN KEY ("description") REFERENCES "translation"("id")
 	ON UPDATE NO ACTION ON DELETE NO ACTION
@@ -36,6 +40,10 @@ CREATE TABLE IF NOT EXISTS "category" (
 	"kanji" VARCHAR NOT NULL,
 	"romaji" VARCHAR NOT NULL,
 	"description" VARCHAR,
+	-- Proposed by a user ("Other" in the technique picker) until an admin validates it
+	-- (the Options page): both NULL once validated (the seed's rows: always).
+	"proposed_by" INTEGER,
+	"proposed_at" DATETIME,
 	PRIMARY KEY("id"),
 	FOREIGN KEY ("description") REFERENCES "translation"("id")
 	ON UPDATE NO ACTION ON DELETE NO ACTION
@@ -46,6 +54,10 @@ CREATE TABLE IF NOT EXISTS "weapon" (
 	"kanji" VARCHAR NOT NULL,
 	"romaji" VARCHAR NOT NULL,
 	"description" VARCHAR,
+	-- Proposed by a user ("Other" in the technique picker) until an admin validates it
+	-- (the Options page): both NULL once validated (the seed's rows: always).
+	"proposed_by" INTEGER,
+	"proposed_at" DATETIME,
 	PRIMARY KEY("id"),
 	FOREIGN KEY ("description") REFERENCES "translation"("id")
 	ON UPDATE NO ACTION ON DELETE NO ACTION
@@ -60,6 +72,10 @@ CREATE TABLE IF NOT EXISTS "section" (
 	"kanji" VARCHAR NOT NULL,
 	"romaji" VARCHAR NOT NULL,
 	"description" VARCHAR,
+	-- Proposed by a user ("Other" in the technique picker) until an admin validates it
+	-- (the Options page): both NULL once validated (the seed's rows: always).
+	"proposed_by" INTEGER,
+	"proposed_at" DATETIME,
 	PRIMARY KEY("id"),
 	FOREIGN KEY ("ryu") REFERENCES "ryu"("id")
 	ON UPDATE NO ACTION ON DELETE NO ACTION,
@@ -77,6 +93,10 @@ CREATE TABLE IF NOT EXISTS "technique" (
 	"romaji" VARCHAR NOT NULL,
 	"section" VARCHAR NOT NULL,
 	"description" VARCHAR,
+	-- Proposed by a user ("Other" in the technique picker) until an admin validates it
+	-- (the Options page): both NULL once validated (the seed's rows: always).
+	"proposed_by" INTEGER,
+	"proposed_at" DATETIME,
 	PRIMARY KEY("id"),
 	FOREIGN KEY ("section") REFERENCES "section"("id")
 	ON UPDATE NO ACTION ON DELETE NO ACTION,

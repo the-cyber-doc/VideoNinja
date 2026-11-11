@@ -138,8 +138,8 @@ def clear_user_credentials(con: sqlite3.Connection, user_id: int) -> None:
 
 
 def give_to_deleted_user(con: sqlite3.Connection, user_id: int) -> None:
-    """The user's comments, segments, videos, books, book annotations and uploads, to the deleted
-    user (before deleting them)."""
+    """The user's comments, segments, videos, books, book annotations, uploads and proposed
+    catalogue entries, to the deleted user (before deleting them)."""
     for update in (
         'UPDATE "comment" SET "user" = ? WHERE "user" = ?',
         'UPDATE "segment" SET "created_by" = ? WHERE "created_by" = ?',
@@ -147,6 +147,10 @@ def give_to_deleted_user(con: sqlite3.Connection, user_id: int) -> None:
         'UPDATE "upload" SET "user" = ? WHERE "user" = ?',
         'UPDATE "book" SET "uploaded_by" = ? WHERE "uploaded_by" = ?',
         'UPDATE "book_annotation" SET "created_by" = ? WHERE "created_by" = ?',
+        *(
+            f'UPDATE "{t}" SET "proposed_by" = ? WHERE "proposed_by" = ?'  # nosec B608 - constant table names
+            for t in ("ryu", "category", "weapon", "section", "technique")
+        ),
     ):
         con.execute(update, (DELETED_USER_ID, user_id))
 

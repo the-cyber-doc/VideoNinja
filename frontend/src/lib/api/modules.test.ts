@@ -9,6 +9,7 @@ import { ApiError } from './client';
 import * as comments from './comments';
 import * as performers from './performers';
 import * as profile from './profile';
+import * as proposals from './proposals';
 import * as register from './register';
 import * as search from './search';
 import * as setup from './setup';
@@ -50,6 +51,60 @@ const TAG = {
 };
 
 const CALLS: [string, () => Promise<unknown>, string, string, unknown][] = [
+	[
+		'propose',
+		() =>
+			proposals.propose({
+				school: { id: 'gyokko' },
+				category: { id: 'taijutsu' },
+				section: { id: 'a.b.c' },
+				technique: { new: { kanji: '', romaji: 'Kote' } }
+			}),
+		'POST',
+		'/api/catalog/proposals',
+		{
+			school: { id: 'gyokko' },
+			category: { id: 'taijutsu' },
+			section: { id: 'a.b.c' },
+			technique: { new: { kanji: '', romaji: 'Kote' } }
+		}
+	],
+	['proposals', proposals.listProposals, 'GET', '/api/admin/proposals', undefined],
+	[
+		'edit a proposal',
+		() =>
+			proposals.editProposal('technique', 'a.b c', {
+				name: 'kote',
+				kanji: '',
+				romaji: 'Kote',
+				parents: { section: 'a.b.c' },
+				descriptions: { en: 'Wrist' }
+			}),
+		'PUT',
+		'/api/admin/proposals/technique/a.b%20c',
+		{ name: 'kote', kanji: '', romaji: 'Kote', parents: { section: 'a.b.c' }, descriptions: { en: 'Wrist' } }
+	],
+	[
+		'validate a proposal',
+		() => proposals.validateProposal('school', 'x'),
+		'POST',
+		'/api/admin/proposals/school/x/validate',
+		{}
+	],
+	[
+		'merge a proposal',
+		() => proposals.mergeProposal('section', 'a.b', 'a.c'),
+		'POST',
+		'/api/admin/proposals/section/a.b/merge',
+		{ into: 'a.c' }
+	],
+	[
+		'delete a proposal',
+		() => proposals.deleteProposal('weapon', 'w'),
+		'DELETE',
+		'/api/admin/proposals/weapon/w',
+		undefined
+	],
 	['about', about.getAbout, 'GET', '/api/about', undefined],
 	[
 		'login',

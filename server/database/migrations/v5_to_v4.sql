@@ -1,6 +1,6 @@
 -- Version 5 → 4: the search's full text goes (indexes, triggers, the books' page text:
 -- the browser sends it again after a migration up). The comments on book annotations
--- come back, empty (version 5 has none). The year tag's bounds stay: version 4
+-- come back, empty (version 5 has none). Proposed catalogue entries become ordinary ones. The year tag's bounds stay: version 4
 -- has them (an admin may have set them there).
 -- Run by the app at startup (app/db.py: migrate), after a backup of the database.
 
@@ -21,6 +21,18 @@ DROP TABLE "comment_fts";
 DROP TABLE "book_page";
 
 ALTER TABLE "book" DROP COLUMN "text_pages";
+
+-- Proposed catalogue entries stay, as ordinary ones (version 4 has no proposals).
+ALTER TABLE "ryu" DROP COLUMN "proposed_by";
+ALTER TABLE "ryu" DROP COLUMN "proposed_at";
+ALTER TABLE "category" DROP COLUMN "proposed_by";
+ALTER TABLE "category" DROP COLUMN "proposed_at";
+ALTER TABLE "weapon" DROP COLUMN "proposed_by";
+ALTER TABLE "weapon" DROP COLUMN "proposed_at";
+ALTER TABLE "section" DROP COLUMN "proposed_by";
+ALTER TABLE "section" DROP COLUMN "proposed_at";
+ALTER TABLE "technique" DROP COLUMN "proposed_by";
+ALTER TABLE "technique" DROP COLUMN "proposed_at";
 
 -- Comments on an annotation: the same rules as the techniques' (comment).
 CREATE TABLE IF NOT EXISTS "book_comment" (

@@ -3,6 +3,7 @@
 // usually a 304), so new segments show without reloading the app.
 // Same shape and IDs as the server's snapshot: nulls omitted, names stored once.
 import { getCatalog } from './api/catalog';
+import type { CreatedEntry } from './api/types';
 import { url } from './base';
 import { i18n, t, type Lang } from './i18n.svelte';
 import { onCatalogUpdated } from './pwa';
@@ -12,6 +13,8 @@ export interface School {
 	kanji: string;
 	romaji: string;
 	description?: string;
+	/** A user's ("Other" in the technique picker), not validated yet: "?" for its emblem. */
+	proposed?: true;
 }
 
 /** Taijutsu, Muto Dori, Buki (weapons). */
@@ -20,6 +23,8 @@ export interface Category {
 	kanji: string;
 	romaji: string;
 	description?: string;
+	/** A user's ("Other" in the technique picker), not validated yet: "?" for its emblem. */
+	proposed?: true;
 }
 
 export interface Weapon {
@@ -27,6 +32,8 @@ export interface Weapon {
 	kanji: string;
 	romaji: string;
 	description?: string;
+	/** A user's ("Other" in the technique picker), not validated yet: "?" for its emblem. */
+	proposed?: true;
 }
 
 /** A school's scroll or group (e.g. Jo Ryaku no Maki), in a category; under Buki, of a weapon.
@@ -39,6 +46,8 @@ export interface Section {
 	category: string;
 	weapon?: string;
 	description?: string;
+	/** A user's ("Other" in the technique picker), not validated yet: "?" for its emblem. */
+	proposed?: true;
 }
 
 /** ID: <section ID>.<name>. */
@@ -48,6 +57,8 @@ export interface Technique {
 	romaji: string;
 	section: string;
 	description?: string;
+	/** A user's ("Other" in the technique picker), not validated yet: "?" for its emblem. */
+	proposed?: true;
 }
 
 /** A part of a source video showing a technique; times in whole seconds. */
@@ -125,6 +136,40 @@ export function loadCatalogIn(lang: Lang): Promise<Catalog> {
 /** Ask the server again (now): e.g. one of my uploads was just published. */
 export function refreshCatalog() {
 	if (loaded.has(i18n.lang)) revalidate(i18n.lang);
+}
+
+/** The catalogue with entries a proposal just created (marked proposed), each where the
+ * server's snapshot puts it: at the end of its list. */
+export function withEntries(catalog: Catalog, created: CreatedEntry[]): Catalog {
+	const out: Catalog = {
+		...catalog,
+		schools: [...catalog.schools],
+		categories: [...catalog.categories],
+		weapons: [...catalog.weapons],
+		sections: [...catalog.sections],
+		techniques: [...catalog.techniques]
+	};
+	for (const { kind, id, kanji, romaji, ryu, category, weapon, section } of created) {
+		const named = { id, kanji, romaji, proposed: true as const };
+		if (kind === 'school') out.schools.push(named);
+		else if (kind === 'category') out.categories.push(named);
+		else if (kind === 'weapon') out.weapons.push(named);
+		else if (kind === 'section')
+			out.sections.push({ ...named, ryu: ryu!, category: category!, ...(weapon ? { weapon } : {}) });
+		else out.techniques.push({ ...named, section: section! });
+	}
+	return out;
+}
+
+/** A proposal's new entries, at once in every catalogue already loaded (the server's snapshot
+ * follows a moment later): the pages using one show them. */
+export async function addToCatalog(created: CreatedEntry[]) {
+	if (!created.length) return;
+	for (const [lang, catalog] of loaded) {
+		const current = await catalog.catch(() => null);
+		if (current) loaded.set(lang, Promise.resolve(withEntries(current, created)));
+	}
+	changes.count++;
 }
 
 /** Fetch in the background; replace the catalogue only if it changed. */

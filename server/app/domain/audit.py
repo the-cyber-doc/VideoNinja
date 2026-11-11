@@ -59,6 +59,11 @@ EVENTS: dict[str, int] = {
     "tag.created": INFO,
     "tag.saved": INFO,  # previous_id: its ID until then (renamed when different)
     "tag.deleted": INFO,
+    "catalog.proposed": INFO,  # ids: the entries created
+    "catalog.edited": INFO,  # kind, id, previous_id (renamed when different)
+    "catalog.validated": INFO,
+    "catalog.merged": INFO,  # kind, id, into
+    "catalog.deleted": INFO,
 }
 
 

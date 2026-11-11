@@ -1,10 +1,13 @@
 <script lang="ts">
 	// A school, category, weapon, section or technique: kanji, then romaji, centred,
-	// over an optional background image (emblem). With `href` the card's face is a
+	// over an optional background image (emblem; a question mark for an entry a user proposed,
+	// not validated yet: its kanji may be missing too). With `href` the card's face is a
 	// link. With `segments` (those of its branch), bottom right: whether they are
 	// saved on this device, and a button to download or remove them (OfflineToggle,
 	// beside the link: a button cannot be inside it).
 	import type { Segment } from '../catalog.svelte';
+	import { t } from '../i18n.svelte';
+	import proposedImage from './proposed.svg?url';
 	import { offline } from '../offline.svelte';
 	import OfflineToggle from '../OfflineToggle.svelte';
 
@@ -14,17 +17,24 @@
 		href,
 		segments
 	}: {
-		item: { id: string; kanji: string; romaji: string };
+		item: { id: string; kanji: string; romaji: string; proposed?: true };
 		image?: string;
 		href?: string;
 		segments?: Segment[];
 	} = $props();
+	const background = $derived(item.proposed ? proposedImage : image);
 </script>
 
-<div class="catalog-card" data-id={item.id} style:background-image={image ? `url("${image}")` : undefined}>
+<div
+	class="catalog-card"
+	data-id={item.id}
+	data-proposed={item.proposed}
+	title={item.proposed ? t('catalog.proposed') : undefined}
+	style:background-image={background ? `url("${background}")` : undefined}
+>
 	<!-- Quoted url(): small emblems are inlined as data: URLs, with quotes and parentheses. -->
 	<svelte:element this={href ? 'a' : 'div'} {href} class="face">
-		<span class="kanji" lang="ja">{item.kanji}</span>
+		{#if item.kanji}<span class="kanji" lang="ja">{item.kanji}</span>{/if}
 		<span class="romaji">{item.romaji}</span>
 	</svelte:element>
 	{#if segments?.length && offline.available}

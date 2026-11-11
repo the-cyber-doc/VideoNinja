@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { CATALOG } from '../catalog';
 
 // The Options page, API faked (the real one: tests/e2e/options.spec.ts).
 const ADMIN = { username: 'admin', name: 'Sensei', role: 'admin', access: ['segment', 'user_mgmt', 'options'] };
@@ -31,10 +32,12 @@ const YEAR = {
 	used: 0
 };
 
-async function open(page: Page, user: object = ADMIN, tags: object[] = [PLACE, YEAR]) {
+async function open(page: Page, user: object = ADMIN, tags: object[] = [PLACE, YEAR], proposals: object[] = []) {
 	await page.route('/api/setup/status', (r) => r.fulfill({ json: { initialized: true } }));
 	await page.route('/api/auth/me', (r) => r.fulfill({ json: user }));
 	await page.route('/api/admin/tags', (r) => r.fulfill({ json: tags }));
+	await page.route('/api/admin/proposals', (r) => r.fulfill({ json: proposals }));
+	await page.route('/api/catalog', (r) => r.fulfill({ json: CATALOG }));
 	await page.goto('/options');
 }
 
@@ -214,4 +217,57 @@ test('in French', async ({ page }) => {
 	await expect(year.getByLabel('Indication (Français)')).toHaveValue('Une année, par ex. 2024');
 	await year.getByLabel('Essayer une valeur').fill('99');
 	await expect(year.getByRole('status')).toHaveText("Année : la valeur n'a pas la forme attendue.");
+});
+
+// --- proposed catalogue entries (the whole flow on the real backend: tests/e2e/proposals.spec.ts) ---
+
+const KIHON = {
+	kind: 'section',
+	id: 'gyokko.taijutsu.kihon',
+	name: 'kihon',
+	kanji: '',
+	romaji: 'Kihon',
+	ryu: 'gyokko',
+	category: 'taijutsu',
+	weapon: null,
+	section: null,
+	descriptions: { en: '', fr: '' },
+	used: 0,
+	children: 1,
+	proposed_by: null,
+	proposed_at: '2026-11-10T10:00:00+01:00'
+};
+
+test('a proposed scroll: its parents, a weapon under Buki, its new ID; saved as a whole', async ({ page }) => {
+	await open(page, ADMIN, [PLACE], [KIHON]);
+	const bodies: unknown[] = [];
+	await page.route('/api/admin/proposals/section/*', (r) => {
+		bodies.push(r.request().postDataJSON());
+		return r.fulfill({ json: { ...KIHON, id: 'gyokko.buki.hanbo.kihon', category: 'buki', weapon: 'hanbo' } });
+	});
+	const entry = page.locator('details[data-key="section:gyokko.taijutsu.kihon"]');
+	await expect(entry.locator('summary')).toContainText('1 entr(y/ies) under it');
+	await entry.locator('summary').click();
+	await expect(entry).toContainText('Proposed by a deleted user');
+	await expect(entry.getByRole('button', { name: 'Delete' })).toBeDisabled(); // a technique under it
+	await expect(entry.getByLabel('Weapon')).toHaveCount(0);
+
+	await entry.getByLabel('Category').selectOption('buki');
+	await expect(entry.getByText('Under Buki, choose its weapon.')).toBeVisible();
+	await expect(entry.getByRole('button', { name: 'Save' })).toBeDisabled();
+	await entry.getByLabel('Weapon').selectOption('hanbo');
+	await expect(entry.locator('code').last()).toHaveText('gyokko.buki.hanbo.kihon');
+	await entry.getByLabel('Meaning (Français)').fill('Les bases');
+	await expect(entry.getByText('Give the English meaning too.')).toBeVisible();
+	await entry.getByLabel('Meaning (English)').fill('Basics');
+	await entry.getByRole('button', { name: 'Save' }).click();
+	expect(bodies).toEqual([
+		{
+			name: 'kihon',
+			kanji: '',
+			romaji: 'Kihon',
+			parents: { ryu: 'gyokko', category: 'buki', weapon: 'hanbo' },
+			descriptions: { en: 'Basics', fr: 'Les bases' }
+		}
+	]);
 });

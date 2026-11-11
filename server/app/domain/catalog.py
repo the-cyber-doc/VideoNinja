@@ -3,6 +3,8 @@ Buki), weapons, sections (a school's scrolls and groups), techniques, segments (
 their tags), the segments' performers, and every tag with its fixed values (names for
 the segments', videos' and books' tags; the client's search indexes every language's).
 
+Entries proposed by users and not validated yet are in it too, marked "proposed".
+
 Written to static files by `snapshot`, which also serves it. Same IDs as the
 database, nulls omitted, names stored once and referenced by ID.
 """
@@ -15,7 +17,9 @@ from ..core import i18n
 
 
 def _named(row: sqlite3.Row, lang: str) -> dict[str, Any]:
-    out = {"id": row["id"], "kanji": row["kanji"], "romaji": row["romaji"]}
+    out: dict[str, Any] = {"id": row["id"], "kanji": row["kanji"], "romaji": row["romaji"]}
+    if row["proposed"]:
+        out["proposed"] = True  # a user's, not validated yet (the frontend shows "?" for its emblem)
     description = i18n.pick(row, "description", lang)
     if description:
         out["description"] = description

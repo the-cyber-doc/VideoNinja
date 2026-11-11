@@ -45,6 +45,9 @@
 
 	onMount(() => {
 		if (page?.book.status === 'published') void page.load();
+	});
+	// The catalogue, and a newer one when it changes (an entry proposed in the panel).
+	$effect(() => {
 		loadCatalog().then(
 			(c) => (catalog = c),
 			() => {}

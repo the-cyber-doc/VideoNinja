@@ -105,6 +105,19 @@ ERRORS: dict[str, tuple[int, str]] = {
     "tag.regexp_invalid": (422, "Not a valid regular expression"),
     "tag.range_invalid": (422, "The minimum is above the maximum"),
     "tag.format_conflict": (422, "Tag {tag}: {count} stored values do not follow the new rule"),
+    # The catalogue's proposed entries ("Other" in the technique picker; the Options page:
+    # app/domain/proposals.py). kind: school, category, weapon, section or technique.
+    "catalog.unknown": (422, "Unknown {kind}: {id}"),
+    "catalog.not_found": (404, "Unknown {kind}: {id}"),
+    "catalog.mismatch": (422, "This {kind} is not under the one chosen before it: {id}"),
+    "catalog.weapon": (422, "A weapon is needed under Buki, and only there"),
+    "catalog.id_taken": (409, "An entry with this ID exists already: {id}"),
+    "catalog.not_proposed": (409, "Not a proposed entry: {id}"),
+    "catalog.in_use": (409, "{id} is used {count} times"),
+    "catalog.has_children": (409, "{id} still has {count} entries under it"),
+    "catalog.parent_proposed": (409, "Validate {parent} first"),
+    "catalog.merge_self": (422, "An entry cannot be merged into itself"),
+    "catalog.id_too_long": (422, "The ID would be too long: {id}"),
     # Request validation (pydantic): the first problem found
     "validation.missing": (422, "A value is missing"),
     "validation.too_short": (422, "A value is too short (at least {min_length})"),
