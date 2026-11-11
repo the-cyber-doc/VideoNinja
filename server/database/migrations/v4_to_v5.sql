@@ -1,29 +1,13 @@
 -- Version 4 → 5: the search's full text. The books' page text (book_page, sent by the
 -- browser; book.text_pages: how many pages gave text, NULL until sent) and FTS5 indexes
--- over it, over the book annotations' quotes and notes, and over the techniques' comments,
--- kept in step by triggers (filled here from the existing rows). The comments on book
--- annotations go (the feature was removed), with their rows. Catalogue entries can be
--- proposed by users (proposed_by, proposed_at) until an admin validates them. The year tag gets its bounds
+-- over it, over the book annotations' quotes and notes, and over the comments, kept in
+-- step by triggers (filled here from the existing rows). The year tag gets its bounds
 -- (1950–2080) when an admin gave it none and every stored year fits.
 -- Run by the app at startup (app/db.py: migrate), after a backup of the database.
 
 BEGIN;
 
-DROP TABLE "book_comment"; -- its indexes with it
-
 ALTER TABLE "book" ADD COLUMN "text_pages" INTEGER;
-
--- Catalogue entries proposed by users ("Other"), until an admin validates them.
-ALTER TABLE "ryu" ADD COLUMN "proposed_by" INTEGER;
-ALTER TABLE "ryu" ADD COLUMN "proposed_at" DATETIME;
-ALTER TABLE "category" ADD COLUMN "proposed_by" INTEGER;
-ALTER TABLE "category" ADD COLUMN "proposed_at" DATETIME;
-ALTER TABLE "weapon" ADD COLUMN "proposed_by" INTEGER;
-ALTER TABLE "weapon" ADD COLUMN "proposed_at" DATETIME;
-ALTER TABLE "section" ADD COLUMN "proposed_by" INTEGER;
-ALTER TABLE "section" ADD COLUMN "proposed_at" DATETIME;
-ALTER TABLE "technique" ADD COLUMN "proposed_by" INTEGER;
-ALTER TABLE "technique" ADD COLUMN "proposed_at" DATETIME;
 
 -- The text of each page of a book (pages without text: no row), extracted by the browser
 -- (the server has no PDF parser), for the search.
@@ -39,7 +23,7 @@ CREATE TABLE IF NOT EXISTS "book_page" (
 -- UNIQUE ("book", "page") is the index of its foreign key (book first).
 
 -- Full-text search (FTS5), over the books' pages, the book annotations' quotes and notes,
--- and the techniques' comments. Trigram tokenizer: any part of a word
+-- and the comments (techniques' and annotations'). Trigram tokenizer: any part of a word
 -- matches, in any script (Japanese has no spaces), accents and case ignored; terms of
 -- fewer than 3 characters are looked up with LIKE instead (app/domain/search.py).
 -- External content: the rows stay in their tables, the triggers below keep each index
@@ -52,6 +36,9 @@ CREATE VIRTUAL TABLE IF NOT EXISTS "book_annotation_fts" USING fts5(
 );
 CREATE VIRTUAL TABLE IF NOT EXISTS "comment_fts" USING fts5(
 	"text", content = 'comment', content_rowid = 'id', tokenize = 'trigram remove_diacritics 1'
+);
+CREATE VIRTUAL TABLE IF NOT EXISTS "book_comment_fts" USING fts5(
+	"text", content = 'book_comment', content_rowid = 'id', tokenize = 'trigram remove_diacritics 1'
 );
 
 CREATE TRIGGER IF NOT EXISTS "book_page_fts_insert" AFTER INSERT ON "book_page" BEGIN
@@ -89,9 +76,20 @@ CREATE TRIGGER IF NOT EXISTS "comment_fts_update" AFTER UPDATE OF "text" ON "com
 	INSERT INTO "comment_fts" ("rowid", "text") VALUES (new."id", new."text");
 END;
 
+CREATE TRIGGER IF NOT EXISTS "book_comment_fts_insert" AFTER INSERT ON "book_comment" BEGIN
+	INSERT INTO "book_comment_fts" ("rowid", "text") VALUES (new."id", new."text");
+END;
+CREATE TRIGGER IF NOT EXISTS "book_comment_fts_delete" AFTER DELETE ON "book_comment" BEGIN
+	INSERT INTO "book_comment_fts" ("book_comment_fts", "rowid", "text") VALUES ('delete', old."id", old."text");
+END;
+CREATE TRIGGER IF NOT EXISTS "book_comment_fts_update" AFTER UPDATE OF "text" ON "book_comment" BEGIN
+	INSERT INTO "book_comment_fts" ("book_comment_fts", "rowid", "text") VALUES ('delete', old."id", old."text");
+	INSERT INTO "book_comment_fts" ("rowid", "text") VALUES (new."id", new."text");
+END;
 
 INSERT INTO "book_annotation_fts" ("book_annotation_fts") VALUES ('rebuild');
 INSERT INTO "comment_fts" ("comment_fts") VALUES ('rebuild');
+INSERT INTO "book_comment_fts" ("book_comment_fts") VALUES ('rebuild');
 
 UPDATE "tag" SET "min_value" = 1950, "max_value" = 2080
 WHERE "id" = 'year' AND "value_format" = 'regexp' AND "min_value" IS NULL AND "max_value" IS NULL

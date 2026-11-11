@@ -327,9 +327,8 @@ def test_v4_brings_books_and_their_roles(database, monkeypatch):
 
 
 def test_v5_brings_the_full_text_search(database, monkeypatch):
-    """v4 → v5: existing annotations and comments indexed at once, the year tag bounded, the
-    comments on book annotations gone; the triggers keep the indexes in step. v5 → v4: the page
-    text goes, the comments on annotations come back empty, the bounds stay."""
+    """v4 → v5: existing annotations and comments indexed at once, the year tag bounded;
+    the triggers keep the indexes in step. v5 → v4: the page text goes, the bounds stay."""
     build(database, 4)
     sql(database, "INSERT INTO user (id, username, role) VALUES (5, 'kenji', 'user')")
     sql(
@@ -356,7 +355,7 @@ def test_v5_brings_the_full_text_search(database, monkeypatch):
     db.migrate()
     assert sql(database, "SELECT rowid FROM book_annotation_fts WHERE book_annotation_fts MATCH '\"dojo\"'") == [(1,)]
     assert sql(database, "SELECT rowid FROM comment_fts WHERE comment_fts MATCH '\"komyo\"'") == [(1,)]
-    assert sql(database, "SELECT name FROM sqlite_master WHERE name LIKE 'book_comment%'") == []
+    assert sql(database, "SELECT rowid FROM book_comment_fts WHERE book_comment_fts MATCH '\"scroll\"'") == [(1,)]
     assert sql(database, "SELECT min_value, max_value FROM tag WHERE id = 'year'") == [(1950, 2080)]
     assert sql(database, "SELECT text_pages FROM book") == [(None,)]
 
@@ -370,13 +369,15 @@ def test_v5_brings_the_full_text_search(database, monkeypatch):
     assert sql(database, "SELECT rowid FROM comment_fts WHERE comment_fts MATCH '\"komyo\"'") == []
     sql(database, "UPDATE book_annotation SET note = 'Hicho'")
     assert sql(database, "SELECT rowid FROM book_annotation_fts WHERE book_annotation_fts MATCH '\"kamae\"'") == []
+    sql(database, "UPDATE book_comment SET text = 'Another'")
+    assert sql(database, "SELECT rowid FROM book_comment_fts WHERE book_comment_fts MATCH '\"scroll\"'") == []
     sql(database, "DELETE FROM comment")
     con = sqlite3.connect(database)
     con.execute("PRAGMA foreign_keys = ON")
     with con:
-        con.execute("DELETE FROM book")  # cascades: pages, annotations
+        con.execute("DELETE FROM book")  # cascades: pages, annotations, their comments
     con.close()
-    for table in ("book_page_fts", "book_annotation_fts", "comment_fts"):
+    for table in ("book_page_fts", "book_annotation_fts", "comment_fts", "book_comment_fts"):
         assert sql(database, f"INSERT INTO {table} ({table}) VALUES ('integrity-check')") == []
         assert sql(database, f"SELECT count(*) FROM {table}") == [(0,)]
 
@@ -384,7 +385,6 @@ def test_v5_brings_the_full_text_search(database, monkeypatch):
     monkeypatch.setattr(db, "EXPECTED_VERSION", 4)
     db.migrate()
     assert sql(database, "SELECT min_value, max_value FROM tag WHERE id = 'year'") == [(1900, 2080)]
-    assert sql(database, "SELECT count(*) FROM book_comment") == [(0,)]
 
 
 @pytest.mark.parametrize(
@@ -406,3 +406,49 @@ def test_v5_bounds_the_year_only_when_it_can(database, monkeypatch, bounds, stor
     monkeypatch.setattr(db, "EXPECTED_VERSION", 5)
     db.migrate()
     assert sql(database, "SELECT min_value, max_value FROM tag WHERE id = 'year'") == [expected]
+
+
+def test_v6_drops_the_comments_on_annotations_and_brings_proposals(database, monkeypatch):
+    """v5 → v6: the comments on book annotations go (rows, index, triggers), the catalogue gets
+    its proposal columns (NULL: the seed's entries are validated). v6 → v5: the comments come
+    back empty and indexed again, proposed entries stay as ordinary ones."""
+    build(database, 5)
+    sql(database, "INSERT INTO user (id, username, role) VALUES (5, 'kenji', 'user')")
+    sql(
+        database,
+        "INSERT INTO book (sha256sum, original_filename, reference, uploaded_by, uploaded_at)"
+        " VALUES ('c', 'densho.pdf', '{}', 5, 'x')",
+    )
+    sql(
+        database,
+        "INSERT INTO book_annotation (book, page, kind, target, quote, note, created_by, created_at, modified_at)"
+        " VALUES (1, 3, 'text', '{}', 'Le dōjō', 'Kamae first', 5, 'x', 'x')",
+    )
+    sql(
+        database,
+        "INSERT INTO book_comment (annotation, user, lang, text, created_at, modified_at)"
+        " VALUES (1, 5, 'en', 'Also in the scroll', 'x', 'x')",
+    )
+    monkeypatch.setattr(db, "EXPECTED_VERSION", 6)
+    db.migrate()
+    assert sql(database, "SELECT name FROM sqlite_master WHERE name LIKE 'book_comment%'") == []
+    assert sql(database, "SELECT count(*) FROM book_annotation") == [(1,)]  # the annotation stays
+    for table in ("ryu", "category", "weapon", "section", "technique"):
+        assert sql(
+            database, f"SELECT count(*) FROM {table} WHERE proposed_by IS NOT NULL OR proposed_at IS NOT NULL"
+        ) == [(0,)]
+    sql(
+        database,
+        "INSERT INTO ryu (id, kanji, romaji, proposed_by, proposed_at) VALUES ('kasumi', '', 'Kasumi', 5, 'x')",
+    )
+
+    monkeypatch.setattr(db, "EXPECTED_VERSION", 5)
+    db.migrate()
+    assert sql(database, "SELECT id, romaji FROM ryu WHERE id = 'kasumi'") == [("kasumi", "Kasumi")]
+    assert sql(database, "SELECT count(*) FROM book_comment") == [(0,)]
+    sql(
+        database,
+        "INSERT INTO book_comment (annotation, user, lang, text, created_at, modified_at)"
+        " VALUES (1, 5, 'en', 'Back in the scroll', 'x', 'x')",
+    )
+    assert sql(database, "SELECT rowid FROM book_comment_fts WHERE book_comment_fts MATCH '\"scroll\"'") == [(1,)]

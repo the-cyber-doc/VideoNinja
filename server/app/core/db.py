@@ -18,7 +18,7 @@ MIGRATIONS_DIR = SQL_DIR / "migrations"
 # The database version this release runs on (config.db_version). A new database is
 # built from db_v<N>.sql + db_v<N>_init.sql; an existing one of another version is
 # migrated at startup (migrate), one version at a time: migrations/v<a>_to_v<b>.sql.
-EXPECTED_VERSION = 5
+EXPECTED_VERSION = 6
 
 
 def db_path() -> Path:
