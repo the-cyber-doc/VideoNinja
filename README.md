@@ -116,7 +116,14 @@ in the repository. Each commit then checks its staged files with the tools of
 `server/.venv` and `frontend/node_modules` (`.pre-commit-config.yaml`; nothing
 downloaded): no large files or private keys, whitespace, Ruff, mypy, Prettier,
 ESLint. The formatters fix the files themselves: `git add` them and commit again.
-`server/.venv/bin/pre-commit run --all-files` checks everything.
+The hook only sees the staged files, but CI runs the hooks on every file: before
+each push, run (from the repository root)
+
+```bash
+server/.venv/bin/pre-commit run --all-files
+```
+
+and commit what the formatters changed.
 
 Every setting is read and checked at startup (`server/app/core/settings.py`): a wrong
 value stops the API or the encoder, and the error names every wrong variable at

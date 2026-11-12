@@ -471,4 +471,3 @@ CREATE TRIGGER IF NOT EXISTS "comment_fts_update" AFTER UPDATE OF "text" ON "com
 	INSERT INTO "comment_fts" ("comment_fts", "rowid", "text") VALUES ('delete', old."id", old."text");
 	INSERT INTO "comment_fts" ("rowid", "text") VALUES (new."id", new."text");
 END;
-
