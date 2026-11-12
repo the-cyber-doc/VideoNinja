@@ -34,6 +34,7 @@ Self-hosted on a Raspberry Pi 5 with Docker behind nginx.
 | `deploy/` | `docker-compose.yaml` and `reverse-proxy.conf`: the examples of [Production](#production), attached to each GitHub release (a test keeps them identical to this README) |
 | `docker-compose.dev.yaml`, `tools/docker-dev.sh` | The production images built from the checkout and run locally on the development data (see [9. Docker images](#9-docker-images)) |
 | `tools/make-dev-db.py` | A development database with a fixed test admin (see [Test admin without the wizard](#test-admin-without-the-wizard)) |
+| `tools/clean-content.py` | Removes the users' content (videos, books, annotations, comments, uploads) and its files, keeping users, catalogue and tags (see [Restarting without the test content](#restarting-without-the-test-content)) |
 | `tools/test-browser.sh` | Every browser test, once, with the browsers in Playwright's Docker image (also where WebKit can't start locally; see [6. Frontend tests](#6-frontend-tests)) |
 | `tools/sbom.sh` | SPDX SBOMs of the four images and the sources, `--scan` for their known vulnerabilities (see [Security](#security)) |
 | `tools/test-e2e-stack.sh` | The e2e tests against the four real containers, on a throwaway instance (see [End-to-end tests on the containers](#end-to-end-tests-on-the-containers)) |
@@ -235,6 +236,40 @@ sudo docker compose create
 sudo docker compose cp -a videoninja.db server:/data/videoninja.db
 sudo docker compose up -d && sudo rm videoninja.db
 ```
+
+#### Restarting without the test content
+
+`tools/clean-content.py` deletes what users added: videos (with their segments and
+tags), books (pages, annotations, crops), comments, pending uploads, and their files
+in the media and upload folders. It keeps users and their sessions, roles,
+invitations, the catalogue (proposed entries too), tags, performers and translations.
+The cleared tables' IDs restart at 1, and browsers key saved media by those IDs:
+
+- A service worker that sees the empty catalogue drops its saved clips and thumbnails.
+- Whole videos saved from the Videos page stay until its phone button removes them.
+- A browser that sees the catalogue again only after a new segment got an old one's ID
+  and times keeps the old clip.
+
+Logging out and in empties a browser's caches. Old IDs in the logs then name other
+rows. Stop the app first: the script refuses while the encoder's
+heartbeat is recent. Without `--yes` it only counts. With `--yes` it first copies the
+database to `<db>.clean-<UTC time>.bak`. It needs nothing but the Python standard
+library.
+
+```bash
+# Development, from the repository root (server/dev.db, server/media, server/uploads)
+python3 tools/clean-content.py          # what would go
+python3 tools/clean-content.py --yes    # delete
+
+# Production, on the Pi in /opt/videoninja, with the script copied there: the
+# encoder's container has the database, media and uploads, as their owner
+sudo docker compose stop api encoder tusd
+sudo docker compose run --rm --no-deps -T --entrypoint python encoder - < clean-content.py
+sudo docker compose run --rm --no-deps -T --entrypoint python encoder - --yes < clean-content.py
+sudo docker compose up -d
+```
+
+The API rebuilds the catalogue snapshot at its start.
 
 ### 5. Checks (same as CI)
 
