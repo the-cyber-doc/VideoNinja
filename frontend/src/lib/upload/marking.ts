@@ -4,6 +4,7 @@
 //   O: ends the segment started by the marker, else the selected segment's end.
 // A new segment starts with the previous one's place in the catalogue (all but the
 // technique) and performer: a series of techniques of one school is quick to annotate.
+// It also starts with the video's tags (copies: edited on the segment alone).
 import type { Annotation } from './draft.svelte';
 
 /** Where the marking is: the selected segment (its key) and a begin marker (seconds). */
@@ -28,7 +29,7 @@ export function addSegment(annotation: Annotation, begin: number, end: number): 
 		section: last?.section ?? '',
 		technique: '',
 		performer: last?.performer ?? '',
-		tags: []
+		tags: annotation.tags.map((tag) => ({ ...tag }))
 	});
 	return key;
 }

@@ -30,6 +30,19 @@ describe('marking segments', () => {
 		});
 	});
 
+	it("a new segment starts with the video's tags, as copies: editing them leaves the video's alone", () => {
+		const a = annotation();
+		addSegment(a, 0, 1);
+		expect(a.segments[0].tags).toEqual([]); // a video without tags
+		a.tags = [{ id: 'place', value: 'dojo' }, { id: 'rain' }];
+		addSegment(a, 1, 2);
+		expect(a.segments[1].tags).toEqual([{ id: 'place', value: 'dojo' }, { id: 'rain' }]);
+		a.segments[1].tags[0].value = 'outdoor';
+		a.segments[1].tags.pop();
+		expect(a.tags).toEqual([{ id: 'place', value: 'dojo' }, { id: 'rain' }]);
+		expect(a.segments[0].tags).toEqual([]); // the ones made before: unchanged
+	});
+
 	it('keys are never reused, even after a deletion', () => {
 		const a = annotation();
 		addSegment(a, 0, 1);

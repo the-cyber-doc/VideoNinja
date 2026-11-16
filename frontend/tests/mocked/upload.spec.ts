@@ -734,6 +734,44 @@ test('tags: shown by their translated names, kept by ID', async ({ page }) => {
 	await expect(videoFr.locator('.chip')).toHaveText(['Lieu : Extérieur', 'Remarque : Très bien']);
 });
 
+test("a new segment starts with the video's tags, then edited on its own before Proceed", async ({ page }) => {
+	const fake = await setup(page);
+	await openClip(page);
+	const video = page.locator('.card', { has: page.getByText('Tags of the video') });
+	await video.getByLabel('Add a tag').selectOption({ label: 'Place' });
+	await video.getByLabel('Value').selectOption({ label: 'Dojo' });
+	await video.getByRole('button', { name: 'Add', exact: true }).click();
+	await video.getByLabel('Add a tag').selectOption({ label: 'Year' });
+	await video.getByLabel('A year, e.g. 2024').fill('2024');
+	await video.getByRole('button', { name: 'Add', exact: true }).click();
+
+	await drag(page, 0.1, 0.5);
+	const first = page.getByRole('article', { name: 'Segment 1' });
+	await expect(first.locator('.chip')).toHaveText(['Place: Dojo', 'Year: 2024']);
+	// Edited on the segment alone: one removed, another added; the video keeps its own.
+	await first.getByRole('button', { name: 'Remove the tag Year' }).click();
+	await first.getByLabel('Add a tag').selectOption({ label: 'Rain' });
+	await first.getByRole('button', { name: 'Add', exact: true }).click();
+	await expect(first.locator('.chip')).toHaveText(['Place: Dojo', 'Rain']);
+	await expect(video.locator('.chip')).toHaveText(['Place: Dojo', 'Year: 2024']);
+
+	await first.getByLabel('School').selectOption('gyokko');
+	await first.getByLabel('Scroll or form').selectOption('gyokko.taijutsu.jo_ryaku');
+	await first.getByLabel('Technique').selectOption(KOKU);
+	await first.getByLabel('Performer').selectOption('hatsumi');
+	await allDone(page).check();
+	await proceed(page).click();
+	await expect(page.getByRole('status')).toContainText('Uploaded.');
+	const [{ body }] = fake.submitted as { body: Record<string, unknown> }[];
+	expect(body).toMatchObject({
+		tags: [
+			{ id: 'place', value: 'dojo' },
+			{ id: 'year', value: '2024' }
+		],
+		segments: [{ tags: [{ id: 'place', value: 'dojo' }, { id: 'rain' }] }]
+	});
+});
+
 test('a tag follows its rule: pattern and bounds, hint and keyboard, or no value', async ({ page }) => {
 	await setup(page);
 	await openClip(page);
