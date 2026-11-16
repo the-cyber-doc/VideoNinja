@@ -145,6 +145,49 @@ test('a segment added on the Videos page gets its thumbnail from the encoder', a
 		.toBe(true);
 });
 
+test('mass import: several videos in two picks, tagged alike, uploaded, encoded and published', async ({ page }) => {
+	await logIn(page);
+	await page.goto('upload');
+	const batch = page.getByRole('region', { name: 'Import several videos' });
+	// Their own files: no other spec uploads them (the Videos and search specs' lists stay exact).
+	await batch.getByLabel('Add videos').setInputFiles('tests/fixtures/batch-a.webm');
+	await batch.getByLabel('Add videos').setInputFiles('tests/fixtures/batch-b.webm');
+	await batch.getByLabel('Add a tag').selectOption({ label: 'Year' });
+	await batch.getByLabel('A year, e.g. 2024').fill('2025');
+	await batch.getByRole('button', { name: 'Add', exact: true }).click();
+	await batch.getByRole('button', { name: 'Process (2)' }).click();
+	await expect(batch.getByRole('status')).toContainText('2 video(s) uploaded', { timeout: 60_000 });
+
+	// Queued, encoded one after the other, published: "My uploads" follows them.
+	const mine = page.getByRole('heading', { name: 'My uploads' }).locator('..');
+	for (const name of ['batch-a.webm', 'batch-b.webm']) {
+		const row = mine.getByRole('listitem').filter({ hasText: name });
+		await expect(row.getByText('Published')).toBeVisible({ timeout: 200_000 });
+	}
+
+	// Without segments (added later, on the Videos page), with the tags chosen.
+	const videos = (await (await page.request.get('api/videos')).json()) as {
+		original_filename: string;
+		segment_count: number;
+		all_segments_done: boolean;
+		tags: { id: string; value?: string | null }[];
+	}[];
+	const imported = videos
+		.filter((v) => v.original_filename.startsWith('batch-'))
+		.map(({ original_filename, segment_count, all_segments_done, tags }) => ({
+			original_filename,
+			segment_count,
+			all_segments_done,
+			tags
+		}))
+		.sort((a, b) => a.original_filename.localeCompare(b.original_filename));
+	const tagged = { segment_count: 0, all_segments_done: false, tags: [{ id: 'year', value: '2025' }] };
+	expect(imported).toEqual([
+		{ original_filename: 'batch-a.webm', ...tagged },
+		{ original_filename: 'batch-b.webm', ...tagged }
+	]);
+});
+
 test('Test local codecs: the samples served by nginx, the page runs its tests', async ({ page }) => {
 	test.setTimeout(240_000);
 	// Static files of the frontend: public, with their media types (nginx's mime.types).

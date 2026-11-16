@@ -1,5 +1,5 @@
 <script lang="ts">
-	// Upload and annotate a video: the steps and their state are the flow's
+	// Upload and annotate a video (or import several, without segments: BatchImport): the steps and their state are the flow's
 	// (lib/upload/flow.svelte.ts); the page's data (+page.ts: access checked there).
 	// Here, the component's own work: the draft saved shortly after every change, the
 	// guard against leaving while hashing or uploading, the confirmations.
@@ -15,6 +15,7 @@
 	import { saveDraft } from '#lib/upload/draft.svelte.js';
 	import { UploadFlow } from '#lib/upload/flow.svelte.js';
 	import MyUploads from '#lib/upload/MyUploads.svelte';
+	import BatchImport from '#lib/upload/BatchImport.svelte';
 	import BookUploadForm from '#lib/books/BookUploadForm.svelte';
 	import type { PageProps } from './$types';
 
@@ -24,6 +25,7 @@
 	// svelte-ignore state_referenced_locally
 	const flow = new UploadFlow(data.limits, !data.available);
 	let input = $state<HTMLInputElement>();
+	let batchSubmitted = $state(0); // videos queued by the mass import: "my uploads" reloads
 
 	// Save the draft shortly after every change.
 	let saveTimer: ReturnType<typeof setTimeout>;
@@ -139,7 +141,14 @@
 		{/await}
 	{/if}
 
-	<MyUploads refresh={flow.submitted} />
+	<BatchImport
+		tags={data.tags}
+		limits={data.limits}
+		unavailable={!data.available}
+		onsubmitted={() => batchSubmitted++}
+	/>
+
+	<MyUploads refresh={flow.submitted + batchSubmitted} />
 
 	{#if hasAccess('book_mgmt')}
 		<BookUploadForm tags={data.tags} maxBytes={data.limits?.book_max_bytes ?? null} />

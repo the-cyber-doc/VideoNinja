@@ -711,3 +711,146 @@ test('in French', async ({ page }) => {
 		'Téléverser'
 	]);
 });
+
+test.describe('mass import', () => {
+	const batch = (page: Page) => page.getByRole('region', { name: 'Import several videos' });
+	const list = (page: Page) => batch(page).getByRole('list', { name: 'Videos to import' });
+
+	/** tusd for several files: each one its own URL, done in one PATCH (its whole length).
+	 * Answers its requests ("METHOD path"), filled as they come. */
+	async function tusd(page: Page) {
+		const sizes: number[] = [];
+		const requests: string[] = [];
+		await page.route('/files/**', (r) => {
+			const req = r.request();
+			requests.push(`${req.method()} ${new URL(req.url()).pathname}`);
+			const tus = { 'Tus-Resumable': '1.0.0' };
+			if (req.method() === 'POST') {
+				sizes.push(Number(req.headers()['upload-length']));
+				return r.fulfill({ status: 201, headers: { ...tus, Location: `/files/up${sizes.length}` } });
+			}
+			// PATCH: all received; HEAD (resuming): all there already.
+			const size = String(sizes[Number(new URL(req.url()).pathname.replace('/files/up', '')) - 1]);
+			return r.fulfill({
+				status: req.method() === 'HEAD' ? 200 : 204,
+				headers: { ...tus, 'Upload-Offset': size, 'Upload-Length': size, 'Cache-Control': 'no-store' }
+			});
+		});
+		return requests;
+	}
+
+	test('videos added in several picks, the same tags for all, then Process: each uploaded and queued', async ({
+		page
+	}) => {
+		const fake = await setup(page);
+		await tusd(page);
+		let mineLoads = 0;
+		await page.route('/api/uploads/mine', (r) => (mineLoads++, r.fulfill({ json: fake.mine })));
+		await page.goto('/upload');
+		await expect(batch(page).getByText('No video added yet.')).toBeVisible();
+		const process = batch(page).getByRole('button', { name: /^Process/ });
+		await expect(process).toBeDisabled();
+
+		// First pick: one file; second pick: two more and one of another type.
+		await batch(page).getByLabel('Add videos').setInputFiles(CLIP);
+		await batch(page)
+			.getByLabel('Add videos')
+			.setInputFiles([
+				...['clip-6s.webm', 'clip-9s.webm'].map((name) => ({
+					name,
+					mimeType: 'video/webm',
+					buffer: readFileSync(`tests/fixtures/${name}`)
+				})),
+				{ name: 'notes.txt', mimeType: 'text/plain', buffer: Buffer.from('notes') }
+			]);
+		await batch(page).getByLabel('Add videos').setInputFiles(CLIP); // listed once only
+		const rows = list(page).getByRole('listitem');
+		await expect(rows.locator('.name')).toHaveText(['clip.webm', 'clip-6s.webm', 'clip-9s.webm', 'notes.txt']);
+		await expect(rows.locator('.status')).toHaveText(['Waiting', 'Waiting', 'Waiting', 'Refused']);
+		await expect(rows.nth(3)).toContainText('This type of file is not accepted');
+		await expect(process).toHaveText('Process (3)');
+
+		// One removed again, the refused one too.
+		await list(page).getByRole('button', { name: 'Remove clip-9s.webm' }).click();
+		await list(page).getByRole('button', { name: 'Remove notes.txt' }).click();
+		await expect(rows.locator('.name')).toHaveText(['clip.webm', 'clip-6s.webm']);
+
+		// The tags of every video: a value from a list, and a year.
+		await batch(page).getByLabel('Add a tag').selectOption({ label: 'Place' });
+		await batch(page).getByLabel('Value').selectOption({ label: 'Dojo' });
+		await batch(page).getByRole('button', { name: 'Add', exact: true }).click();
+		await batch(page).getByLabel('Add a tag').selectOption({ label: 'Year' });
+		await batch(page).getByLabel('A year, e.g. 2024').fill('2024');
+		await batch(page).getByRole('button', { name: 'Add', exact: true }).click();
+		await expect(batch(page).locator('.chip')).toHaveText(['Place: Dojo', 'Year: 2024']);
+
+		const loadsBefore = mineLoads;
+		await process.click();
+		await expect(batch(page).getByRole('status')).toContainText('2 video(s) uploaded');
+		await expect(rows.locator('.status')).toHaveText(['Queued for encoding', 'Queued for encoding']);
+		const tags = [
+			{ id: 'place', value: 'dojo' },
+			{ id: 'year', value: '2024' }
+		];
+		expect(fake.submitted).toEqual([
+			{
+				url: expect.stringMatching(/\/api\/uploads\/up1\/submit$/),
+				body: { original_filename: 'clip.webm', all_segments_done: false, segments: [], tags }
+			},
+			{
+				url: expect.stringMatching(/\/api\/uploads\/up2\/submit$/),
+				body: { original_filename: 'clip-6s.webm', all_segments_done: false, segments: [], tags }
+			}
+		]);
+		expect(mineLoads).toBeGreaterThan(loadsBefore); // "my uploads" reloaded
+		await expect(process).toBeDisabled();
+
+		// The button can be used again; the finished ones can go.
+		await batch(page).getByLabel('Add videos').setInputFiles('tests/fixtures/clip-12s.webm');
+		await expect(process).toHaveText('Process (1)');
+		await batch(page).getByRole('button', { name: 'Remove finished' }).click();
+		await expect(rows.locator('.name')).toHaveText(['clip-12s.webm']);
+	});
+
+	test('a video on the server already is skipped; an upload refused fails alone and is retried', async ({ page }) => {
+		const fake = await setup(page);
+		const tusMethods = await tusd(page);
+		await page.route('/api/videos/exists*', (r) =>
+			// clip.webm is known (its hash, in the URL).
+			r.fulfill({ json: { exists: r.request().url().includes(CLIP_SHA) } })
+		);
+		let refuse = true;
+		await page.route('/api/uploads/*/submit', (r) => {
+			if (refuse) {
+				refuse = false;
+				return r.fulfill({ status: 503, json: { code: 'busy', detail: 'Busy', params: {} } });
+			}
+			fake.submitted.push(r.request().postDataJSON());
+			return r.fulfill({ status: 201, json: { id: 2 } });
+		});
+		await page.goto('/upload');
+		await batch(page).getByLabel('Add videos').setInputFiles([CLIP, 'tests/fixtures/clip-6s.webm']);
+		await batch(page).getByRole('button', { name: 'Process (2)' }).click();
+		const rows = list(page).getByRole('listitem');
+		await expect(rows.locator('.status')).toHaveText(['Already on the server', 'Failed']);
+		await expect(rows.nth(1).locator('.error')).toBeVisible();
+		expect(fake.submitted).toEqual([]);
+
+		await batch(page).getByRole('button', { name: 'Process (1)' }).click();
+		await expect(rows.locator('.status')).toHaveText(['Already on the server', 'Queued for encoding']);
+		expect(fake.submitted).toHaveLength(1);
+		expect(tusMethods.slice(-1)).toEqual(['HEAD /files/up1']); // resumed: not sent again
+	});
+
+	test('the server cannot receive uploads: Process says so; in French', async ({ page }) => {
+		await page.addInitScript(() => localStorage.setItem('lang', 'fr'));
+		const fake = await setup(page, UPLOADER, { available: false });
+		await page.goto('/upload');
+		const section = page.getByRole('region', { name: 'Importer plusieurs vidéos' });
+		await section.getByLabel('Ajouter des vidéos').setInputFiles(CLIP);
+		await expect(section.locator('.status')).toHaveText(['En attente']);
+		await section.getByRole('button', { name: 'Traiter (1)' }).click();
+		await expect(section.getByRole('alert')).toContainText('Les téléversements sont impossibles');
+		expect(fake.tusRequests).toEqual([]);
+	});
+});

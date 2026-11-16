@@ -48,6 +48,12 @@ const DEPS: FlowDeps = {
 const gigabytes = (bytes: number) =>
 	new Intl.NumberFormat(i18n.lang, { maximumSignificantDigits: 3 }).format(bytes / 1024 ** 3);
 
+/** Why a file is refused before hashing (`refusal`), for the user (also the mass import's). */
+export const refusalText = (refused: 'type' | 'size', limits: UploadLimits) =>
+	refused === 'size'
+		? t('upload.too_large', { max: gigabytes(limits.max_bytes) })
+		: t('upload.wrong_type', { types: limits.extensions.join(', ') });
+
 export class UploadFlow {
 	step = $state<Step>('pick');
 	file = $state<File | null>(null);
@@ -118,10 +124,7 @@ export class UploadFlow {
 		this.error = null;
 		const refused = refusal(chosen, this.limits);
 		if (refused) {
-			this.error =
-				refused === 'size'
-					? t('upload.too_large', { max: gigabytes(this.limits!.max_bytes) })
-					: t('upload.wrong_type', { types: this.limits!.extensions.join(', ') });
+			this.error = refusalText(refused, this.limits!);
 			return false;
 		}
 		this.file = chosen;

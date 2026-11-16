@@ -1172,6 +1172,35 @@
 		"en": "The upload failed. {error} Proceed again to continue where it stopped.",
 		"fr": "L'envoi a échoué. {error} Relancez pour continuer là où il s'est arrêté."
 	},
+	"upload.batch.title": { "en": "Import several videos", "fr": "Importer plusieurs vidéos" },
+	"upload.batch.intro": {
+		"en": "Add as many videos as you want, in one or several picks, choose the tags they all get, then Process: each one is uploaded and queued for encoding. Their segments are added later, on the Videos page.",
+		"fr": "Ajoutez autant de vidéos que vous voulez, en une ou plusieurs fois, choisissez les étiquettes qu'elles recevront toutes, puis Traiter : chacune est envoyée et mise en file d'encodage. Leurs segments s'ajoutent plus tard, sur la page Vidéos."
+	},
+	"upload.batch.choose": { "en": "Add videos", "fr": "Ajouter des vidéos" },
+	"upload.batch.list": { "en": "Videos to import", "fr": "Vidéos à importer" },
+	"upload.batch.empty": { "en": "No video added yet.", "fr": "Aucune vidéo ajoutée pour l'instant." },
+	"upload.batch.tags": { "en": "Tags of every video", "fr": "Étiquettes de toutes les vidéos" },
+	"upload.batch.remove": { "en": "Remove {name}", "fr": "Retirer {name}" },
+	"upload.batch.remove_finished": { "en": "Remove finished", "fr": "Retirer les terminées" },
+	"upload.batch.process": { "en": "Process ({n})", "fr": "Traiter ({n})" },
+	"upload.batch.stop": { "en": "Stop", "fr": "Arrêter" },
+	"upload.batch.queued": {
+		"en": "{n} video(s) uploaded: they wait in the server's queue to be encoded, then they are published.",
+		"fr": "{n} vidéo(s) envoyée(s) : elles attendent leur encodage dans la file du serveur, puis elles seront publiées."
+	},
+	"upload.batch.failed": {
+		"en": "The upload failed. {error} Process again to continue where it stopped.",
+		"fr": "L'envoi a échoué. {error} Relancez Traiter pour continuer là où il s'est arrêté."
+	},
+	"upload.batch.status.waiting": { "en": "Waiting", "fr": "En attente" },
+	"upload.batch.status.hashing": { "en": "Checking: {n} %", "fr": "Vérification : {n} %" },
+	"upload.batch.status.uploading": { "en": "Uploading: {n} %", "fr": "Envoi : {n} %" },
+	"upload.batch.status.submitting": { "en": "Queuing…", "fr": "Mise en file…" },
+	"upload.batch.status.done": { "en": "Queued for encoding", "fr": "En file d'encodage" },
+	"upload.batch.status.duplicate": { "en": "Already on the server", "fr": "Déjà sur le serveur" },
+	"upload.batch.status.refused": { "en": "Refused", "fr": "Refusée" },
+	"upload.batch.status.failed": { "en": "Failed", "fr": "Échec" },
 	"options.title": { "en": "Options", "fr": "Options" },
 	"options.proposals.title": { "en": "Proposed entries", "fr": "Entrées proposées" },
 	"options.proposals.hint": {
