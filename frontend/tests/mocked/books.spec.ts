@@ -154,9 +154,11 @@ test('a PDF read here: its title, author and first page; the reference; uploaded
 	const preview = page.locator('.preview');
 	await expect(preview).toContainText('Hatsumi, Masaaki. Togakure-ryu Densho. Tokyo: Kodansha, 1981.');
 	await expect(preview.locator('i')).toHaveText('Togakure-ryu Densho');
-	await page.getByLabel('Add a tag').selectOption('year');
-	await page.getByLabel('Value', { exact: true }).fill('1981');
-	await page.getByRole('button', { name: 'Add', exact: true }).click();
+	// The book's own tags (the page's mass import has others).
+	const book = page.getByRole('region', { name: 'Upload a book' });
+	await book.getByLabel('Add a tag').selectOption('year');
+	await book.getByLabel('Value', { exact: true }).fill('1981');
+	await book.getByRole('button', { name: 'Add', exact: true }).click();
 
 	await page.getByRole('button', { name: 'Upload', exact: true }).click();
 	await expect(page.getByText('Uploaded: the book is published in a few seconds.')).toBeVisible();
