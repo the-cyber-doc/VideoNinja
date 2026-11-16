@@ -1,6 +1,7 @@
 import { expect, test, type Page, type Request } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 import { CATALOG as FULL, KOKU, STAFF } from '../catalog';
+import { touchDrag } from '../viewer';
 import type { Tag } from '../../src/lib/api/types';
 
 // The editor's video. Not the hidden one that measures the frame duration for a moment (aria-hidden).
@@ -631,6 +632,82 @@ test.describe('on a phone', () => {
 		const sideBySide = Math.abs(begin.y - end.y) < 2 && end.x > begin.x;
 		const stacked = Math.abs(begin.x - end.x) < 2 && end.y > begin.y;
 		expect(sideBySide || stacked).toBe(true);
+	});
+});
+
+// A finger never creates a segment (every swipe meant to scroll the page would): it moves the
+// playhead; "Begin here" / "End here" make the segment, whose edges a finger still drags.
+test.describe('with a finger', () => {
+	test.use({ viewport: { width: 360, height: 780 }, hasTouch: true, isMobile: true });
+	test.skip(({ browserName }) => browserName !== 'chromium', 'touch drags need the DevTools protocol');
+
+	const segments = (page: Page) => page.getByRole('article', { name: /^Segment \d+$/ });
+
+	test('slid sideways on the timeline: the playhead follows it, no segment', async ({ page }) => {
+		await setup(page);
+		await openClip(page); // 4 s
+		const box = await timeline(page);
+		const y = box.y + box.height / 2;
+		await touchDrag(page, [box.x + box.width * 0.1, y], [box.x + box.width * 0.6, y]);
+		await expect(marker(page)).toHaveAttribute('aria-valuenow', '2'); // 60 % of 4 s, rounded
+		await expect(segments(page)).toHaveCount(0);
+		await expect(page.locator('.segment')).toHaveCount(0); // not even a preview left behind
+	});
+
+	test('swiped up on the timeline: the page scrolls, nothing else changes', async ({ page }) => {
+		await setup(page);
+		await openClip(page);
+		const box = await timeline(page);
+		const x = box.x + box.width * 0.3;
+		const y = box.y + box.height / 2;
+		const before = await page.evaluate(() => scrollY);
+		await touchDrag(page, [x, y], [x + 4, y - 250]);
+		await expect.poll(() => page.evaluate(() => scrollY)).toBeGreaterThan(before + 100);
+		await expect(marker(page)).toHaveAttribute('aria-valuenow', '0'); // not moved
+		await expect(segments(page)).toHaveCount(0);
+	});
+
+	test('a tap seeks; Begin here and End here make the segment; a finger resizes it by its edge', async ({ page }) => {
+		await setup(page);
+		await openClip(page); // 4 s
+		let box = await timeline(page);
+		const y = box.y + box.height / 2;
+		const tap = (fraction: number) =>
+			touchDrag(page, [box.x + box.width * fraction, y], [box.x + box.width * fraction, y], 0, 1);
+
+		await tap(0.25);
+		await expect(marker(page)).toHaveAttribute('aria-valuenow', '1');
+		await page.getByRole('button', { name: 'Begin here' }).click();
+		box = await timeline(page);
+		await tap(0.5);
+		await expect(marker(page)).toHaveAttribute('aria-valuenow', '2');
+		await page.getByRole('button', { name: 'End here' }).click();
+		await expect(segments(page)).toHaveCount(1);
+
+		// Its end edge dragged by a finger, from 50 % to 90 %: resized, nothing created.
+		box = await timeline(page);
+		const band = page.locator('.track .segment');
+		const before = (await band.boundingBox())!;
+		await touchDrag(page, [before.x + before.width, y], [box.x + box.width * 0.9, y]);
+		await expect.poll(async () => (await band.boundingBox())!.width).toBeGreaterThan(before.width * 2);
+		await expect(segments(page)).toHaveCount(1);
+		expect((await band.boundingBox())!.x).toBeCloseTo(before.x, 0); // its begin kept
+	});
+
+	test('a tap on a segment selects it, a tap elsewhere deselects it', async ({ page }) => {
+		await setup(page);
+		await openClip(page);
+		await drag(page, 0.2, 0.5); // a mouse still creates one
+		const band = page.locator('.track .segment');
+		await expect(band).toHaveCount(1);
+		const box = await timeline(page);
+		const y = box.y + box.height / 2;
+		const tap = (x: number) => touchDrag(page, [x, y], [x, y], 0, 1);
+		await tap(box.x + box.width * 0.8);
+		await expect(band).not.toHaveClass(/selected/);
+		await tap(box.x + box.width * 0.35);
+		await expect(band).toHaveClass(/selected/);
+		await expect(marker(page)).toHaveAttribute('aria-valuenow', '1'); // 35 % of 4 s, and seeks
 	});
 });
 

@@ -1027,8 +1027,8 @@
 	"upload.begin_here": { "en": "Begin here (I)", "fr": "Début ici (I)" },
 	"upload.end_here": { "en": "End here (O)", "fr": "Fin ici (O)" },
 	"upload.timeline_hint": {
-		"en": "Point at the film strip to see that frame, click to move the playhead there. Drag across it to create a segment, drag its edges to adjust it. Keys: Space play/pause, ← → one frame, I begin, O end.",
-		"fr": "Pointez la pellicule pour voir cette image, cliquez pour y placer la tête de lecture. Glissez dessus pour créer un segment, glissez ses bords pour l'ajuster. Touches : Espace lecture/pause, ← → une image, I début, O fin."
+		"en": "Point at the film strip to see that frame, click or tap to move the playhead there (with a finger, slide sideways to move it along). Create a segment with Begin here and End here, or by dragging across the strip with a mouse; drag its edges to adjust it. Keys: Space play/pause, ← → one frame, I begin, O end.",
+		"fr": "Pointez la pellicule pour voir cette image, cliquez ou touchez pour y placer la tête de lecture (au doigt, glissez de côté pour la déplacer). Créez un segment avec Début ici et Fin ici, ou en glissant sur la pellicule à la souris ; glissez ses bords pour l'ajuster. Touches : Espace lecture/pause, ← → une image, I début, O fin."
 	},
 	"upload.segments": { "en": "Segments", "fr": "Segments" },
 	"upload.no_segments_yet": {

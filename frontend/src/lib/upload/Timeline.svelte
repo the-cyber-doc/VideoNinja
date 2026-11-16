@@ -1,9 +1,13 @@
 <script lang="ts">
 	// The video's timeline: film strip, segments as coloured bands, playhead, and
-	// the begin marker set with "Begin here". Click = seek; click-and-drag on an
-	// empty place = new segment; drag a segment's edge = move it; click a segment
-	// = select it. The pointer's position is previewed all the time (hovering,
-	// creating, resizing): onpreview(time), then onpreview(null) when it leaves.
+	// the begin marker set with "Begin here". Click = seek; drag a segment's edge =
+	// move it; click a segment = select it. A mouse dragged on an empty place = new
+	// segment. A finger (or a pen) never creates one: it would on every swipe meant to
+	// scroll the page. A tap seeks (and selects), a sideways drag moves the playhead,
+	// an up-or-down swipe scrolls the page (touch-action pan-y, the browser cancels our
+	// pointer: nothing changed); segments come from "Begin here" / "End here".
+	// The pointer's position is previewed all the time (hovering, creating, resizing,
+	// moving the playhead): onpreview(time), then onpreview(null) when it leaves.
 	import { t } from '../i18n.svelte';
 	import { formatTime } from '../time';
 	import type { DraftSegment } from './draft.svelte';
@@ -52,10 +56,13 @@
 	let drag = $state<
 		| { kind: 'create'; start: number; end: number; x: number }
 		| { kind: 'edge'; key: number; edge: 'begin' | 'end' }
+		/** A finger: a tap (on a segment: `key`) or, once `moved`, the playhead following it. */
+		| { kind: 'touch'; key: number | null; x: number; moved: boolean }
 		| null
 	>(null);
 
 	const MIN_DRAG_PX = 4; // shorter: a click (seek), not a segment
+	const MIN_TOUCH_DRAG_PX = 10; // a finger shakes more than a mouse
 	const pct = (time: number) => `${duration ? (time / duration) * 100 : 0}%`;
 
 	function timeAt(e: PointerEvent): number {
@@ -74,6 +81,9 @@
 		if (edge && key) {
 			drag = { kind: 'edge', key: Number(key), edge };
 			onselect(Number(key));
+		} else if (e.pointerType !== 'mouse') {
+			// Nothing yet: it may be a swipe that scrolls the page (then cancelled).
+			drag = { kind: 'touch', key: key ? Number(key) : null, x: e.clientX, moved: false };
 		} else if (key) {
 			onselect(Number(key));
 			onseek(time);
@@ -89,6 +99,9 @@
 		if (!drag) return;
 		if (drag.kind === 'create') {
 			drag.end = time;
+		} else if (drag.kind === 'touch') {
+			drag.moved ||= Math.abs(e.clientX - drag.x) >= MIN_TOUCH_DRAG_PX;
+			if (drag.moved) onseek(time);
 		} else {
 			const segment = segments.find((s) => s.key === (drag as { key: number }).key);
 			if (!segment) return;
@@ -105,6 +118,9 @@
 			} else {
 				oncreate(Math.min(drag.start, drag.end), Math.max(drag.start, drag.end));
 			}
+		} else if (drag?.kind === 'touch') {
+			if (!drag.moved) onselect(drag.key); // a tap: that segment, or none
+			onseek(timeAt(e));
 		}
 		drag = null;
 		// A finger has no hover; a mouse released outside the track has left it.
@@ -179,7 +195,7 @@
 		background: var(--bg);
 		overflow: hidden;
 		cursor: crosshair;
-		touch-action: none; /* drag with a finger without scrolling the page */
+		touch-action: pan-y; /* a finger scrolls the page up and down; sideways, it moves the playhead */
 		user-select: none;
 	}
 	.strip {
@@ -231,6 +247,7 @@
 		bottom: 0;
 		width: var(--edge);
 		cursor: ew-resize;
+		touch-action: none; /* a finger resizes the segment, never scrolls the page */
 	}
 	.edge.begin {
 		left: calc(var(--edge) / -2);
