@@ -25,7 +25,7 @@
 # built with older Go and libraries than their security fixes (the weekly scan). The
 # latest Go, and the libraries below at their fixed versions; every module checked by
 # Go against go.sum and its checksum database (sum.golang.org). Static, no cgo.
-FROM dhi.io/golang:1.27.3-alpine3.24-dev AS tusd-build
+FROM dhi.io/golang:1.27.4-alpine3.24-dev AS tusd-build
 USER 0:0
 ARG TUSD_VERSION=2.10.1
 ARG TUSD_COMMIT=388a27cb81c33b2349e0308b5e97e23797e86fd9
