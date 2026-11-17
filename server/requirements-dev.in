@@ -16,14 +16,14 @@ mypy==2.4.1
 pytest-cov==7.1.0
 # Their dependencies held to releases two weeks old at least (as Dependabot's cooldown):
 # the newest were days old when these were added.
-coverage==7.17.0
+coverage==7.17.1
 ast-serialize==0.13.1
 # Git hooks (.pre-commit-config.yaml): the framework, and its hygiene checks run from here.
 pre-commit==4.7.0
 pre-commit-hooks==6.0.0
 # pre-commit's, held back the same way (the newest were days old):
 distlib==0.4.4
-filelock==4.2.6
+filelock==4.2.7
 platformdirs==4.14.3
-python-discovery==1.9.0
-virtualenv==21.15.2
+python-discovery==1.9.2
+virtualenv==21.15.3
