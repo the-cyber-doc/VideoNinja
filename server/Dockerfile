@@ -121,7 +121,7 @@ RUN chmod -R u=rwX,go=rX /out && chmod 755 /out/encode/encode-videos.sh
 # from pinned sources. Only brotli_static (serves the .br files written
 # beforehand): it links no library. A new nginx image needs NGINX_SHA256 of its
 # version.
-FROM dhi.io/nginx:1.31.8-alpine3.24-dev AS brotli-module
+FROM dhi.io/nginx:1.31.9-alpine3.24-dev AS brotli-module
 USER root
 ARG NGINX_SOURCE=1.31.8
 ARG NGINX_SHA256=0652b760b3b772d2ec17b47c2fc15d9a95e6fe35cd5b877eadc1a62d9bc75af1
@@ -138,7 +138,7 @@ RUN apk add --no-cache build-base pcre2-dev zlib-dev \
     && make modules \
     && install -D -m 644 objs/ngx_http_brotli_static_module.so /out/ngx_http_brotli_static_module.so
 
-FROM dhi.io/nginx:1.31.8-alpine3.24 AS runtime-nginx
+FROM dhi.io/nginx:1.31.9-alpine3.24 AS runtime-nginx
 COPY --from=brotli-module /out/ngx_http_brotli_static_module.so /usr/lib/nginx/modules/
 
 # Python for the API and the encoder. tini: PID 1, reaps what is re-parented to
